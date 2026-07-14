@@ -1,0 +1,161 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:payk_ai_cfo_platform/features/warehouse/bloc/warehouse_bloc.dart';
+import 'package:payk_ai_cfo_platform/features/warehouse/bloc/warehouse_event.dart';
+import 'package:payk_ai_cfo_platform/features/warehouse/bloc/warehouse_state.dart';
+import 'package:payk_ai_cfo_platform/features/warehouse/domain/warehouse_models.dart';
+import 'package:payk_ai_cfo_platform/features/warehouse/domain/warehouse_repository.dart';
+
+class MockWarehouseRepository implements WarehouseRepository {
+  List<WarehouseProduct> products = [];
+  List<WarehouseMovement> movements = [];
+  WarehouseSummaryData summary = const WarehouseSummaryData(productsCount: 0, totalStockValue: 0.0);
+
+  bool shouldFail = false;
+
+  @override
+  Future<List<WarehouseProduct>> getProducts() async {
+    if (shouldFail) throw Exception('Get products error');
+    return List.from(products);
+  }
+
+  @override
+  Future<List<WarehouseMovement>> getMovements() async {
+    if (shouldFail) throw Exception('Get movements error');
+    return List.from(movements);
+  }
+
+  @override
+  Future<WarehouseSummaryData> getSummary() async {
+    if (shouldFail) throw Exception('Get summary error');
+    return summary;
+  }
+
+  @override
+  Future<WarehouseProduct> createProduct(WarehouseProduct product) async {
+    if (shouldFail) throw Exception('Create product error');
+    final newProduct = product.copyWith(id: (products.length + 1).toString());
+    products.add(newProduct);
+    return newProduct;
+  }
+
+  @override
+  Future<WarehouseMovement> createMovement(
+    String productId,
+    String direction,
+    double qty,
+    double amount,
+    String? note,
+  ) async {
+    if (shouldFail) throw Exception('Create movement error');
+    final movement = WarehouseMovement(
+      id: (movements.length + 1).toString(),
+      productId: productId,
+      productName: 'Test Product',
+      direction: direction,
+      qty: qty,
+      amount: amount,
+      note: note,
+      occurredAt: DateTime.now(),
+    );
+    movements.add(movement);
+    return movement;
+  }
+}
+
+void main() {
+  group('WarehouseBloc Unit Tests', () {
+    late MockWarehouseRepository repository;
+    late WarehouseBloc bloc;
+    late List<WarehouseProduct> initialProducts;
+
+    setUp(() {
+      repository = MockWarehouseRepository();
+      initialProducts = [
+        const WarehouseProduct(
+          id: '1',
+          name: 'Product 1',
+          sku: 'SKU-001',
+          unit: 'шт',
+          price: 100.0,
+          stockQty: 10.0,
+        ),
+      ];
+      repository.products = List.from(initialProducts);
+      repository.summary = const WarehouseSummaryData(productsCount: 1, totalStockValue: 1000.0);
+      bloc = WarehouseBloc(repository);
+    });
+
+    tearDown(() {
+      bloc.close();
+    });
+
+    test('Initial state is WarehouseLoading', () {
+      expect(bloc.state, isA<WarehouseLoading>());
+    });
+
+    test('LoadWarehouseData emits WarehouseLoaded with mock data', () async {
+      final expectedStates = [
+        isA<WarehouseLoading>(),
+        isA<WarehouseLoaded>()
+            .having((s) => s.products.length, 'products list length', 1)
+            .having((s) => s.summary.productsCount, 'products count', 1)
+            .having((s) => s.summary.totalStockValue, 'stock value', 1000.0),
+      ];
+
+      expectLater(bloc.stream, emitsInOrder(expectedStates));
+      bloc.add(LoadWarehouseData());
+    });
+
+    test('CreateProductRequested appends to list and updates summary', () async {
+      bloc.add(LoadWarehouseData());
+      await bloc.stream.firstWhere((s) => s is WarehouseLoaded);
+
+      bloc.add(const CreateProductRequested(
+        WarehouseProduct(
+          id: '',
+          name: 'Product 2',
+          sku: 'SKU-002',
+          unit: 'кг',
+          price: 50.0,
+          stockQty: 2.0,
+        ),
+      ));
+
+      final List<WarehouseState> emitted = [];
+      final sub = bloc.stream.listen(emitted.add);
+
+      await Future.delayed(const Duration(milliseconds: 50));
+      sub.cancel();
+
+      expect(emitted, isNotEmpty);
+      final loadedState = emitted.first as WarehouseLoaded;
+      expect(loadedState.products.length, 2);
+      expect(loadedState.products.last.name, 'Product 2');
+      expect(loadedState.summary.productsCount, 2);
+    });
+
+    test('CreateMovementRequested optimistically updates quantities and updates server data', () async {
+      bloc.add(LoadWarehouseData());
+      await bloc.stream.firstWhere((s) => s is WarehouseLoaded);
+
+      // Добавим приход 5 единиц первого товара
+      bloc.add(const CreateMovementRequested(
+        productId: '1',
+        direction: 'income',
+        qty: 5.0,
+        amount: 500.0,
+      ));
+
+      final List<WarehouseState> emitted = [];
+      final sub = bloc.stream.listen(emitted.add);
+
+      await Future.delayed(const Duration(milliseconds: 50));
+      sub.cancel();
+
+      expect(emitted, isNotEmpty);
+      final firstLoaded = emitted.first as WarehouseLoaded;
+      // Оптимистичное локальное количество: 10.0 + 5.0 = 15.0
+      expect(firstLoaded.products.firstWhere((p) => p.id == '1').stockQty, 15.0);
+    });
+  });
+}
