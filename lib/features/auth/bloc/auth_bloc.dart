@@ -22,7 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     final user = await _authRepository.tryAutoLogin();
     if (user != null) {
-      final useBiometrics = await const FlutterSecureStorage().read(key: 'use_biometrics') != 'false';
+      final useBiometrics = await const FlutterSecureStorage().read(key: 'use_biometrics') == 'true';
       final isAvailable = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
 

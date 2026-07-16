@@ -82,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('ВХОД В СИСТЕМУ (MOB-05)', style: textStyles.smallSans),
+                          Text('ВХОД В СИСТЕМУ (MOB-05)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _usernameController,

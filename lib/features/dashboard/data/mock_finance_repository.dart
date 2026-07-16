@@ -30,7 +30,6 @@ class MockFinanceRepository implements FinanceRepository {
     final today = DateTime.now();
     final List<CashFlowPoint> points = [];
 
-    // Генерируем волновой график за последние 30 дней
     final baseline = [
       112000.0, 115000.0, 110000.0, 118000.0, 122000.0,
       120000.0, 118000.0, 125000.0, 128000.0, 126000.0,
@@ -40,9 +39,27 @@ class MockFinanceRepository implements FinanceRepository {
       146000.0, 143000.0, 142500.0, 145000.0, 142500.0,
     ];
 
+    final incomes = List<double>.generate(30, (index) {
+      if (index == 21) return 8800.0;
+      if (index == 15) return 1200.0;
+      if (index == 6) return 400.0;
+      return (index % 3 == 0) ? 200.0 : 100.0;
+    });
+
+    final expenses = List<double>.generate(30, (index) {
+      if (index == 15) return 800.0;
+      if (index == 21) return 200.0;
+      return (index % 4 == 0) ? 150.0 : 80.0;
+    });
+
     for (int i = 0; i < 30; i++) {
       final date = today.subtract(Duration(days: 29 - i));
-      points.add(CashFlowPoint(date: date, amount: baseline[i]));
+      points.add(CashFlowPoint(
+        date: date,
+        amount: baseline[i],
+        income: incomes[i],
+        expense: expenses[i],
+      ));
     }
 
     return points;

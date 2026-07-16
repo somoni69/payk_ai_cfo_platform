@@ -139,6 +139,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     return base.map((p) => CashFlowPoint(
       date: p.date,
       amount: _convert(p.amount, targetCurrency),
+      income: _convert(p.income, targetCurrency),
+      expense: _convert(p.expense, targetCurrency),
     )).toList();
   }
 }

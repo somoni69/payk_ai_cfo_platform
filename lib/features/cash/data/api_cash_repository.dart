@@ -47,13 +47,17 @@ class ApiCashRepository implements CashRepository {
   Future<Transaction> addTransaction(Transaction transaction) async {
     try {
       int registerId = 1;
-      try {
-        final regRes = await _apiClient.dio.get('/cash/registers');
-        final regList = regRes.data as List<dynamic>;
-        if (regList.isNotEmpty) {
-          registerId = regList[0]['id'] as int? ?? 1;
-        }
-      } catch (_) {}
+      if (transaction.registerId != null) {
+        registerId = int.tryParse(transaction.registerId!) ?? 1;
+      } else {
+        try {
+          final regRes = await _apiClient.dio.get('/cash/registers');
+          final regList = regRes.data as List<dynamic>;
+          if (regList.isNotEmpty) {
+            registerId = regList[0]['id'] as int? ?? 1;
+          }
+        } catch (_) {}
+      }
 
       final payload = {
         'register_id': registerId,
@@ -120,6 +124,11 @@ class ApiCashRepository implements CashRepository {
             ? _toDouble(map['actual_balance'] ?? map['ending_balance']) 
             : null,
         isOpen: true,
+        cashierName: map['cashier_name'],
+        registerName: map['register_name'],
+        difference: map['difference'] != null ? _toDouble(map['difference']) : null,
+        status: map['status'] as String? ?? 'open',
+        note: map['note'],
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
@@ -156,6 +165,11 @@ class ApiCashRepository implements CashRepository {
         openedAt: DateTime.parse(map['opened_at'] ?? map['openedAt'] ?? DateTime.now().toIso8601String()),
         startingBalance: _toDouble(map['opening_balance'] ?? map['starting_balance']),
         isOpen: true,
+        cashierName: map['cashier_name'],
+        registerName: map['register_name'],
+        difference: map['difference'] != null ? _toDouble(map['difference']) : null,
+        status: map['status'] as String? ?? 'open',
+        note: map['note'],
       );
     } catch (e) {
       throw Exception('Не удалось открыть смену: ${e.toString()}');
@@ -186,6 +200,11 @@ class ApiCashRepository implements CashRepository {
         startingBalance: _toDouble(map['opening_balance'] ?? map['starting_balance']),
         endingBalance: _toDouble(map['actual_balance'] ?? map['ending_balance']),
         isOpen: false,
+        cashierName: map['cashier_name'],
+        registerName: map['register_name'],
+        difference: map['difference'] != null ? _toDouble(map['difference']) : null,
+        status: map['status'] as String? ?? 'closed',
+        note: map['note'],
       );
     } catch (e) {
       throw Exception('Не удалось закрыть смену: ${e.toString()}');
@@ -211,6 +230,53 @@ class ApiCashRepository implements CashRepository {
       }).toList();
     } catch (e) {
       throw Exception('Не удалось загрузить сводку касс: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<List<CashShift>> getShifts() async {
+    try {
+      final response = await _apiClient.dio.get('/cash/shifts');
+      final list = response.data as List<dynamic>;
+
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        final statusStr = map['status'] as String? ?? 'closed';
+        return CashShift(
+          id: (map['id'] ?? '').toString(),
+          openedAt: DateTime.parse(map['opened_at'] ?? map['openedAt'] ?? DateTime.now().toIso8601String()),
+          closedAt: map['closed_at'] != null ? DateTime.parse(map['closed_at']) : null,
+          startingBalance: _toDouble(map['opening_balance'] ?? map['starting_balance']),
+          endingBalance: map['closed_at'] != null ? _toDouble(map['actual_balance'] ?? map['ending_balance']) : null,
+          isOpen: statusStr == 'open',
+          cashierName: map['cashier_name'] ?? 'Кассир #${map['cashier_id'] ?? ''}',
+          registerName: map['register_name'] ?? 'Касса #${map['register_id'] ?? ''}',
+          difference: map['difference'] != null ? _toDouble(map['difference']) : null,
+          status: statusStr,
+          note: map['note'],
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Не удалось загрузить историю смен: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<List<CashRegister>> getRegisters() async {
+    try {
+      final response = await _apiClient.dio.get('/cash/registers');
+      final list = response.data as List<dynamic>;
+
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        return CashRegister(
+          id: (map['id'] ?? '').toString(),
+          name: map['name'] ?? 'Касса',
+          location: map['location'],
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Не удалось загрузить список касс: ${e.toString()}');
     }
   }
 }

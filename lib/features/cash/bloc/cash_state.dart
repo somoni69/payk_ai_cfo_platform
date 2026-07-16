@@ -15,6 +15,8 @@ class CashLoaded extends CashState {
   final List<Transaction> filteredTransactions;
   final CashShift? activeShift;
   final List<CashSummary> summaries;
+  final List<CashShift> shifts;
+  final List<CashRegister> registers;
   final String query;
   final String filterType;
   final String? errorMessage; // Для показа временных ошибок на UI (например, при валидации сумм)
@@ -24,6 +26,8 @@ class CashLoaded extends CashState {
     required this.filteredTransactions,
     this.activeShift,
     this.summaries = const [],
+    this.shifts = const [],
+    this.registers = const [],
     required this.query,
     required this.filterType,
     this.errorMessage,
@@ -35,6 +39,8 @@ class CashLoaded extends CashState {
     CashShift? activeShift,
     bool clearActiveShift = false,
     List<CashSummary>? summaries,
+    List<CashShift>? shifts,
+    List<CashRegister>? registers,
     String? query,
     String? filterType,
     String? errorMessage,
@@ -45,6 +51,8 @@ class CashLoaded extends CashState {
       filteredTransactions: filteredTransactions ?? this.filteredTransactions,
       activeShift: clearActiveShift ? null : (activeShift ?? this.activeShift),
       summaries: summaries ?? this.summaries,
+      shifts: shifts ?? this.shifts,
+      registers: registers ?? this.registers,
       query: query ?? this.query,
       filterType: filterType ?? this.filterType,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -57,6 +65,8 @@ class CashLoaded extends CashState {
         filteredTransactions,
         activeShift,
         summaries,
+        shifts,
+        registers,
         query,
         filterType,
         errorMessage,

@@ -23,6 +23,13 @@ class ApiTasksRepository implements TasksRepository {
           status: _parseStatus(map['status']),
           dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
           priority: _parsePriority(map['priority']),
+          projectId: map['project_id']?.toString(),
+          projectName: map['project_name'],
+          assigneeId: map['assignee_id']?.toString(),
+          assigneeName: map['assignee_name'],
+          startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+          dependsOnId: map['depends_on_id']?.toString(),
+          position: map['position'] as int?,
         );
       }).toList();
     } catch (e) {
@@ -46,6 +53,13 @@ class ApiTasksRepository implements TasksRepository {
         status: _parseStatus(map['status']),
         dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
         priority: _parsePriority(map['priority']),
+        projectId: map['project_id']?.toString(),
+        projectName: map['project_name'],
+        assigneeId: map['assignee_id']?.toString(),
+        assigneeName: map['assignee_name'],
+        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+        dependsOnId: map['depends_on_id']?.toString(),
+        position: map['position'] as int?,
       );
     } catch (e) {
       throw Exception('Не удалось обновить статус задачи: ${e.toString()}');
@@ -60,6 +74,10 @@ class ApiTasksRepository implements TasksRepository {
         'description': task.description,
         'due_date': DateFormat('yyyy-MM-dd').format(task.dueDate),
         'priority': _priorityToName(task.priority),
+        if (task.projectId != null) 'project_id': int.tryParse(task.projectId!),
+        if (task.assigneeId != null) 'assignee_id': int.tryParse(task.assigneeId!),
+        if (task.startDate != null) 'start_date': DateFormat('yyyy-MM-dd').format(task.startDate!),
+        if (task.dependsOnId != null) 'depends_on_id': int.tryParse(task.dependsOnId!),
       };
 
       final response = await _apiClient.dio.post('/tasks', data: payload);
@@ -72,9 +90,100 @@ class ApiTasksRepository implements TasksRepository {
         status: _parseStatus(map['status']),
         dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
         priority: _parsePriority(map['priority']),
+        projectId: map['project_id']?.toString(),
+        projectName: map['project_name'],
+        assigneeId: map['assignee_id']?.toString(),
+        assigneeName: map['assignee_name'],
+        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+        dependsOnId: map['depends_on_id']?.toString(),
+        position: map['position'] as int?,
       );
     } catch (e) {
       throw Exception('Не удалось создать задачу: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<Task> updateTask(Task task) async {
+    try {
+      final payload = {
+        'title': task.title,
+        'description': task.description,
+        'status': _statusToName(task.status),
+        'due_date': DateFormat('yyyy-MM-dd').format(task.dueDate),
+        'priority': _priorityToName(task.priority),
+        'project_id': task.projectId != null ? int.tryParse(task.projectId!) : null,
+        'assignee_id': task.assigneeId != null ? int.tryParse(task.assigneeId!) : null,
+        'start_date': task.startDate != null ? DateFormat('yyyy-MM-dd').format(task.startDate!) : null,
+      };
+
+      final response = await _apiClient.dio.patch('/tasks/${task.id}', data: payload);
+      final map = response.data as Map<String, dynamic>;
+
+      return Task(
+        id: (map['id'] ?? '').toString(),
+        title: map['title'] ?? '',
+        description: map['description'] ?? '',
+        status: _parseStatus(map['status']),
+        dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
+        priority: _parsePriority(map['priority']),
+        projectId: map['project_id']?.toString(),
+        projectName: map['project_name'],
+        assigneeId: map['assignee_id']?.toString(),
+        assigneeName: map['assignee_name'],
+        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+        dependsOnId: map['depends_on_id']?.toString(),
+        position: map['position'] as int?,
+      );
+    } catch (e) {
+      throw Exception('Не удалось обновить задачу: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<List<TaskProject>> getProjects() async {
+    try {
+      final response = await _apiClient.dio.get('/tasks/projects');
+      final list = response.data as List<dynamic>? ?? [];
+
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        return TaskProject(
+          id: (map['id'] ?? '').toString(),
+          name: map['name'] ?? '',
+          description: map['description'],
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Не удалось загрузить проекты: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<List<TaskAssignee>> getAssignees() async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/users',
+        queryParameters: {'size': 200},
+      );
+      final dynamic responseData = response.data;
+      final List<dynamic> list = responseData is Map<String, dynamic>
+          ? (responseData['items'] as List<dynamic>? ?? [])
+          : (responseData is List<dynamic> ? responseData : []);
+
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        final fullName = (map['full_name'] ?? map['fullName'] ?? map['name'] ?? '')
+            .toString()
+            .trim();
+        return TaskAssignee(
+          id: (map['id'] ?? '').toString(),
+          fullName: fullName.isNotEmpty ? fullName : 'Без имени',
+        );
+      }).toList();
+    } catch (e) {
+      // Возвращаем пустой список вместо ошибки, чтобы не ломать весь экран задач
+      return [];
     }
   }
 
@@ -136,6 +245,7 @@ class ApiTasksRepository implements TasksRepository {
       case 'urgent':
       case 'срочно':
       case 'критично':
+      case 'критический':
       case 'critical':
         return TaskPriority.urgent;
       case 'medium':

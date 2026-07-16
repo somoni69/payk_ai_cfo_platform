@@ -10,6 +10,8 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   List<Transaction> _cachedTransactions = [];
   CashShift? _cachedActiveShift;
   List<CashSummary> _cachedSummaries = [];
+  List<CashShift> _cachedShifts = [];
+  List<CashRegister> _cachedRegisters = [];
   String _currentQuery = '';
   String _currentFilterType = 'all';
 
@@ -32,10 +34,14 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         _repository.getTransactions(),
         _repository.getActiveShift(),
         _repository.getSummary(),
+        _repository.getShifts(),
+        _repository.getRegisters(),
       ]);
       _cachedTransactions = results[0] as List<Transaction>;
       _cachedActiveShift = results[1] as CashShift?;
       _cachedSummaries = results[2] as List<CashSummary>;
+      _cachedShifts = results[3] as List<CashShift>;
+      _cachedRegisters = results[4] as List<CashRegister>;
       _emitCurrentState(emit);
     } catch (e) {
       emit(CashError('Не удалось загрузить данные кассы: ${e.toString()}'));
@@ -79,6 +85,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     try {
       _cachedActiveShift = await _repository.openShift(event.startingBalance);
       _cachedSummaries = await _repository.getSummary();
+      _cachedShifts = await _repository.getShifts();
       _emitCurrentState(emit);
     } catch (e) {
       emit(currentState.copyWith(
@@ -114,11 +121,13 @@ class CashBloc extends Bloc<CashEvent, CashState> {
 
       _cachedActiveShift = null;
       _cachedSummaries = await _repository.getSummary();
+      _cachedShifts = await _repository.getShifts();
 
       emit(currentState.copyWith(
         activeShift: null,
         clearActiveShift: true,
         summaries: _cachedSummaries,
+        shifts: _cachedShifts,
         errorMessage: message, // Выводим сообщение в виде алерта на UI
       ));
     } catch (e) {
@@ -145,6 +154,8 @@ class CashBloc extends Bloc<CashEvent, CashState> {
       filteredTransactions: filtered,
       activeShift: _cachedActiveShift,
       summaries: _cachedSummaries,
+      shifts: _cachedShifts,
+      registers: _cachedRegisters,
       query: _currentQuery,
       filterType: _currentFilterType,
     ));

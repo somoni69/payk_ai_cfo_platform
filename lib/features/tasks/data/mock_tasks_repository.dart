@@ -3,6 +3,12 @@ import '../domain/tasks_repository.dart';
 
 /// Моковый репозиторий задач для локального тестирования.
 class MockTasksRepository implements TasksRepository {
+  static final List<TaskProject> _projects = [
+    const TaskProject(id: '1', name: 'Автоматизация оплат', description: 'Оптимизация платежных процессов'),
+    const TaskProject(id: '2', name: 'Отчетность регионов', description: 'Формирование P&L для филиалов'),
+    const TaskProject(id: '3', name: 'Договоры и контрагенты', description: 'Работа с партнерами и поставщиками'),
+  ];
+
   static final List<Task> _tasks = [
     Task(
       id: '1',
@@ -11,6 +17,11 @@ class MockTasksRepository implements TasksRepository {
       status: TaskStatus.inProgress,
       dueDate: DateTime.now().add(const Duration(days: 4)),
       priority: TaskPriority.high,
+      projectId: '1',
+      projectName: 'Автоматизация оплат',
+      assigneeId: '1',
+      assigneeName: 'Шерзод Азимов',
+      startDate: DateTime.now(),
     ),
     Task(
       id: '2',
@@ -19,6 +30,11 @@ class MockTasksRepository implements TasksRepository {
       status: TaskStatus.review,
       dueDate: DateTime.now().add(const Duration(hours: 3)),
       priority: TaskPriority.urgent,
+      projectId: '2',
+      projectName: 'Отчетность регионов',
+      assigneeId: '2',
+      assigneeName: 'Дильноза Саидова',
+      startDate: DateTime.now().subtract(const Duration(days: 2)),
     ),
     Task(
       id: '3',
@@ -27,6 +43,9 @@ class MockTasksRepository implements TasksRepository {
       status: TaskStatus.todo,
       dueDate: DateTime.now().add(const Duration(days: 9)),
       priority: TaskPriority.medium,
+      projectId: '3',
+      projectName: 'Договоры и контрагенты',
+      startDate: DateTime.now().add(const Duration(days: 1)),
     ),
     Task(
       id: '4',
@@ -35,6 +54,11 @@ class MockTasksRepository implements TasksRepository {
       status: TaskStatus.done,
       dueDate: DateTime.now().subtract(const Duration(days: 1)),
       priority: TaskPriority.low,
+      projectId: '1',
+      projectName: 'Автоматизация оплат',
+      assigneeId: '1',
+      assigneeName: 'Шерзод Азимов',
+      startDate: DateTime.now().subtract(const Duration(days: 4)),
     ),
   ];
 
@@ -60,6 +84,13 @@ class MockTasksRepository implements TasksRepository {
   @override
   Future<Task> createTask(Task task) async {
     await Future.delayed(const Duration(milliseconds: 200));
+    String? pName;
+    if (task.projectId != null) {
+      try {
+        pName = _projects.firstWhere((p) => p.id == task.projectId).name;
+      } catch (_) {}
+    }
+
     final newTask = Task(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: task.title,
@@ -67,9 +98,51 @@ class MockTasksRepository implements TasksRepository {
       status: TaskStatus.todo,
       dueDate: task.dueDate,
       priority: task.priority,
+      projectId: task.projectId,
+      projectName: pName,
+      assigneeId: task.assigneeId,
+      assigneeName: task.assigneeName,
+      startDate: task.startDate,
+      dependsOnId: task.dependsOnId,
+      position: task.position,
     );
     _tasks.add(newTask);
     return newTask;
+  }
+
+  @override
+  Future<Task> updateTask(Task task) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _tasks.indexWhere((t) => t.id == task.id);
+    if (index == -1) {
+      throw Exception('Задача не найдена');
+    }
+    
+    String? pName = task.projectName;
+    if (task.projectId != null) {
+      try {
+        pName = _projects.firstWhere((p) => p.id == task.projectId).name;
+      } catch (_) {}
+    }
+    
+    final updated = task.copyWith(projectName: pName);
+    _tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<List<TaskProject>> getProjects() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return List.from(_projects);
+  }
+
+  @override
+  Future<List<TaskAssignee>> getAssignees() async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    return const [
+      TaskAssignee(id: '1', fullName: 'Шерзод Азимов'),
+      TaskAssignee(id: '2', fullName: 'Дильноза Саидова'),
+    ];
   }
 
   @override

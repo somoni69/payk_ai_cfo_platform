@@ -61,6 +61,18 @@ class MockCashTestRepository implements CashRepository {
     if (shouldFail) throw Exception('Get summary error');
     return List.from(summaries);
   }
+
+  @override
+  Future<List<CashShift>> getShifts() async {
+    if (shouldFail) throw Exception('Get shifts error');
+    return [];
+  }
+
+  @override
+  Future<List<CashRegister>> getRegisters() async {
+    if (shouldFail) throw Exception('Get registers error');
+    return [];
+  }
 }
 
 void main() {

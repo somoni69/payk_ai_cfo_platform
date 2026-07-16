@@ -48,6 +48,7 @@ class Transaction {
   final PaymentMethod paymentMethod;
   final DateTime dateTime;
   final String cashierName;
+  final String? registerId;
 
   const Transaction({
     required this.id,
@@ -58,6 +59,7 @@ class Transaction {
     required this.paymentMethod,
     required this.dateTime,
     required this.cashierName,
+    this.registerId,
   });
 }
 
@@ -70,6 +72,13 @@ class CashShift {
   final double? endingBalance;
   final bool isOpen;
 
+  // Дополнительные поля для истории смен
+  final String? cashierName;
+  final String? registerName;
+  final double? difference;
+  final String? status;
+  final String? note;
+
   const CashShift({
     this.id,
     required this.openedAt,
@@ -77,6 +86,24 @@ class CashShift {
     required this.startingBalance,
     this.endingBalance,
     required this.isOpen,
+    this.cashierName,
+    this.registerName,
+    this.difference,
+    this.status,
+    this.note,
+  });
+}
+
+/// Модель кассового аппарата (RegisterRead).
+class CashRegister {
+  final String id;
+  final String name;
+  final String? location;
+
+  const CashRegister({
+    required this.id,
+    required this.name,
+    this.location,
   });
 }
 

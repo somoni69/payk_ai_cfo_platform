@@ -11,6 +11,8 @@ import '../../features/hr/domain/hr_models.dart';
 import '../../features/hr/domain/hr_repository.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
+import '../widgets/ledger_bottom_sheet.dart';
+import '../widgets/expansible_widget.dart';
 
 class HrScreen extends StatelessWidget {
   const HrScreen({super.key});
@@ -89,7 +91,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
           IconButton(
             icon: const Icon(TablerIcons.user_plus),
             color: colors.brand,
-            onPressed: () => _showAddEmployeeDialog(context),
+            onPressed: () => _showAddEmployeeBottomSheet(context),
           ),
         ],
         bottom: TabBar(
@@ -351,7 +353,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
           final record = state.salaryRecords[index];
 
           return InkWell(
-            onDoubleTap: () => _showRecalcSalaryDialog(context, record),
+            onDoubleTap: () => _showRecalcSalaryBottomSheet(context, record),
             child: LedgerCard(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -404,8 +406,9 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _showAddEmployeeDialog(BuildContext context) {
+  void _showAddEmployeeBottomSheet(BuildContext context) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final hrBloc = context.read<HrBloc>();
     final nameController = TextEditingController();
     final posController = TextEditingController();
@@ -413,76 +416,113 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
     final phoneController = TextEditingController();
     final emailController = TextEditingController();
 
-    showDialog(
+    bool isShowingDiscardDialog = false;
+    bool allowPop = false;
+
+    bool isDirty() {
+      return nameController.text.trim().isNotEmpty ||
+          posController.text.trim().isNotEmpty ||
+          salaryController.text.trim().isNotEmpty ||
+          phoneController.text.trim().isNotEmpty ||
+          emailController.text.trim().isNotEmpty;
+    }
+
+    LedgerBottomSheet.show(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Прием на работу'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'ФИО сотрудника'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: posController,
-                  decoration: const InputDecoration(labelText: 'Должность'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: salaryController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Оклад (TJS)'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Телефон'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'E-mail'),
-                ),
-              ],
-            ),
+      title: 'Прием на работу',
+      builder: (context, setSheetState) {
+        return PopScope(
+          canPop: !isDirty() || allowPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (isShowingDiscardDialog) return;
+
+            isShowingDiscardDialog = true;
+            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+            isShowingDiscardDialog = false;
+
+            if (shouldClose == true) {
+              allowPop = true;
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(labelText: 'ФИО сотрудника'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: posController,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(labelText: 'Должность'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: salaryController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Оклад (TJS)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Телефон'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'E-mail'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Отмена'),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Отмена'),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final salary = double.tryParse(salaryController.text) ?? 0.0;
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  final salary = double.tryParse(salaryController.text) ?? 0.0;
 
-                if (name.isEmpty) return;
+                  if (name.isEmpty) return;
 
-                hrBloc.add(
-                  CreateEmployeeRequested(
-                    Employee(
-                      id: '',
-                      fullName: name,
-                      position: posController.text.trim(),
-                      baseSalary: salary,
-                      phone: phoneController.text.trim(),
-                      email: emailController.text.trim(),
-                      status: 'active',
-                      createdAt: DateTime.now(),
+                  hrBloc.add(
+                    CreateEmployeeRequested(
+                      Employee(
+                        id: '',
+                        fullName: name,
+                        position: posController.text.trim(),
+                        baseSalary: salary,
+                        phone: phoneController.text.trim(),
+                        email: emailController.text.trim(),
+                        status: 'active',
+                        createdAt: DateTime.now(),
+                      ),
                     ),
-                  ),
-                );
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Добавить'),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Добавить'),
+              ),
             ),
           ],
         );
@@ -490,68 +530,102 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _showRecalcSalaryDialog(BuildContext context, SalaryRecord record) {
+  void _showRecalcSalaryBottomSheet(BuildContext context, SalaryRecord record) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final hrBloc = context.read<HrBloc>();
     final baseController = TextEditingController(text: record.baseAmount.toString());
     final dedController = TextEditingController(text: record.deductions.toString());
     final formulaController = TextEditingController(text: record.bonusFormula ?? '');
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text('Корректировка ЗП: ${record.employeeName}'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: baseController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Базовый оклад'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: dedController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Удержания / Штрафы'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: formulaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Формула бонуса (KPI)',
-                    hintText: 'например: fact_value * 0.1',
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Отмена'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final base = double.tryParse(baseController.text);
-                final ded = double.tryParse(dedController.text);
+    bool isShowingDiscardDialog = false;
+    bool allowPop = false;
 
-                hrBloc.add(
-                  RecalcSalaryRequested(
-                    employeeId: record.employeeId,
-                    period: record.period,
-                    baseAmount: base,
-                    deductions: ded,
-                    bonusFormula: formulaController.text.trim(),
-                  ),
-                );
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Пересчитать'),
+    bool isDirty() {
+      return baseController.text.trim() != record.baseAmount.toString() ||
+          dedController.text.trim() != record.deductions.toString() ||
+          formulaController.text.trim() != (record.bonusFormula ?? '');
+    }
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: 'Корректировка ЗП: ${record.employeeName}',
+      builder: (context, setSheetState) {
+        return PopScope(
+          canPop: !isDirty() || allowPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (isShowingDiscardDialog) return;
+
+            isShowingDiscardDialog = true;
+            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+            isShowingDiscardDialog = false;
+
+            if (shouldClose == true) {
+              allowPop = true;
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: baseController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Базовый оклад'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: dedController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Удержания / Штрафы'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: formulaController,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(
+                  labelText: 'Формула бонуса (KPI)',
+                  hintText: 'например: fact_value * 0.1',
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Отмена'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  final base = double.tryParse(baseController.text);
+                  final ded = double.tryParse(dedController.text);
+
+                  hrBloc.add(
+                    RecalcSalaryRequested(
+                      employeeId: record.employeeId,
+                      period: record.period,
+                      baseAmount: base,
+                      deductions: ded,
+                      bonusFormula: formulaController.text.trim(),
+                    ),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Пересчитать'),
+              ),
             ),
           ],
         );

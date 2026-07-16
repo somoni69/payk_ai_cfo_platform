@@ -94,6 +94,20 @@ class _MyAppState extends State<MyApp> {
               routerConfig: _router,
               debugShowCheckedModeBanner: false,
               locale: locale,
+              builder: (context, child) {
+                final mediaQueryData = MediaQuery.of(context);
+                final width = mediaQueryData.size.width;
+                // Базовая ширина дизайна: 375 pt (iPhone 13 mini)
+                // Рассчитываем коэффициент масштабирования в пределах [0.85, 1.1]
+                final double scale = (width / 375.0).clamp(0.85, 1.1);
+
+                return MediaQuery(
+                  data: mediaQueryData.copyWith(
+                    textScaler: TextScaler.linear(scale),
+                  ),
+                  child: child!,
+                );
+              },
             );
           },
         ),

@@ -7,10 +7,13 @@ import 'tasks_state.dart';
 class TasksBloc extends Bloc<TasksEvent, TasksState> {
   final TasksRepository _repository;
 
+  final Set<String> _pendingStatusTaskIds = {};
+
   TasksBloc(this._repository) : super(TasksLoading()) {
     on<LoadTasks>(_onLoadTasks);
     on<UpdateTaskStatusRequested>(_onUpdateTaskStatusRequested);
     on<CreateTaskRequested>(_onCreateTaskRequested);
+    on<UpdateTaskRequested>(_onUpdateTaskRequested);
   }
 
   void _onLoadTasks(LoadTasks event, Emitter<TasksState> emit) async {
@@ -18,13 +21,17 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     try {
       final results = await Future.wait([
         _repository.getTasks(),
+        _repository.getProjects(),
+        _repository.getAssignees(),
         _repository.getOverloadedAssignees(),
         _repository.getCriticalPath(),
       ]);
       emit(TasksLoaded(
-        tasks: results[0] as List<Task>,
-        overloaded: results[1] as List<TaskOverload>,
-        criticalPath: results[2] as List<TaskCriticalPath>,
+        tasks: (results[0] as List).cast<Task>(),
+        projects: (results[1] as List).cast<TaskProject>(),
+        assignees: (results[2] as List).cast<TaskAssignee>(),
+        overloaded: (results[3] as List).cast<TaskOverload>(),
+        criticalPath: (results[4] as List).cast<TaskCriticalPath>(),
       ));
     } catch (e) {
       emit(TasksError('Не удалось загрузить список задач: ${e.toString()}'));
@@ -33,24 +40,26 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
 
   void _onUpdateTaskStatusRequested(UpdateTaskStatusRequested event, Emitter<TasksState> emit) async {
     if (state is! TasksLoaded) return;
+    if (_pendingStatusTaskIds.contains(event.taskId)) return;
+
     final currentState = state as TasksLoaded;
     final currentTasks = currentState.tasks;
-    final originalOverloaded = currentState.overloaded;
-    final originalCritical = currentState.criticalPath;
 
     final index = currentTasks.indexWhere((t) => t.id == event.taskId);
     if (index == -1) return;
     final originalTask = currentTasks[index];
+
+    _pendingStatusTaskIds.add(event.taskId);
 
     // Оптимистично меняем статус локально для моментального отклика UI
     final optimisticTasks = currentTasks.map((t) {
       return t.id == event.taskId ? t.copyWith(status: event.status) : t;
     }).toList();
 
-    emit(TasksLoaded(
+    emit(currentState.copyWith(
       tasks: optimisticTasks,
-      overloaded: originalOverloaded,
-      criticalPath: originalCritical,
+      pendingStatusTaskIds: Set.from(_pendingStatusTaskIds),
+      clearLastResult: true,
     ));
 
     try {
@@ -58,27 +67,38 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
       
       // Обновляем финальными данными с сервера
       if (state is TasksLoaded) {
-        final currentLoaded = (state as TasksLoaded).tasks;
-        final finalTasks = currentLoaded.map((t) {
+        final latestState = state as TasksLoaded;
+        final finalTasks = latestState.tasks.map((t) {
           return t.id == event.taskId ? updatedTask : t;
         }).toList();
-        emit(TasksLoaded(
+        emit(latestState.copyWith(
           tasks: finalTasks,
-          overloaded: originalOverloaded,
-          criticalPath: originalCritical,
+          lastStatusUpdateResult: TaskStatusUpdateResult(
+            operationId: DateTime.now().microsecondsSinceEpoch.toString(),
+            taskId: event.taskId,
+            previousStatus: originalTask.status,
+            newStatus: event.status,
+          ),
         ));
       }
     } catch (e) {
       // При ошибке возвращаем исходное состояние конкретной задачи
       if (state is TasksLoaded) {
-        final currentLoaded = (state as TasksLoaded).tasks;
-        final revertedTasks = currentLoaded.map((t) {
+        final latestState = state as TasksLoaded;
+        final revertedTasks = latestState.tasks.map((t) {
           return t.id == event.taskId ? originalTask : t;
         }).toList();
-        emit(TasksLoaded(
+        emit(latestState.copyWith(
           tasks: revertedTasks,
-          overloaded: originalOverloaded,
-          criticalPath: originalCritical,
+          clearLastResult: true,
+        ));
+      }
+    } finally {
+      _pendingStatusTaskIds.remove(event.taskId);
+      if (state is TasksLoaded) {
+        final latestState = state as TasksLoaded;
+        emit(latestState.copyWith(
+          pendingStatusTaskIds: Set.from(_pendingStatusTaskIds),
         ));
       }
     }
@@ -88,19 +108,48 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     if (state is! TasksLoaded) return;
     final currentState = state as TasksLoaded;
     final currentTasks = currentState.tasks;
-    final originalOverloaded = currentState.overloaded;
-    final originalCritical = currentState.criticalPath;
 
     try {
       final created = await _repository.createTask(event.task);
       final updatedList = List<Task>.from(currentTasks)..add(created);
-      emit(TasksLoaded(
-        tasks: updatedList,
-        overloaded: originalOverloaded,
-        criticalPath: originalCritical,
-      ));
+      emit(currentState.copyWith(tasks: updatedList));
     } catch (e) {
       emit(TasksError('Не удалось создать задачу: ${e.toString()}'));
+    }
+  }
+
+  void _onUpdateTaskRequested(UpdateTaskRequested event, Emitter<TasksState> emit) async {
+    if (state is! TasksLoaded) return;
+    final currentState = state as TasksLoaded;
+    final currentTasks = currentState.tasks;
+
+    final index = currentTasks.indexWhere((t) => t.id == event.task.id);
+    if (index == -1) return;
+    final originalTask = currentTasks[index];
+
+    final optimisticTasks = currentTasks.map((t) {
+      return t.id == event.task.id ? event.task : t;
+    }).toList();
+
+    emit(currentState.copyWith(tasks: optimisticTasks));
+
+    try {
+      final updatedTask = await _repository.updateTask(event.task);
+      if (state is TasksLoaded) {
+        final latestState = state as TasksLoaded;
+        final finalTasks = latestState.tasks.map((t) {
+          return t.id == event.task.id ? updatedTask : t;
+        }).toList();
+        emit(latestState.copyWith(tasks: finalTasks));
+      }
+    } catch (e) {
+      if (state is TasksLoaded) {
+        final latestState = state as TasksLoaded;
+        final revertedTasks = latestState.tasks.map((t) {
+          return t.id == event.task.id ? originalTask : t;
+        }).toList();
+        emit(latestState.copyWith(tasks: revertedTasks));
+      }
     }
   }
 }

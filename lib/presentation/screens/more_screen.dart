@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:local_auth/local_auth.dart';
 import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
@@ -19,7 +20,7 @@ class MoreScreen extends StatefulWidget {
 
 class _MoreScreenState extends State<MoreScreen> {
   final _storage = const FlutterSecureStorage();
-  bool _biometricEnabled = true;
+  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -31,13 +32,68 @@ class _MoreScreenState extends State<MoreScreen> {
     final val = await _storage.read(key: 'use_biometrics');
     if (mounted) {
       setState(() {
-        _biometricEnabled = val != 'false';
+        _biometricEnabled = val == 'true';
       });
     }
   }
 
-  void _saveBiometricSettings(bool value) async {
-    await _storage.write(key: 'use_biometrics', value: value.toString());
+  void _onBiometricToggleChanged(bool val) async {
+    if (val) {
+      final localAuth = LocalAuthentication();
+      try {
+        final isAvailable = await localAuth.canCheckBiometrics;
+        final isDeviceSupported = await localAuth.isDeviceSupported();
+
+        if (!isAvailable || !isDeviceSupported) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Биометрическая аутентификация недоступна на этом устройстве')),
+            );
+          }
+          return;
+        }
+
+        final authenticated = await localAuth.authenticate(
+          localizedReason: 'Подтвердите личность для включения входа по Face ID / Touch ID',
+          biometricOnly: true,
+          persistAcrossBackgrounding: true,
+        );
+
+        if (authenticated) {
+          await _storage.write(key: 'use_biometrics', value: 'true');
+          if (mounted) {
+            setState(() {
+              _biometricEnabled = true;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Вход по биометрии успешно включен')),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Аутентификация отменена или не пройдена')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ошибка настройки биометрии: $e')),
+          );
+        }
+      }
+    } else {
+      await _storage.write(key: 'use_biometrics', value: 'false');
+      if (mounted) {
+        setState(() {
+          _biometricEnabled = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Вход по биометрии отключен')),
+        );
+      }
+    }
   }
 
   @override
@@ -72,7 +128,7 @@ class _MoreScreenState extends State<MoreScreen> {
               const SizedBox(height: 20),
 
               // Безопасность и настройки
-              Text('НАСТРОЙКИ ДОСТУПА', style: textStyles.smallSans),
+              Text('НАСТРОЙКИ ДОСТУПА', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               LedgerCard(
                 padding: EdgeInsets.zero,
@@ -82,12 +138,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       icon: TablerIcons.fingerprint,
                       title: context.translate('biometrics'),
                       value: _biometricEnabled,
-                      onChanged: (val) {
-                        setState(() {
-                          _biometricEnabled = val;
-                        });
-                        _saveBiometricSettings(val);
-                      },
+                      onChanged: _onBiometricToggleChanged,
                     ),
                     const Divider(),
                     _buildSettingsActionRow(
@@ -102,7 +153,7 @@ class _MoreScreenState extends State<MoreScreen> {
               const SizedBox(height: 20),
 
               // Системные блоки
-              Text('ДОПОЛНИТЕЛЬНЫЕ МОДУЛИ', style: textStyles.smallSans),
+              Text('ДОПОЛНИТЕЛЬНЫЕ МОДУЛИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               LedgerCard(
                 padding: EdgeInsets.zero,

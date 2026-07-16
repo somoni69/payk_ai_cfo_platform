@@ -9,6 +9,7 @@ import '../../features/legal/bloc/legal_state.dart';
 import '../../features/legal/domain/legal_models.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/expansible_widget.dart';
+import '../widgets/ledger_bottom_sheet.dart';
 
 class LegalScreen extends StatefulWidget {
   const LegalScreen({super.key});
@@ -442,7 +443,7 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('ДОКУМЕНТ СГЕНЕРИРОВАН', style: textStyles.smallSans),
+                Text('ДОКУМЕНТ СГЕНЕРИРОВАН', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                 IconButton(
                   icon: Icon(TablerIcons.x, color: colors.textSecondary),
                   onPressed: () {
@@ -567,71 +568,51 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
     final Map<String, String> values = {};
     final bloc = context.read<LegalBloc>();
 
-    showModalBottomSheet(
+    LedgerBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            top: 16,
-            left: 16,
-            right: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Реквизиты для договора',
-                  style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  template.name,
-                  style: textStyles.captionSans.copyWith(color: colors.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                ...template.variables.map((variable) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: TextField(
-                      style: textStyles.bodySans,
-                      decoration: InputDecoration(
-                        labelText: variable.label,
-                        border: const OutlineInputBorder(),
-                      ),
-                      onChanged: (val) {
-                        values[variable.key] = val;
-                      },
-                    ),
-                  );
-                }),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    // Check variables filled
-                    for (var v in template.variables) {
-                      if (!values.containsKey(v.key) || values[v.key]!.trim().isEmpty) {
-                        values[v.key] = '[${v.label} не указан]';
-                      }
-                    }
-                    bloc.add(GenerateContractFromTemplate(
-                      templateId: template.id,
-                      variables: values,
-                    ));
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Сгенерировать договор'),
-                ),
-              ],
+      title: 'Реквизиты для договора',
+      builder: (context, setSheetState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              template.name,
+              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
             ),
-          ),
+            const SizedBox(height: 16),
+            ...template.variables.map((variable) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: TextField(
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    labelText: variable.label,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (val) {
+                    values[variable.key] = val;
+                  },
+                ),
+              );
+            }),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                // Check variables filled
+                for (var v in template.variables) {
+                  if (!values.containsKey(v.key) || values[v.key]!.trim().isEmpty) {
+                    values[v.key] = '[${v.label} не указан]';
+                  }
+                }
+                bloc.add(GenerateContractFromTemplate(
+                  templateId: template.id,
+                  variables: values,
+                ));
+                Navigator.pop(context);
+              },
+              child: const Text('Сгенерировать договор'),
+            ),
+          ],
         );
       },
     );

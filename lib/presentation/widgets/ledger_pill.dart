@@ -8,6 +8,7 @@ class LedgerPill extends StatelessWidget {
   final Color backgroundColor;
   final Color textColor;
   final double fontSize;
+  final EdgeInsetsGeometry padding;
 
   const LedgerPill({
     super.key,
@@ -15,6 +16,7 @@ class LedgerPill extends StatelessWidget {
     required this.backgroundColor,
     required this.textColor,
     this.fontSize = 10,
+    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
   });
 
   @override
@@ -24,7 +26,7 @@ class LedgerPill extends StatelessWidget {
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: padding,
       child: Text(
         text,
         style: context.textStyles.smallSans.copyWith(
