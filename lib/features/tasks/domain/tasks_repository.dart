@@ -11,6 +11,15 @@ abstract class TasksRepository {
   /// Создать новую задачу
   Future<Task> createTask(Task task);
 
+  /// Обновить полностью задачу
+  Future<Task> updateTask(Task task);
+
+  /// Получить список всех проектов для задач
+  Future<List<TaskProject>> getProjects();
+
+  /// Получить список исполнителей (GET /users?size=200, как в веб-клиенте)
+  Future<List<TaskAssignee>> getAssignees();
+
   /// Получить список перегруженных сотрудников
   Future<List<TaskOverload>> getOverloadedAssignees();
 

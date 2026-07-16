@@ -43,7 +43,10 @@ class LedgerOperationRow extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                    style: textStyles.bodySans.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -61,7 +64,7 @@ class LedgerOperationRow extends StatelessWidget {
                       Expanded(
                         child: Text(
                           category,
-                          style: textStyles.captionSans,
+                          style: textStyles.captionSans.copyWith(fontSize: 14),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -75,7 +78,8 @@ class LedgerOperationRow extends StatelessWidget {
             Text(
               amount,
               style: textStyles.bodyMono.copyWith(
-                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
                 color: isIncome ? colors.accentGreen : colors.accentRed,
               ),
             ),

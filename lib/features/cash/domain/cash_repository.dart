@@ -19,4 +19,10 @@ abstract class CashRepository {
 
   /// Получить сводные показатели касс
   Future<List<CashSummary>> getSummary();
+
+  /// Получить историю всех смен
+  Future<List<CashShift>> getShifts();
+
+  /// Получить список всех касс (кассовых аппаратов)
+  Future<List<CashRegister>> getRegisters();
 }

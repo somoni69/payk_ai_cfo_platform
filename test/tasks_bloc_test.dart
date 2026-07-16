@@ -38,6 +38,27 @@ class MockTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<Task> updateTask(Task task) async {
+    if (shouldFailUpdate) {
+      throw Exception('Network error');
+    }
+    final index = tasks.indexWhere((t) => t.id == task.id);
+    if (index == -1) throw Exception('Task not found');
+    tasks[index] = task;
+    return task;
+  }
+
+  @override
+  Future<List<TaskProject>> getProjects() async {
+    return [];
+  }
+
+  @override
+  Future<List<TaskAssignee>> getAssignees() async {
+    return [];
+  }
+
+  @override
   Future<List<TaskOverload>> getOverloadedAssignees() async {
     return [];
   }
@@ -145,6 +166,93 @@ void main() {
       expect(emittedStates, isNotEmpty);
       final lastEmitted = emittedStates.last as TasksLoaded;
       expect(lastEmitted.tasks.firstWhere((t) => t.id == '1').status, TaskStatus.todo);
+    });
+
+    test('Snackbar undo restores previous status after marking task done', () async {
+      bloc.add(LoadTasks());
+      await bloc.stream.firstWhere((state) => state is TasksLoaded);
+
+      // Complete in-progress task (id: 2)
+      bloc.add(const UpdateTaskStatusRequested(
+        taskId: '2',
+        status: TaskStatus.done,
+      ));
+
+      final completed = await bloc.stream.firstWhere((state) {
+        return state is TasksLoaded &&
+            state.lastStatusUpdateResult != null &&
+            state.lastStatusUpdateResult!.taskId == '2' &&
+            state.lastStatusUpdateResult!.newStatus == TaskStatus.done;
+      }) as TasksLoaded;
+
+      expect(
+        completed.tasks.firstWhere((t) => t.id == '2').status,
+        TaskStatus.done,
+      );
+      expect(
+        completed.lastStatusUpdateResult!.previousStatus,
+        TaskStatus.inProgress,
+      );
+
+      // Simulate Snackbar "Отменить"
+      bloc.add(UpdateTaskStatusRequested(
+        taskId: completed.lastStatusUpdateResult!.taskId,
+        status: completed.lastStatusUpdateResult!.previousStatus,
+      ));
+
+      final restored = await bloc.stream.firstWhere((state) {
+        return state is TasksLoaded &&
+            state.tasks.any((t) => t.id == '2' && t.status == TaskStatus.inProgress) &&
+            state.pendingStatusTaskIds.isEmpty;
+      }) as TasksLoaded;
+
+      expect(
+        restored.tasks.firstWhere((t) => t.id == '2').status,
+        TaskStatus.inProgress,
+      );
+      // Filters live in UI state; bloc only holds task data — list still complete.
+      expect(restored.tasks.length, 2);
+    });
+
+    test('UpdateTaskRequested optimistically updates and handles success', () async {
+      bloc.add(LoadTasks());
+      await bloc.stream.firstWhere((state) => state is TasksLoaded);
+
+      final updatedTask = initialTasks.first.copyWith(title: 'New Title', description: 'New Description');
+      bloc.add(UpdateTaskRequested(updatedTask));
+
+      final List<TasksState> emittedStates = [];
+      final subscription = bloc.stream.listen((state) {
+        emittedStates.add(state);
+      });
+
+      await Future.delayed(const Duration(milliseconds: 50));
+      subscription.cancel();
+
+      expect(emittedStates, isNotEmpty);
+      final firstEmitted = emittedStates.first as TasksLoaded;
+      expect(firstEmitted.tasks.firstWhere((t) => t.id == '1').title, 'New Title');
+    });
+
+    test('UpdateTaskRequested reverts on failure', () async {
+      bloc.add(LoadTasks());
+      await bloc.stream.firstWhere((state) => state is TasksLoaded);
+
+      repository.shouldFailUpdate = true;
+      final updatedTask = initialTasks.first.copyWith(title: 'New Title');
+      bloc.add(UpdateTaskRequested(updatedTask));
+
+      final List<TasksState> emittedStates = [];
+      final subscription = bloc.stream.listen((state) {
+        emittedStates.add(state);
+      });
+
+      await Future.delayed(const Duration(milliseconds: 50));
+      subscription.cancel();
+
+      expect(emittedStates, isNotEmpty);
+      final lastEmitted = emittedStates.last as TasksLoaded;
+      expect(lastEmitted.tasks.firstWhere((t) => t.id == '1').title, 'Task 1');
     });
   });
 }

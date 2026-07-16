@@ -110,7 +110,7 @@ class NotificationsView extends StatelessWidget {
                           children: [
                             Icon(TablerIcons.alert_triangle, color: colors.accentRed, size: 18),
                             const SizedBox(width: 8),
-                            Text('КРИТИЧЕСКИЙ АУДИТ (СРОЧНО)', style: textStyles.smallSans.copyWith(color: colors.accentRed)),
+                            Text('КРИТИЧЕСКИЙ АУДИТ (СРОЧНО)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold, color: colors.accentRed)),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -124,7 +124,7 @@ class NotificationsView extends StatelessWidget {
                           children: [
                             Icon(TablerIcons.brain, color: colors.accentAmber, size: 18),
                             const SizedBox(width: 8),
-                            Text('AI РЕКОМЕНДАЦИИ И ПРОГНОЗЫ (ВАЖНО)', style: textStyles.smallSans.copyWith(color: colors.accentAmber)),
+                            Text('AI РЕКОМЕНДАЦИИ И ПРОГНОЗЫ (ВАЖНО)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold, color: colors.accentAmber)),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -138,7 +138,7 @@ class NotificationsView extends StatelessWidget {
                           children: [
                             Icon(TablerIcons.calendar, color: colors.brand, size: 18),
                             const SizedBox(width: 8),
-                            Text('НАЛОГОВЫЙ И ЮР. КАЛЕНДАРЬ (К СВЕДЕНИЮ)', style: textStyles.smallSans.copyWith(color: colors.brand)),
+                            Text('НАЛОГОВЫЙ И ЮР. КАЛЕНДАРЬ (К СВЕДЕНИЮ)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold, color: colors.brand)),
                           ],
                         ),
                         const SizedBox(height: 10),

@@ -169,7 +169,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.accentAmber,
+                    backgroundColor: colors.brand,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -495,7 +495,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                       children: [
                         Text('• ', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
                         Expanded(
-                          child: Text(it.toString(), style: textStyles.bodySans.copyWith(fontSize: 13)),
+                          child: Text(it.toString(), style: textStyles.bodySans.copyWith(fontSize: 14)),
                         ),
                       ],
                     ),

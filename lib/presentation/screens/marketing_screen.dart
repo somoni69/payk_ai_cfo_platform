@@ -9,6 +9,8 @@ import '../../features/marketing/bloc/marketing_state.dart';
 import '../../features/marketing/domain/marketing_repository.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
+import '../widgets/ledger_bottom_sheet.dart';
+import '../widgets/expansible_widget.dart';
 
 class MarketingScreen extends StatelessWidget {
   const MarketingScreen({super.key});
@@ -184,7 +186,7 @@ class _MarketingViewState extends State<MarketingView> with SingleTickerProvider
               const Center(child: CircularProgressIndicator())
             else ...[
               if (!_generatePostTextMode && state.generatedIdeas.isNotEmpty) ...[
-                Text('СГЕНЕРИРОВАННЫЕ ИДЕИ', style: textStyles.smallSans),
+                Text('СГЕНЕРИРОВАННЫЕ ИДЕИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 LedgerCard(
                   padding: const EdgeInsets.all(16),
@@ -205,7 +207,7 @@ class _MarketingViewState extends State<MarketingView> with SingleTickerProvider
                   ),
                 ),
               ] else if (_generatePostTextMode && state.generatedText != null) ...[
-                Text('ТЕКСТ ПУБЛИКАЦИИ', style: textStyles.smallSans),
+                Text('ТЕКСТ ПУБЛИКАЦИИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 LedgerCard(
                   padding: const EdgeInsets.all(16),
@@ -398,7 +400,7 @@ class _MarketingViewState extends State<MarketingView> with SingleTickerProvider
                                       context.read<MarketingBloc>().add(PublishPostRequested(post.id));
                                     },
                                     icon: const Icon(TablerIcons.send, size: 16),
-                                    label: const Text('В Telegram', style: TextStyle(fontSize: 12)),
+                                    label: const Text('В Telegram', style: TextStyle(fontSize: 13)),
                                     style: ElevatedButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                     ),
@@ -432,7 +434,6 @@ class _MarketingViewState extends State<MarketingView> with SingleTickerProvider
   void _showCreateCampaignDialog(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-
     final nameCtrl = TextEditingController();
     final budgetCtrl = TextEditingController();
     final spentCtrl = TextEditingController();
@@ -441,95 +442,131 @@ class _MarketingViewState extends State<MarketingView> with SingleTickerProvider
     final revCtrl = TextEditingController();
     String channel = 'telegram';
 
-    showModalBottomSheet(
+    bool isShowingDiscardDialog = false;
+    bool allowPop = false;
+
+    bool isDirty() {
+      return nameCtrl.text.trim().isNotEmpty ||
+          budgetCtrl.text.trim().isNotEmpty ||
+          spentCtrl.text.trim().isNotEmpty ||
+          leadsCtrl.text.trim().isNotEmpty ||
+          convCtrl.text.trim().isNotEmpty ||
+          revCtrl.text.trim().isNotEmpty ||
+          channel != 'telegram';
+    }
+
+    LedgerBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      builder: (bCtx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('Новая рекламная кампания', style: textStyles.h2Sans),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Название кампании'),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: channel,
-                  items: const [
-                    DropdownMenuItem(value: 'telegram', child: Text('Telegram')),
-                    DropdownMenuItem(value: 'instagram', child: Text('Instagram')),
-                    DropdownMenuItem(value: 'facebook', child: Text('Facebook')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) channel = val;
-                  },
-                  decoration: const InputDecoration(labelText: 'Канал'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: budgetCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Бюджет (TJS)'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: spentCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Потрачено (TJS)'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: leadsCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Количество Лидов'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: convCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Количество Продаж'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: revCtrl,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Полученная выручка (TJS)'),
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    final name = nameCtrl.text.trim();
-                    if (name.isEmpty) return;
+      title: 'Новая рекламная кампания',
+      builder: (context, setSheetState) {
+        return PopScope(
+          canPop: !isDirty() || allowPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (isShowingDiscardDialog) return;
 
-                    context.read<MarketingBloc>().add(CreateCampaignRequested(
-                          name: name,
-                          channel: channel,
-                          budget: double.tryParse(budgetCtrl.text) ?? 0.0,
-                          spent: double.tryParse(spentCtrl.text) ?? 0.0,
-                          leads: int.tryParse(leadsCtrl.text) ?? 0,
-                          conversions: int.tryParse(convCtrl.text) ?? 0,
-                          revenue: double.tryParse(revCtrl.text) ?? 0.0,
-                        ));
+            isShowingDiscardDialog = true;
+            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+            isShowingDiscardDialog = false;
 
-                    Navigator.pop(bCtx);
-                  },
-                  child: const Text('Создать'),
+            if (shouldClose == true) {
+              allowPop = true;
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(labelText: 'Название кампании'),
+                onChanged: (_) => setSheetState(() {}),
+              ),
+              const SizedBox(height: 16),
+              Text('Канал', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
+              const SizedBox(height: 6),
+              ExpansibleWidget<String>.selection(
+                key: ValueKey(channel),
+                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                title: Text(
+                  channel[0].toUpperCase() + channel.substring(1),
+                  style: textStyles.bodySans,
                 ),
-                const SizedBox(height: 20),
-              ],
-            ),
+                items: const ['telegram', 'instagram', 'facebook'],
+                selectedValue: channel,
+                itemLabelBuilder: (s) => s[0].toUpperCase() + s.substring(1),
+                onSelected: (val) {
+                  setSheetState(() {
+                    channel = val;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: budgetCtrl,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Бюджет (TJS)'),
+                onChanged: (_) => setSheetState(() {}),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: spentCtrl,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Потрачено (TJS)'),
+                onChanged: (_) => setSheetState(() {}),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: leadsCtrl,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Количество Лидов'),
+                onChanged: (_) => setSheetState(() {}),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: convCtrl,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Количество Продаж'),
+                onChanged: (_) => setSheetState(() {}),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: revCtrl,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Полученная выручка (TJS)'),
+                onChanged: (_) => setSheetState(() {}),
+              ),
+            ],
           ),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final name = nameCtrl.text.trim();
+            if (name.isEmpty) return;
+
+            context.read<MarketingBloc>().add(CreateCampaignRequested(
+                  name: name,
+                  channel: channel,
+                  budget: double.tryParse(budgetCtrl.text) ?? 0.0,
+                  spent: double.tryParse(spentCtrl.text) ?? 0.0,
+                  leads: int.tryParse(leadsCtrl.text) ?? 0,
+                  conversions: int.tryParse(convCtrl.text) ?? 0,
+                  revenue: double.tryParse(revCtrl.text) ?? 0.0,
+                ));
+
+            Navigator.pop(context);
+          },
+          child: const Text('Создать'),
         );
       },
     );
@@ -539,64 +576,82 @@ class _MarketingViewState extends State<MarketingView> with SingleTickerProvider
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    showModalBottomSheet(
+    bool isShowingDiscardDialog = false;
+    bool allowPop = false;
+
+    bool isDirty() {
+      return _postController.text.trim().isNotEmpty || _selectedChannel != 'telegram';
+    }
+
+    LedgerBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      builder: (bCtx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
+      title: 'Новая публикация',
+      builder: (context, setSheetState) {
+        return PopScope(
+          canPop: !isDirty() || allowPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (isShowingDiscardDialog) return;
+
+            isShowingDiscardDialog = true;
+            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+            isShowingDiscardDialog = false;
+
+            if (shouldClose == true) {
+              allowPop = true;
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          },
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Новая публикация', style: textStyles.h2Sans),
-              const SizedBox(height: 16),
               TextField(
                 controller: _postController,
                 maxLines: 4,
+                style: textStyles.bodySans,
                 decoration: const InputDecoration(hintText: 'Текст публикации...'),
+                onChanged: (_) => setSheetState(() {}),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedChannel,
-                items: const [
-                  DropdownMenuItem(value: 'telegram', child: Text('Telegram')),
-                  DropdownMenuItem(value: 'instagram', child: Text('Instagram')),
-                  DropdownMenuItem(value: 'facebook', child: Text('Facebook')),
-                ],
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() {
-                      _selectedChannel = val;
-                    });
-                  }
+              const SizedBox(height: 16),
+              Text('Канал публикации', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
+              const SizedBox(height: 6),
+              ExpansibleWidget<String>.selection(
+                key: ValueKey(_selectedChannel),
+                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                title: Text(
+                  _selectedChannel[0].toUpperCase() + _selectedChannel.substring(1),
+                  style: textStyles.bodySans,
+                ),
+                items: const ['telegram', 'instagram', 'facebook'],
+                selectedValue: _selectedChannel,
+                itemLabelBuilder: (s) => s[0].toUpperCase() + s.substring(1),
+                onSelected: (val) {
+                  setSheetState(() {
+                    _selectedChannel = val;
+                  });
                 },
-                decoration: const InputDecoration(labelText: 'Канал публикации'),
               ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  final text = _postController.text.trim();
-                  if (text.isEmpty) return;
-
-                  context.read<MarketingBloc>().add(CreatePostRequested(
-                        text: text,
-                        channel: _selectedChannel,
-                      ));
-
-                  _postController.clear();
-                  Navigator.pop(bCtx);
-                },
-                child: const Text('Сохранить черновик'),
-              ),
-              const SizedBox(height: 20),
             ],
           ),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final text = _postController.text.trim();
+            if (text.isEmpty) return;
+
+            context.read<MarketingBloc>().add(CreatePostRequested(
+                  text: text,
+                  channel: _selectedChannel,
+                ));
+
+            _postController.clear();
+            Navigator.pop(context);
+          },
+          child: const Text('Сохранить черновик'),
         );
       },
     );

@@ -70,7 +70,7 @@ class IntegrationsView extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text('ПОДКЛЮЧЕННЫЕ СИСТЕМЫ', style: textStyles.smallSans),
+                  Text('ПОДКЛЮЧЕННЫЕ СИСТЕМЫ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   ...state.integrations.map((integration) {
                     return Padding(
@@ -115,7 +115,7 @@ class IntegrationsView extends StatelessWidget {
                                         context.read<IntegrationsBloc>().add(TriggerSyncRequested(integration.system));
                                       },
                                 icon: const Icon(TablerIcons.refresh, size: 16),
-                                label: const Text('Синхр.', style: TextStyle(fontSize: 12)),
+                                label: const Text('Синхр.', style: TextStyle(fontSize: 13)),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 ),
@@ -126,7 +126,7 @@ class IntegrationsView extends StatelessWidget {
                     );
                   }),
                   const SizedBox(height: 24),
-                  Text('ЛОГИ СИНХРОНИЗАЦИИ', style: textStyles.smallSans),
+                  Text('ЛОГИ СИНХРОНИЗАЦИИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
                   if (state.logs.isEmpty)
                     const Center(child: Text('Логи синхронизации пусты.'))

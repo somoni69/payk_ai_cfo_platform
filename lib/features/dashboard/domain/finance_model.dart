@@ -33,10 +33,14 @@ class FinanceMetrics {
 class CashFlowPoint {
   final DateTime date;
   final double amount; // Остаток на конец дня
+  final double income; // Приход за день
+  final double expense; // Расход за день
 
   const CashFlowPoint({
     required this.date,
     required this.amount,
+    this.income = 0.0,
+    this.expense = 0.0,
   });
 }
 

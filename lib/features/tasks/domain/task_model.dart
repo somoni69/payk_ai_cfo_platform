@@ -35,9 +35,33 @@ enum TaskPriority {
       case TaskPriority.high:
         return 'Высокий';
       case TaskPriority.urgent:
-        return 'Срочно';
+        return 'Критический';
     }
   }
+}
+
+/// Модель проекта в модуле задач.
+class TaskProject {
+  final String id;
+  final String name;
+  final String? description;
+
+  const TaskProject({
+    required this.id,
+    required this.name,
+    this.description,
+  });
+}
+
+/// Исполнитель задачи (сотрудник из /users).
+class TaskAssignee {
+  final String id;
+  final String fullName;
+
+  const TaskAssignee({
+    required this.id,
+    required this.fullName,
+  });
 }
 
 /// Модель задачи в PAYK Platform.
@@ -48,6 +72,13 @@ class Task {
   final TaskStatus status;
   final DateTime dueDate;
   final TaskPriority priority;
+  final String? projectId;
+  final String? projectName;
+  final String? assigneeId;
+  final String? assigneeName;
+  final DateTime? startDate;
+  final String? dependsOnId;
+  final int? position;
 
   const Task({
     required this.id,
@@ -56,6 +87,13 @@ class Task {
     required this.status,
     required this.dueDate,
     required this.priority,
+    this.projectId,
+    this.projectName,
+    this.assigneeId,
+    this.assigneeName,
+    this.startDate,
+    this.dependsOnId,
+    this.position,
   });
 
   Task copyWith({
@@ -65,6 +103,13 @@ class Task {
     TaskStatus? status,
     DateTime? dueDate,
     TaskPriority? priority,
+    String? projectId,
+    String? projectName,
+    String? assigneeId,
+    String? assigneeName,
+    DateTime? startDate,
+    String? dependsOnId,
+    int? position,
   }) {
     return Task(
       id: id ?? this.id,
@@ -73,6 +118,13 @@ class Task {
       status: status ?? this.status,
       dueDate: dueDate ?? this.dueDate,
       priority: priority ?? this.priority,
+      projectId: projectId ?? this.projectId,
+      projectName: projectName ?? this.projectName,
+      assigneeId: assigneeId ?? this.assigneeId,
+      assigneeName: assigneeName ?? this.assigneeName,
+      startDate: startDate ?? this.startDate,
+      dependsOnId: dependsOnId ?? this.dependsOnId,
+      position: position ?? this.position,
     );
   }
 }

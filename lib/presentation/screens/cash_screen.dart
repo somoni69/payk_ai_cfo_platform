@@ -13,6 +13,8 @@ import '../../features/cash/domain/cash_repository.dart';
 import '../widgets/ledger_operation_row.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
+import '../widgets/ledger_bottom_sheet.dart';
+import '../widgets/expansible_widget.dart';
 
 /// Точка входа в кассовый модуль с внедрением CashBloc.
 class CashScreen extends StatelessWidget {
@@ -131,7 +133,7 @@ class _CashViewState extends State<CashView> with SingleTickerProviderStateMixin
                 if (!isViewer && isShiftOpen) ...[
                   IconButton(
                     icon: const Icon(TablerIcons.plus),
-                    onPressed: () => _showAddTransactionBottomSheet(context, authState),
+                    onPressed: () => _showAddTransactionBottomSheet(context, authState, state.registers),
                     tooltip: 'Добавить операцию',
                   ),
                   const SizedBox(width: 8),
@@ -534,16 +536,16 @@ class _CashViewState extends State<CashView> with SingleTickerProviderStateMixin
     );
   }
 
-  void _showAddTransactionBottomSheet(BuildContext context, AuthState authState) {
+  void _showAddTransactionBottomSheet(BuildContext context, AuthState authState, List<CashRegister> registers) {
     final cashBloc = context.read<CashBloc>();
-    showModalBottomSheet(
+    LedgerBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
+      title: 'Новая операция',
+      builder: (context, setSheetState) {
         return _AddTransactionBottomSheet(
           cashBloc: cashBloc,
           authState: authState,
+          registers: registers,
         );
       },
     );
@@ -553,10 +555,12 @@ class _CashViewState extends State<CashView> with SingleTickerProviderStateMixin
 class _AddTransactionBottomSheet extends StatefulWidget {
   final CashBloc cashBloc;
   final AuthState authState;
+  final List<CashRegister> registers;
 
   const _AddTransactionBottomSheet({
     required this.cashBloc,
     required this.authState,
+    required this.registers,
   });
 
   @override
@@ -567,16 +571,49 @@ class _AddTransactionBottomSheetState extends State<_AddTransactionBottomSheet> 
   final _formKey = GlobalKey<FormState>();
   bool _isIncome = true;
   String _paymentMethodLabel = 'Наличные';
+  String _selectedRegisterId = '';
+  String _selectedCategory = '';
+
+  final _incomeCategories = const ['sales', 'services', 'advance', 'refund_in', 'other_income'];
+  final _expenseCategories = const ['rent', 'salary', 'goods', 'utilities', 'marketing', 'transport', 'taxes', 'other_expense'];
+
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.registers.isNotEmpty) {
+      _selectedRegisterId = widget.registers[0].id;
+    }
+  }
 
   @override
   void dispose() {
     _amountController.dispose();
     _titleController.dispose();
-    _categoryController.dispose();
+    _descriptionController.dispose();
     super.dispose();
+  }
+
+  String _getCategoryLabel(String key) {
+    switch (key) {
+      case 'sales': return 'Продажи';
+      case 'services': return 'Услуги';
+      case 'advance': return 'Аванс';
+      case 'refund_in': return 'Возврат';
+      case 'other_income': return 'Прочий доход';
+      case 'rent': return 'Аренда';
+      case 'salary': return 'Зарплата';
+      case 'goods': return 'Товары';
+      case 'utilities': return 'Коммунальные';
+      case 'marketing': return 'Реклама';
+      case 'transport': return 'Транспорт';
+      case 'taxes': return 'Налоги';
+      case 'other_expense': return 'Прочий расход';
+      default: return key;
+    }
   }
 
   @override
@@ -584,129 +621,159 @@ class _AddTransactionBottomSheetState extends State<_AddTransactionBottomSheet> 
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-        border: Border(top: BorderSide(color: colors.border, width: 1)),
-      ),
-      padding: EdgeInsets.only(
-        top: 16,
-        left: 16,
-        right: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Новая операция', style: textStyles.h2Sans),
-                IconButton(
-                  icon: const Icon(TablerIcons.x, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const Divider(),
-            const SizedBox(height: 12),
-
-            // Переключатель Приход / Расход
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTypeButton('Приход (плюс)', true, colors.accentGreen),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _buildTypeButton('Расход (минус)', false, colors.accentRed),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Поле Сумма
-            TextFormField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
-              validator: (val) => val == null || val.trim().isEmpty ? 'Укажите сумму' : null,
-              decoration: InputDecoration(
-                labelText: 'Сумма операции',
-                hintText: '0.00 TJS',
-                prefixIcon: Icon(TablerIcons.coin, color: colors.textSecondary, size: 20),
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Переключатель Приход / Расход
+          Row(
+            children: [
+              Expanded(
+                child: _buildTypeButton('Приход', true, colors.accentGreen),
               ),
-            ),
-            const SizedBox(height: 12),
-
-            // Поле Получатель / Плательщик
-            TextFormField(
-              controller: _titleController,
-              style: textStyles.bodySans,
-              validator: (val) => val == null || val.trim().isEmpty ? 'Введите наименование' : null,
-              decoration: InputDecoration(
-                labelText: 'Наименование / Контрагент',
-                hintText: 'Например, Розничная выручка или ФОТ',
-                prefixIcon: Icon(TablerIcons.user, color: colors.textSecondary, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildTypeButton('Расход', false, colors.accentRed),
               ),
-            ),
-            const SizedBox(height: 12),
+            ],
+          ),
+          const SizedBox(height: 16),
 
-            // Поле Категория
-            TextFormField(
-              controller: _categoryController,
-              style: textStyles.bodySans,
-              validator: (val) => val == null || val.trim().isEmpty ? 'Укажите категорию' : null,
-              decoration: InputDecoration(
-                labelText: 'Категория / Статья',
-                hintText: 'Например, Розничная выручка или ФОТ',
-                prefixIcon: Icon(TablerIcons.category, color: colors.textSecondary, size: 20),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Способ оплаты
-            Text('СПОСОБ ОПЛАТЫ', style: textStyles.smallSans),
+          // Касса (Register)
+          if (widget.registers.isNotEmpty) ...[
+            Text('Касса', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            _buildPaymentMethodsRow(),
-            const SizedBox(height: 24),
-
-            // Кнопки
-            ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  final double? amount = double.tryParse(_amountController.text);
-                  if (amount != null) {
-                    // Вычисляем имя кассира
-                    String cashierName = 'Система';
-                    if (widget.authState is AuthAuthenticated) {
-                      cashierName = (widget.authState as AuthAuthenticated).username;
-                    }
-
-                    final newTx = Transaction(
-                      id: '',
-                      title: _titleController.text.trim(),
-                      category: _categoryController.text.trim(),
-                      amount: amount,
-                      isIncome: _isIncome,
-                      paymentMethod: PaymentMethod.fromLabel(_paymentMethodLabel),
-                      dateTime: DateTime.now(),
-                      cashierName: cashierName,
-                    );
-
-                    widget.cashBloc.add(AddTransactionRequested(newTx));
-                    Navigator.pop(context);
-                  }
-                }
+            ExpansibleWidget<String>.selection(
+              key: ValueKey('reg_$_selectedRegisterId'),
+              cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              title: Text(
+                widget.registers.firstWhere((r) => r.id == _selectedRegisterId, orElse: () => widget.registers[0]).name,
+                style: textStyles.bodySans,
+              ),
+              items: widget.registers.map((r) => r.id).toList(),
+              selectedValue: _selectedRegisterId,
+              itemLabelBuilder: (id) => widget.registers.firstWhere((r) => r.id == id).name,
+              onSelected: (val) {
+                setState(() {
+                  _selectedRegisterId = val;
+                });
               },
-              child: const Text('Записать в Ledger'),
             ),
+            const SizedBox(height: 12),
           ],
-        ),
+
+          // Поле Сумма
+          TextFormField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
+            validator: (val) => val == null || val.trim().isEmpty ? 'Укажите сумму' : null,
+            decoration: InputDecoration(
+              labelText: 'Сумма операции',
+              hintText: '0.00 TJS',
+              prefixIcon: Icon(TablerIcons.coin, color: colors.textSecondary, size: 20),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Способ оплаты
+          Text('Способ оплаты', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          _buildPaymentMethodsRow(),
+          const SizedBox(height: 16),
+
+          // Категория
+          Text('Категория', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          ExpansibleWidget<String>.selection(
+            key: ValueKey('cat_${_isIncome}_$_selectedCategory'),
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            title: Text(
+              _selectedCategory.isEmpty
+                  ? 'Выберите категорию'
+                  : _getCategoryLabel(_selectedCategory),
+              style: textStyles.bodySans,
+            ),
+            items: _isIncome ? _incomeCategories : _expenseCategories,
+            selectedValue: _selectedCategory,
+            itemLabelBuilder: (cat) => _getCategoryLabel(cat),
+            onSelected: (val) {
+              setState(() {
+                _selectedCategory = val;
+              });
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Поле Получатель / Контрагент
+          TextFormField(
+            controller: _titleController,
+            style: textStyles.bodySans,
+            validator: (val) => val == null || val.trim().isEmpty ? 'Введите наименование' : null,
+            decoration: InputDecoration(
+              labelText: 'Контрагент',
+              hintText: 'Название контрагента',
+              prefixIcon: Icon(TablerIcons.user, color: colors.textSecondary, size: 20),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Описание
+          TextFormField(
+            controller: _descriptionController,
+            style: textStyles.bodySans,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: 'Описание',
+              hintText: 'Комментарий к операции',
+              prefixIcon: Icon(TablerIcons.notes, color: colors.textSecondary, size: 20),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Кнопки
+          ElevatedButton(
+            onPressed: () {
+              if (_selectedCategory.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Пожалуйста, выберите категорию'),
+                    backgroundColor: colors.accentRed,
+                  ),
+                );
+                return;
+              }
+              if (_formKey.currentState!.validate()) {
+                final double? amount = double.tryParse(_amountController.text);
+                if (amount != null) {
+                  // Вычисляем имя кассира
+                  String cashierName = 'Система';
+                  if (widget.authState is AuthAuthenticated) {
+                    cashierName = (widget.authState as AuthAuthenticated).username;
+                  }
+
+                  final newTx = Transaction(
+                    id: '',
+                    title: _titleController.text.trim(),
+                    category: _selectedCategory,
+                    amount: amount,
+                    isIncome: _isIncome,
+                    paymentMethod: PaymentMethod.fromLabel(_paymentMethodLabel),
+                    dateTime: DateTime.now(),
+                    cashierName: cashierName,
+                    registerId: _selectedRegisterId.isNotEmpty ? _selectedRegisterId : null,
+                  );
+
+                  widget.cashBloc.add(AddTransactionRequested(newTx));
+                  Navigator.pop(context);
+                }
+              }
+            },
+            child: const Text('Записать в Ledger'),
+          ),
+        ],
       ),
     );
   }

@@ -9,6 +9,8 @@ import '../../features/users/domain/user_models.dart';
 import '../../features/users/domain/users_repository.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
+import '../widgets/expansible_widget.dart';
+import '../widgets/ledger_bottom_sheet.dart';
 
 class UsersScreen extends StatelessWidget {
   const UsersScreen({super.key});
@@ -258,7 +260,6 @@ class _UsersViewState extends State<UsersView> {
   }
 
   void _showUserDialog(BuildContext context, {UserProfile? user}) {
-    final colors = context.colors;
     final textStyles = context.textStyles;
 
     final isEdit = user != null;
@@ -271,139 +272,142 @@ class _UsersViewState extends State<UsersView> {
     bool active = user?.active ?? true;
     bool twoFactor = user?.twoFactor ?? false;
 
-    showModalBottomSheet(
+    LedgerBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      builder: (bCtx) {
-        return StatefulBuilder(
-          builder: (sCtx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 16,
-                right: 16,
-                top: 16,
+      title: isEdit ? 'Изменить пользователя' : 'Новый пользователь',
+      builder: (context, setModalState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: fullNameCtrl,
+              decoration: const InputDecoration(labelText: 'ФИО'),
+            ),
+            const SizedBox(height: 12),
+            if (!isEdit) ...[
+              TextField(
+                controller: usernameCtrl,
+                decoration: const InputDecoration(labelText: 'Логин'),
               ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(isEdit ? 'Изменить пользователя' : 'Новый пользователь', style: textStyles.h2Sans),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: fullNameCtrl,
-                      decoration: const InputDecoration(labelText: 'ФИО'),
-                    ),
-                    const SizedBox(height: 12),
-                    if (!isEdit) ...[
-                      TextField(
-                        controller: usernameCtrl,
-                        decoration: const InputDecoration(labelText: 'Логин'),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    TextField(
-                      controller: emailCtrl,
-                      decoration: const InputDecoration(labelText: 'Email'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: phoneCtrl,
-                      decoration: const InputDecoration(labelText: 'Телефон'),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: role,
-                      items: const [
-                        DropdownMenuItem(value: 'director', child: Text('Директор')),
-                        DropdownMenuItem(value: 'accountant', child: Text('Бухгалтер')),
-                        DropdownMenuItem(value: 'seller', child: Text('Продавец')),
-                        DropdownMenuItem(value: 'viewer', child: Text('Наблюдатель')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            role = val;
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(labelText: 'Роль'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: passwordCtrl,
-                      obscureText: true,
-                      decoration: InputDecoration(
-                        labelText: isEdit ? 'Новый пароль (оставьте пустым)' : 'Пароль',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      title: const Text('Учетная запись активна'),
-                      value: active,
-                      onChanged: (val) {
-                        setModalState(() {
-                          active = val;
-                        });
-                      },
-                    ),
-                    SwitchListTile(
-                      title: const Text('Двухфакторная аутентификация (2FA)'),
-                      subtitle: const Text('SMS-код при входе'),
-                      value: twoFactor,
-                      onChanged: (val) {
-                        setModalState(() {
-                          twoFactor = val;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        final fullName = fullNameCtrl.text.trim();
-                        final username = usernameCtrl.text.trim();
-                        final email = emailCtrl.text.trim();
-                        final phone = phoneCtrl.text.trim();
-                        final password = passwordCtrl.text.trim();
+              const SizedBox(height: 12),
+            ],
+            TextField(
+              controller: emailCtrl,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneCtrl,
+              decoration: const InputDecoration(labelText: 'Телефон'),
+            ),
+            const SizedBox(height: 12),
 
-                        if (fullName.isEmpty) return;
-
-                        if (isEdit) {
-                          context.read<UsersBloc>().add(UpdateUserRequested(
-                                id: user.id,
-                                fullName: fullName,
-                                email: email,
-                                phone: phone,
-                                role: role,
-                                password: password.isNotEmpty ? password : null,
-                                active: active,
-                                twoFactor: twoFactor,
-                              ));
-                        } else {
-                          if (username.isEmpty || password.isEmpty) return;
-                          context.read<UsersBloc>().add(CreateUserRequested(
-                                fullName: fullName,
-                                username: username,
-                                email: email,
-                                phone: phone,
-                                role: role,
-                                password: password,
-                                active: active,
-                                twoFactor: twoFactor,
-                              ));
-                        }
-
-                        Navigator.pop(bCtx);
-                      },
-                      child: Text(isEdit ? 'Сохранить' : 'Создать'),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                ),
+            // Роль
+            Text('Роль', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ExpansibleWidget<String>.selection(
+              key: ValueKey(role),
+              cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              title: Text(
+                role == 'director'
+                    ? 'Директор'
+                    : role == 'accountant'
+                        ? 'Бухгалтер'
+                        : role == 'seller'
+                            ? 'Продавец'
+                            : 'Наблюдатель',
+                style: textStyles.bodySans,
               ),
-            );
-          },
+              items: const ['director', 'accountant', 'seller', 'viewer'],
+              selectedValue: role,
+              itemLabelBuilder: (r) {
+                switch (r) {
+                  case 'director':
+                    return 'Директор';
+                  case 'accountant':
+                    return 'Бухгалтер';
+                  case 'seller':
+                    return 'Продавец';
+                  default:
+                    return 'Наблюдатель';
+                }
+              },
+              onSelected: (val) {
+                setModalState(() {
+                  role = val;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+
+            TextField(
+              controller: passwordCtrl,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: isEdit ? 'Новый пароль (оставьте пустым)' : 'Пароль',
+              ),
+            ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              title: const Text('Учетная запись активна'),
+              value: active,
+              onChanged: (val) {
+                setModalState(() {
+                  active = val;
+                });
+              },
+            ),
+            SwitchListTile(
+              title: const Text('Двухфакторная аутентификация (2FA)'),
+              subtitle: const Text('SMS-код при входе'),
+              value: twoFactor,
+              onChanged: (val) {
+                setModalState(() {
+                  twoFactor = val;
+                });
+              },
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                final fullName = fullNameCtrl.text.trim();
+                final username = usernameCtrl.text.trim();
+                final email = emailCtrl.text.trim();
+                final phone = phoneCtrl.text.trim();
+                final password = passwordCtrl.text.trim();
+
+                if (fullName.isEmpty) return;
+
+                if (isEdit) {
+                  context.read<UsersBloc>().add(UpdateUserRequested(
+                        id: user.id,
+                        fullName: fullName,
+                        email: email,
+                        phone: phone,
+                        role: role,
+                        password: password.isNotEmpty ? password : null,
+                        active: active,
+                        twoFactor: twoFactor,
+                      ));
+                } else {
+                  if (username.isEmpty || password.isEmpty) return;
+                  context.read<UsersBloc>().add(CreateUserRequested(
+                        fullName: fullName,
+                        username: username,
+                        email: email,
+                        phone: phone,
+                        role: role,
+                        password: password,
+                        active: active,
+                        twoFactor: twoFactor,
+                      ));
+                }
+
+                Navigator.pop(context);
+              },
+              child: Text(isEdit ? 'Сохранить' : 'Создать'),
+            ),
+          ],
         );
       },
     );

@@ -67,6 +67,8 @@ class ApiFinanceRepository implements FinanceRepository {
         points.add(CashFlowPoint(
           date: DateTime.parse(item['date'] as String),
           amount: currentBalance,
+          income: income,
+          expense: expense,
         ));
       }
 

@@ -28,3 +28,12 @@ class CreateTaskRequested extends TasksEvent {
   @override
   List<Object?> get props => [task];
 }
+
+class UpdateTaskRequested extends TasksEvent {
+  final Task task;
+
+  const UpdateTaskRequested(this.task);
+
+  @override
+  List<Object?> get props => [task];
+}

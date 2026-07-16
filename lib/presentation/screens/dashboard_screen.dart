@@ -1,6 +1,8 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import '../../core/theme/theme_extensions.dart';
 import '../../features/dashboard/bloc/dashboard_bloc.dart';
 import '../../features/dashboard/bloc/dashboard_event.dart';
@@ -150,13 +152,13 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                           const SizedBox(height: 20),
 
                           // Сетка 6 ключевых цифр
-                          Text('ГЛАВНЫЕ ПОКАЗАТЕЛИ', style: textStyles.smallSans),
+                          Text('ГЛАВНЫЕ ПОКАЗАТЕЛИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           _buildMetricsGrid(m, currency),
                           const SizedBox(height: 20),
 
                           // Реальный график движения денежных средств
-                          Text('ДВИЖЕНИЕ ДЕНЕГ ЗА 30 ДНЕЙ', style: textStyles.smallSans),
+                          Text('ДВИЖЕНИЕ ДЕНЕГ ЗА 30 ДНЕЙ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 8),
                           _buildChart(state.history, currency),
                           const SizedBox(height: 20),
@@ -203,7 +205,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             child: Text(
               c,
               style: textStyles.bodyMono.copyWith(
-                fontSize: 12,
+                fontSize: 14,
                 fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                 color: isCurrent ? colors.brand : colors.textPrimary,
               ),
@@ -220,7 +222,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
               currentCurrency,
               style: textStyles.bodyMono.copyWith(
                 fontWeight: FontWeight.w500,
-                fontSize: 13,
+                fontSize: 14,
                 color: colors.brand,
               ),
             ),
@@ -321,7 +323,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                     item['delta'] as String,
                     style: textStyles.smallMono.copyWith(
                       color: item['color'] as Color,
-                      fontSize: 10,
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -490,7 +492,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 20),
-          Text('СРАВНЕНИЕ ПО КАТЕГОРИЯМ', style: textStyles.smallSans),
+          Text('СРАВНЕНИЕ ПО КАТЕГОРИЯМ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...report.rows.map((row) {
             final isIncome = row.type == 'INFLOW' || row.type == 'income';
@@ -641,7 +643,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 20),
-          Text('ПОКАЗАТЕЛИ БЕЗУБЫТОЧНОСТИ', style: textStyles.smallSans),
+          Text('ПОКАЗАТЕЛИ БЕЗУБЫТОЧНОСТИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.all(16),
@@ -730,7 +732,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
           const SizedBox(height: 20),
           Text(
             isCategory ? 'АНАЛИЗ ТОВАРНЫХ КАТЕГОРИЙ (ABC-анализ)' : 'АНАЛИЗ КОНТРАГЕНТОВ (ABC-анализ)',
-            style: textStyles.smallSans,
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           if (report.rows.isEmpty)
@@ -826,7 +828,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('БАНКОВСКИЕ СЧЕТА', style: textStyles.smallSans),
+          Text('БАНКОВСКИЕ СЧЕТА', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...accountsReport.accounts.map((acc) => Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
@@ -873,7 +875,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 24),
-          Text('КУРСЫ НАЦИОНАЛЬНОГО БАНКА (NBT)', style: textStyles.smallSans),
+          Text('КУРСЫ НАЦИОНАЛЬНОГО БАНКА (NBT)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.all(16),
@@ -957,7 +959,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 20),
-          Text('ИИ РЕКОМЕНДАЦИИ И АНАЛИЗ', style: textStyles.smallSans),
+          Text('ИИ РЕКОМЕНДАЦИИ И АНАЛИЗ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.all(16),
@@ -975,44 +977,87 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    return SizedBox(
-      height: 160,
-      child: LedgerCard(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          children: [
-            Expanded(
-              child: CustomPaint(
-                size: Size.infinite,
-                painter: CashFlowChartPainter(
-                  points: points,
-                  lineColor: colors.brand,
-                  gridColor: colors.border,
-                ),
+    String periodText = '';
+    if (points.isNotEmpty) {
+      final startStr = DateFormat('dd.MM').format(points.first.date);
+      final endStr = DateFormat('dd.MM').format(points.last.date);
+      periodText = '$startStr — $endStr';
+    }
+
+    return LedgerCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Движение денег',
+            style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Приход и расход за 30 дней ($periodText • в $currency)',
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 180,
+            child: CustomPaint(
+              size: Size.infinite,
+              painter: CashFlowChartPainter(
+                points: points,
+                greenColor: colors.accentGreen,
+                redColor: colors.accentRed,
+                gridColor: colors.border,
+                textStyle: textStyles.smallMono.copyWith(color: colors.textTooltip, fontSize: 10),
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              '01 Июн — 30 Июн • Суммы в $currency',
-              style: textStyles.captionSans,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.accentGreen,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text('Приход', style: textStyles.captionSans),
+              const SizedBox(width: 20),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colors.accentRed,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text('Расход', style: textStyles.captionSans),
+            ],
+          ),
+        ],
       ),
     );
   }
 }
 
-/// CustomPainter для отрисовки чистого линейного графика кассового остатка.
+/// CustomPainter для отрисовки графиков прихода и расхода с заливкой.
 class CashFlowChartPainter extends CustomPainter {
   final List<CashFlowPoint> points;
-  final Color lineColor;
+  final Color greenColor;
+  final Color redColor;
   final Color gridColor;
+  final TextStyle textStyle;
 
   CashFlowChartPainter({
     required this.points,
-    required this.lineColor,
+    required this.greenColor,
+    required this.redColor,
     required this.gridColor,
+    required this.textStyle,
   });
 
   @override
@@ -1020,63 +1065,202 @@ class CashFlowChartPainter extends CustomPainter {
     if (points.isEmpty) return;
 
     final double width = size.width;
-    final double height = size.height;
 
-    // Вычисляем минимум и максимум для вертикального масштабирования
-    double minY = points.first.amount;
-    double maxY = points.first.amount;
+    const double chartLeft = 45.0;
+    const double chartBottom = 155.0;
+    const double chartTop = 10.0;
+    final double chartWidth = width - chartLeft;
+    final double chartHeight = chartBottom - chartTop;
+
+    double maxVal = 1000.0;
     for (final p in points) {
-      if (p.amount < minY) minY = p.amount;
-      if (p.amount > maxY) maxY = p.amount;
+      if (p.income > maxVal) maxVal = p.income;
+      if (p.expense > maxVal) maxVal = p.expense;
     }
-
-    final double rangeY = maxY - minY;
-    // Делаем небольшие отступы сверху и снизу
-    final double paddingY = rangeY > 0 ? rangeY * 0.15 : 10.0;
-    final double adjustedMinY = minY - paddingY;
-    final double adjustedMaxY = maxY + paddingY;
-    final double adjustedRangeY = adjustedMaxY - adjustedMinY;
+    
+    double rangeY = maxVal * 1.15;
+    if (rangeY < 10.0) rangeY = 10.0;
 
     final int len = points.length;
-    final double stepX = width / (len - 1);
+    final double stepX = chartWidth / (len - 1);
 
-    // Рисуем 3 горизонтальные линии сетки
-    final gridPaint = Paint()
-      ..color = gridColor
+    final dashedPaint = Paint()
+      ..color = gridColor.withValues(alpha: 0.6)
       ..strokeWidth = 0.5
       ..style = PaintingStyle.stroke;
 
-    for (int i = 0; i < 3; i++) {
-      final y = height * i / 2;
-      canvas.drawLine(Offset(0, y), Offset(width, y), gridPaint);
+    for (int i = 0; i < 5; i++) {
+      final double ratio = i / 4.0;
+      final double y = chartBottom - (ratio * chartHeight);
+      final double val = ratio * rangeY;
+
+      _drawDashedLine(canvas, Offset(chartLeft, y), Offset(width, y), dashedPaint);
+
+      String label = '';
+      if (val >= 1000.0) {
+        label = '${(val / 1000.0).toStringAsFixed(0)} тыс.';
+      } else {
+        label = val.toStringAsFixed(0);
+      }
+
+      final textPainter = TextPainter(
+        text: TextSpan(text: label, style: textStyle),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      textPainter.paint(
+        canvas,
+        Offset(chartLeft - textPainter.width - 8, y - textPainter.height / 2),
+      );
     }
 
-    // Отрисовка линии графика
-    final path = Path();
-    final linePaint = Paint()
-      ..color = lineColor
-      ..strokeWidth = 1.5
+    final greenPath = Path();
+    final redPath = Path();
+    final greenAreaPath = Path();
+    greenAreaPath.moveTo(chartLeft, chartBottom);
+
+    if (len > 0) {
+      // Начальные точки кривых
+      final double yGreen0 = chartBottom - ((points[0].income / rangeY) * chartHeight);
+      greenPath.moveTo(chartLeft, yGreen0);
+      greenAreaPath.lineTo(chartLeft, yGreen0);
+
+      final double yRed0 = chartBottom - ((points[0].expense / rangeY) * chartHeight);
+      redPath.moveTo(chartLeft, yRed0);
+
+      for (int i = 0; i < len - 1; i++) {
+        final double x1 = chartLeft + i * stepX;
+        final double yGreen1 = chartBottom - ((points[i].income / rangeY) * chartHeight);
+        final double yRed1 = chartBottom - ((points[i].expense / rangeY) * chartHeight);
+
+        final double x2 = chartLeft + (i + 1) * stepX;
+        final double yGreen2 = chartBottom - ((points[i + 1].income / rangeY) * chartHeight);
+        final double yRed2 = chartBottom - ((points[i + 1].expense / rangeY) * chartHeight);
+
+        // Расчет сглаженных контрольных точек (Cubic Bezier)
+        final double cx1 = x1 + (x2 - x1) / 2.0;
+        final double cyGreen1 = yGreen1;
+        final double cx2 = x1 + (x2 - x1) / 2.0;
+        final double cyGreen2 = yGreen2;
+
+        greenPath.cubicTo(cx1, cyGreen1, cx2, cyGreen2, x2, yGreen2);
+        greenAreaPath.cubicTo(cx1, cyGreen1, cx2, cyGreen2, x2, yGreen2);
+
+        final double cyRed1 = yRed1;
+        final double cyRed2 = yRed2;
+        redPath.cubicTo(cx1, cyRed1, cx2, cyRed2, x2, yRed2);
+      }
+      
+      greenAreaPath.lineTo(chartLeft + (len - 1) * stepX, chartBottom);
+      greenAreaPath.close();
+    }
+
+    // Отрисовка красивого градиента под графиком приходов
+    final fillPaint = Paint()..style = PaintingStyle.fill;
+    final gradient = ui.Gradient.linear(
+      Offset(chartLeft, chartTop),
+      Offset(chartLeft, chartBottom),
+      [
+        greenColor.withValues(alpha: 0.16),
+        greenColor.withValues(alpha: 0.01),
+      ],
+    );
+    fillPaint.shader = gradient;
+    canvas.drawPath(greenAreaPath, fillPaint);
+
+    // Отрисовка сглаженной линии Прихода
+    final greenLinePaint = Paint()
+      ..color = greenColor
+      ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke
       ..isAntiAlias = true;
+    canvas.drawPath(greenPath, greenLinePaint);
+
+    // Отрисовка сглаженной линии Расхода
+    final redLinePaint = Paint()
+      ..color = redColor
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+    canvas.drawPath(redPath, redLinePaint);
+
+    // Находим пиковые значения для отрисовки аккуратных фокусных точек
+    int maxIncomeIndex = 0;
+    double maxIncomeVal = points[0].income;
+    int maxExpenseIndex = 0;
+    double maxExpenseVal = points[0].expense;
 
     for (int i = 0; i < len; i++) {
-      final p = points[i];
-      final x = i * stepX;
-      // Инвертируем Y, так как ось Y на холсте направлена вниз
-      final ratioY = adjustedRangeY > 0 ? (p.amount - adjustedMinY) / adjustedRangeY : 0.5;
-      final y = height - (ratioY * height);
-
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
+      if (points[i].income > maxIncomeVal) {
+        maxIncomeVal = points[i].income;
+        maxIncomeIndex = i;
+      }
+      if (points[i].expense > maxExpenseVal) {
+        maxExpenseVal = points[i].expense;
+        maxExpenseIndex = i;
       }
     }
 
-    canvas.drawPath(path, linePaint);
+    final dotPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.white;
+
+    // Зеленая точка на пике прихода
+    final double maxIncomeX = chartLeft + maxIncomeIndex * stepX;
+    final double maxIncomeY = chartBottom - ((maxIncomeVal / rangeY) * chartHeight);
+    final dotGreenStrokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = greenColor
+      ..strokeWidth = 2.0;
+
+    canvas.drawCircle(Offset(maxIncomeX, maxIncomeY), 4.5, dotPaint);
+    canvas.drawCircle(Offset(maxIncomeX, maxIncomeY), 4.5, dotGreenStrokePaint);
+
+    // Красная точка на пике расходов
+    final double maxExpenseX = chartLeft + maxExpenseIndex * stepX;
+    final double maxExpenseY = chartBottom - ((maxExpenseVal / rangeY) * chartHeight);
+    final dotRedStrokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = redColor
+      ..strokeWidth = 2.0;
+
+    canvas.drawCircle(Offset(maxExpenseX, maxExpenseY), 4.5, dotPaint);
+    canvas.drawCircle(Offset(maxExpenseX, maxExpenseY), 4.5, dotRedStrokePaint);
+
+    // Отрисовка дат на X-оси (каждые 5 дней для предотвращения наложений)
+    for (int i = 0; i < len; i++) {
+      if (i % 5 == 0 || i == len - 1) {
+        final p = points[i];
+        final x = chartLeft + i * stepX;
+        final dateStr = DateFormat('dd.MM').format(p.date);
+
+        final textPainter = TextPainter(
+          text: TextSpan(text: dateStr, style: textStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+
+        textPainter.paint(
+          canvas,
+          Offset(x - textPainter.width / 2, chartBottom + 6),
+        );
+      }
+    }
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
+    const double dashWidth = 3.0;
+    const double dashSpace = 3.0;
+    
+    double startX = p1.dx;
+    final double y = p1.dy;
+    
+    while (startX < p2.dx) {
+      canvas.drawLine(Offset(startX, y), Offset(startX + dashWidth, y), paint);
+      startX += dashWidth + dashSpace;
+    }
   }
 
   @override
   bool shouldRepaint(covariant CashFlowChartPainter oldDelegate) =>
-      oldDelegate.points != points || oldDelegate.lineColor != lineColor;
+      oldDelegate.points != points || oldDelegate.greenColor != greenColor || oldDelegate.redColor != redColor;
 }

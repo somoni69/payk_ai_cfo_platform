@@ -12,6 +12,7 @@ import '../../features/warehouse/domain/warehouse_repository.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
 import '../widgets/expansible_widget.dart';
+import '../widgets/ledger_bottom_sheet.dart';
 
 class WarehouseScreen extends StatelessWidget {
   const WarehouseScreen({super.key});
@@ -59,7 +60,7 @@ class _WarehouseViewState extends State<WarehouseView> with SingleTickerProvider
         elevation: 0,
         title: Text(
           localeCubit.translate('warehouse_title'),
-          style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
+          style: textStyles.h1Sans,
         ),
         actions: [
           IconButton(
@@ -392,93 +393,118 @@ class _WarehouseViewState extends State<WarehouseView> with SingleTickerProvider
   }
 
   void _showAddProductDialog(BuildContext context) {
-    final colors = context.colors;
     final nameController = TextEditingController();
     final skuController = TextEditingController();
     final unitController = TextEditingController(text: 'шт');
     final priceController = TextEditingController();
     final stockController = TextEditingController(text: '0');
 
-    showDialog(
+    LedgerBottomSheet.show(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Добавить новый товар'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      title: 'Добавить новый товар',
+      builder: (context, setSheetState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Название товара'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: skuController,
+              decoration: const InputDecoration(labelText: 'SKU (Артикул)'),
+            ),
+            const SizedBox(height: 12),
+            Row(
               children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Название товара'),
+                Expanded(
+                  child: TextField(
+                    controller: unitController,
+                    decoration: const InputDecoration(labelText: 'Ед. измерения'),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: skuController,
-                  decoration: const InputDecoration(labelText: 'SKU (Артикул)'),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: unitController,
-                        decoration: const InputDecoration(labelText: 'Ед. измерения'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: priceController,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Цена (TJS)'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: stockController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Начальный остаток'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: priceController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Цена (TJS)'),
+                  ),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Отмена'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final price = double.tryParse(priceController.text) ?? 0.0;
-                final stock = double.tryParse(stockController.text) ?? 0.0;
-
-                if (name.isEmpty) return;
-
-                context.read<WarehouseBloc>().add(
-                      CreateProductRequested(
-                        WarehouseProduct(
-                          id: '',
-                          name: name,
-                          sku: skuController.text.trim(),
-                          unit: unitController.text.trim(),
-                          price: price,
-                          stockQty: stock,
-                        ),
-                      ),
-                    );
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Создать'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: stockController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Начальный остаток'),
             ),
           ],
         );
       },
+      footerBuilder: (context, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final name = nameController.text.trim();
+            final price = double.tryParse(priceController.text) ?? 0.0;
+            final stock = double.tryParse(stockController.text) ?? 0.0;
+
+            if (name.isEmpty) return;
+
+            context.read<WarehouseBloc>().add(
+                  CreateProductRequested(
+                    WarehouseProduct(
+                      id: '',
+                      name: name,
+                      sku: skuController.text.trim(),
+                      unit: unitController.text.trim(),
+                      price: price,
+                      stockQty: stock,
+                    ),
+                  ),
+                );
+            Navigator.pop(context);
+          },
+          child: const Text('Создать'),
+        );
+      },
+    );
+  }
+
+  Widget _buildMovementTypeButton(
+    BuildContext context,
+    String label,
+    String type,
+    Color activeColor,
+    String currentType,
+    ValueChanged<String> onChanged,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final isSelected = currentType == type;
+
+    return GestureDetector(
+      onTap: () => onChanged(type),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: isSelected ? activeColor.withValues(alpha: 0.1) : colors.surface,
+          border: Border.all(
+            color: isSelected ? activeColor : colors.border,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: textStyles.captionSans.copyWith(
+            color: isSelected ? activeColor : colors.textSecondary,
+            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+          ),
+        ),
+      ),
     );
   }
 
@@ -495,129 +521,136 @@ class _WarehouseViewState extends State<WarehouseView> with SingleTickerProvider
     final amountController = TextEditingController();
     final noteController = TextEditingController();
 
-    showDialog(
+    LedgerBottomSheet.show(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: colors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Движение товара'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ExpansibleWidget(
-                      key: ValueKey(selectedProduct?.id ?? 'empty'),
-                      cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      title: Text(
-                        selectedProduct == null
-                            ? 'Выберите товар'
-                            : '${selectedProduct!.name} (остаток: ${selectedProduct!.stockQty % 1 == 0 ? selectedProduct!.stockQty.toInt() : selectedProduct!.stockQty})',
-                        style: textStyles.bodySans,
-                      ),
-                      children: state.products.map((p) {
-                        return ListTile(
-                          title: Text('${p.name} (остаток: ${p.stockQty % 1 == 0 ? p.stockQty.toInt() : p.stockQty})', style: textStyles.bodySans),
-                          onTap: () {
-                            setState(() {
-                              selectedProduct = p;
-                            });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 12),
-                    ExpansibleWidget(
-                      key: ValueKey(direction),
-                      cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      title: Text(
-                        direction == 'income' ? 'Приход (поступление)' : 'Расход (продажа/списание)',
-                        style: textStyles.bodySans,
-                      ),
-                      children: [
-                        ListTile(
-                          title: const Text('Приход (поступление)'),
-                          onTap: () {
-                            setState(() {
-                              direction = 'income';
-                            });
-                          },
-                        ),
-                        ListTile(
-                          title: const Text('Расход (продажа/списание)'),
-                          onTap: () {
-                            setState(() {
-                              direction = 'expense';
-                            });
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: qtyController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(labelText: 'Количество'),
-                            onChanged: (val) {
-                              // Автоматический подсчет ориентировочной суммы по цене товара
-                              final qty = double.tryParse(val) ?? 0.0;
-                              final price = selectedProduct?.price ?? 0.0;
-                              amountController.text = (qty * price).toStringAsFixed(2);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextField(
-                            controller: amountController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            decoration: const InputDecoration(labelText: 'Сумма (TJS)'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: noteController,
-                      decoration: const InputDecoration(labelText: 'Примечание'),
-                    ),
-                  ],
+      title: 'Движение товара',
+      builder: (context, setSheetState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Переключатель направления движения
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMovementTypeButton(
+                    context,
+                    'Приход (закупка)',
+                    'income',
+                    colors.accentGreen,
+                    direction,
+                    (val) {
+                      setSheetState(() {
+                        direction = val;
+                      });
+                    },
+                  ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Отмена'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final qty = double.tryParse(qtyController.text) ?? 0.0;
-                    final amount = double.tryParse(amountController.text) ?? 0.0;
-                    final prodId = selectedProduct?.id;
-
-                    if (qty <= 0 || prodId == null) return;
-
-                    warehouseBloc.add(
-                      CreateMovementRequested(
-                        productId: prodId,
-                        direction: direction,
-                        qty: qty,
-                        amount: amount,
-                        note: noteController.text.trim(),
-                      ),
-                    );
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Записать'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMovementTypeButton(
+                    context,
+                    'Расход (продажа)',
+                    'expense',
+                    colors.accentRed,
+                    direction,
+                    (val) {
+                      setSheetState(() {
+                        direction = val;
+                      });
+                    },
+                  ),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+
+            // Товар
+            Text('Товар', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ExpansibleWidget<WarehouseProduct?>.selection(
+              key: ValueKey(selectedProduct?.id ?? 'empty'),
+              cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              title: Text(
+                selectedProduct == null
+                    ? 'Выберите товар'
+                    : '${selectedProduct!.name} (остаток: ${selectedProduct!.stockQty % 1 == 0 ? selectedProduct!.stockQty.toInt() : selectedProduct!.stockQty})',
+                style: textStyles.bodySans,
+              ),
+              items: state.products,
+              selectedValue: selectedProduct,
+              itemLabelBuilder: (p) => p == null
+                  ? ''
+                  : '${p.name} (остаток: ${p.stockQty % 1 == 0 ? p.stockQty.toInt() : p.stockQty})',
+              onSelected: (p) {
+                setSheetState(() {
+                  selectedProduct = p;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: qtyController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Количество',
+                      hintText: 'Например: 10',
+                    ),
+                    onChanged: (val) {
+                      final qty = double.tryParse(val) ?? 0.0;
+                      final price = selectedProduct?.price ?? 0.0;
+                      amountController.text = (qty * price).toStringAsFixed(2);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(
+                      labelText: 'Сумма (необязательно)',
+                      hintText: 'кол-во × цена',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: noteController,
+              decoration: const InputDecoration(
+                labelText: 'Примечание',
+                hintText: 'Комментарий к движению',
+              ),
+            ),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final qty = double.tryParse(qtyController.text) ?? 0.0;
+            final amount = double.tryParse(amountController.text) ?? 0.0;
+            final prodId = selectedProduct?.id;
+
+            if (qty <= 0 || prodId == null) return;
+
+            warehouseBloc.add(
+              CreateMovementRequested(
+                productId: prodId,
+                direction: direction,
+                qty: qty,
+                amount: amount,
+                note: noteController.text.trim(),
+              ),
             );
+            Navigator.pop(context);
           },
+          child: const Text('Записать'),
         );
       },
     );

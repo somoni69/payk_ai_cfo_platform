@@ -11,6 +11,8 @@ import '../../features/crm/domain/crm_models.dart';
 import '../../features/crm/domain/crm_repository.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
+import '../widgets/ledger_bottom_sheet.dart';
+import '../widgets/expansible_widget.dart';
 
 class CrmScreen extends StatelessWidget {
   const CrmScreen({super.key});
@@ -56,20 +58,24 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
-        title: Text(
-          localeCubit.translate('crm_title'),
-          style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            localeCubit.translate('crm_title'),
+            style: textStyles.h1Sans,
+          ),
         ),
         actions: [
           IconButton(
             icon: const Icon(TablerIcons.user_plus),
             color: colors.brand,
-            onPressed: () => _showAddClientDialog(context),
+            onPressed: () => _showAddClientBottomSheet(context),
           ),
           IconButton(
             icon: const Icon(TablerIcons.plus),
             color: colors.brand,
-            onPressed: () => _showAddDealDialog(context),
+            onPressed: () => _showAddDealBottomSheet(context),
           ),
         ],
         bottom: TabBar(
@@ -455,25 +461,23 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                   style: textStyles.captionSans.copyWith(color: colors.textSecondary, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Column(
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Клиентов под риском оттока', style: textStyles.smallSans.copyWith(color: colors.textTooltip)),
-                        const SizedBox(height: 2),
+                        Text('Клиентов под риском оттока', style: textStyles.bodySans.copyWith(color: colors.textSecondary)),
                         Text(
                           '${state.stats.churnCount}',
                           style: textStyles.h1Mono.copyWith(color: colors.accentRed, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    const Divider(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Реактивировано клиентов', style: textStyles.smallSans.copyWith(color: colors.textTooltip)),
-                        const SizedBox(height: 2),
+                        Text('Реактивировано клиентов', style: textStyles.bodySans.copyWith(color: colors.textSecondary)),
                         Text(
                           '${state.stats.reactivationCount}',
                           style: textStyles.h1Mono.copyWith(color: colors.accentGreen, fontWeight: FontWeight.w500),
@@ -490,8 +494,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _showAddClientDialog(BuildContext context) {
+  void _showAddClientBottomSheet(BuildContext context) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final crmBloc = context.read<CrmBloc>();
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
@@ -499,80 +504,117 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     final cacController = TextEditingController(text: '0');
     final noteController = TextEditingController();
 
-    showDialog(
+    bool isShowingDiscardDialog = false;
+    bool allowPop = false;
+
+    bool isDirty() {
+      return nameController.text.trim().isNotEmpty ||
+          phoneController.text.trim().isNotEmpty ||
+          emailController.text.trim().isNotEmpty ||
+          cacController.text.trim() != '0' ||
+          noteController.text.trim().isNotEmpty;
+    }
+
+    LedgerBottomSheet.show(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Новый контрагент'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'ФИО / Компания'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(labelText: 'Телефон'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: cacController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: 'Стоимость привлечения (CAC)'),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: noteController,
-                  decoration: const InputDecoration(labelText: 'Примечание'),
-                ),
-              ],
-            ),
+      title: 'Новый контрагент',
+      builder: (context, setSheetState) {
+        return PopScope(
+          canPop: !isDirty() || allowPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (isShowingDiscardDialog) return;
+
+            isShowingDiscardDialog = true;
+            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+            isShowingDiscardDialog = false;
+
+            if (shouldClose == true) {
+              allowPop = true;
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(labelText: 'ФИО / Компания'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Телефон'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: cacController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Стоимость привлечения (CAC)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteController,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(labelText: 'Примечание'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Отмена'),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Отмена'),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final cac = double.tryParse(cacController.text) ?? 0.0;
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  final cac = double.tryParse(cacController.text) ?? 0.0;
 
-                if (name.isEmpty) return;
+                  if (name.isEmpty) return;
 
-                crmBloc.add(
-                  CreateClientRequested(
-                    CrmClient(
-                      id: '',
-                      fullName: name,
-                      phone: phoneController.text.trim(),
-                      email: emailController.text.trim(),
-                      loyaltyLevel: 'bronze',
-                      bonusPoints: 0,
-                      totalSpent: 0,
-                      acquisitionCost: cac,
-                      purchasesCount: 0,
-                      note: noteController.text.trim(),
-                      createdAt: DateTime.now(),
-                      churnRisk: false,
+                  crmBloc.add(
+                    CreateClientRequested(
+                      CrmClient(
+                        id: '',
+                        fullName: name,
+                        phone: phoneController.text.trim(),
+                        email: emailController.text.trim(),
+                        loyaltyLevel: 'bronze',
+                        bonusPoints: 0,
+                        totalSpent: 0,
+                        acquisitionCost: cac,
+                        purchasesCount: 0,
+                        note: noteController.text.trim(),
+                        createdAt: DateTime.now(),
+                        churnRisk: false,
+                      ),
                     ),
-                  ),
-                );
-                Navigator.pop(dialogContext);
-              },
-              child: const Text('Добавить'),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Добавить'),
+              ),
             ),
           ],
         );
@@ -580,8 +622,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _showAddDealDialog(BuildContext context) {
+  void _showAddDealBottomSheet(BuildContext context) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final crmBloc = context.read<CrmBloc>();
     final state = crmBloc.state;
     if (state is! CrmLoaded) return;
@@ -591,94 +634,134 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     final amountController = TextEditingController();
     String stage = 'lead';
 
-    showDialog(
+    bool isShowingDiscardDialog = false;
+    bool allowPop = false;
+
+    bool isDirty() {
+      return titleController.text.trim().isNotEmpty ||
+          amountController.text.trim().isNotEmpty ||
+          selectedClient != (state.clients.isNotEmpty ? state.clients.first : null);
+    }
+
+    LedgerBottomSheet.show(
       context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: colors.surface,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Новая сделка'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownButtonFormField<CrmClient>(
-                      initialValue: selectedClient,
-                      decoration: const InputDecoration(labelText: 'Клиент'),
-                      items: state.clients.map((c) {
-                        return DropdownMenuItem<CrmClient>(
-                          value: c,
-                          child: Text(c.fullName),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          selectedClient = val;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: titleController,
-                      decoration: const InputDecoration(labelText: 'Название сделки'),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Сумма сделки (TJS)'),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: stage,
-                      decoration: const InputDecoration(labelText: 'Этап воронки'),
-                      items: const [
-                        DropdownMenuItem(value: 'lead', child: Text('Лид / Заявка')),
-                        DropdownMenuItem(value: 'proposal', child: Text('Коммерческое предл.')),
-                        DropdownMenuItem(value: 'negotiation', child: Text('Согласование / Договор')),
-                        DropdownMenuItem(value: 'won', child: Text('Сделка выиграна')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            stage = val;
-                          });
-                        }
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Отмена'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final title = titleController.text.trim();
-                    final amount = double.tryParse(amountController.text) ?? 0.0;
-                    final cliId = selectedClient?.id;
+      title: 'Новая сделка',
+      builder: (context, setSheetState) {
+        return PopScope(
+          canPop: !isDirty() || allowPop,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) return;
+            if (isShowingDiscardDialog) return;
 
-                    if (title.isEmpty || cliId == null) return;
+            isShowingDiscardDialog = true;
+            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+            isShowingDiscardDialog = false;
 
-                    crmBloc.add(
-                      CreateDealRequested(
-                        clientId: cliId,
-                        title: title,
-                        amount: amount,
-                        stage: stage,
-                      ),
-                    );
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Открыть'),
-                ),
-              ],
-            );
+            if (shouldClose == true) {
+              allowPop = true;
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            }
           },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Клиент', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
+              const SizedBox(height: 6),
+              ExpansibleWidget<CrmClient?>.selection(
+                key: ValueKey(selectedClient?.id ?? 'no-client'),
+                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                title: Text(
+                  selectedClient?.fullName ?? 'Выберите клиента',
+                  style: textStyles.bodySans.copyWith(color: selectedClient == null ? colors.textTooltip : colors.textPrimary),
+                ),
+                items: state.clients,
+                selectedValue: selectedClient,
+                itemLabelBuilder: (c) => c?.fullName ?? 'Без клиента',
+                onSelected: (c) {
+                  setSheetState(() {
+                    selectedClient = c;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleController,
+                style: textStyles.bodySans,
+                decoration: const InputDecoration(labelText: 'Название сделки'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(labelText: 'Сумма сделки (TJS)'),
+              ),
+              const SizedBox(height: 16),
+              Text('Этап воронки', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
+              const SizedBox(height: 8),
+              ExpansibleWidget<String>.selection(
+                key: ValueKey(stage),
+                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                title: Text(
+                  stage == 'lead' ? 'Лид / Заявка' : 
+                  stage == 'proposal' ? 'Коммерческое предл.' :
+                  stage == 'negotiation' ? 'Согласование / Договор' : 'Сделка выиграна',
+                  style: textStyles.bodySans,
+                ),
+                items: const ['lead', 'proposal', 'negotiation', 'won'],
+                selectedValue: stage,
+                itemLabelBuilder: (s) {
+                  if (s == 'lead') return 'Лид / Заявка';
+                  if (s == 'proposal') return 'Коммерческое предл.';
+                  if (s == 'negotiation') return 'Согласование / Договор';
+                  return 'Сделка выиграна';
+                },
+                onSelected: (val) {
+                  setSheetState(() {
+                    stage = val;
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Отмена'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  final title = titleController.text.trim();
+                  final amount = double.tryParse(amountController.text) ?? 0.0;
+                  final cliId = selectedClient?.id;
+
+                  if (title.isEmpty || cliId == null) return;
+
+                  crmBloc.add(
+                    CreateDealRequested(
+                      clientId: cliId,
+                      title: title,
+                      amount: amount,
+                      stage: stage,
+                    ),
+                  );
+                  Navigator.pop(context);
+                },
+                child: const Text('Открыть'),
+              ),
+            ),
+          ],
         );
       },
     );

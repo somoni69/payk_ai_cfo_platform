@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
@@ -16,7 +17,18 @@ class LedgerTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
+      fontFamily: GoogleFonts.ibmPlexSans().fontFamily,
       scaffoldBackgroundColor: colors.background,
+      
+      // Настройка AppBar
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.surface,
+        foregroundColor: colors.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        iconTheme: IconThemeData(color: colors.brand),
+        actionsIconTheme: IconThemeData(color: colors.brand),
+      ),
       
       // Стандартная цветовая схема
       colorScheme: ColorScheme.light(
@@ -94,12 +106,19 @@ class LedgerTheme {
         ),
       ),
 
+      // Настройка иконок-кнопок
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: colors.brand,
+        ),
+      ),
+
       // Вторичные кнопки с границами: скругление 8px
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: colors.textPrimary,
+          foregroundColor: colors.brand,
           elevation: 0,
-          side: BorderSide(color: colors.border, width: 1),
+          side: BorderSide(color: colors.brand, width: 1.5),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
