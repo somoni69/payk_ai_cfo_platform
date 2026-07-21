@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_event.dart';
 import '../../features/auth/bloc/auth_state.dart';
 import '../widgets/ledger_card.dart';
+import '../widgets/payk_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -39,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  state.message,
+                  language.translateMessage(state.message),
                   style: textStyles.bodySans.copyWith(color: colors.surface),
                 ),
                 backgroundColor: colors.accentRed,
@@ -57,21 +60,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Логотип / Название системы
-                  Icon(TablerIcons.wallet, size: 48, color: colors.brand),
-                  const SizedBox(height: 12),
-                  Text(
-                    'PAYK LEDGER',
-                    style: textStyles.h1Sans.copyWith(
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 2.0,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  Text(
-                    'AI CFO Platform',
-                    style: textStyles.captionSans,
-                    textAlign: TextAlign.center,
+                  // Брендовый логотип PAYK из Брендбука
+                  const Center(
+                    child: PaykLogo(height: 52),
                   ),
                   const SizedBox(height: 32),
 
@@ -82,15 +73,25 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('ВХОД В СИСТЕМУ (MOB-05)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            language.translate('login_title'),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _usernameController,
                             style: textStyles.bodySans,
                             enabled: !isLoading,
-                            validator: (val) => val == null || val.trim().isEmpty ? 'Введите логин' : null,
-                            decoration: const InputDecoration(
-                              labelText: 'Имя пользователя или Email',
+                            validator: (val) =>
+                                val == null || val.trim().isEmpty
+                                ? language.translate('login_username_required')
+                                : null,
+                            decoration: InputDecoration(
+                              labelText: language.translate(
+                                'login_username_label',
+                              ),
                               prefixIcon: Icon(TablerIcons.user, size: 20),
                             ),
                           ),
@@ -100,9 +101,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             obscureText: true,
                             style: textStyles.bodySans,
                             enabled: !isLoading,
-                            validator: (val) => val == null || val.trim().isEmpty ? 'Введите пароль' : null,
-                            decoration: const InputDecoration(
-                              labelText: 'Пароль',
+                            validator: (val) =>
+                                val == null || val.trim().isEmpty
+                                ? language.translate('login_password_required')
+                                : null,
+                            decoration: InputDecoration(
+                              labelText: language.translate(
+                                'login_password_label',
+                              ),
                               prefixIcon: Icon(TablerIcons.lock, size: 20),
                             ),
                           ),
@@ -113,11 +119,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                 : () {
                                     if (_formKey.currentState!.validate()) {
                                       context.read<AuthBloc>().add(
-                                            LoginSubmitted(
-                                              username: _usernameController.text,
-                                              password: _passwordController.text,
-                                            ),
-                                          );
+                                        LoginSubmitted(
+                                          username: _usernameController.text,
+                                          password: _passwordController.text,
+                                        ),
+                                      );
                                     }
                                   },
                             child: isLoading
@@ -126,10 +132,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     width: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
                                     ),
                                   )
-                                : const Text('Войти'),
+                                : Text(language.translate('login_submit')),
                           ),
                         ],
                       ),
@@ -144,10 +152,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         OutlinedButton.icon(
                           onPressed: () {
-                            context.read<AuthBloc>().add(BiometricLoginRequested());
+                            context.read<AuthBloc>().add(
+                              BiometricLoginRequested(),
+                            );
                           },
                           icon: const Icon(TablerIcons.fingerprint),
-                          label: const Text('Войти с Face ID / Touch ID'),
+                          label: Text(language.translate('login_biometric')),
                         ),
                       ],
                     ),

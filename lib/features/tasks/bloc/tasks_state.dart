@@ -35,6 +35,11 @@ class TasksLoaded extends TasksState {
   final List<TaskCriticalPath> criticalPath;
   final Set<String> pendingStatusTaskIds;
   final TaskStatusUpdateResult? lastStatusUpdateResult;
+  final bool isRefreshing;
+  final bool isAnalyticsLoading;
+  final bool analyticsLoaded;
+  final String? analyticsError;
+  final String? loadError;
 
   const TasksLoaded({
     required this.tasks,
@@ -44,6 +49,11 @@ class TasksLoaded extends TasksState {
     this.criticalPath = const [],
     this.pendingStatusTaskIds = const {},
     this.lastStatusUpdateResult,
+    this.isRefreshing = false,
+    this.isAnalyticsLoading = false,
+    this.analyticsLoaded = false,
+    this.analyticsError,
+    this.loadError,
   });
 
   TasksLoaded copyWith({
@@ -55,6 +65,13 @@ class TasksLoaded extends TasksState {
     Set<String>? pendingStatusTaskIds,
     TaskStatusUpdateResult? lastStatusUpdateResult,
     bool clearLastResult = false,
+    bool? isRefreshing,
+    bool? isAnalyticsLoading,
+    bool? analyticsLoaded,
+    String? analyticsError,
+    bool clearAnalyticsError = false,
+    String? loadError,
+    bool clearLoadError = false,
   }) {
     return TasksLoaded(
       tasks: tasks ?? this.tasks,
@@ -63,20 +80,34 @@ class TasksLoaded extends TasksState {
       overloaded: overloaded ?? this.overloaded,
       criticalPath: criticalPath ?? this.criticalPath,
       pendingStatusTaskIds: pendingStatusTaskIds ?? this.pendingStatusTaskIds,
-      lastStatusUpdateResult: clearLastResult ? null : (lastStatusUpdateResult ?? this.lastStatusUpdateResult),
+      lastStatusUpdateResult: clearLastResult
+          ? null
+          : (lastStatusUpdateResult ?? this.lastStatusUpdateResult),
+      isRefreshing: isRefreshing ?? this.isRefreshing,
+      isAnalyticsLoading: isAnalyticsLoading ?? this.isAnalyticsLoading,
+      analyticsLoaded: analyticsLoaded ?? this.analyticsLoaded,
+      analyticsError: clearAnalyticsError
+          ? null
+          : (analyticsError ?? this.analyticsError),
+      loadError: clearLoadError ? null : (loadError ?? this.loadError),
     );
   }
 
   @override
   List<Object?> get props => [
-        tasks,
-        projects,
-        assignees,
-        overloaded,
-        criticalPath,
-        pendingStatusTaskIds,
-        lastStatusUpdateResult,
-      ];
+    tasks,
+    projects,
+    assignees,
+    overloaded,
+    criticalPath,
+    pendingStatusTaskIds,
+    lastStatusUpdateResult,
+    isRefreshing,
+    isAnalyticsLoading,
+    analyticsLoaded,
+    analyticsError,
+    loadError,
+  ];
 }
 
 class TasksError extends TasksState {

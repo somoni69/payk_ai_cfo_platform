@@ -11,14 +11,20 @@ extension LedgerThemeExtensions on BuildContext {
   /// Доступ к цветам Ledger: `context.colors.brand`
   LedgerColors get colors {
     final colorsExt = Theme.of(this).extension<LedgerColors>();
-    assert(colorsExt != null, 'LedgerColors extension not found in current Theme.');
+    assert(
+      colorsExt != null,
+      'LedgerColors extension not found in current Theme.',
+    );
     return colorsExt ?? LedgerColors.light;
   }
 
   /// Доступ к текстовым стилям Ledger: `context.textStyles.bodySans`
   LedgerTextStyles get textStyles {
     final textStylesExt = Theme.of(this).extension<LedgerTextStyles>();
-    assert(textStylesExt != null, 'LedgerTextStyles extension not found in current Theme.');
+    assert(
+      textStylesExt != null,
+      'LedgerTextStyles extension not found in current Theme.',
+    );
     return textStylesExt ?? LedgerTextStyles.generate(LedgerColors.light);
   }
 }

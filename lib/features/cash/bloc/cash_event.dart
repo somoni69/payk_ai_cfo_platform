@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import '../domain/transaction_model.dart';
 
@@ -8,7 +10,14 @@ abstract class CashEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadCashData extends CashEvent {}
+class LoadCashData extends CashEvent {
+  final Completer<void>? completion;
+
+  const LoadCashData({this.completion});
+
+  @override
+  List<Object?> get props => const [];
+}
 
 class AddTransactionRequested extends CashEvent {
   final Transaction transaction;

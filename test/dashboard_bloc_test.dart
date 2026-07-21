@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/dashboard/bloc/dashboard_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/dashboard/bloc/dashboard_event.dart';
@@ -6,7 +8,21 @@ import 'package:payk_ai_cfo_platform/features/dashboard/domain/finance_model.dar
 import 'package:payk_ai_cfo_platform/features/dashboard/domain/finance_repository.dart';
 
 class MockFinanceTestRepository implements FinanceRepository {
+  @override
+  Future<FinanceOverview> getOverview({bool forceRefresh = false}) async {
+    final results = await Future.wait([getMetrics(), getCashFlowHistory()]);
+    return FinanceOverview(
+      metrics: results[0] as FinanceMetrics,
+      history: results[1] as List<CashFlowPoint>,
+    );
+  }
+
   bool shouldFail = false;
+  int rateReads = 0;
+  Completer<ExchangeRatesReport>? rateGate;
+  final rateRequestStarted = Completer<void>();
+  final Map<String, Completer<AbcAnalysis>> abcGates = {};
+  final Map<String, Completer<void>> abcRequestsStarted = {};
 
   @override
   Future<FinanceMetrics> getMetrics() async {
@@ -29,9 +45,7 @@ class MockFinanceTestRepository implements FinanceRepository {
   @override
   Future<List<CashFlowPoint>> getCashFlowHistory() async {
     if (shouldFail) throw Exception('History fail');
-    return [
-      CashFlowPoint(date: DateTime(2026, 7, 1), amount: 1000.0),
-    ];
+    return [CashFlowPoint(date: DateTime(2026, 7, 1), amount: 1000.0)];
   }
 
   @override
@@ -61,11 +75,21 @@ class MockFinanceTestRepository implements FinanceRepository {
 
   @override
   Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
+    final started = abcRequestsStarted[dimension];
+    if (started != null && !started.isCompleted) started.complete();
     if (shouldFail) throw Exception('Abc fail');
+    final gate = abcGates[dimension];
+    if (gate != null) return gate.future;
     return AbcAnalysis(
       dimension: dimension,
       rows: const [
-        AbcRow(name: 'Item A', turnover: 1600.0, share: 80.0, cumulative: 80.0, abcClass: 'A'),
+        AbcRow(
+          name: 'Item A',
+          turnover: 1600.0,
+          share: 80.0,
+          cumulative: 80.0,
+          abcClass: 'A',
+        ),
       ],
       total: 2000.0,
     );
@@ -76,7 +100,12 @@ class MockFinanceTestRepository implements FinanceRepository {
     if (shouldFail) throw Exception('Accounts fail');
     return const BankAccountsReport(
       accounts: [
-        BankAccountInfo(id: '1', name: 'Main', currency: 'TJS', balance: 1000.0),
+        BankAccountInfo(
+          id: '1',
+          name: 'Main',
+          currency: 'TJS',
+          balance: 1000.0,
+        ),
       ],
       totalTjs: 1000.0,
     );
@@ -84,7 +113,11 @@ class MockFinanceTestRepository implements FinanceRepository {
 
   @override
   Future<ExchangeRatesReport> getExchangeRates() async {
+    rateReads++;
+    if (!rateRequestStarted.isCompleted) rateRequestStarted.complete();
     if (shouldFail) throw Exception('Rates fail');
+    final gate = rateGate;
+    if (gate != null) return gate.future;
     return ExchangeRatesReport(
       rates: [RateRow(code: 'USD', rate: 11.0, rateDate: DateTime.now())],
     );
@@ -94,7 +127,12 @@ class MockFinanceTestRepository implements FinanceRepository {
   Future<AiInsightsReport> getAiInsights() async {
     if (shouldFail) throw Exception('AI fail');
     return const AiInsightsReport(
-      forecast: CashGapForecast(atRisk: false, avgDailyNet: 10.0, balance: 1000.0, message: 'All good'),
+      forecast: CashGapForecast(
+        atRisk: false,
+        avgDailyNet: 10.0,
+        balance: 1000.0,
+        message: 'All good',
+      ),
       recommendations: 'Keep going',
     );
   }
@@ -105,7 +143,14 @@ class MockFinanceTestRepository implements FinanceRepository {
     return const PlanFactReport(
       period: '2026-07',
       rows: [
-        PlanFactRow(category: 'Sales', type: 'INFLOW', planned: 2000.0, fact: 1800.0, deviation: -200.0, completion: 90.0),
+        PlanFactRow(
+          category: 'Sales',
+          type: 'INFLOW',
+          planned: 2000.0,
+          fact: 1800.0,
+          deviation: -200.0,
+          completion: 90.0,
+        ),
       ],
       totalPlanned: 2000.0,
       totalFact: 1800.0,
@@ -131,40 +176,207 @@ void main() {
       expect(bloc.state, isA<DashboardLoading>());
     });
 
-    test('LoadDashboardData emits loaded state with all 6 reports', () async {
-      final expected = [
-        isA<DashboardLoading>(),
-        isA<DashboardLoaded>()
-            .having((s) => s.metrics.revenue, 'revenue', 2000.0)
-            .having((s) => s.history.length, 'history count', 1)
-            .having((s) => s.pnl?.totalIncome, 'pnl income', 2000.0)
-            .having((s) => s.breakEven?.marginOfSafety, 'safety margin', 75.0)
-            .having((s) => s.abc?.rows.first.name, 'abc first item', 'Item A')
-            .having((s) => s.bankAccounts?.totalTjs, 'accounts total', 1000.0)
-            .having((s) => s.rates?.rates.first.code, 'rates first code', 'USD')
-            .having((s) => s.aiInsights?.recommendations, 'ai recommendations', 'Keep going')
-            .having((s) => s.planFact?.totalFact, 'planfact total fact', 1800.0),
-      ];
+    test(
+      'dashboard loads overview first and reports only when requested',
+      () async {
+        bloc.add(const LoadDashboardData());
+        final overview =
+            await bloc.stream.firstWhere((state) => state is DashboardLoaded)
+                as DashboardLoaded;
 
-      expectLater(bloc.stream, emitsInOrder(expected));
-      bloc.add(LoadDashboardData());
+        expect(overview.metrics.revenue, 2000.0);
+        expect(overview.history, hasLength(1));
+        expect(overview.pnl, isNull);
+        expect(overview.breakEven, isNull);
+        expect(overview.abc, isNull);
+        expect(overview.bankAccounts, isNull);
+        expect(overview.rates, isNull);
+        expect(overview.aiInsights, isNull);
+        expect(overview.planFact, isNull);
+
+        final reportsFuture = bloc.stream.firstWhere(
+          (state) =>
+              state is DashboardLoaded &&
+              state.pnl != null &&
+              state.breakEven != null &&
+              state.abc != null &&
+              state.bankAccounts != null &&
+              state.rates != null &&
+              state.aiInsights != null &&
+              state.planFact != null,
+        );
+
+        for (final section in DashboardSection.values) {
+          bloc.add(LoadDashboardSection(section));
+        }
+
+        final loaded = await reportsFuture as DashboardLoaded;
+        expect(loaded.pnl?.totalIncome, 2000.0);
+        expect(loaded.breakEven?.marginOfSafety, 75.0);
+        expect(loaded.abc?.rows.first.name, 'Item A');
+        expect(loaded.bankAccounts?.totalTjs, 1000.0);
+        expect(loaded.rates?.rates.first.code, 'USD');
+        expect(loaded.aiInsights?.recommendations, 'Keep going');
+        expect(loaded.planFact?.totalFact, 1800.0);
+      },
+    );
+
+    test(
+      'ChangeAbcDimension dispatches ABC update and emits new state',
+      () async {
+        bloc.add(LoadDashboardData());
+        await bloc.stream.firstWhere((s) => s is DashboardLoaded);
+
+        final updatedFuture = bloc.stream.firstWhere(
+          (state) =>
+              state is DashboardLoaded &&
+              state.abc?.dimension == 'client' &&
+              !state.loadingSections.contains(DashboardSection.abc),
+        );
+
+        bloc.add(const ChangeAbcDimension('client'));
+
+        final loaded = await updatedFuture as DashboardLoaded;
+        expect(loaded.abc?.dimension, 'client');
+      },
+    );
+    test('latest ABC dimension wins when responses finish out of order', () async {
+      bloc.add(const LoadDashboardData());
+      await bloc.stream.firstWhere((state) => state is DashboardLoaded);
+
+      final categoryGate = Completer<AbcAnalysis>();
+      final clientGate = Completer<AbcAnalysis>();
+      repository
+        ..abcGates['category'] = categoryGate
+        ..abcGates['client'] = clientGate
+        ..abcRequestsStarted['category'] = Completer<void>()
+        ..abcRequestsStarted['client'] = Completer<void>();
+
+      bloc.add(const ChangeAbcDimension('category'));
+      await repository.abcRequestsStarted['category']!.future;
+      bloc.add(const ChangeAbcDimension('client'));
+      await repository.abcRequestsStarted['client']!.future;
+
+      final clientLoaded = bloc.stream.firstWhere(
+        (state) =>
+            state is DashboardLoaded &&
+            state.abc?.dimension == 'client' &&
+            !state.loadingSections.contains(DashboardSection.abc),
+      );
+      clientGate.complete(
+        const AbcAnalysis(dimension: 'client', rows: [], total: 20),
+      );
+      await clientLoaded;
+
+      categoryGate.complete(
+        const AbcAnalysis(dimension: 'category', rows: [], total: 10),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = bloc.state as DashboardLoaded;
+      expect(state.abc?.dimension, 'client');
+      expect(state.abc?.total, 20);
+      expect(state.loadingSections, isNot(contains(DashboardSection.abc)));
+    });
+    test(
+      'currency conversion uses loaded rates for every monetary report',
+      () async {
+        final overview = bloc.stream.firstWhere(
+          (state) => state is DashboardLoaded,
+        );
+        bloc.add(const LoadDashboardData());
+        await overview;
+
+        final reports = bloc.stream.firstWhere(
+          (state) =>
+              state is DashboardLoaded &&
+              state.pnl != null &&
+              state.breakEven != null &&
+              state.abc != null &&
+              state.planFact != null &&
+              state.rates != null,
+        );
+        bloc
+          ..add(const LoadDashboardSection(DashboardSection.pnl))
+          ..add(const LoadDashboardSection(DashboardSection.breakEven))
+          ..add(const LoadDashboardSection(DashboardSection.abc))
+          ..add(const LoadDashboardSection(DashboardSection.planFact))
+          ..add(const LoadDashboardSection(DashboardSection.accountsRates));
+        await reports;
+
+        final converted = bloc.stream.firstWhere(
+          (state) => state is DashboardLoaded && state.currency == 'USD',
+        );
+        bloc.add(const ChangeCurrency('USD'));
+        final state = await converted as DashboardLoaded;
+
+        expect(state.metrics.cashBalance, closeTo(1000 / 11, 0.0001));
+        expect(state.pnl!.totalIncome, closeTo(2000 / 11, 0.0001));
+        expect(state.breakEven!.revenue, closeTo(2000 / 11, 0.0001));
+        expect(state.abc!.total, closeTo(2000 / 11, 0.0001));
+        expect(state.planFact!.totalFact, closeTo(1800 / 11, 0.0001));
+        expect(repository.rateReads, 1);
+      },
+    );
+
+    test('latest currency selection wins while rates are loading', () async {
+      bloc.add(const LoadDashboardData());
+      await bloc.stream.firstWhere((state) => state is DashboardLoaded);
+
+      final rateGate = Completer<ExchangeRatesReport>();
+      repository.rateGate = rateGate;
+      bloc.add(const ChangeCurrency('USD'));
+      await repository.rateRequestStarted.future;
+
+      bloc.add(const ChangeCurrency('TJS'));
+      await Future<void>.delayed(Duration.zero);
+      rateGate.complete(
+        ExchangeRatesReport(
+          rates: [
+            RateRow(code: 'USD', rate: 11, rateDate: DateTime(2026, 7, 20)),
+          ],
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = bloc.state as DashboardLoaded;
+      expect(state.currency, 'TJS');
+      expect(state.metrics.cashBalance, 1000);
     });
 
-    test('ChangeAbcDimension dispatches ABC update and emits new state', () async {
-      bloc.add(LoadDashboardData());
-      await bloc.stream.firstWhere((s) => s is DashboardLoaded);
+    test('unavailable currency does not relabel unconverted values', () async {
+      final overview = bloc.stream.firstWhere(
+        (state) => state is DashboardLoaded,
+      );
+      bloc.add(const LoadDashboardData());
+      await overview;
 
-      bloc.add(const ChangeAbcDimension('client'));
+      final failed = bloc.stream.firstWhere(
+        (state) => state is DashboardLoaded && state.overviewError != null,
+      );
+      bloc.add(const ChangeCurrency('EUR'));
+      final state = await failed as DashboardLoaded;
 
-      final List<DashboardState> emitted = [];
-      final sub = bloc.stream.listen(emitted.add);
+      expect(state.currency, 'TJS');
+      expect(state.metrics.cashBalance, 1000);
+      expect(state.overviewError, contains('недоступен'));
+    });
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      sub.cancel();
+    test('failed overview refresh keeps the last confirmed data', () async {
+      final overview = bloc.stream.firstWhere(
+        (state) => state is DashboardLoaded,
+      );
+      bloc.add(const LoadDashboardData());
+      await overview;
 
-      expect(emitted, isNotEmpty);
-      final loaded = emitted.first as DashboardLoaded;
-      expect(loaded.abc?.dimension, 'client');
+      repository.shouldFail = true;
+      final completion = Completer<void>();
+      bloc.add(LoadDashboardData(forceRefresh: true, completion: completion));
+      await completion.future;
+
+      final state = bloc.state as DashboardLoaded;
+      expect(state.metrics.cashBalance, 1000);
+      expect(state.overviewError, contains('Проверьте соединение'));
     });
   });
 }

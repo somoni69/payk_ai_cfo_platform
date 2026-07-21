@@ -100,11 +100,7 @@ class CashRegister {
   final String name;
   final String? location;
 
-  const CashRegister({
-    required this.id,
-    required this.name,
-    this.location,
-  });
+  const CashRegister({required this.id, required this.name, this.location});
 }
 
 /// Сводные показатели кассы / кассового аппарата (SummaryRow).

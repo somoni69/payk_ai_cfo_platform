@@ -3,9 +3,24 @@ import '../domain/integrations_repository.dart';
 
 class MockIntegrationsRepository implements IntegrationsRepository {
   final List<IntegrationInfo> _statusList = [
-    const IntegrationInfo(system: '1c', name: '1С:Предприятие', available: true, canSync: true),
-    const IntegrationInfo(system: 'wildberries', name: 'Wildberries', available: false, canSync: false),
-    const IntegrationInfo(system: 'alif', name: 'Алиф Банк', available: true, canSync: true),
+    const IntegrationInfo(
+      system: '1c',
+      name: '1С:Предприятие',
+      available: true,
+      canSync: true,
+    ),
+    const IntegrationInfo(
+      system: 'wildberries',
+      name: 'Wildberries',
+      available: false,
+      canSync: false,
+    ),
+    const IntegrationInfo(
+      system: 'alif',
+      name: 'Алиф Банк',
+      available: true,
+      canSync: true,
+    ),
   ];
 
   final List<SyncLog> _logs = [
@@ -32,13 +47,15 @@ class MockIntegrationsRepository implements IntegrationsRepository {
   ];
 
   @override
-  Future<List<IntegrationInfo>> getIntegrationsStatus() async {
+  Future<List<IntegrationInfo>> getIntegrationsStatus({
+    bool forceRefresh = false,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return _statusList;
   }
 
   @override
-  Future<List<SyncLog>> getSyncLogs() async {
+  Future<List<SyncLog>> getSyncLogs({bool forceRefresh = false}) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return _logs;
   }
@@ -54,7 +71,7 @@ class MockIntegrationsRepository implements IntegrationsRepository {
         message: 'Невозможно запустить синхронизацию: интеграция неактивна.',
       );
     }
-    
+
     final newLog = SyncLog(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       system: system,

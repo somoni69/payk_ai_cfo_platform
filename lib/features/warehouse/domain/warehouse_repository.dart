@@ -15,5 +15,11 @@ abstract class WarehouseRepository {
   Future<WarehouseProduct> createProduct(WarehouseProduct product);
 
   /// Добавить операцию перемещения товара (приход/расход)
-  Future<WarehouseMovement> createMovement(String productId, String direction, double qty, double amount, String? note);
+  Future<WarehouseMovement> createMovement(
+    String productId,
+    String direction,
+    double qty,
+    double amount,
+    String? note,
+  );
 }

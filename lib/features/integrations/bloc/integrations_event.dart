@@ -7,7 +7,14 @@ abstract class IntegrationsEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadIntegrationsData extends IntegrationsEvent {}
+class LoadIntegrationsData extends IntegrationsEvent {
+  final bool forceRefresh;
+
+  const LoadIntegrationsData({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
 
 class TriggerSyncRequested extends IntegrationsEvent {
   final String system;

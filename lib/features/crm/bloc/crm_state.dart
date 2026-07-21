@@ -16,6 +16,7 @@ class CrmLoaded extends CrmState {
   final CrmStatsData stats;
   final String? errorMessage;
   final String? successMessage;
+  final bool isRefreshing;
 
   const CrmLoaded({
     required this.clients,
@@ -23,6 +24,7 @@ class CrmLoaded extends CrmState {
     required this.stats,
     this.errorMessage,
     this.successMessage,
+    this.isRefreshing = false,
   });
 
   CrmLoaded copyWith({
@@ -31,6 +33,7 @@ class CrmLoaded extends CrmState {
     CrmStatsData? stats,
     String? errorMessage,
     String? successMessage,
+    bool? isRefreshing,
     bool clearError = false,
     bool clearSuccess = false,
   }) {
@@ -39,18 +42,22 @@ class CrmLoaded extends CrmState {
       deals: deals ?? this.deals,
       stats: stats ?? this.stats,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
+      isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
 
   @override
   List<Object?> get props => [
-        clients,
-        deals,
-        stats,
-        errorMessage,
-        successMessage,
-      ];
+    clients,
+    deals,
+    stats,
+    errorMessage,
+    successMessage,
+    isRefreshing,
+  ];
 }
 
 class CrmError extends CrmState {

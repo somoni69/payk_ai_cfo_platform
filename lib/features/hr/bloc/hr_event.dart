@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import '../domain/hr_models.dart';
 
@@ -11,11 +13,13 @@ abstract class HrEvent extends Equatable {
 /// Загрузка кадров, KPI и ведомостей за указанный период (ГГГГ-ММ)
 class LoadHrData extends HrEvent {
   final String period;
+  final bool forceRefresh;
+  final Completer<void>? completion;
 
-  const LoadHrData(this.period);
+  const LoadHrData(this.period, {this.forceRefresh = false, this.completion});
 
   @override
-  List<Object?> get props => [period];
+  List<Object?> get props => [period, forceRefresh];
 }
 
 /// Принять на работу сотрудника
@@ -45,5 +49,11 @@ class RecalcSalaryRequested extends HrEvent {
   });
 
   @override
-  List<Object?> get props => [employeeId, period, baseAmount, deductions, bonusFormula];
+  List<Object?> get props => [
+    employeeId,
+    period,
+    baseAmount,
+    deductions,
+    bonusFormula,
+  ];
 }

@@ -4,32 +4,60 @@ import 'package:payk_ai_cfo_platform/features/legal/bloc/legal_event.dart';
 import 'package:payk_ai_cfo_platform/features/legal/bloc/legal_state.dart';
 import 'package:payk_ai_cfo_platform/features/legal/domain/legal_models.dart';
 import 'package:payk_ai_cfo_platform/features/legal/domain/legal_repository.dart';
+import 'package:payk_ai_cfo_platform/presentation/screens/legal_screen.dart';
 
 class MockLegalTestRepository implements LegalRepository {
   @override
-  Future<List<ContractTemplate>> getTemplates() async {
+  Future<List<ContractTemplate>> getTemplates({
+    bool forceRefresh = false,
+  }) async {
     return const [
-      ContractTemplate(id: '1', name: 'Test Template', body: 'Body {var}', variables: [TemplateVariable(key: 'var', label: 'V')]),
+      ContractTemplate(
+        id: '1',
+        name: 'Test Template',
+        body: 'Body {var}',
+        variables: [TemplateVariable(key: 'var', label: 'V')],
+      ),
     ];
   }
 
   @override
-  Future<List<Law>> getLaws() async {
+  Future<List<Law>> getLaws({bool forceRefresh = false}) async {
     return [
-      Law(id: '1', title: 'Test Law', body: 'Law Body', createdAt: DateTime.now()),
+      Law(
+        id: '1',
+        title: 'Test Law',
+        body: 'Law Body',
+        createdAt: DateTime.now(),
+      ),
     ];
   }
 
   @override
-  Future<List<LegalDeadline>> getDeadlines() async {
+  Future<List<LegalDeadline>> getDeadlines({bool forceRefresh = false}) async {
     return [
-      LegalDeadline(id: '1', title: 'Test DL', type: 'TAX', dueDate: DateTime.now(), isDone: false),
+      LegalDeadline(
+        id: '1',
+        title: 'Test DL',
+        type: 'TAX',
+        dueDate: DateTime.now(),
+        isDone: false,
+      ),
     ];
   }
 
   @override
-  Future<LegalDeadline> updateDeadlineStatus(String deadlineId, bool isDone) async {
-    return LegalDeadline(id: deadlineId, title: 'Test DL', type: 'TAX', dueDate: DateTime.now(), isDone: isDone);
+  Future<LegalDeadline> updateDeadlineStatus(
+    String deadlineId,
+    bool isDone,
+  ) async {
+    return LegalDeadline(
+      id: deadlineId,
+      title: 'Test DL',
+      type: 'TAX',
+      dueDate: DateTime.now(),
+      isDone: isDone,
+    );
   }
 
   @override
@@ -38,12 +66,44 @@ class MockLegalTestRepository implements LegalRepository {
   }
 
   @override
-  Future<GeneratedContract> generateContract(String templateId, Map<String, String> data) async {
-    return GeneratedContract(id: 'gen_1', title: 'Gen title', body: 'Gen body', createdAt: DateTime.now());
+  Future<GeneratedContract> generateContract(
+    String templateId,
+    Map<String, String> data,
+  ) async {
+    return GeneratedContract(
+      id: 'gen_1',
+      title: 'Gen title',
+      body: 'Gen body',
+      createdAt: DateTime.now(),
+    );
   }
 }
 
 void main() {
+  group('Legal chat lifecycle', () {
+    test('auto-scroll reacts only to chat history changes', () {
+      const previous = LegalLoaded(
+        templates: [],
+        laws: [],
+        deadlines: [],
+        chatHistory: [
+          {'sender': 'ai', 'text': 'welcome'},
+        ],
+      );
+      final nonChatUpdate = previous.copyWith(isGenerating: true);
+      final chatUpdate = previous.copyWith(
+        chatHistory: [
+          ...previous.chatHistory,
+          {'sender': 'user', 'text': 'question'},
+        ],
+      );
+
+      expect(shouldAutoScrollLegalChat(previous, nonChatUpdate), isFalse);
+      expect(shouldAutoScrollLegalChat(previous, chatUpdate), isTrue);
+      expect(shouldAutoScrollLegalChat(LegalLoading(), previous), isTrue);
+    });
+  });
+
   group('LegalBloc Unit Tests', () {
     late MockLegalTestRepository repository;
     late LegalBloc bloc;
@@ -61,19 +121,30 @@ void main() {
       expect(bloc.state, isA<LegalLoading>());
     });
 
-    test('LoadLegalData emits loading and then loaded with lists and welcome msg', () async {
-      final expected = [
-        isA<LegalLoading>(),
-        isA<LegalLoaded>()
-            .having((s) => s.templates.first.name, 'template name', 'Test Template')
-            .having((s) => s.laws.first.title, 'law title', 'Test Law')
-            .having((s) => s.deadlines.first.title, 'deadline title', 'Test DL')
-            .having((s) => s.chatHistory.first['sender'], 'sender', 'ai'),
-      ];
+    test(
+      'LoadLegalData emits loading and then loaded with lists and welcome msg',
+      () async {
+        final expected = [
+          isA<LegalLoading>(),
+          isA<LegalLoaded>()
+              .having(
+                (s) => s.templates.first.name,
+                'template name',
+                'Test Template',
+              )
+              .having((s) => s.laws.first.title, 'law title', 'Test Law')
+              .having(
+                (s) => s.deadlines.first.title,
+                'deadline title',
+                'Test DL',
+              )
+              .having((s) => s.chatHistory.first['sender'], 'sender', 'ai'),
+        ];
 
-      expectLater(bloc.stream, emitsInOrder(expected));
-      bloc.add(LoadLegalData());
-    });
+        expectLater(bloc.stream, emitsInOrder(expected));
+        bloc.add(LoadLegalData());
+      },
+    );
 
     test('ToggleDeadlineStatus updates deadline item', () async {
       bloc.add(LoadLegalData());
@@ -105,26 +176,41 @@ void main() {
       sub.cancel();
 
       expect(emitted.any((s) => s is LegalLoaded && s.isAskingAi), true);
-      final finalLoaded = emitted.lastWhere((s) => s is LegalLoaded && !s.isAskingAi) as LegalLoaded;
+      final finalLoaded =
+          emitted.lastWhere((s) => s is LegalLoaded && !s.isAskingAi)
+              as LegalLoaded;
       expect(finalLoaded.chatHistory.length, 3); // Welcome + User + AI
-      expect(finalLoaded.chatHistory.last['text'], 'Answer for What is the tax rate?');
+      expect(
+        finalLoaded.chatHistory.last['text'],
+        'Answer for What is the tax rate?',
+      );
     });
 
-    test('GenerateContractFromTemplate updates isGenerating and stores contract', () async {
-      bloc.add(LoadLegalData());
-      await bloc.stream.firstWhere((s) => s is LegalLoaded);
+    test(
+      'GenerateContractFromTemplate updates isGenerating and stores contract',
+      () async {
+        bloc.add(LoadLegalData());
+        await bloc.stream.firstWhere((s) => s is LegalLoaded);
 
-      bloc.add(const GenerateContractFromTemplate(templateId: '1', variables: {'var': 'Value'}));
+        bloc.add(
+          const GenerateContractFromTemplate(
+            templateId: '1',
+            variables: {'var': 'Value'},
+          ),
+        );
 
-      final List<LegalState> emitted = [];
-      final sub = bloc.stream.listen(emitted.add);
+        final List<LegalState> emitted = [];
+        final sub = bloc.stream.listen(emitted.add);
 
-      await Future.delayed(const Duration(milliseconds: 100));
-      sub.cancel();
+        await Future.delayed(const Duration(milliseconds: 100));
+        sub.cancel();
 
-      expect(emitted.any((s) => s is LegalLoaded && s.isGenerating), true);
-      final finalLoaded = emitted.lastWhere((s) => s is LegalLoaded && !s.isGenerating) as LegalLoaded;
-      expect(finalLoaded.generatedContract?.id, 'gen_1');
-    });
+        expect(emitted.any((s) => s is LegalLoaded && s.isGenerating), true);
+        final finalLoaded =
+            emitted.lastWhere((s) => s is LegalLoaded && !s.isGenerating)
+                as LegalLoaded;
+        expect(finalLoaded.generatedContract?.id, 'gen_1');
+      },
+    );
   });
 }

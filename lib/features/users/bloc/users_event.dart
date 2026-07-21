@@ -16,6 +16,15 @@ class LoadUsersData extends UsersEvent {
   List<Object?> get props => [search];
 }
 
+class UsersSearchChanged extends UsersEvent {
+  final String query;
+
+  const UsersSearchChanged(this.query);
+
+  @override
+  List<Object?> get props => [query];
+}
+
 class CreateUserRequested extends UsersEvent {
   final String fullName;
   final String username;
@@ -38,7 +47,15 @@ class CreateUserRequested extends UsersEvent {
   });
 
   @override
-  List<Object?> get props => [fullName, username, email, phone, role, password, active, twoFactor];
+  List<Object?> get props => [
+    fullName,
+    username,
+    email,
+    phone,
+    role,
+    active,
+    twoFactor,
+  ];
 }
 
 class UpdateUserRequested extends UsersEvent {
@@ -63,7 +80,15 @@ class UpdateUserRequested extends UsersEvent {
   });
 
   @override
-  List<Object?> get props => [id, fullName, email, phone, role, password, active, twoFactor];
+  List<Object?> get props => [
+    id,
+    fullName,
+    email,
+    phone,
+    role,
+    active,
+    twoFactor,
+  ];
 }
 
 class DeleteUserRequested extends UsersEvent {

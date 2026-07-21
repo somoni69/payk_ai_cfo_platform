@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/cash/bloc/cash_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/cash/bloc/cash_event.dart';
@@ -6,15 +8,35 @@ import 'package:payk_ai_cfo_platform/features/cash/domain/transaction_model.dart
 import 'package:payk_ai_cfo_platform/features/cash/domain/cash_repository.dart';
 
 class MockCashTestRepository implements CashRepository {
+  @override
+  Future<CashShift> openShiftForRegister(
+    double startingBalance, {
+    String? registerId,
+  }) => openShift(startingBalance);
+
+  @override
+  Future<CashShift> closeShiftById(double endingBalance, {String? shiftId}) =>
+      closeShift(endingBalance);
+
   List<Transaction> transactions = [];
   CashShift? activeShift;
   List<CashSummary> summaries = [];
 
   bool shouldFail = false;
+  bool failSummary = false;
+  Completer<List<Transaction>>? transactionGate;
+  int activeShiftReads = 0;
+  int transactionReads = 0;
+  int summaryReads = 0;
+  int shiftReads = 0;
+  int registerReads = 0;
 
   @override
   Future<List<Transaction>> getTransactions() async {
+    transactionReads++;
     if (shouldFail) throw Exception('Get tx error');
+    final gate = transactionGate;
+    if (gate != null) return gate.future;
     return List.from(transactions);
   }
 
@@ -27,6 +49,7 @@ class MockCashTestRepository implements CashRepository {
 
   @override
   Future<CashShift?> getActiveShift() async {
+    activeShiftReads++;
     if (shouldFail) throw Exception('Get shift error');
     return activeShift;
   }
@@ -58,18 +81,21 @@ class MockCashTestRepository implements CashRepository {
 
   @override
   Future<List<CashSummary>> getSummary() async {
-    if (shouldFail) throw Exception('Get summary error');
+    summaryReads++;
+    if (shouldFail || failSummary) throw Exception('Get summary error');
     return List.from(summaries);
   }
 
   @override
   Future<List<CashShift>> getShifts() async {
+    shiftReads++;
     if (shouldFail) throw Exception('Get shifts error');
-    return [];
+    return activeShift == null ? [] : [activeShift!];
   }
 
   @override
   Future<List<CashRegister>> getRegisters() async {
+    registerReads++;
     if (shouldFail) throw Exception('Get registers error');
     return [];
   }
@@ -92,7 +118,7 @@ void main() {
           paymentMethod: PaymentMethod.cash,
           dateTime: DateTime.now(),
           cashierName: 'Кассир',
-        )
+        ),
       ];
       repository.activeShift = CashShift(
         openedAt: DateTime.now().subtract(const Duration(hours: 1)),
@@ -107,7 +133,7 @@ void main() {
           income: 200,
           expense: 50,
           net: 150,
-        )
+        ),
       ];
       bloc = CashBloc(repository);
     });
@@ -120,75 +146,162 @@ void main() {
       expect(bloc.state, isA<CashLoading>());
     });
 
-    test('LoadCashData emits loaded state with summaries and transactions', () async {
-      final expected = [
-        isA<CashLoading>(),
-        isA<CashLoaded>()
-            .having((s) => s.transactions.length, 'transactions count', 1)
-            .having((s) => s.summaries.length, 'summaries count', 1)
-            .having((s) => s.activeShift?.startingBalance, 'starting balance', 1000.0),
-      ];
+    test(
+      'LoadCashData emits loaded state with summaries and transactions',
+      () async {
+        final expected = [
+          isA<CashLoading>(),
+          isA<CashLoaded>()
+              .having((s) => s.transactions.length, 'transactions count', 1)
+              .having((s) => s.summaries.length, 'summaries count', 1)
+              .having(
+                (s) => s.activeShift?.startingBalance,
+                'starting balance',
+                1000.0,
+              ),
+        ];
 
-      expectLater(bloc.stream, emitsInOrder(expected));
-      bloc.add(LoadCashData());
+        expectLater(bloc.stream, emitsInOrder(expected));
+        bloc.add(LoadCashData());
+      },
+    );
+
+    test('LoadCashData derives active shift from shifts response', () async {
+      final loadedFuture = bloc.stream.firstWhere(
+        (state) => state is CashLoaded,
+      );
+      bloc.add(const LoadCashData());
+      await loadedFuture;
+
+      expect(repository.activeShiftReads, 0);
     });
 
-    test('AddTransactionRequested adds transaction to cache when shift is open', () async {
-      bloc.add(LoadCashData());
-      await bloc.stream.firstWhere((s) => s is CashLoaded);
+    test(
+      'AddTransactionRequested adds transaction to cache when shift is open',
+      () async {
+        bloc.add(LoadCashData());
+        await bloc.stream.firstWhere((s) => s is CashLoaded);
 
-      bloc.add(AddTransactionRequested(
-        Transaction(
+        bloc.add(
+          AddTransactionRequested(
+            Transaction(
+              id: '2',
+              title: 'Продажа сэндвича',
+              category: 'Еда',
+              amount: 80.0,
+              isIncome: true,
+              paymentMethod: PaymentMethod.card,
+              dateTime: DateTime.now(),
+              cashierName: 'Кассир',
+            ),
+          ),
+        );
+
+        final List<CashState> emitted = [];
+        final sub = bloc.stream.listen(emitted.add);
+
+        await Future.delayed(const Duration(milliseconds: 50));
+        sub.cancel();
+
+        expect(emitted, isNotEmpty);
+        final loaded = emitted.first as CashLoaded;
+        expect(loaded.transactions.length, 2);
+        expect(loaded.transactions.first.title, 'Продажа сэндвича');
+      },
+    );
+
+    test(
+      'successful transaction remains visible when summary refresh fails',
+      () async {
+        bloc.add(const LoadCashData());
+        await bloc.stream.firstWhere((state) => state is CashLoaded);
+
+        repository.failSummary = true;
+        final transaction = Transaction(
           id: '2',
-          title: 'Продажа сэндвича',
-          category: 'Еда',
-          amount: 80.0,
+          title: 'Sale',
+          category: 'Food',
+          amount: 80,
           isIncome: true,
           paymentMethod: PaymentMethod.card,
-          dateTime: DateTime.now(),
-          cashierName: 'Кассир',
-        ),
-      ));
+          dateTime: DateTime(2026, 7, 20),
+          cashierName: 'Cashier',
+        );
+        final saved = bloc.stream.firstWhere(
+          (state) =>
+              state is CashLoaded &&
+              state.transactions.any((item) => item.id == '2') &&
+              state.errorMessage?.contains('сохранена') == true,
+        );
+        bloc.add(AddTransactionRequested(transaction));
+        final state = await saved as CashLoaded;
 
-      final List<CashState> emitted = [];
-      final sub = bloc.stream.listen(emitted.add);
+        expect(repository.transactions.map((item) => item.id), contains('2'));
+        expect(state.transactions.map((item) => item.id), contains('2'));
+        expect(state.errorMessage, isNot(contains('Повторите попытку')));
+      },
+    );
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      sub.cancel();
+    test(
+      'AddTransactionRequested returns error when shift is closed',
+      () async {
+        repository.activeShift = null;
+        bloc.add(LoadCashData());
+        await bloc.stream.firstWhere((s) => s is CashLoaded);
 
-      expect(emitted, isNotEmpty);
-      final loaded = emitted.first as CashLoaded;
-      expect(loaded.transactions.length, 2);
-      expect(loaded.transactions.first.title, 'Продажа сэндвича');
-    });
+        bloc.add(
+          AddTransactionRequested(
+            Transaction(
+              id: '2',
+              title: 'Продажа сэндвича',
+              category: 'Еда',
+              amount: 80.0,
+              isIncome: true,
+              paymentMethod: PaymentMethod.card,
+              dateTime: DateTime.now(),
+              cashierName: 'Кассир',
+            ),
+          ),
+        );
 
-    test('AddTransactionRequested returns error when shift is closed', () async {
-      repository.activeShift = null;
-      bloc.add(LoadCashData());
-      await bloc.stream.firstWhere((s) => s is CashLoaded);
+        final List<CashState> emitted = [];
+        final sub = bloc.stream.listen(emitted.add);
 
-      bloc.add(AddTransactionRequested(
-        Transaction(
-          id: '2',
-          title: 'Продажа сэндвича',
-          category: 'Еда',
-          amount: 80.0,
-          isIncome: true,
-          paymentMethod: PaymentMethod.card,
-          dateTime: DateTime.now(),
-          cashierName: 'Кассир',
-        ),
-      ));
+        await Future.delayed(const Duration(milliseconds: 50));
+        sub.cancel();
 
-      final List<CashState> emitted = [];
-      final sub = bloc.stream.listen(emitted.add);
+        expect(emitted, isNotEmpty);
+        final loaded = emitted.first as CashLoaded;
+        expect(loaded.errorMessage, contains('кассовая смена закрыта'));
+      },
+    );
+    test(
+      'concurrent refreshes share one network request and both wait',
+      () async {
+        final gate = Completer<List<Transaction>>();
+        repository.transactionGate = gate;
+        final first = Completer<void>();
+        final second = Completer<void>();
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      sub.cancel();
+        bloc
+          ..add(LoadCashData(completion: first))
+          ..add(LoadCashData(completion: second));
 
-      expect(emitted, isNotEmpty);
-      final loaded = emitted.first as CashLoaded;
-      expect(loaded.errorMessage, contains('кассовая смена закрыта'));
-    });
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(repository.transactionReads, 1);
+        expect(repository.summaryReads, 1);
+        expect(repository.shiftReads, 1);
+        expect(repository.registerReads, 1);
+        expect(first.isCompleted, false);
+        expect(second.isCompleted, false);
+
+        gate.complete(List<Transaction>.from(repository.transactions));
+        await Future.wait<void>([first.future, second.future]);
+
+        expect(bloc.state, isA<CashLoaded>());
+        expect(first.isCompleted, true);
+        expect(second.isCompleted, true);
+      },
+    );
   });
 }

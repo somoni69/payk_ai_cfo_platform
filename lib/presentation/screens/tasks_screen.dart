@@ -1,8 +1,16 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:intl/intl.dart';
+import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
+import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/domain/app_access.dart';
 import '../../features/tasks/bloc/tasks_bloc.dart';
 import '../../features/tasks/bloc/tasks_event.dart';
 import '../../features/tasks/bloc/tasks_state.dart';
@@ -12,6 +20,7 @@ import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
 import '../widgets/expansible_widget.dart';
 import '../widgets/ledger_bottom_sheet.dart';
+import '../widgets/ledger_collapsing_header.dart';
 
 /// Входная точка планировщика задач с внедрением TasksBloc.
 class TasksScreen extends StatelessWidget {
@@ -20,7 +29,8 @@ class TasksScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<TasksBloc>(
-      create: (context) => TasksBloc(context.read<TasksRepository>())..add(LoadTasks()),
+      create: (context) =>
+          TasksBloc(context.read<TasksRepository>())..add(LoadTasks()),
       child: const TasksView(),
     );
   }
@@ -33,11 +43,14 @@ class TasksView extends StatefulWidget {
   State<TasksView> createState() => _TasksViewState();
 }
 
-class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMixin {
+class _TasksViewState extends State<TasksView>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  int _activeTabIndex = 0;
 
   // Filters state
   String _searchQuery = '';
+  Timer? _searchDebounce;
   String? _selectedProjectId;
   bool _onlyOverdue = false;
 
@@ -49,12 +62,44 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _tabController = TabController(length: 7, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    final nextIndex = _tabController.index;
+    if (nextIndex == _activeTabIndex || !mounted) return;
+    setState(() => _activeTabIndex = nextIndex);
+    if (nextIndex == 6) {
+      context.read<TasksBloc>().add(const LoadTaskAnalytics());
+    }
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshTasks(BuildContext context) {
+    final completion = Completer<void>();
+    if (_activeTabIndex == 6) {
+      context.read<TasksBloc>().add(
+        LoadTaskAnalytics(forceRefresh: true, completion: completion),
+      );
+    } else {
+      context.read<TasksBloc>().add(
+        LoadTasks(forceRefresh: true, completion: completion),
+      );
+    }
+    return completion.future;
+  }
+
+  bool _canManageTasks(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.tasks);
   }
 
   List<Task> _getFilteredTasks(List<Task> tasks) {
@@ -77,12 +122,16 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
     }).toList();
   }
 
-  Widget _buildProjectFilterBar(BuildContext context, List<TaskProject> projects) {
+  Widget _buildProjectFilterBar(
+    BuildContext context,
+    List<TaskProject> projects,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
     return Container(
-      height: 34,
+      height: 48,
       margin: const EdgeInsets.only(bottom: 8),
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -92,8 +141,8 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
         itemBuilder: (context, index) {
           final isAll = index == 0;
           final project = isAll ? null : projects[index - 1];
-          final isSelected = isAll 
-              ? (_selectedProjectId == null) 
+          final isSelected = isAll
+              ? (_selectedProjectId == null)
               : (_selectedProjectId == project!.id);
 
           return GestureDetector(
@@ -113,7 +162,9 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               ),
               alignment: Alignment.center,
               child: Text(
-                isAll ? 'Все проекты' : project!.name,
+                isAll
+                    ? language.translate('tasks_filter_all_projects')
+                    : project!.name,
                 style: textStyles.captionSans.copyWith(
                   color: isSelected ? colors.surface : colors.textPrimary,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -130,251 +181,371 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
     return Scaffold(
       backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        scrolledUnderElevation: 0,
-        title: Text('Задачи и планирование', style: textStyles.h1Sans),
-        actions: [
-          BlocBuilder<TasksBloc, TasksState>(
-            builder: (context, state) {
-              final projects = state is TasksLoaded ? state.projects : const <TaskProject>[];
-              final assignees = state is TasksLoaded ? state.assignees : const <TaskAssignee>[];
-              return IconButton(
-                icon: const Icon(TablerIcons.plus),
-                color: colors.brand,
-                onPressed: () => _showAddTaskBottomSheet(context, projects, assignees),
-              );
-            },
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textSecondary,
-          indicatorColor: colors.brand,
-          indicatorSize: TabBarIndicatorSize.tab,
-          dividerColor: colors.border,
-          labelStyle: textStyles.captionSans.copyWith(fontWeight: FontWeight.w500),
-          unselectedLabelStyle: textStyles.captionSans.copyWith(fontWeight: FontWeight.w400),
-          tabs: const [
-            Tab(text: 'Новые'),
-            Tab(text: 'В работе'),
-            Tab(text: 'Проверить'),
-            Tab(text: 'Готово'),
-            Tab(text: 'Календарь'),
-            Tab(text: 'Гант'),
-            Tab(text: 'Аналитика'),
-          ],
-        ),
-      ),
-      body: BlocListener<TasksBloc, TasksState>(
-        listenWhen: (previous, current) {
-          if (previous is TasksLoaded && current is TasksLoaded) {
-            final prevResult = previous.lastStatusUpdateResult;
-            final currResult = current.lastStatusUpdateResult;
-            if (currResult != null && currResult.operationId != prevResult?.operationId) {
-              return currResult.newStatus == TaskStatus.done;
-            }
-          }
-          return false;
-        },
-        listener: (context, state) {
-          if (state is! TasksLoaded) return;
-          final result = state.lastStatusUpdateResult!;
-          
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Задача завершена'),
-              action: SnackBarAction(
-                label: 'Отменить',
-                onPressed: () {
-                  context.read<TasksBloc>().add(UpdateTaskStatusRequested(
-                        taskId: result.taskId,
-                        status: result.previousStatus,
-                      ));
-                },
-              ),
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        },
-        child: BlocBuilder<TasksBloc, TasksState>(
-          builder: (context, state) {
-          if (state is TasksLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
-
-          if (state is TasksError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(TablerIcons.alert_triangle, color: colors.accentRed, size: 40),
-                    const SizedBox(height: 12),
-                    Text(state.message, style: textStyles.bodySans, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        context.read<TasksBloc>().add(LoadTasks());
-                      },
-                      child: const Text('Повторить попытку'),
-                    ),
-                  ],
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            LedgerCollapsingHeader(
+              title: language.translate('tasks_title'),
+              pinned: true,
+              floating: true,
+              snap: true,
+              actions: [
+                if (_canManageTasks(context))
+                  BlocBuilder<TasksBloc, TasksState>(
+                    buildWhen: (previous, current) {
+                      if (previous is TasksLoaded && current is TasksLoaded) {
+                        return !identical(previous.projects, current.projects) ||
+                            !identical(previous.assignees, current.assignees);
+                      }
+                      return previous.runtimeType != current.runtimeType;
+                    },
+                    builder: (context, state) {
+                      final projects = state is TasksLoaded
+                          ? state.projects
+                          : const <TaskProject>[];
+                      final assignees = state is TasksLoaded
+                          ? state.assignees
+                          : const <TaskAssignee>[];
+                      return IconButton(
+                        icon: const Icon(TablerIcons.plus),
+                        tooltip: language.translate('tasks_add_title'),
+                        color: colors.brand,
+                        onPressed: () =>
+                            _showAddTaskBottomSheet(context, projects, assignees),
+                      );
+                    },
+                  ),
+              ],
+              bottom: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelColor: colors.brand,
+                unselectedLabelColor: colors.textSecondary,
+                indicatorColor: colors.brand,
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerColor: colors.border,
+                labelStyle: textStyles.captionSans.copyWith(
+                  fontWeight: FontWeight.w500,
                 ),
+                unselectedLabelStyle: textStyles.captionSans.copyWith(
+                  fontWeight: FontWeight.w400,
+                ),
+                tabs: [
+                  Tab(text: language.translate('tasks_tab_new')),
+                  Tab(text: language.translate('tasks_tab_in_progress')),
+                  Tab(text: language.translate('tasks_tab_review')),
+                  Tab(text: language.translate('tasks_tab_done')),
+                  Tab(text: language.translate('tasks_tab_calendar')),
+                  Tab(text: language.translate('tasks_tab_gantt')),
+                  Tab(text: language.translate('tasks_tab_analytics')),
+                ],
               ),
-            );
-          }
+            ),
+          ];
+        },
+        body: BlocBuilder<TasksBloc, TasksState>(
+          buildWhen: (previous, current) {
+            if (previous is TasksLoaded && current is TasksLoaded) {
+              return !identical(previous.tasks, current.tasks) ||
+                  !identical(previous.projects, current.projects) ||
+                  !identical(previous.assignees, current.assignees) ||
+                  !identical(previous.overloaded, current.overloaded) ||
+                  !identical(previous.criticalPath, current.criticalPath) ||
+                  previous.isAnalyticsLoading != current.isAnalyticsLoading ||
+                  previous.analyticsLoaded != current.analyticsLoaded ||
+                  previous.analyticsError != current.analyticsError ||
+                  previous.pendingStatusTaskIds != current.pendingStatusTaskIds;
+            }
+            return previous.runtimeType != current.runtimeType;
+          },
+          builder: (context, state) {
+            if (state is TasksLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          if (state is TasksLoaded) {
-            final filteredTasks = _getFilteredTasks(state.tasks);
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Row(
+            if (state is TasksError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Expanded(
-                        child: TextField(
-                          style: textStyles.bodySans,
-                          decoration: InputDecoration(
-                            hintText: 'Поиск по задачам...',
-                            prefixIcon: Icon(TablerIcons.search, size: 18, color: colors.textSecondary),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      Icon(
+                        TablerIcons.alert_triangle,
+                        color: colors.accentRed,
+                        size: 40,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        language.translateMessage(state.message),
+                        style: textStyles.bodySans,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          context.read<TasksBloc>().add(LoadTasks());
+                        },
+                        child: Text(language.translate('tasks_retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            if (state is TasksLoaded) {
+              final filteredTasks = _getFilteredTasks(state.tasks);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            style: textStyles.bodySans,
+                            decoration: InputDecoration(
+                              hintText: language.translate('tasks_search_hint'),
+                              prefixIcon: Icon(
+                                TablerIcons.search,
+                                size: 18,
+                                color: colors.textSecondary,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                            ),
+                            onChanged: (value) {
+                              _searchDebounce?.cancel();
+                              _searchDebounce = Timer(
+                                const Duration(milliseconds: 300),
+                                () {
+                                  if (!mounted || _searchQuery == value) return;
+                                  setState(() => _searchQuery = value);
+                                },
+                              );
+                            },
                           ),
-                          onChanged: (val) {
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
                             setState(() {
-                              _searchQuery = val;
+                              _onlyOverdue = !_onlyOverdue;
                             });
                           },
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _onlyOverdue = !_onlyOverdue;
-                          });
-                        },
-                        child: Container(
-                          height: 42,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: _onlyOverdue
-                                ? colors.accentRed.withValues(alpha: 0.08)
-                                : colors.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: _onlyOverdue ? colors.accentRed : colors.border,
+                          child: Container(
+                            height: 48,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: _onlyOverdue
+                                  ? colors.accentRed.withValues(alpha: 0.08)
+                                  : colors.surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _onlyOverdue
+                                    ? colors.accentRed
+                                    : colors.border,
+                              ),
+                            ),
+                            alignment: Alignment.center,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  TablerIcons.alert_triangle,
+                                  size: 16,
+                                  color: _onlyOverdue
+                                      ? colors.accentRed
+                                      : colors.textSecondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  language.translate('tasks_overdue'),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: _onlyOverdue
+                                        ? colors.accentRed
+                                        : colors.textPrimary,
+                                    fontWeight: _onlyOverdue
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            children: [
-                              Icon(
-                                TablerIcons.alert_triangle,
-                                size: 16,
-                                color: _onlyOverdue ? colors.accentRed : colors.textSecondary,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Просрочено',
-                                style: textStyles.captionSans.copyWith(
-                                  color: _onlyOverdue ? colors.accentRed : colors.textPrimary,
-                                  fontWeight: _onlyOverdue ? FontWeight.bold : FontWeight.normal,
-                                ),
-                              ),
-                            ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (state.projects.isNotEmpty)
+                    _buildProjectFilterBar(context, state.projects),
+
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 0,
+                          builder: (context) => _buildTaskList(
+                            context,
+                            filteredTasks,
+                            TaskStatus.todo,
+                            state.projects,
+                            state.assignees,
+                            state.pendingStatusTaskIds,
                           ),
                         ),
-                      ),
-                    ],
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 1,
+                          builder: (context) => _buildTaskList(
+                            context,
+                            filteredTasks,
+                            TaskStatus.inProgress,
+                            state.projects,
+                            state.assignees,
+                            state.pendingStatusTaskIds,
+                          ),
+                        ),
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 2,
+                          builder: (context) => _buildTaskList(
+                            context,
+                            filteredTasks,
+                            TaskStatus.review,
+                            state.projects,
+                            state.assignees,
+                            state.pendingStatusTaskIds,
+                          ),
+                        ),
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 3,
+                          builder: (context) => _buildTaskList(
+                            context,
+                            filteredTasks,
+                            TaskStatus.done,
+                            state.projects,
+                            state.assignees,
+                            state.pendingStatusTaskIds,
+                          ),
+                        ),
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 4,
+                          builder: (context) => _buildCalendarTab(
+                            context,
+                            filteredTasks,
+                            state.projects,
+                            state.assignees,
+                          ),
+                        ),
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 5,
+                          builder: (context) => _GanttTaskTab(
+                            tasks: filteredTasks,
+                            onRefresh: () => _refreshTasks(context),
+                          ),
+                        ),
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 6,
+                          builder: (context) => _buildAnalysisTab(
+                            context,
+                            state.overloaded,
+                            state.criticalPath,
+                            isLoading: state.isAnalyticsLoading,
+                            isLoaded: state.analyticsLoaded,
+                            error: state.analyticsError,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                if (state.projects.isNotEmpty)
-                  _buildProjectFilterBar(context, state.projects),
+                ],
+              );
+            }
 
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildTaskList(context, filteredTasks, TaskStatus.todo, state.projects, state.assignees, state.pendingStatusTaskIds),
-                      _buildTaskList(context, filteredTasks, TaskStatus.inProgress, state.projects, state.assignees, state.pendingStatusTaskIds),
-                      _buildTaskList(context, filteredTasks, TaskStatus.review, state.projects, state.assignees, state.pendingStatusTaskIds),
-                      _buildTaskList(context, filteredTasks, TaskStatus.done, state.projects, state.assignees, state.pendingStatusTaskIds),
-                      _buildCalendarTab(context, filteredTasks, state.projects, state.assignees),
-                      _buildGanttTab(context, filteredTasks),
-                      _buildAnalysisTab(context, state.overloaded, state.criticalPath),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
+            return const SizedBox.shrink();
+          },
+        ),
       ),
-    ),
     );
   }
 
-  Widget _buildCheckbox(BuildContext context, Task task, bool isDone, bool isPending) {
+  Widget _buildCheckbox(
+    BuildContext context,
+    Task task,
+    bool isDone,
+    bool isPending,
+  ) {
     return AnimatedCheckbox(
       value: isDone,
       isPending: isPending,
+      isEnabled: _canManageTasks(context),
+      semanticLabel: task.title,
+      pendingSemanticLabel: context.translate('common_loading'),
       onChanged: (newValue) {
         if (isPending) return;
         final nextStatus = newValue ? TaskStatus.done : TaskStatus.todo;
-        context.read<TasksBloc>().add(UpdateTaskStatusRequested(
-              taskId: task.id,
-              status: nextStatus,
-            ));
+        context.read<TasksBloc>().add(
+          UpdateTaskStatusRequested(taskId: task.id, status: nextStatus),
+        );
       },
     );
   }
 
-  Widget _buildTaskListHeader(BuildContext context, List<Task> tasks, TaskStatus status) {
+  Widget _buildTaskListHeader(
+    BuildContext context,
+    List<Task> tasks,
+    TaskStatus status,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
     final count = tasks.length;
-    final urgentCount = tasks.where((t) => t.priority == TaskPriority.urgent).length;
-    final highCount = tasks.where((t) => t.priority == TaskPriority.high).length;
+    final urgentCount = tasks
+        .where((t) => t.priority == TaskPriority.urgent)
+        .length;
+    final highCount = tasks
+        .where((t) => t.priority == TaskPriority.high)
+        .length;
 
     String titleText = '';
 
     switch (status) {
       case TaskStatus.todo:
-        titleText = 'Новые задачи';
+        titleText = language.translate('tasks_list_header_new');
         break;
       case TaskStatus.inProgress:
-        titleText = 'Задачи в работе';
+        titleText = language.translate('tasks_list_header_in_progress');
         break;
       case TaskStatus.review:
-        titleText = 'Задачи на проверке';
+        titleText = language.translate('tasks_list_header_review');
         break;
       case TaskStatus.done:
-        titleText = 'Готовые задачи';
+        titleText = language.translate('tasks_list_header_done');
         break;
     }
 
     final List<String> priorityList = [];
     if (urgentCount > 0) {
-      priorityList.add('$urgentCount критических');
+      priorityList.add(
+        language.translatePlural('tasks_priority_urgent_count', urgentCount),
+      );
     }
     if (highCount > 0) {
-      priorityList.add('$highCount высокого приоритета');
+      priorityList.add(
+        language.translate(
+          'tasks_priority_high_count',
+          params: {'count': highCount},
+        ),
+      );
     }
     final priorityText = priorityList.join(' · ');
 
@@ -393,7 +564,10 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
             children: [
               Text(
                 titleText,
-                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -402,8 +576,11 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _taskCountLabel(count),
-                  style: textStyles.captionSans.copyWith(color: colors.brand, fontWeight: FontWeight.bold),
+                  _taskCountLabel(language, count),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.brand,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -412,7 +589,9 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
             const SizedBox(height: 6),
             Text(
               priorityText,
-              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ],
         ],
@@ -430,13 +609,12 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
   ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
     final tasks = allTasks.where((t) => t.status == status).toList();
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<TasksBloc>().add(LoadTasks());
-      },
+      onRefresh: () => _refreshTasks(context),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: tasks.length + 1,
@@ -466,7 +644,14 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
           }
 
           return GestureDetector(
-            onTap: () => _showEditTaskBottomSheet(context, task, projects, assignees),
+            onTap: _canManageTasks(context)
+                ? () => _showEditTaskBottomSheet(
+                    context,
+                    task,
+                    projects,
+                    assignees,
+                  )
+                : null,
             child: Container(
               key: ValueKey(task.id),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -485,8 +670,12 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                           task.title,
                           style: textStyles.bodySans.copyWith(
                             fontWeight: FontWeight.bold,
-                            decoration: isDone ? TextDecoration.lineThrough : null,
-                            color: isDone ? colors.textTooltip : colors.textPrimary,
+                            decoration: isDone
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: isDone
+                                ? colors.textTooltip
+                                : colors.textPrimary,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -511,38 +700,56 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                                 width: 3,
                                 height: 3,
                                 decoration: BoxDecoration(
-                                  color: colors.textSecondary.withValues(alpha: 0.4),
+                                  color: colors.textSecondary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 8),
                             ],
-                            Icon(TablerIcons.calendar, size: 12, color: colors.textTooltip),
+                            Icon(
+                              TablerIcons.calendar,
+                              size: 12,
+                              color: colors.textTooltip,
+                            ),
                             const SizedBox(width: 4),
                             Text(
-                              _formatRussianDate(task.dueDate),
+                              _formatLocalizedCompactDate(
+                                language,
+                                task.dueDate,
+                              ),
                               style: textStyles.captionSans.copyWith(
-                                color: task.dueDate.isBefore(DateTime.now()) && !isDone
+                                color:
+                                    task.dueDate.isBefore(DateTime.now()) &&
+                                        !isDone
                                     ? colors.accentRed
                                     : colors.textTooltip,
                               ),
                             ),
-                            if (task.assigneeName != null && task.assigneeName!.trim().isNotEmpty) ...[
+                            if (task.assigneeName != null &&
+                                task.assigneeName!.trim().isNotEmpty) ...[
                               const SizedBox(width: 8),
                               Container(
                                 width: 3,
                                 height: 3,
                                 decoration: BoxDecoration(
-                                  color: colors.textSecondary.withValues(alpha: 0.4),
+                                  color: colors.textSecondary.withValues(
+                                    alpha: 0.4,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Icon(TablerIcons.user, size: 12, color: colors.textTooltip),
+                              Icon(
+                                TablerIcons.user,
+                                size: 12,
+                                color: colors.textTooltip,
+                              ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  task.assigneeName!,
+                                  language.translateMessage(task.assigneeName!),
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textTooltip,
                                   ),
@@ -558,7 +765,7 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                   ),
                   const SizedBox(width: 12),
                   LedgerPill(
-                    text: task.priority.label,
+                    text: language.translate(task.priority.localizationKey),
                     backgroundColor: pColor,
                     textColor: pTextColor,
                     fontSize: 13,
@@ -568,7 +775,12 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                     ),
                   ),
                   const SizedBox(width: 12),
-                  _buildCheckbox(context, task, isDone, pendingTaskIds.contains(task.id)),
+                  _buildCheckbox(
+                    context,
+                    task,
+                    isDone,
+                    pendingTaskIds.contains(task.id),
+                  ),
                 ],
               ),
             ),
@@ -586,312 +798,361 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
-    Widget buildChip(TaskPriority priority) {
-      final isSelected = selectedPriority == priority;
-      return ChoiceChip(
-        label: Text(
-          priority.label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-        ),
-        selected: isSelected,
-        onSelected: (val) {
-          if (val) onSelected(priority);
-        },
-        selectedColor: switch (priority) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: TaskPriority.values.map((priority) {
+        final isSelected = selectedPriority == priority;
+
+        final selectedTextColor = switch (priority) {
           TaskPriority.urgent => colors.accentRed,
           TaskPriority.high => colors.accentAmber,
           TaskPriority.low => colors.accentGreen,
-          TaskPriority.medium => colors.brand.withValues(alpha: 0.15),
-        },
-        backgroundColor: colors.surfaceNested,
-        labelStyle: textStyles.captionSans.copyWith(
-          fontWeight: FontWeight.w500,
-          fontSize: 13,
-          color: isSelected
-              ? (priority == TaskPriority.medium
-                  ? colors.brand
-                  : Colors.white)
-              : colors.textSecondary,
-        ),
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        visualDensity: VisualDensity.compact,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 8,
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(
-            color: isSelected ? Colors.transparent : colors.border,
-          ),
-        ),
-        showCheckmark: false,
-      );
-    }
+          TaskPriority.medium => colors.brand,
+        };
 
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: buildChip(TaskPriority.low)),
-            const SizedBox(width: 8),
-            Expanded(child: buildChip(TaskPriority.medium)),
-            const SizedBox(width: 8),
-            Expanded(child: buildChip(TaskPriority.high)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Center(child: buildChip(TaskPriority.urgent)),
-      ],
+        final selectedBgColor = selectedTextColor.withValues(alpha: 0.15);
+        final selectedBorderColor = selectedTextColor;
+
+        return Semantics(
+          button: true,
+          selected: isSelected,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => onSelected(priority),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 48),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isSelected ? selectedBgColor : colors.surface,
+                  border: Border.all(
+                    color: isSelected ? selectedBorderColor : colors.border,
+                  ),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                child: Text(
+                  language.translate(priority.localizationKey),
+                  style: textStyles.captionSans.copyWith(
+                    color: isSelected ? selectedTextColor : colors.textSecondary,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
-  void _showAddTaskBottomSheet(
+  Future<void> _showAddTaskBottomSheet(
     BuildContext context,
     List<TaskProject> projects,
     List<TaskAssignee> assignees,
-  ) {
+  ) async {
     final tasksBloc = context.read<TasksBloc>();
     final colors = context.colors;
     final textStyles = context.textStyles;
 
     final titleController = TextEditingController();
     final descController = TextEditingController();
-    
+
     TaskPriority selectedPriority = TaskPriority.medium;
     TaskProject? selectedProject;
     TaskAssignee? selectedAssignee;
     DateTime? selectedStartDate;
     DateTime selectedDueDate = DateTime.now().add(const Duration(days: 3));
 
-    bool isShowingDiscardDialog = false;
-    bool allowPop = false;
-
     bool isDirty() {
       return titleController.text.trim().isNotEmpty ||
-             descController.text.trim().isNotEmpty ||
-             selectedProject != null ||
-             selectedAssignee != null ||
-             selectedStartDate != null ||
-             selectedPriority != TaskPriority.medium;
+          descController.text.trim().isNotEmpty ||
+          selectedProject != null ||
+          selectedAssignee != null ||
+          selectedStartDate != null ||
+          selectedPriority != TaskPriority.medium;
     }
 
-    LedgerBottomSheet.show(
-      context: context,
-      title: 'Новая задача',
-      builder: (context, setSheetState) {
-        return PopScope(
-          canPop: !isDirty() || allowPop,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) return;
-            if (isShowingDiscardDialog) return;
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: context.read<LanguageCubit>().translate('tasks_add_title'),
+        builder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
 
-            isShowingDiscardDialog = true;
-            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
-            isShowingDiscardDialog = false;
-
-            if (shouldClose == true) {
-              allowPop = true;
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            }
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: titleController,
-                style: textStyles.bodySans,
-                decoration: const InputDecoration(
-                  labelText: 'Название задачи',
+          return _TaskFormPopScope(
+            isDirty: isDirty,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: titleController,
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    labelText: language.translate('tasks_field_title'),
+                  ),
                 ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descController,
-                maxLines: 3,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Описание',
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 3,
+                  style: textStyles.bodySans,
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: language.translate('tasks_field_description'),
+                  ),
                 ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 16),
-              Text('Проект', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              ExpansibleWidget<TaskProject?>.selection(
-                key: ValueKey(selectedProject?.id ?? 'no-project'),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(
-                  selectedProject?.name ?? 'Выберите проект (опц.)',
-                  style: textStyles.bodySans.copyWith(color: selectedProject == null ? colors.textTooltip : colors.textPrimary),
-                ),
-                items: [null, ...projects],
-                selectedValue: selectedProject,
-                itemLabelBuilder: (p) => p?.name ?? 'Без проекта',
-                onSelected: (p) {
-                  setSheetState(() {
-                    selectedProject = p;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Приоритет', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 8),
-              _buildPriorityChips(
-                context,
-                selectedPriority: selectedPriority,
-                onSelected: (p) {
-                  setSheetState(() {
-                    selectedPriority = p;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Исполнитель', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              ExpansibleWidget<TaskAssignee?>.selection(
-                key: ValueKey(selectedAssignee?.id ?? 'no-assignee'),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(
-                  selectedAssignee?.fullName ?? 'Без исполнителя',
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_project'),
                   style: textStyles.bodySans.copyWith(
-                    color: selectedAssignee == null ? colors.textTooltip : colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
-                items: [null, ...assignees],
-                selectedValue: selectedAssignee,
-                itemLabelBuilder: (a) => a?.fullName ?? 'Без исполнителя',
-                onSelected: (a) {
-                  setSheetState(() {
-                    selectedAssignee = a;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Дата начала', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedStartDate ?? DateTime.now(),
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (picked != null) {
+                const SizedBox(height: 6),
+                ExpansibleWidget<TaskProject?>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    selectedProject?.name ??
+                        language.translate('tasks_select_project_optional'),
+                    style: textStyles.bodySans.copyWith(
+                      color: selectedProject == null
+                          ? colors.textTooltip
+                          : colors.textPrimary,
+                    ),
+                  ),
+                  items: [null, ...projects],
+                  selectedValue: selectedProject,
+                  itemLabelBuilder: (p) =>
+                      p?.name ?? language.translate('tasks_no_project'),
+                  onSelected: (p) {
                     setSheetState(() {
-                      selectedStartDate = picked;
+                      selectedProject = p;
                     });
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(8),
-                    color: colors.surface,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        selectedStartDate != null ? DateFormat('dd.MM.yyyy').format(selectedStartDate!) : 'Не задана',
-                        style: textStyles.captionSans,
-                      ),
-                      Icon(TablerIcons.calendar, size: 16, color: colors.textSecondary),
-                    ],
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_priority'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text('Срок сдачи', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDueDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (picked != null) {
+                const SizedBox(height: 8),
+                _buildPriorityChips(
+                  context,
+                  selectedPriority: selectedPriority,
+                  onSelected: (p) {
                     setSheetState(() {
-                      selectedDueDate = picked;
+                      selectedPriority = p;
                     });
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(8),
-                    color: colors.surface,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('dd.MM.yyyy').format(selectedDueDate),
-                        style: textStyles.captionSans,
-                      ),
-                      Icon(TablerIcons.calendar, size: 16, color: colors.textSecondary),
-                    ],
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_assignee'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-      footerBuilder: (context, setSheetState) {
-        return ElevatedButton(
-          onPressed: () {
-            if (titleController.text.trim().isNotEmpty) {
-              final newTask = Task(
-                id: '',
-                title: titleController.text.trim(),
-                description: descController.text.trim(),
-                status: TaskStatus.todo,
-                dueDate: selectedDueDate,
-                priority: selectedPriority,
-                projectId: selectedProject?.id,
-                projectName: selectedProject?.name,
-                assigneeId: selectedAssignee?.id,
-                assigneeName: selectedAssignee?.fullName,
-                startDate: selectedStartDate,
-              );
-              tasksBloc.add(CreateTaskRequested(newTask));
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Создать'),
-        );
-      },
-    );
+                const SizedBox(height: 6),
+                ExpansibleWidget<TaskAssignee?>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    language.translateMessage(
+                      selectedAssignee?.fullName ??
+                          language.translate('tasks_no_assignee'),
+                    ),
+                    style: textStyles.bodySans.copyWith(
+                      color: selectedAssignee == null
+                          ? colors.textTooltip
+                          : colors.textPrimary,
+                    ),
+                  ),
+                  items: [null, ...assignees],
+                  selectedValue: selectedAssignee,
+                  itemLabelBuilder: (a) => language.translateMessage(
+                    a?.fullName ?? language.translate('tasks_no_assignee'),
+                  ),
+                  onSelected: (a) {
+                    setSheetState(() {
+                      selectedAssignee = a;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_start_date'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedStartDate ?? DateTime.now(),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setSheetState(() {
+                        selectedStartDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: colors.border),
+                      borderRadius: BorderRadius.circular(8),
+                      color: colors.surface,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          selectedStartDate != null
+                              ? DateFormat(
+                                  'dd.MM.yyyy',
+                                ).format(selectedStartDate!)
+                              : language.translate('tasks_not_set'),
+                          style: textStyles.captionSans,
+                        ),
+                        Icon(
+                          TablerIcons.calendar,
+                          size: 16,
+                          color: colors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_due_date'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDueDate,
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setSheetState(() {
+                        selectedDueDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: colors.border),
+                      borderRadius: BorderRadius.circular(8),
+                      color: colors.surface,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          DateFormat('dd.MM.yyyy').format(selectedDueDate),
+                          style: textStyles.captionSans,
+                        ),
+                        Icon(
+                          TablerIcons.calendar,
+                          size: 16,
+                          color: colors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+
+          return ElevatedButton(
+            onPressed: () {
+              if (titleController.text.trim().isNotEmpty) {
+                final newTask = Task(
+                  id: '',
+                  title: titleController.text.trim(),
+                  description: descController.text.trim(),
+                  status: TaskStatus.todo,
+                  dueDate: selectedDueDate,
+                  priority: selectedPriority,
+                  projectId: selectedProject?.id,
+                  projectName: selectedProject?.name,
+                  assigneeId: selectedAssignee?.id,
+                  assigneeName: selectedAssignee?.fullName,
+                  startDate: selectedStartDate,
+                );
+                tasksBloc.add(CreateTaskRequested(newTask));
+                Navigator.pop(context);
+              }
+            },
+            child: Text(language.translate('tasks_create')),
+          );
+        },
+      );
+    } finally {
+      titleController.dispose();
+      descController.dispose();
+    }
   }
 
-  void _showEditTaskBottomSheet(
+  Future<void> _showEditTaskBottomSheet(
     BuildContext context,
     Task task,
     List<TaskProject> projects,
     List<TaskAssignee> assignees,
-  ) {
+  ) async {
     final tasksBloc = context.read<TasksBloc>();
     final colors = context.colors;
     final textStyles = context.textStyles;
 
     final titleController = TextEditingController(text: task.title);
     final descController = TextEditingController(text: task.description);
-    
+
     TaskStatus selectedStatus = task.status;
     TaskPriority selectedPriority = task.priority;
     TaskProject? selectedProject;
@@ -916,9 +1177,6 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
     DateTime? selectedStartDate = task.startDate;
     DateTime selectedDueDate = task.dueDate;
 
-    bool isShowingDiscardDialog = false;
-    bool allowPop = false;
-
     bool isDateChanged(DateTime? a, DateTime? b) {
       if (a == null && b == null) return false;
       if (a == null || b == null) return true;
@@ -932,231 +1190,304 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
       final currentProjectId = selectedProject?.id;
 
       return currentTitle != task.title ||
-             currentDesc != task.description ||
-             selectedStatus != task.status ||
-             currentProjectId != origProjectId ||
-             selectedAssignee?.id != task.assigneeId ||
-             selectedPriority != task.priority ||
-             isDateChanged(selectedStartDate, task.startDate) ||
-             isDateChanged(selectedDueDate, task.dueDate);
+          currentDesc != task.description ||
+          selectedStatus != task.status ||
+          currentProjectId != origProjectId ||
+          selectedAssignee?.id != task.assigneeId ||
+          selectedPriority != task.priority ||
+          isDateChanged(selectedStartDate, task.startDate) ||
+          isDateChanged(selectedDueDate, task.dueDate);
     }
 
-    LedgerBottomSheet.show(
-      context: context,
-      title: 'Редактировать задачу',
-      builder: (context, setSheetState) {
-        return PopScope(
-          canPop: !isDirty() || allowPop,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) return;
-            if (isShowingDiscardDialog) return;
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: context.read<LanguageCubit>().translate('tasks_edit_title'),
+        builder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
 
-            isShowingDiscardDialog = true;
-            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
-            isShowingDiscardDialog = false;
-
-            if (shouldClose == true) {
-              allowPop = true;
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            }
-          },
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: titleController,
-                style: textStyles.bodySans,
-                decoration: const InputDecoration(
-                  labelText: 'Название задачи',
+          return _TaskFormPopScope(
+            isDirty: isDirty,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: titleController,
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    labelText: language.translate('tasks_field_title'),
+                  ),
                 ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descController,
-                maxLines: 3,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.text,
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Описание',
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descController,
+                  maxLines: 3,
+                  style: textStyles.bodySans,
+                  keyboardType: TextInputType.text,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: language.translate('tasks_field_description'),
+                  ),
                 ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 16),
-              Text('Этап и статус', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              ExpansibleWidget<TaskStatus>.selection(
-                key: ValueKey(selectedStatus),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(selectedStatus.label, style: textStyles.bodySans),
-                items: TaskStatus.values,
-                selectedValue: selectedStatus,
-                itemLabelBuilder: (s) => s.label,
-                onSelected: (s) {
-                  setSheetState(() {
-                    selectedStatus = s;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Проект', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              ExpansibleWidget<TaskProject?>.selection(
-                key: ValueKey(selectedProject?.id ?? 'no-project'),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(
-                  selectedProject?.name ?? 'Выберите проект (опц.)',
-                  style: textStyles.bodySans.copyWith(color: selectedProject == null ? colors.textTooltip : colors.textPrimary),
-                ),
-                items: [null, ...projects],
-                selectedValue: selectedProject,
-                itemLabelBuilder: (p) => p?.name ?? 'Без проекта',
-                onSelected: (p) {
-                  setSheetState(() {
-                    selectedProject = p;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Приоритет', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 8),
-              _buildPriorityChips(
-                context,
-                selectedPriority: selectedPriority,
-                onSelected: (p) {
-                  setSheetState(() {
-                    selectedPriority = p;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Исполнитель', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              ExpansibleWidget<TaskAssignee?>.selection(
-                key: ValueKey(selectedAssignee?.id ?? 'no-assignee'),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(
-                  selectedAssignee?.fullName ?? 'Без исполнителя',
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_stage_status'),
                   style: textStyles.bodySans.copyWith(
-                    color: selectedAssignee == null ? colors.textTooltip : colors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
-                items: [null, ...assignees],
-                selectedValue: selectedAssignee,
-                itemLabelBuilder: (a) => a?.fullName ?? 'Без исполнителя',
-                onSelected: (a) {
-                  setSheetState(() {
-                    selectedAssignee = a;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Дата начала', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedStartDate ?? DateTime.now(),
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (picked != null) {
+                const SizedBox(height: 6),
+                ExpansibleWidget<TaskStatus>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    language.translate(selectedStatus.localizationKey),
+                    style: textStyles.bodySans,
+                  ),
+                  items: TaskStatus.values,
+                  selectedValue: selectedStatus,
+                  itemLabelBuilder: (s) =>
+                      language.translate(s.localizationKey),
+                  onSelected: (s) {
                     setSheetState(() {
-                      selectedStartDate = picked;
+                      selectedStatus = s;
                     });
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(8),
-                    color: colors.surface,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        selectedStartDate != null ? DateFormat('dd.MM.yyyy').format(selectedStartDate!) : 'Не задана',
-                        style: textStyles.captionSans,
-                      ),
-                      Icon(TablerIcons.calendar, size: 16, color: colors.textSecondary),
-                    ],
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_project'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text('Срок сдачи', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              InkWell(
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: selectedDueDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                    lastDate: DateTime.now().add(const Duration(days: 365)),
-                  );
-                  if (picked != null) {
+                const SizedBox(height: 6),
+                ExpansibleWidget<TaskProject?>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    selectedProject?.name ??
+                        language.translate('tasks_select_project_optional'),
+                    style: textStyles.bodySans.copyWith(
+                      color: selectedProject == null
+                          ? colors.textTooltip
+                          : colors.textPrimary,
+                    ),
+                  ),
+                  items: [null, ...projects],
+                  selectedValue: selectedProject,
+                  itemLabelBuilder: (p) =>
+                      p?.name ?? language.translate('tasks_no_project'),
+                  onSelected: (p) {
                     setSheetState(() {
-                      selectedDueDate = picked;
+                      selectedProject = p;
                     });
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: colors.border),
-                    borderRadius: BorderRadius.circular(8),
-                    color: colors.surface,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        DateFormat('dd.MM.yyyy').format(selectedDueDate),
-                        style: textStyles.captionSans,
-                      ),
-                      Icon(TablerIcons.calendar, size: 16, color: colors.textSecondary),
-                    ],
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_priority'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
-              ),
-            ],
-          ),
-        );
-      },
-      footerBuilder: (context, setSheetState) {
-        return ElevatedButton(
-          onPressed: () {
-            if (titleController.text.trim().isNotEmpty) {
-              // Explicit Task so clearing project/assignee can set nulls (copyWith can't).
-              final updatedTask = Task(
-                id: task.id,
-                title: titleController.text.trim(),
-                description: descController.text.trim(),
-                status: selectedStatus,
-                dueDate: selectedDueDate,
-                priority: selectedPriority,
-                projectId: selectedProject?.id,
-                projectName: selectedProject?.name,
-                assigneeId: selectedAssignee?.id,
-                assigneeName: selectedAssignee?.fullName,
-                startDate: selectedStartDate,
-                dependsOnId: task.dependsOnId,
-                position: task.position,
-              );
-              tasksBloc.add(UpdateTaskRequested(updatedTask));
-              Navigator.pop(context);
-            }
-          },
-          child: const Text('Сохранить изменения'),
-        );
-      },
-    );
+                const SizedBox(height: 8),
+                _buildPriorityChips(
+                  context,
+                  selectedPriority: selectedPriority,
+                  onSelected: (p) {
+                    setSheetState(() {
+                      selectedPriority = p;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_assignee'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ExpansibleWidget<TaskAssignee?>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    language.translateMessage(
+                      selectedAssignee?.fullName ??
+                          language.translate('tasks_no_assignee'),
+                    ),
+                    style: textStyles.bodySans.copyWith(
+                      color: selectedAssignee == null
+                          ? colors.textTooltip
+                          : colors.textPrimary,
+                    ),
+                  ),
+                  items: [null, ...assignees],
+                  selectedValue: selectedAssignee,
+                  itemLabelBuilder: (a) => language.translateMessage(
+                    a?.fullName ?? language.translate('tasks_no_assignee'),
+                  ),
+                  onSelected: (a) {
+                    setSheetState(() {
+                      selectedAssignee = a;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_start_date'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedStartDate ?? DateTime.now(),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setSheetState(() {
+                        selectedStartDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: colors.border),
+                      borderRadius: BorderRadius.circular(8),
+                      color: colors.surface,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          selectedStartDate != null
+                              ? DateFormat(
+                                  'dd.MM.yyyy',
+                                ).format(selectedStartDate!)
+                              : language.translate('tasks_not_set'),
+                          style: textStyles.captionSans,
+                        ),
+                        Icon(
+                          TablerIcons.calendar,
+                          size: 16,
+                          color: colors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('tasks_field_due_date'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: selectedDueDate,
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365),
+                      ),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setSheetState(() {
+                        selectedDueDate = picked;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: colors.border),
+                      borderRadius: BorderRadius.circular(8),
+                      color: colors.surface,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          DateFormat('dd.MM.yyyy').format(selectedDueDate),
+                          style: textStyles.captionSans,
+                        ),
+                        Icon(
+                          TablerIcons.calendar,
+                          size: 16,
+                          color: colors.textSecondary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+
+          return ElevatedButton(
+            onPressed: () {
+              if (titleController.text.trim().isNotEmpty) {
+                // Explicit Task so clearing project/assignee can set nulls (copyWith can't).
+                final updatedTask = Task(
+                  id: task.id,
+                  title: titleController.text.trim(),
+                  description: descController.text.trim(),
+                  status: selectedStatus,
+                  dueDate: selectedDueDate,
+                  priority: selectedPriority,
+                  projectId: selectedProject?.id,
+                  projectName: selectedProject?.name,
+                  assigneeId: selectedAssignee?.id,
+                  assigneeName: selectedAssignee?.fullName,
+                  startDate: selectedStartDate,
+                  dependsOnId: task.dependsOnId,
+                  position: task.position,
+                );
+                tasksBloc.add(UpdateTaskRequested(updatedTask));
+                Navigator.pop(context);
+              }
+            },
+            child: Text(language.translate('tasks_save_changes')),
+          );
+        },
+      );
+    } finally {
+      titleController.dispose();
+      descController.dispose();
+    }
   }
 
   Widget _buildCalendarTab(
@@ -1167,6 +1498,7 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
   ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
     final year = _calendarMonth.year;
     final month = _calendarMonth.month;
@@ -1175,18 +1507,37 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
     final weekdayOffset = (firstDay.weekday - 1) % 7;
     final startGridDate = firstDay.subtract(Duration(days: weekdayOffset));
 
-    final gridDates = List<DateTime>.generate(42, (index) => startGridDate.add(Duration(days: index)));
+    final gridDates = List<DateTime>.generate(
+      42,
+      (index) => startGridDate.add(Duration(days: index)),
+    );
 
+    final tasksByDay = <DateTime, List<Task>>{};
+    for (final task in tasks) {
+      final day = DateUtils.dateOnly(task.dueDate);
+      (tasksByDay[day] ??= <Task>[]).add(task);
+    }
     final monthNames = [
-      'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+      language.translate('tasks_month_january'),
+      language.translate('tasks_month_february'),
+      language.translate('tasks_month_march'),
+      language.translate('tasks_month_april'),
+      language.translate('tasks_month_may'),
+      language.translate('tasks_month_june'),
+      language.translate('tasks_month_july'),
+      language.translate('tasks_month_august'),
+      language.translate('tasks_month_september'),
+      language.translate('tasks_month_october'),
+      language.translate('tasks_month_november'),
+      language.translate('tasks_month_december'),
     ];
-    final weekdayLabels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    final weekdayLabels = List.generate(
+      7,
+      (index) => language.translate(_weekdayLocalizationKey(index + 1)),
+    );
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<TasksBloc>().add(LoadTasks());
-      },
+      onRefresh: () => _refreshTasks(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -1194,13 +1545,17 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${monthNames[month - 1]} $year',
+                language.translate(
+                  'tasks_calendar_month_year',
+                  params: {'month': monthNames[month - 1], 'year': year},
+                ),
                 style: textStyles.h2Sans,
               ),
               Row(
                 children: [
                   IconButton(
                     icon: const Icon(TablerIcons.chevron_left),
+                    tooltip: language.translate('common_previous'),
                     onPressed: () {
                       setState(() {
                         _calendarMonth = DateTime(year, month - 1, 1);
@@ -1215,10 +1570,17 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                         _selectedCalendarDay = DateTime.now();
                       });
                     },
-                    child: Text('Сегодня', style: textStyles.captionSans.copyWith(color: colors.brand, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      language.translate('tasks_calendar_today'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(TablerIcons.chevron_right),
+                    tooltip: language.translate('common_next'),
                     onPressed: () {
                       setState(() {
                         _calendarMonth = DateTime(year, month + 1, 1);
@@ -1230,8 +1592,9 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           GridView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1245,13 +1608,16 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               return Center(
                 child: Text(
                   weekdayLabels[index],
-                  style: textStyles.smallSans.copyWith(color: colors.textSecondary),
+                  style: textStyles.smallSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               );
             },
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           GridView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -1265,8 +1631,11 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               final day = gridDates[index];
               final isCurrentMonth = day.month == month;
               final isToday = DateUtils.isSameDay(day, DateTime.now());
-              final isSelected = _selectedCalendarDay != null && DateUtils.isSameDay(day, _selectedCalendarDay!);
-              final dayTasks = tasks.where((t) => DateUtils.isSameDay(t.dueDate, day)).toList();
+              final isSelected =
+                  _selectedCalendarDay != null &&
+                  DateUtils.isSameDay(day, _selectedCalendarDay!);
+              final dayTasks =
+                  tasksByDay[DateUtils.dateOnly(day)] ?? const <Task>[];
 
               return GestureDetector(
                 onTap: () {
@@ -1279,15 +1648,15 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                     color: isSelected
                         ? colors.brand.withValues(alpha: 0.15)
                         : isCurrentMonth
-                            ? colors.surface
-                            : colors.background,
+                        ? colors.surface
+                        : colors.background,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isSelected
                           ? colors.brand
                           : isToday
-                              ? colors.brand.withValues(alpha: 0.5)
-                              : colors.border,
+                          ? colors.brand.withValues(alpha: 0.5)
+                          : colors.border,
                       width: isSelected ? 1.5 : 1.0,
                     ),
                   ),
@@ -1297,7 +1666,9 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                       Text(
                         '${day.day}',
                         style: textStyles.smallMono.copyWith(
-                          fontWeight: isToday || isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isToday || isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: isCurrentMonth
                               ? (isToday ? colors.brand : colors.textPrimary)
                               : colors.textTooltip,
@@ -1337,16 +1708,32 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
           const SizedBox(height: 20),
           if (_selectedCalendarDay != null) ...[
             Text(
-              'Срок на ${DateFormat('dd MMMM yyyy').format(_selectedCalendarDay!)}:',
+              language.translate(
+                'tasks_calendar_due_on',
+                params: {
+                  'date': _formatLocalizedLongDate(
+                    language,
+                    _selectedCalendarDay!,
+                  ),
+                },
+              ),
               style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            _buildDayTasksList(context, tasks, _selectedCalendarDay!, projects, assignees),
+            _buildDayTasksList(
+              context,
+              tasksByDay[DateUtils.dateOnly(_selectedCalendarDay!)] ??
+                  const <Task>[],
+              projects,
+              assignees,
+            ),
           ] else ...[
             Center(
               child: Text(
-                'Выберите день для просмотра задач',
-                style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+                language.translate('tasks_calendar_select_day'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textTooltip,
+                ),
               ),
             ),
           ],
@@ -1357,21 +1744,20 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
 
   Widget _buildDayTasksList(
     BuildContext context,
-    List<Task> tasks,
-    DateTime selectedDay,
+    List<Task> dayTasks,
     List<TaskProject> projects,
     List<TaskAssignee> assignees,
   ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final dayTasks = tasks.where((t) => DateUtils.isSameDay(t.dueDate, selectedDay)).toList();
+    final language = context.watch<LanguageCubit>();
 
     if (dayTasks.isEmpty) {
       return LedgerCard(
         padding: const EdgeInsets.all(16),
         child: Center(
           child: Text(
-            'Нет запланированных задач на этот день',
+            language.translate('tasks_calendar_empty_day'),
             style: textStyles.captionSans.copyWith(color: colors.textTooltip),
           ),
         ),
@@ -1381,7 +1767,10 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
     return Column(
       children: dayTasks.map((task) {
         return GestureDetector(
-          onTap: () => _showEditTaskBottomSheet(context, task, projects, assignees),
+          onTap: _canManageTasks(context)
+              ? () =>
+                    _showEditTaskBottomSheet(context, task, projects, assignees)
+              : null,
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
@@ -1399,10 +1788,10 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                     color: task.priority == TaskPriority.urgent
                         ? colors.accentRed
                         : task.priority == TaskPriority.high
-                            ? colors.accentAmber
-                            : task.priority == TaskPriority.low
-                                ? colors.accentGreen
-                                : colors.brand,
+                        ? colors.accentAmber
+                        : task.priority == TaskPriority.low
+                        ? colors.accentGreen
+                        : colors.brand,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -1413,20 +1802,30 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                     children: [
                       Text(
                         task.title,
-                        style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       if (task.projectName != null) ...[
                         const SizedBox(height: 2),
                         Text(
-                          'Проект: ${task.projectName}',
-                          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                          language.translate(
+                            'tasks_project_value',
+                            params: {'project': task.projectName!},
+                          ),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
-                      if (task.assigneeName != null && task.assigneeName!.trim().isNotEmpty) ...[
+                      if (task.assigneeName != null &&
+                          task.assigneeName!.trim().isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(
-                          '👤 ${task.assigneeName}',
-                          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                          '👤 ${language.translateMessage(task.assigneeName!)}',
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ],
@@ -1434,7 +1833,7 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                 ),
                 const SizedBox(width: 8),
                 LedgerPill(
-                  text: task.status.label,
+                  text: language.translate(task.status.localizationKey),
                   backgroundColor: colors.brand.withValues(alpha: 0.08),
                   textColor: colors.brand,
                 ),
@@ -1446,293 +1845,72 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildGanttTab(BuildContext context, List<Task> tasks) {
+  Widget _buildAnalysisTab(
+    BuildContext context,
+    List<TaskOverload> overloaded,
+    List<TaskCriticalPath> critical, {
+    required bool isLoading,
+    required bool isLoaded,
+    String? error,
+  }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
-    final ganttTasks = tasks.toList();
-    if (ganttTasks.isEmpty) {
-      return Center(
-        child: Text('Нет задач для отображения на диаграмме', style: textStyles.captionSans.copyWith(color: colors.textTooltip)),
-      );
-    }
-
-    DateTime? minDate;
-    DateTime? maxDate;
-
-    for (final task in ganttTasks) {
-      final start = task.startDate ?? task.dueDate;
-      final end = task.dueDate;
-      
-      if (minDate == null || start.isBefore(minDate)) {
-        minDate = start;
-      }
-      if (maxDate == null || end.isAfter(maxDate)) {
-        maxDate = end;
-      }
-    }
-
-    final calculatedMinDate = minDate ?? DateTime.now().subtract(const Duration(days: 3));
-    final calculatedMaxDate = maxDate ?? DateTime.now().add(const Duration(days: 7));
-
-    final startTimelineDate = DateTime(calculatedMinDate.year, calculatedMinDate.month, calculatedMinDate.day).subtract(const Duration(days: 1));
-    final endTimelineDate = DateTime(calculatedMaxDate.year, calculatedMaxDate.month, calculatedMaxDate.day).add(const Duration(days: 2));
-
-    final totalDays = endTimelineDate.difference(startTimelineDate).inDays + 1;
-    const dayWidth = 44.0;
-    final timelineWidth = totalDays * dayWidth;
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        context.read<TasksBloc>().add(LoadTasks());
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    if (!isLoaded) {
+      return RefreshIndicator(
+        onRefresh: () => _refreshTasks(context),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
           children: [
-            Text(
-              'ВРЕМЕННАЯ ШКАЛА ЗАДАЧ',
-              style: textStyles.captionSans.copyWith(fontWeight: FontWeight.bold, color: colors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: colors.border),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: timelineWidth + 180,
-                  child: Column(
-                    children: [
-                      Container(
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: colors.surfaceNested,
-                          border: Border(bottom: BorderSide(color: colors.border)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 180,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              alignment: Alignment.centerLeft,
-                              child: Text('Задача', style: textStyles.captionSans.copyWith(fontWeight: FontWeight.bold)),
-                            ),
-                            ...List.generate(totalDays, (index) {
-                              final day = startTimelineDate.add(Duration(days: index));
-                              final isToday = DateUtils.isSameDay(day, DateTime.now());
-                              return Container(
-                                width: dayWidth,
-                                decoration: BoxDecoration(
-                                  border: Border(left: BorderSide(color: colors.border)),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '${day.day}\n${_monthShortName(day.month)}',
-                                  textAlign: TextAlign.center,
-                                  style: textStyles.smallMono.copyWith(
-                                    fontSize: 9,
-                                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                                    color: isToday ? colors.brand : colors.textSecondary,
-                                  ),
-                                ),
+            SizedBox(
+              height: 320,
+              child: Center(
+                child: isLoading || error == null
+                    ? const CircularProgressIndicator()
+                    : Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            language.translateMessage(error),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<TasksBloc>().add(
+                                const LoadTaskAnalytics(forceRefresh: true),
                               );
-                            }),
-                          ],
-                        ),
+                            },
+                            child: Text(language.translate('tasks_retry')),
+                          ),
+                        ],
                       ),
-                      ...ganttTasks.map((task) {
-                        final start = task.startDate ?? task.dueDate;
-                        final end = task.dueDate;
-                        
-                        final normalizedStart = DateTime(start.year, start.month, start.day);
-                        final normalizedEnd = DateTime(end.year, end.month, end.day);
-                        
-                        int offsetDays = normalizedStart.difference(startTimelineDate).inDays;
-                        if (offsetDays < 0) offsetDays = 0;
-
-                        int durationDays = normalizedEnd.difference(normalizedStart).inDays + 1;
-                        if (durationDays < 1) durationDays = 1;
-
-                        final double leftOffset = offsetDays * dayWidth;
-                        final double barWidth = durationDays * dayWidth;
-
-                        Color barColor = colors.surfaceNested;
-                        Color textColor = colors.textSecondary;
-                        Color borderColor = colors.border;
-
-                        if (task.status == TaskStatus.todo) {
-                          barColor = colors.surfaceNested;
-                          textColor = colors.textSecondary;
-                        } else if (task.status == TaskStatus.inProgress) {
-                          barColor = colors.brand.withValues(alpha: 0.1);
-                          textColor = colors.brand;
-                          borderColor = colors.brand;
-                        } else if (task.status == TaskStatus.review) {
-                          barColor = colors.accentAmber.withValues(alpha: 0.1);
-                          textColor = colors.accentAmber;
-                          borderColor = colors.accentAmber;
-                        } else if (task.status == TaskStatus.done) {
-                          barColor = colors.accentGreen.withValues(alpha: 0.1);
-                          textColor = colors.accentGreen;
-                          borderColor = colors.accentGreen;
-                        }
-
-                        return Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            border: Border(bottom: BorderSide(color: colors.border)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 180,
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
-                                alignment: Alignment.centerLeft,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      task.title,
-                                      style: textStyles.captionSans.copyWith(fontWeight: FontWeight.w500),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      task.assigneeName ?? 'Не назначена',
-                                      style: textStyles.smallSans.copyWith(color: colors.textTooltip, fontSize: 10),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Expanded(
-                                child: Stack(
-                                  children: [
-                                    Positioned.fill(
-                                      child: Row(
-                                        children: List.generate(totalDays, (index) {
-                                          return Container(
-                                            width: dayWidth,
-                                            decoration: BoxDecoration(
-                                              border: Border(left: BorderSide(color: colors.border.withValues(alpha: 0.4))),
-                                            ),
-                                          );
-                                        }),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      left: DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day).difference(startTimelineDate).inDays * dayWidth + (dayWidth / 2),
-                                      top: 0,
-                                      bottom: 0,
-                                      child: Container(
-                                        width: 1.5,
-                                        color: colors.accentRed.withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                    Positioned(
-                                      left: leftOffset + 4,
-                                      top: 10,
-                                      bottom: 10,
-                                      width: barWidth - 8,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: barColor,
-                                          borderRadius: BorderRadius.circular(4),
-                                          border: Border.all(color: borderColor, width: 1.5),
-                                        ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          DateFormat('dd.MM').format(task.dueDate),
-                                          style: textStyles.smallMono.copyWith(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: textColor,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                _buildGanttLegendItem(colors.surfaceNested, colors.border, 'Новая', textStyles),
-                _buildGanttLegendItem(colors.brand.withValues(alpha: 0.1), colors.brand, 'В работе', textStyles),
-                _buildGanttLegendItem(colors.accentAmber.withValues(alpha: 0.1), colors.accentAmber, 'Проверка', textStyles),
-                _buildGanttLegendItem(colors.accentGreen.withValues(alpha: 0.1), colors.accentGreen, 'Готово', textStyles),
-              ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildGanttLegendItem(Color fill, Color border, String label, dynamic textStyles) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: fill,
-            border: Border.all(color: border),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: textStyles.smallSans),
-      ],
-    );
-  }
-
-  String _monthShortName(int month) {
-    const list = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
-    return list[month - 1];
-  }
-
-  Widget _buildAnalysisTab(BuildContext context, List<TaskOverload> overloaded, List<TaskCriticalPath> critical) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
+      );
+    }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<TasksBloc>().add(LoadTasks());
-      },
+      onRefresh: () => _refreshTasks(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Row(
             children: [
-              Icon(TablerIcons.alert_triangle, color: colors.accentRed, size: 18),
+              Icon(
+                TablerIcons.alert_triangle,
+                color: colors.accentRed,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Text(
-                'ПЕРЕГРУЗКА СОТРУДНИКОВ',
-                style: textStyles.captionSans.copyWith(fontWeight: FontWeight.bold),
+                language.translate('tasks_analysis_overload_title'),
+                style: textStyles.captionSans.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -1742,14 +1920,18 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               padding: const EdgeInsets.all(14),
               child: Center(
                 child: Text(
-                  'Перегруженных сотрудников не обнаружено',
-                  style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+                  language.translate('tasks_analysis_no_overload'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textTooltip,
+                  ),
                 ),
               ),
             )
           else
             ...overloaded.map((ov) {
-              final initial = ov.assigneeName.isNotEmpty ? ov.assigneeName.characters.first.toUpperCase() : '?';
+              final initial = ov.assigneeName.isNotEmpty
+                  ? ov.assigneeName.characters.first.toUpperCase()
+                  : '?';
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: LedgerCard(
@@ -1761,7 +1943,9 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                         children: [
                           CircleAvatar(
                             radius: 12,
-                            backgroundColor: colors.brand.withValues(alpha: 0.1),
+                            backgroundColor: colors.brand.withValues(
+                              alpha: 0.1,
+                            ),
                             child: Text(
                               initial,
                               style: textStyles.captionSans.copyWith(
@@ -1772,21 +1956,36 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(ov.assigneeName, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
+                          Text(
+                            language.translateMessage(ov.assigneeName),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
                       Row(
                         children: [
                           LedgerPill(
-                            text: 'Активных: ${ov.activeCount}',
-                            backgroundColor: colors.accentRed.withValues(alpha: 0.08),
+                            text: language.translate(
+                              'tasks_analysis_active_count',
+                              params: {'count': ov.activeCount},
+                            ),
+                            backgroundColor: colors.accentRed.withValues(
+                              alpha: 0.08,
+                            ),
                             textColor: colors.accentRed,
                           ),
                           if (ov.overdueCount > 0) ...[
                             const SizedBox(width: 8),
                             LedgerPill(
-                              text: 'Просрочено: ${ov.overdueCount}',
-                              backgroundColor: colors.accentAmber.withValues(alpha: 0.1),
+                              text: language.translate(
+                                'tasks_analysis_overdue_count',
+                                params: {'count': ov.overdueCount},
+                              ),
+                              backgroundColor: colors.accentAmber.withValues(
+                                alpha: 0.1,
+                              ),
                               textColor: colors.accentAmber,
                             ),
                           ],
@@ -1805,8 +2004,10 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               Icon(TablerIcons.git_branch, color: colors.brand, size: 18),
               const SizedBox(width: 8),
               Text(
-                'КРИТИЧЕСКИЙ ПУТЬ ЗАДАЧ',
-                style: textStyles.captionSans.copyWith(fontWeight: FontWeight.bold),
+                language.translate('tasks_analysis_critical_path_title'),
+                style: textStyles.captionSans.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -1816,23 +2017,31 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
               padding: const EdgeInsets.all(14),
               child: Center(
                 child: Text(
-                  'Блокирующих критический путь задач не найдено',
-                  style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+                  language.translate('tasks_analysis_no_critical_path'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textTooltip,
+                  ),
                 ),
               ),
             )
           else
             ...critical.map((cp) {
-              String statusLabel = 'Новая';
+              String statusLabel = language.translate(
+                TaskStatus.todo.localizationKey,
+              );
               Color statusColor = colors.textSecondary;
               if (cp.status == 'in_progress') {
-                statusLabel = 'В работе';
+                statusLabel = language.translate(
+                  TaskStatus.inProgress.localizationKey,
+                );
                 statusColor = colors.brand;
               } else if (cp.status == 'review') {
-                statusLabel = 'Проверка';
+                statusLabel = language.translate('tasks_gantt_legend_review');
                 statusColor = colors.accentAmber;
               } else if (cp.status == 'done') {
-                statusLabel = 'Готово';
+                statusLabel = language.translate(
+                  TaskStatus.done.localizationKey,
+                );
                 statusColor = colors.accentGreen;
               }
 
@@ -1847,12 +2056,27 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(cp.title, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
+                            Text(
+                              cp.title,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                             if (cp.dueDate != null) ...[
                               const SizedBox(height: 4),
                               Text(
-                                'Срок: ${DateFormat('dd MMM yyyy').format(cp.dueDate!)}',
-                                style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+                                language.translate(
+                                  'tasks_due_value',
+                                  params: {
+                                    'date': _formatLocalizedCompactDateWithYear(
+                                      language,
+                                      cp.dueDate!,
+                                    ),
+                                  },
+                                ),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textTooltip,
+                                ),
                               ),
                             ],
                           ],
@@ -1863,14 +2087,21 @@ class _TasksViewState extends State<TasksView> with SingleTickerProviderStateMix
                         children: [
                           LedgerPill(
                             text: statusLabel,
-                            backgroundColor: statusColor.withValues(alpha: 0.08),
+                            backgroundColor: statusColor.withValues(
+                              alpha: 0.08,
+                            ),
                             textColor: statusColor,
                           ),
                           if (cp.blocksCount > 0) ...[
                             const SizedBox(height: 4),
                             Text(
-                              'Блокирует задач: ${cp.blocksCount}',
-                              style: textStyles.smallMono.copyWith(color: colors.accentRed),
+                              language.translate(
+                                'tasks_analysis_blocks_count',
+                                params: {'count': cp.blocksCount},
+                              ),
+                              style: textStyles.smallMono.copyWith(
+                                color: colors.accentRed,
+                              ),
                             ),
                           ],
                         ],
@@ -1911,17 +2142,15 @@ class _TaskStatusMenuState extends State<_TaskStatusMenu> {
     if (status == widget.task.status) return;
 
     context.read<TasksBloc>().add(
-          UpdateTaskStatusRequested(
-            taskId: widget.task.id,
-            status: status,
-          ),
-        );
+      UpdateTaskStatusRequested(taskId: widget.task.id, status: status),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
     final task = widget.task;
 
     return SizedBox(
@@ -1940,7 +2169,7 @@ class _TaskStatusMenuState extends State<_TaskStatusMenu> {
             const SizedBox(width: 4),
             Expanded(
               child: Text(
-                task.status.label,
+                language.translate(task.status.localizationKey),
                 style: textStyles.captionSans,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -1954,7 +2183,7 @@ class _TaskStatusMenuState extends State<_TaskStatusMenu> {
             visualDensity: VisualDensity.compact,
             contentPadding: const EdgeInsets.symmetric(horizontal: 8),
             title: Text(
-              status.label,
+              language.translate(status.localizationKey),
               style: textStyles.captionSans.copyWith(
                 fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                 color: isCurrent ? colors.brand : colors.textPrimary,
@@ -1971,12 +2200,18 @@ class _TaskStatusMenuState extends State<_TaskStatusMenu> {
 class AnimatedCheckbox extends StatefulWidget {
   final bool value;
   final bool isPending;
+  final bool isEnabled;
+  final String semanticLabel;
+  final String pendingSemanticLabel;
   final ValueChanged<bool> onChanged;
 
   const AnimatedCheckbox({
     super.key,
     required this.value,
     this.isPending = false,
+    this.isEnabled = true,
+    required this.semanticLabel,
+    required this.pendingSemanticLabel,
     required this.onChanged,
   });
 
@@ -1984,7 +2219,8 @@ class AnimatedCheckbox extends StatefulWidget {
   State<AnimatedCheckbox> createState() => _AnimatedCheckboxState();
 }
 
-class _AnimatedCheckboxState extends State<AnimatedCheckbox> with SingleTickerProviderStateMixin {
+class _AnimatedCheckboxState extends State<AnimatedCheckbox>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _checkScaleAnimation;
@@ -1999,8 +2235,14 @@ class _AnimatedCheckboxState extends State<AnimatedCheckbox> with SingleTickerPr
 
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(tween: Tween<double>(begin: 1.0, end: 0.8), weight: 30),
-      TweenSequenceItem(tween: Tween<double>(begin: 0.8, end: 1.15), weight: 40),
-      TweenSequenceItem(tween: Tween<double>(begin: 1.15, end: 1.0), weight: 30),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.8, end: 1.15),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.15, end: 1.0),
+        weight: 30,
+      ),
     ]).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     _checkScaleAnimation = CurvedAnimation(
@@ -2034,55 +2276,69 @@ class _AnimatedCheckboxState extends State<AnimatedCheckbox> with SingleTickerPr
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final isInteractive = widget.isEnabled && !widget.isPending;
+    void handleToggle() => widget.onChanged(!widget.value);
 
-    // Visual circle is 28px; outer box keeps a 48×48 tap target.
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.isPending
-            ? null
-            : () {
-                widget.onChanged(!widget.value);
-              },
-        child: Center(
-          child: ScaleTransition(
-            scale: _scaleAnimation,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: widget.isPending
-                      ? colors.accentGreen.withValues(alpha: 0.4)
-                      : (widget.value
-                          ? colors.accentGreen
-                          : colors.textSecondary.withValues(alpha: 0.4)),
-                  width: 1.5,
-                ),
-                color: widget.value
-                    ? colors.accentGreen.withValues(alpha: 0.15)
-                    : Colors.transparent,
-              ),
-              child: widget.isPending
-                  ? Padding(
-                      padding: const EdgeInsets.all(5.0),
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(colors.accentGreen),
-                      ),
-                    )
-                  : ScaleTransition(
-                      scale: _checkScaleAnimation,
-                      child: widget.value
-                          ? Icon(TablerIcons.check,
-                              size: 18, color: colors.accentGreen)
-                          : const SizedBox.shrink(),
+    return Semantics(
+      container: true,
+      label: widget.semanticLabel,
+      value: widget.isPending ? widget.pendingSemanticLabel : null,
+      checked: widget.value,
+      enabled: isInteractive,
+      liveRegion: widget.isPending,
+      onTap: isInteractive ? handleToggle : null,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: ExcludeSemantics(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: isInteractive ? handleToggle : null,
+            child: Center(
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: !widget.isEnabled
+                          ? colors.textSecondary.withValues(alpha: 0.2)
+                          : widget.isPending
+                          ? colors.accentGreen.withValues(alpha: 0.4)
+                          : (widget.value
+                                ? colors.accentGreen
+                                : colors.textSecondary.withValues(alpha: 0.4)),
+                      width: 1.5,
                     ),
+                    color: widget.value
+                        ? colors.accentGreen.withValues(alpha: 0.15)
+                        : Colors.transparent,
+                  ),
+                  child: widget.isPending
+                      ? Padding(
+                          padding: const EdgeInsets.all(5.0),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colors.accentGreen,
+                            ),
+                          ),
+                        )
+                      : ScaleTransition(
+                          scale: _checkScaleAnimation,
+                          child: widget.value
+                              ? Icon(
+                                  TablerIcons.check,
+                                  size: 18,
+                                  color: colors.accentGreen,
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                ),
+              ),
             ),
           ),
         ),
@@ -2091,27 +2347,750 @@ class _AnimatedCheckboxState extends State<AnimatedCheckbox> with SingleTickerPr
   }
 }
 
-String _formatRussianDate(DateTime date) {
-  final months = [
-    'янв.', 'фев.', 'мар.', 'апр.', 'май', 'июн.',
-    'июл.', 'авг.', 'сен.', 'окт.', 'ноя.', 'дек.'
+String _formatLocalizedCompactDate(LanguageCubit language, DateTime date) {
+  const monthKeys = [
+    'tasks_month_short_january',
+    'tasks_month_short_february',
+    'tasks_month_short_march',
+    'tasks_month_short_april',
+    'tasks_month_short_may',
+    'tasks_month_short_june',
+    'tasks_month_short_july',
+    'tasks_month_short_august',
+    'tasks_month_short_september',
+    'tasks_month_short_october',
+    'tasks_month_short_november',
+    'tasks_month_short_december',
   ];
-  return '${date.day} ${months[date.month - 1]}';
+  return language.translate(
+    'tasks_date_day_month',
+    params: {
+      'day': date.day,
+      'month': language.translate(monthKeys[date.month - 1]),
+    },
+  );
 }
 
-String _taskCountLabel(int count) {
-  final mod10 = count % 10;
-  final mod100 = count % 100;
+String _formatLocalizedLongDate(LanguageCubit language, DateTime date) {
+  const monthKeys = [
+    'tasks_month_date_january',
+    'tasks_month_date_february',
+    'tasks_month_date_march',
+    'tasks_month_date_april',
+    'tasks_month_date_may',
+    'tasks_month_date_june',
+    'tasks_month_date_july',
+    'tasks_month_date_august',
+    'tasks_month_date_september',
+    'tasks_month_date_october',
+    'tasks_month_date_november',
+    'tasks_month_date_december',
+  ];
 
-  if (mod10 == 1 && mod100 != 11) {
-    return '$count задача';
+  return language.translate(
+    'tasks_date_day_month_year',
+    params: {
+      'day': date.day,
+      'month': language.translate(monthKeys[date.month - 1]),
+      'year': date.year,
+    },
+  );
+}
+
+String _formatLocalizedCompactDateWithYear(
+  LanguageCubit language,
+  DateTime date,
+) {
+  const monthKeys = [
+    'tasks_month_short_january',
+    'tasks_month_short_february',
+    'tasks_month_short_march',
+    'tasks_month_short_april',
+    'tasks_month_short_may',
+    'tasks_month_short_june',
+    'tasks_month_short_july',
+    'tasks_month_short_august',
+    'tasks_month_short_september',
+    'tasks_month_short_october',
+    'tasks_month_short_november',
+    'tasks_month_short_december',
+  ];
+
+  return language.translate(
+    'tasks_date_day_month_year',
+    params: {
+      'day': date.day,
+      'month': language.translate(monthKeys[date.month - 1]),
+      'year': date.year,
+    },
+  );
+}
+
+String _weekdayLocalizationKey(int weekday) {
+  const keys = [
+    'tasks_weekday_monday',
+    'tasks_weekday_tuesday',
+    'tasks_weekday_wednesday',
+    'tasks_weekday_thursday',
+    'tasks_weekday_friday',
+    'tasks_weekday_saturday',
+    'tasks_weekday_sunday',
+  ];
+  return keys[weekday - 1];
+}
+
+String _taskCountLabel(LanguageCubit language, int count) {
+  return language.translatePlural('tasks_count', count);
+}
+
+class _LazyTaskTab extends StatelessWidget {
+  final bool isActive;
+  final WidgetBuilder builder;
+
+  const _LazyTaskTab({required this.isActive, required this.builder});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isActive) return const SizedBox.expand();
+    return builder(context);
+  }
+}
+
+class _GanttTaskTab extends StatelessWidget {
+  static const int _maxTimelineColumns = 90;
+  static const double _dayColumnWidth = 44;
+  static const double _taskColumnWidth = 180;
+  static const double _rowHeight = 48;
+
+  final List<Task> tasks;
+  final Future<void> Function() onRefresh;
+
+  const _GanttTaskTab({required this.tasks, required this.onRefresh});
+
+  DateTime _dateOnly(DateTime date) =>
+      DateTime(date.year, date.month, date.day);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+
+    if (tasks.isEmpty) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          return RefreshIndicator(
+            onRefresh: onRefresh,
+            child: ListView(
+              key: const PageStorageKey<String>('tasks-gantt-empty'),
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                SizedBox(
+                  height: math.max(1, constraints.maxHeight - 1),
+                  child: Center(
+                    child: Text(
+                      language.translate('tasks_gantt_empty'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textTooltip,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    }
+
+    var minDate = _dateOnly(tasks.first.startDate ?? tasks.first.dueDate);
+    var maxDate = _dateOnly(tasks.first.dueDate);
+    for (final task in tasks.skip(1)) {
+      final start = _dateOnly(task.startDate ?? task.dueDate);
+      final end = _dateOnly(task.dueDate);
+      if (start.isBefore(minDate)) minDate = start;
+      if (end.isBefore(minDate)) minDate = end;
+      if (start.isAfter(maxDate)) maxDate = start;
+      if (end.isAfter(maxDate)) maxDate = end;
+    }
+
+    final timelineStart = minDate.subtract(const Duration(days: 1));
+    final timelineEnd = maxDate.add(const Duration(days: 2));
+    final spanDays = timelineEnd.difference(timelineStart).inDays + 1;
+    final bucketDays = math.max(1, (spanDays / _maxTimelineColumns).ceil());
+    final columnCount = (spanDays / bucketDays).ceil();
+    final timelineWidth = columnCount * _dayColumnWidth;
+    final chartWidth = _taskColumnWidth + timelineWidth;
+    final monthNames = _ganttMonthShortNames(language);
+    final dueDateFormatter = DateFormat('dd.MM');
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewportWidth = constraints.maxWidth;
+        final contentWidth = math.max(viewportWidth, chartWidth + 32);
+
+        return SingleChildScrollView(
+          key: const PageStorageKey<String>('tasks-gantt-horizontal'),
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: contentWidth,
+            height: constraints.maxHeight,
+            child: RefreshIndicator(
+              onRefresh: onRefresh,
+              child: ListView.builder(
+                key: const PageStorageKey<String>('tasks-gantt-vertical'),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: tasks.length + 3,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return SizedBox(
+                      width: math.max(0, viewportWidth - 32),
+                      height: 52,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            language.translate('tasks_gantt_timeline_title'),
+                            style: textStyles.captionSans.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${DateFormat('dd.MM.yyyy').format(timelineStart)} - '
+                            '${DateFormat('dd.MM.yyyy').format(timelineEnd)}',
+                            style: textStyles.smallMono.copyWith(
+                              color: colors.textTooltip,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (index == 1) {
+                    return SizedBox(
+                      width: chartWidth,
+                      height: 40,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _GanttHeaderPainter(
+                                timelineStart: timelineStart,
+                                columnCount: columnCount,
+                                bucketDays: bucketDays,
+                                dayColumnWidth: _dayColumnWidth,
+                                taskColumnWidth: _taskColumnWidth,
+                                backgroundColor: colors.surfaceNested,
+                                borderColor: colors.border,
+                                normalTextStyle: textStyles.smallMono.copyWith(
+                                  fontSize: 9,
+                                  color: colors.textSecondary,
+                                ),
+                                todayTextStyle: textStyles.smallMono.copyWith(
+                                  fontSize: 9,
+                                  color: colors.brand,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                monthNames: monthNames,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: _taskColumnWidth,
+                            height: 40,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  language.translate('tasks_gantt_task_column'),
+                                  style: textStyles.captionSans.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (index == tasks.length + 2) {
+                    return SizedBox(
+                      width: math.max(0, viewportWidth - 32),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 16, bottom: 8),
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _legendItem(
+                              context,
+                              colors.surfaceNested,
+                              colors.border,
+                              language.translate(
+                                TaskStatus.todo.localizationKey,
+                              ),
+                            ),
+                            _legendItem(
+                              context,
+                              colors.brand.withValues(alpha: 0.1),
+                              colors.brand,
+                              language.translate(
+                                TaskStatus.inProgress.localizationKey,
+                              ),
+                            ),
+                            _legendItem(
+                              context,
+                              colors.accentAmber.withValues(alpha: 0.1),
+                              colors.accentAmber,
+                              language.translate('tasks_gantt_legend_review'),
+                            ),
+                            _legendItem(
+                              context,
+                              colors.accentGreen.withValues(alpha: 0.1),
+                              colors.accentGreen,
+                              language.translate(
+                                TaskStatus.done.localizationKey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final task = tasks[index - 2];
+                  final palette = _paletteForStatus(context, task.status);
+                  final assignee = language.translateMessage(
+                    task.assigneeName ?? language.translate('tasks_unassigned'),
+                  );
+
+                  return SizedBox(
+                    width: chartWidth,
+                    height: _rowHeight,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: RepaintBoundary(
+                            child: CustomPaint(
+                              painter: _GanttRowPainter(
+                                task: task,
+                                timelineStart: timelineStart,
+                                columnCount: columnCount,
+                                bucketDays: bucketDays,
+                                dayColumnWidth: _dayColumnWidth,
+                                taskColumnWidth: _taskColumnWidth,
+                                surfaceColor: colors.surface,
+                                borderColor: colors.border,
+                                todayColor: colors.accentRed.withValues(
+                                  alpha: 0.5,
+                                ),
+                                barColor: palette.fill,
+                                barBorderColor: palette.border,
+                                barTextColor: palette.text,
+                                barTextStyle: textStyles.smallMono.copyWith(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                dueDateLabel: dueDateFormatter.format(
+                                  task.dueDate,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: _taskColumnWidth,
+                          height: _rowHeight,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          color: colors.surface,
+                          alignment: Alignment.centerLeft,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                task.title,
+                                style: textStyles.captionSans.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                assignee,
+                                style: textStyles.smallSans.copyWith(
+                                  color: colors.textTooltip,
+                                  fontSize: 10,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  if (mod10 >= 2 &&
-      mod10 <= 4 &&
-      (mod100 < 12 || mod100 > 14)) {
-    return '$count задачи';
+  _GanttPalette _paletteForStatus(BuildContext context, TaskStatus status) {
+    final colors = context.colors;
+    return switch (status) {
+      TaskStatus.todo => _GanttPalette(
+        fill: colors.surfaceNested,
+        border: colors.border,
+        text: colors.textSecondary,
+      ),
+      TaskStatus.inProgress => _GanttPalette(
+        fill: colors.brand.withValues(alpha: 0.1),
+        border: colors.brand,
+        text: colors.brand,
+      ),
+      TaskStatus.review => _GanttPalette(
+        fill: colors.accentAmber.withValues(alpha: 0.1),
+        border: colors.accentAmber,
+        text: colors.accentAmber,
+      ),
+      TaskStatus.done => _GanttPalette(
+        fill: colors.accentGreen.withValues(alpha: 0.1),
+        border: colors.accentGreen,
+        text: colors.accentGreen,
+      ),
+    };
   }
 
-  return '$count задач';
+  Widget _legendItem(
+    BuildContext context,
+    Color fill,
+    Color border,
+    String label,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: fill,
+            border: Border.all(color: border),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: context.textStyles.smallSans),
+      ],
+    );
+  }
+}
+
+class _GanttPalette {
+  final Color fill;
+  final Color border;
+  final Color text;
+
+  const _GanttPalette({
+    required this.fill,
+    required this.border,
+    required this.text,
+  });
+}
+
+class _GanttHeaderPainter extends CustomPainter {
+  final DateTime timelineStart;
+  final int columnCount;
+  final int bucketDays;
+  final double dayColumnWidth;
+  final double taskColumnWidth;
+  final Color backgroundColor;
+  final Color borderColor;
+  final TextStyle normalTextStyle;
+  final TextStyle todayTextStyle;
+  final List<String> monthNames;
+
+  const _GanttHeaderPainter({
+    required this.timelineStart,
+    required this.columnCount,
+    required this.bucketDays,
+    required this.dayColumnWidth,
+    required this.taskColumnWidth,
+    required this.backgroundColor,
+    required this.borderColor,
+    required this.normalTextStyle,
+    required this.todayTextStyle,
+    required this.monthNames,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = backgroundColor);
+    final linePaint = Paint()
+      ..color = borderColor
+      ..strokeWidth = 1;
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke,
+    );
+    canvas.drawLine(
+      Offset(taskColumnWidth, 0),
+      Offset(taskColumnWidth, size.height),
+      linePaint,
+    );
+
+    final today = DateUtils.dateOnly(DateTime.now());
+    for (var index = 0; index < columnCount; index++) {
+      final x = taskColumnWidth + index * dayColumnWidth;
+      if (index > 0) {
+        canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
+      }
+      final date = timelineStart.add(Duration(days: index * bucketDays));
+      final bucketEnd = date.add(Duration(days: bucketDays - 1));
+      final containsToday = !today.isBefore(date) && !today.isAfter(bucketEnd);
+      final painter = TextPainter(
+        text: TextSpan(
+          text: '${date.day}\n${monthNames[date.month - 1]}',
+          style: containsToday ? todayTextStyle : normalTextStyle,
+        ),
+        textAlign: TextAlign.center,
+        textDirection: ui.TextDirection.ltr,
+        maxLines: 2,
+      )..layout(maxWidth: dayColumnWidth - 4);
+      painter.paint(
+        canvas,
+        Offset(
+          x + (dayColumnWidth - painter.width) / 2,
+          (size.height - painter.height) / 2,
+        ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GanttHeaderPainter oldDelegate) {
+    return oldDelegate.timelineStart != timelineStart ||
+        oldDelegate.columnCount != columnCount ||
+        oldDelegate.bucketDays != bucketDays ||
+        oldDelegate.backgroundColor != backgroundColor ||
+        oldDelegate.borderColor != borderColor ||
+        oldDelegate.normalTextStyle != normalTextStyle ||
+        oldDelegate.todayTextStyle != todayTextStyle ||
+        oldDelegate.monthNames != monthNames;
+  }
+}
+
+class _GanttRowPainter extends CustomPainter {
+  final Task task;
+  final DateTime timelineStart;
+  final int columnCount;
+  final int bucketDays;
+  final double dayColumnWidth;
+  final double taskColumnWidth;
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color todayColor;
+  final Color barColor;
+  final Color barBorderColor;
+  final Color barTextColor;
+  final TextStyle barTextStyle;
+  final String dueDateLabel;
+
+  const _GanttRowPainter({
+    required this.task,
+    required this.timelineStart,
+    required this.columnCount,
+    required this.bucketDays,
+    required this.dayColumnWidth,
+    required this.taskColumnWidth,
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.todayColor,
+    required this.barColor,
+    required this.barBorderColor,
+    required this.barTextColor,
+    required this.barTextStyle,
+    required this.dueDateLabel,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = surfaceColor);
+    final linePaint = Paint()
+      ..color = borderColor.withValues(alpha: 0.4)
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(0, size.height - 0.5),
+      Offset(size.width, size.height - 0.5),
+      Paint()
+        ..color = borderColor
+        ..strokeWidth = 1,
+    );
+    canvas.drawLine(
+      Offset(taskColumnWidth, 0),
+      Offset(taskColumnWidth, size.height),
+      Paint()
+        ..color = borderColor
+        ..strokeWidth = 1,
+    );
+    for (var index = 1; index < columnCount; index++) {
+      final x = taskColumnWidth + index * dayColumnWidth;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), linePaint);
+    }
+
+    final todayOffset = DateUtils.dateOnly(
+      DateTime.now(),
+    ).difference(timelineStart).inDays;
+    final totalTimelineDays = columnCount * bucketDays;
+    if (todayOffset >= 0 && todayOffset < totalTimelineDays) {
+      final todayX =
+          taskColumnWidth + (todayOffset / bucketDays) * dayColumnWidth;
+      canvas.drawLine(
+        Offset(todayX, 0),
+        Offset(todayX, size.height),
+        Paint()
+          ..color = todayColor
+          ..strokeWidth = 1.5,
+      );
+    }
+
+    var start = DateUtils.dateOnly(task.startDate ?? task.dueDate);
+    var end = DateUtils.dateOnly(task.dueDate);
+    if (end.isBefore(start)) {
+      final originalStart = start;
+      start = end;
+      end = originalStart;
+    }
+    final startOffset = start.difference(timelineStart).inDays;
+    final durationDays = math.max(1, end.difference(start).inDays + 1);
+    final timelineWidth = columnCount * dayColumnWidth;
+    final rawLeft = (startOffset / bucketDays) * dayColumnWidth + 4;
+    final left = rawLeft.clamp(4.0, math.max(4.0, timelineWidth - 8));
+    final rawWidth = math.max(
+      10.0,
+      (durationDays / bucketDays) * dayColumnWidth - 8,
+    );
+    final width = math.min(rawWidth, math.max(4.0, timelineWidth - left - 4));
+    final barRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(taskColumnWidth + left, 10, width, size.height - 20),
+      const Radius.circular(4),
+    );
+    canvas.drawRRect(barRect, Paint()..color = barColor);
+    canvas.drawRRect(
+      barRect,
+      Paint()
+        ..color = barBorderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+
+    if (width >= 28) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: dueDateLabel,
+          style: barTextStyle.copyWith(color: barTextColor),
+        ),
+        textDirection: ui.TextDirection.ltr,
+        maxLines: 1,
+        ellipsis: '...',
+      )..layout(maxWidth: math.max(0, width - 12));
+      textPainter.paint(
+        canvas,
+        Offset(
+          taskColumnWidth + left + 6,
+          (size.height - textPainter.height) / 2,
+        ),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _GanttRowPainter oldDelegate) {
+    return oldDelegate.task != task ||
+        oldDelegate.timelineStart != timelineStart ||
+        oldDelegate.columnCount != columnCount ||
+        oldDelegate.bucketDays != bucketDays ||
+        oldDelegate.surfaceColor != surfaceColor ||
+        oldDelegate.borderColor != borderColor ||
+        oldDelegate.todayColor != todayColor ||
+        oldDelegate.barColor != barColor ||
+        oldDelegate.barBorderColor != barBorderColor ||
+        oldDelegate.barTextColor != barTextColor ||
+        oldDelegate.dueDateLabel != dueDateLabel;
+  }
+}
+
+List<String> _ganttMonthShortNames(LanguageCubit language) {
+  const keys = [
+    'tasks_month_short_january',
+    'tasks_month_short_february',
+    'tasks_month_short_march',
+    'tasks_month_short_april',
+    'tasks_month_short_may',
+    'tasks_month_short_june',
+    'tasks_month_short_july',
+    'tasks_month_short_august',
+    'tasks_month_short_september',
+    'tasks_month_short_october',
+    'tasks_month_short_november',
+    'tasks_month_short_december',
+  ];
+  return [for (final key in keys) language.translate(key)];
+}
+
+class _TaskFormPopScope extends StatefulWidget {
+  final bool Function() isDirty;
+  final Widget child;
+
+  const _TaskFormPopScope({required this.isDirty, required this.child});
+
+  @override
+  State<_TaskFormPopScope> createState() => _TaskFormPopScopeState();
+}
+
+class _TaskFormPopScopeState extends State<_TaskFormPopScope> {
+  bool _allowPop = false;
+  bool _isShowingDialog = false;
+
+  Future<void> _requestPop() async {
+    if (_isShowingDialog) return;
+
+    if (widget.isDirty()) {
+      _isShowingDialog = true;
+      final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+      _isShowingDialog = false;
+      if (shouldClose != true || !mounted) return;
+    }
+
+    setState(() => _allowPop = true);
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _requestPop();
+      },
+      child: widget.child,
+    );
+  }
 }

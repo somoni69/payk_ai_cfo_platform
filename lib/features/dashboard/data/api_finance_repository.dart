@@ -1,60 +1,159 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../domain/finance_model.dart';
 import '../domain/finance_repository.dart';
 
 /// Реализация репозитория финансов, получающая данные с бэкенда PAYK (FIN-01, FIN-03).
 class ApiFinanceRepository implements FinanceRepository {
-  final ApiClient _apiClient = ApiClient();
+  ApiFinanceRepository({Dio? dio}) : _dio = dio ?? ApiClient().dio;
+
+  final Dio _dio;
+  static const _overviewTtl = Duration(seconds: 30);
+
+  final _overviewCache = ExpiringRequestCache<Map<String, dynamic>>(
+    ttl: _overviewTtl,
+  );
+
+  Future<Map<String, dynamic>> _getOverviewData() =>
+      _overviewCache.get(() async {
+        final response = await _dio.get('/finance/overview');
+        return Map<String, dynamic>.from(response.data as Map);
+      });
+
+  @override
+  Future<FinanceOverview> getOverview({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      _overviewCache.invalidate();
+    }
+    final results = await Future.wait([getMetrics(), getCashFlowHistory()]);
+    return FinanceOverview(
+      metrics: results[0] as FinanceMetrics,
+      history: results[1] as List<CashFlowPoint>,
+    );
+  }
 
   @override
   Future<FinanceMetrics> getMetrics() async {
     try {
-      final response = await _apiClient.dio.get('/finance/overview');
-      final data = response.data as Map<String, dynamic>;
+      final data = await _getOverviewData();
 
-      final double currentBalance = (data['balance'] ?? 0.0).toDouble();
+      final double currentBalance = (data['balance'] ?? data['cash_balance'] ?? data['cashBalance'] ?? 0.0).toDouble();
       final double revenue = (data['revenue'] ?? 0.0).toDouble();
-      final double expenses = (data['expenses'] ?? 0.0).toDouble();
-      final double profit = (data['profit'] ?? 0.0).toDouble();
+      final double expenses = (data['expenses'] ?? data['expense'] ?? 0.0).toDouble();
+      final double profit = (data['profit'] ?? data['net_profit'] ?? data['netProfit'] ?? (revenue - expenses)).toDouble();
+
+      final deltasMap = (data['deltas'] as Map<String, dynamic>?) ??
+          (data['growth'] as Map<String, dynamic>?) ??
+          (data['changes'] as Map<String, dynamic>?) ??
+          (data['percentages'] as Map<String, dynamic>?);
+
+      final double? cashBalanceDelta = _toOptionalDouble(
+        data['cash_balance_delta'] ??
+            data['cashBalanceDelta'] ??
+            data['balance_delta'] ??
+            data['balanceDelta'] ??
+            data['cash_balance_growth'] ??
+            data['balance_growth'] ??
+            data['cash_balance_change'] ??
+            deltasMap?['cash_balance'] ??
+            deltasMap?['balance'],
+      );
+
+      final double? revenueDelta = _toOptionalDouble(
+        data['revenue_delta'] ??
+            data['revenueDelta'] ??
+            data['revenue_growth'] ??
+            data['revenue_change'] ??
+            deltasMap?['revenue'],
+      );
+
+      final double? expensesDelta = _toOptionalDouble(
+        data['expenses_delta'] ??
+            data['expensesDelta'] ??
+            data['expense_delta'] ??
+            data['expenseDelta'] ??
+            data['expenses_growth'] ??
+            data['expense_growth'] ??
+            data['expenses_change'] ??
+            deltasMap?['expenses'] ??
+            deltasMap?['expense'],
+      );
+
+      final double? netProfitDelta = _toOptionalDouble(
+        data['net_profit_delta'] ??
+            data['netProfitDelta'] ??
+            data['profit_delta'] ??
+            data['profitDelta'] ??
+            data['profit_growth'] ??
+            data['profit_change'] ??
+            deltasMap?['net_profit'] ??
+            deltasMap?['profit'],
+      );
+
+      final double? breakEvenPoint = _toOptionalDouble(
+        data['break_even_point'] ?? data['breakEvenPoint'] ?? data['breakeven'],
+      );
+
+      final double? cashForecast = _toOptionalDouble(
+        data['cash_forecast'] ?? data['cashForecast'] ?? data['forecast'],
+      );
+
+      final double? cashForecastDelta = _toOptionalDouble(
+        data['cash_forecast_delta'] ??
+            data['cashForecastDelta'] ??
+            data['forecast_delta'] ??
+            data['forecastDelta'] ??
+            data['forecast_growth'] ??
+            data['forecast_change'] ??
+            deltasMap?['cash_forecast'] ??
+            deltasMap?['forecast'],
+      );
 
       return FinanceMetrics(
         cashBalance: currentBalance,
         revenue: revenue,
         expenses: expenses,
         netProfit: profit,
-        breakEvenPoint: (data['break_even_point'] ?? data['breakEvenPoint'] ?? (expenses * 1.25)).toDouble(),
-        cashForecast: (data['cash_forecast'] ?? data['cashForecast'] ?? (currentBalance * 1.08)).toDouble(),
-        cashBalanceDelta: (data['cash_balance_delta'] ?? data['cashBalanceDelta'] ?? 8.5).toDouble(),
-        revenueDelta: (data['revenue_delta'] ?? data['revenueDelta'] ?? 12.3).toDouble(),
-        expensesDelta: (data['expenses_delta'] ?? data['expensesDelta'] ?? 4.1).toDouble(),
-        netProfitDelta: (data['net_profit_delta'] ?? data['netProfitDelta'] ?? 15.2).toDouble(),
-        cashForecastDelta: (data['cash_forecast_delta'] ?? data['cashForecastDelta'] ?? 6.8).toDouble(),
+        breakEvenPoint: breakEvenPoint,
+        cashForecast: cashForecast,
+        cashBalanceDelta: cashBalanceDelta,
+        revenueDelta: revenueDelta,
+        expensesDelta: expensesDelta,
+        netProfitDelta: netProfitDelta,
+        cashForecastDelta: cashForecastDelta,
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить финансовые показатели: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить финансовые показатели: ${e.toString()}',
+      );
     }
   }
 
   @override
   Future<List<CashFlowPoint>> getCashFlowHistory() async {
     try {
-      final response = await _apiClient.dio.get('/finance/overview');
-      final data = response.data as Map<String, dynamic>;
+      final data = await _getOverviewData();
       final list = data['cashflow'] as List<dynamic>? ?? [];
 
       final double runningBalance = (data['balance'] ?? 0.0).toDouble();
 
       // Сортируем по дате по возрастанию
       final sortedList = List.from(list);
-      sortedList.sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
+      sortedList.sort(
+        (a, b) => (a['date'] as String).compareTo(b['date'] as String),
+      );
 
       // Вычисляем исторический остаток кассы на конец каждого дня,
       // рассчитывая нетто-потоки в обратном направлении от текущего баланса
-      double startBalance = runningBalance - sortedList.fold(0.0, (sum, item) {
-        final double income = (item['income'] ?? 0.0).toDouble();
-        final double expense = (item['expense'] ?? 0.0).toDouble();
-        return sum + (income - expense);
-      });
+      double startBalance =
+          runningBalance -
+          sortedList.fold(0.0, (sum, item) {
+            final double income = (item['income'] ?? 0.0).toDouble();
+            final double expense = (item['expense'] ?? 0.0).toDouble();
+            return sum + (income - expense);
+          });
 
       List<CashFlowPoint> points = [];
       double currentBalance = startBalance;
@@ -64,18 +163,28 @@ class ApiFinanceRepository implements FinanceRepository {
         final double expense = (item['expense'] ?? 0.0).toDouble();
         currentBalance += (income - expense);
 
-        points.add(CashFlowPoint(
-          date: DateTime.parse(item['date'] as String),
-          amount: currentBalance,
-          income: income,
-          expense: expense,
-        ));
+        points.add(
+          CashFlowPoint(
+            date: DateTime.parse(item['date'] as String),
+            amount: currentBalance,
+            income: income,
+            expense: expense,
+          ),
+        );
       }
 
       return points;
     } catch (e) {
-      throw Exception('Не удалось загрузить историю движения денег: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить историю движения денег: ${e.toString()}',
+      );
     }
+  }
+
+  double? _toOptionalDouble(dynamic val) {
+    if (val is num) return val.toDouble();
+    if (val is String) return double.tryParse(val);
+    return null;
   }
 
   double _toDouble(dynamic val) {
@@ -88,7 +197,7 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<PnlReport> getPnlReport() async {
     try {
-      final response = await _apiClient.dio.get('/finance/pnl');
+      final response = await _dio.get('/finance/pnl');
       final data = response.data as Map<String, dynamic>;
 
       final incomeList = (data['income'] as List<dynamic>? ?? []).map((e) {
@@ -124,7 +233,7 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<BreakEvenAnalysis> getBreakEvenAnalysis() async {
     try {
-      final response = await _apiClient.dio.get('/finance/break-even');
+      final response = await _dio.get('/finance/break-even');
       final data = response.data as Map<String, dynamic>;
 
       return BreakEvenAnalysis(
@@ -136,14 +245,19 @@ class ApiFinanceRepository implements FinanceRepository {
         marginOfSafety: _toDouble(data['margin_of_safety']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить анализ безубыточности: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить анализ безубыточности: ${e.toString()}',
+      );
     }
   }
 
   @override
   Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
     try {
-      final response = await _apiClient.dio.get('/finance/abc', queryParameters: {'dimension': dimension});
+      final response = await _dio.get(
+        '/finance/abc',
+        queryParameters: {'dimension': dimension},
+      );
       final data = response.data as Map<String, dynamic>;
 
       final rowsList = (data['rows'] as List<dynamic>? ?? []).map((e) {
@@ -170,7 +284,7 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<BankAccountsReport> getBankAccounts() async {
     try {
-      final response = await _apiClient.dio.get('/finance/accounts');
+      final response = await _dio.get('/finance/accounts');
       final data = response.data as Map<String, dynamic>;
 
       final list = (data['accounts'] as List<dynamic>? ?? []).map((e) {
@@ -197,7 +311,7 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<ExchangeRatesReport> getExchangeRates() async {
     try {
-      final response = await _apiClient.dio.get('/finance/rates');
+      final response = await _dio.get('/finance/rates');
       final data = response.data as Map<String, dynamic>;
 
       final list = (data['rates'] as List<dynamic>? ?? []).map((e) {
@@ -205,7 +319,9 @@ class ApiFinanceRepository implements FinanceRepository {
         return RateRow(
           code: map['code'] ?? 'USD',
           rate: _toDouble(map['rate']),
-          rateDate: DateTime.parse(map['rate_date'] ?? DateTime.now().toIso8601String()),
+          rateDate: DateTime.parse(
+            map['rate_date'] ?? DateTime.now().toIso8601String(),
+          ),
         );
       }).toList();
 
@@ -218,7 +334,10 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<AiInsightsReport> getAiInsights() async {
     try {
-      final response = await _apiClient.dio.get('/finance/ai-insights');
+      final response = await _dio.get(
+        '/finance/ai-insights',
+        options: ApiClient.longRunningOptions(),
+      );
       final data = response.data as Map<String, dynamic>;
       final forecastMap = data['forecast'] as Map<String, dynamic>? ?? {};
 
@@ -240,7 +359,7 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<PlanFactReport> getPlanFactReport() async {
     try {
-      final response = await _apiClient.dio.get('/finance/plan-fact');
+      final response = await _dio.get('/finance/plan-fact');
       final data = response.data as Map<String, dynamic>;
 
       final rowsList = (data['rows'] as List<dynamic>? ?? []).map((e) {

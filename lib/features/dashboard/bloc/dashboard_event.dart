@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 abstract class DashboardEvent extends Equatable {
@@ -7,7 +9,24 @@ abstract class DashboardEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadDashboardData extends DashboardEvent {}
+enum DashboardSection {
+  pnl,
+  planFact,
+  breakEven,
+  abc,
+  accountsRates,
+  aiInsights,
+}
+
+class LoadDashboardData extends DashboardEvent {
+  final bool forceRefresh;
+  final Completer<void>? completion;
+
+  const LoadDashboardData({this.forceRefresh = false, this.completion});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
 
 class ChangeCurrency extends DashboardEvent {
   final String currency; // 'TJS', 'USD', 'RUB', 'EUR'
@@ -25,4 +44,19 @@ class ChangeAbcDimension extends DashboardEvent {
 
   @override
   List<Object?> get props => [dimension];
+}
+
+class LoadDashboardSection extends DashboardEvent {
+  final DashboardSection section;
+  final bool forceRefresh;
+  final Completer<void>? completion;
+
+  const LoadDashboardSection(
+    this.section, {
+    this.forceRefresh = false,
+    this.completion,
+  });
+
+  @override
+  List<Object?> get props => [section, forceRefresh];
 }

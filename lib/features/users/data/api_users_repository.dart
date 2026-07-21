@@ -12,8 +12,11 @@ class ApiUsersRepository implements UsersRepository {
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
-      
-      final response = await _apiClient.dio.get('/users', queryParameters: queryParams);
+
+      final response = await _apiClient.dio.get(
+        '/users',
+        queryParameters: queryParams,
+      );
       final dynamic responseData = response.data;
       final List<dynamic> list = responseData is Map<String, dynamic>
           ? (responseData['items'] as List<dynamic>? ?? [])
@@ -30,7 +33,9 @@ class ApiUsersRepository implements UsersRepository {
           role: map['role'] ?? 'viewer',
           active: map['active'] ?? true,
           twoFactor: map['two_factor'] ?? false,
-          createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+          createdAt: DateTime.parse(
+            map['created_at'] ?? DateTime.now().toIso8601String(),
+          ),
         );
       }).toList();
     } catch (e) {
@@ -60,7 +65,7 @@ class ApiUsersRepository implements UsersRepository {
         'active': active,
         'two_factor': twoFactor,
       };
-      
+
       final response = await _apiClient.dio.post('/users', data: payload);
       final map = response.data as Map<String, dynamic>;
 
@@ -73,7 +78,9 @@ class ApiUsersRepository implements UsersRepository {
         role: map['role'] ?? role,
         active: map['active'] ?? active,
         twoFactor: map['two_factor'] ?? twoFactor,
-        createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+        createdAt: DateTime.parse(
+          map['created_at'] ?? DateTime.now().toIso8601String(),
+        ),
       );
     } catch (e) {
       throw Exception('Не удалось создать пользователя: ${e.toString()}');
@@ -97,7 +104,9 @@ class ApiUsersRepository implements UsersRepository {
       if (email != null) payload['email'] = email;
       if (phone != null) payload['phone'] = phone;
       if (role != null) payload['role'] = role;
-      if (password != null && password.isNotEmpty) payload['password'] = password;
+      if (password != null && password.isNotEmpty) {
+        payload['password'] = password;
+      }
       if (active != null) payload['active'] = active;
       if (twoFactor != null) payload['two_factor'] = twoFactor;
 
@@ -113,7 +122,9 @@ class ApiUsersRepository implements UsersRepository {
         role: map['role'] ?? 'viewer',
         active: map['active'] ?? true,
         twoFactor: map['two_factor'] ?? false,
-        createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+        createdAt: DateTime.parse(
+          map['created_at'] ?? DateTime.now().toIso8601String(),
+        ),
       );
     } catch (e) {
       throw Exception('Не удалось обновить пользователя: ${e.toString()}');

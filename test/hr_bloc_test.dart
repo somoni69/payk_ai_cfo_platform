@@ -13,19 +13,25 @@ class MockHrRepository implements HrRepository {
   bool shouldFail = false;
 
   @override
-  Future<List<Employee>> getEmployees() async {
+  Future<List<Employee>> getEmployees({bool forceRefresh = false}) async {
     if (shouldFail) throw Exception('Get employees error');
     return List.from(employees);
   }
 
   @override
-  Future<List<KpiAlert>> getKpiAlerts(String period) async {
+  Future<List<KpiAlert>> getKpiAlerts(
+    String period, {
+    bool forceRefresh = false,
+  }) async {
     if (shouldFail) throw Exception('Get KPI alerts error');
     return List.from(kpiAlerts);
   }
 
   @override
-  Future<List<SalaryRecord>> getSalaryRecords(String period) async {
+  Future<List<SalaryRecord>> getSalaryRecords(
+    String period, {
+    bool forceRefresh = false,
+  }) async {
     if (shouldFail) throw Exception('Get salary records error');
     return List.from(salaryRecords);
   }
@@ -131,16 +137,18 @@ void main() {
       bloc.add(const LoadHrData('2026-06'));
       await bloc.stream.firstWhere((s) => s is HrLoaded);
 
-      bloc.add(CreateEmployeeRequested(
-        Employee(
-          id: '',
-          fullName: 'Пётр Петров',
-          position: 'Бухгалтер',
-          baseSalary: 3000.0,
-          status: 'active',
-          createdAt: DateTime.now(),
+      bloc.add(
+        CreateEmployeeRequested(
+          Employee(
+            id: '',
+            fullName: 'Пётр Петров',
+            position: 'Бухгалтер',
+            baseSalary: 3000.0,
+            status: 'active',
+            createdAt: DateTime.now(),
+          ),
         ),
-      ));
+      );
 
       final List<HrState> emitted = [];
       final sub = bloc.stream.listen(emitted.add);
@@ -158,12 +166,14 @@ void main() {
       bloc.add(const LoadHrData('2026-06'));
       await bloc.stream.firstWhere((s) => s is HrLoaded);
 
-      bloc.add(const RecalcSalaryRequested(
-        employeeId: '1',
-        period: '2026-06',
-        baseAmount: 1800.0,
-        deductions: 100.0,
-      ));
+      bloc.add(
+        const RecalcSalaryRequested(
+          employeeId: '1',
+          period: '2026-06',
+          baseAmount: 1800.0,
+          deductions: 100.0,
+        ),
+      );
 
       final List<HrState> emitted = [];
       final sub = bloc.stream.listen(emitted.add);
@@ -173,7 +183,9 @@ void main() {
 
       expect(emitted, isNotEmpty);
       final loaded = emitted.first as HrLoaded;
-      final record = loaded.salaryRecords.firstWhere((s) => s.employeeId == '1');
+      final record = loaded.salaryRecords.firstWhere(
+        (s) => s.employeeId == '1',
+      );
       expect(record.baseAmount, 1800.0);
       expect(record.deductions, 100.0);
       expect(record.totalAmount, 1900.0); // 1800 + 200 (mock bonus) - 100

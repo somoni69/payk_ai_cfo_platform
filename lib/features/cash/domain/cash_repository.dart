@@ -14,8 +14,18 @@ abstract class CashRepository {
   /// Открыть новую кассовую смену (CASH-05)
   Future<CashShift> openShift(double startingBalance);
 
+  /// Opens a shift using an already loaded register when available.
+  Future<CashShift> openShiftForRegister(
+    double startingBalance, {
+    String? registerId,
+  }) => openShift(startingBalance);
+
   /// Закрыть текущую смену с подсчетом разницы (CASH-06)
   Future<CashShift> closeShift(double endingBalance);
+
+  /// Closes a known active shift without reloading the shifts collection.
+  Future<CashShift> closeShiftById(double endingBalance, {String? shiftId}) =>
+      closeShift(endingBalance);
 
   /// Получить сводные показатели касс
   Future<List<CashSummary>> getSummary();

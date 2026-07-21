@@ -3,6 +3,16 @@ import '../domain/cash_repository.dart';
 
 /// Внутриигровая/моковая база данных кассовых смен и операций.
 class MockCashRepository implements CashRepository {
+  @override
+  Future<CashShift> openShiftForRegister(
+    double startingBalance, {
+    String? registerId,
+  }) => openShift(startingBalance);
+
+  @override
+  Future<CashShift> closeShiftById(double endingBalance, {String? shiftId}) =>
+      closeShift(endingBalance);
+
   // Статический массив для сохранения данных во время сессии приложения
   static final List<Transaction> _transactions = [
     Transaction(

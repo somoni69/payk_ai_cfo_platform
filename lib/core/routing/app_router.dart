@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'go_router_refresh_stream.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/domain/app_access.dart';
 import '../../presentation/screens/dashboard_screen.dart';
 import '../../presentation/screens/cash_screen.dart';
 import '../../presentation/screens/tasks_screen.dart';
@@ -19,45 +19,74 @@ import '../../presentation/screens/marketing_screen.dart';
 import '../../presentation/screens/integrations_screen.dart';
 import '../../presentation/screens/users_screen.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-final GlobalKey<NavigatorState> _dashboardNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'dashboard');
-final GlobalKey<NavigatorState> _cashNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'cash');
-final GlobalKey<NavigatorState> _tasksNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tasks');
-final GlobalKey<NavigatorState> _warehouseNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'warehouse');
-final GlobalKey<NavigatorState> _moreNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'more');
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'root',
+);
+final GlobalKey<NavigatorState> _dashboardNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'dashboard');
+final GlobalKey<NavigatorState> _cashNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'cash',
+);
+final GlobalKey<NavigatorState> _tasksNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'tasks',
+);
+final GlobalKey<NavigatorState> _warehouseNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'warehouse');
+final GlobalKey<NavigatorState> _moreNavigatorKey = GlobalKey<NavigatorState>(
+  debugLabel: 'more',
+);
 
 /// Фабрика роутера с внедрением состояния [AuthBloc].
 ///
 /// Настраивает авто-редиректы при смене состояния авторизации.
-GoRouter createRouter(AuthBloc authBloc) {
+GoRouter createRouter(
+  AuthBloc authBloc, {
+  required Listenable refreshListenable,
+}) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/login',
-    refreshListenable: GoRouterRefreshStream(authBloc.stream),
+    initialLocation: '/splash',
+    refreshListenable: refreshListenable,
     redirect: (context, state) {
       final authState = authBloc.state;
-      final isLoggingIn = state.matchedLocation == '/login';
+      final location = state.matchedLocation;
+      final isLoggingIn = location == '/login';
+      final isBootstrapping = location == '/splash';
 
-      // Если не авторизован, отправляем на логин
-      if (authState is AuthUnauthenticated || authState is AuthInitial) {
-        return '/login';
+      if (authState is AuthInitial) {
+        return isBootstrapping ? null : '/splash';
       }
 
-      // Если авторизован и находится на странице входа, редиректим на дашборд
+      // Keep the current page while login/logout is actively being processed.
+      if (authState is AuthLoading) {
+        return null;
+      }
+
+      if (authState is AuthUnauthenticated || authState is AuthError) {
+        return isLoggingIn ? null : '/login';
+      }
+
       if (authState is AuthAuthenticated) {
-        if (isLoggingIn) {
-          return '/dashboard';
+        final landingLocation = authState.role.landingLocation;
+        if (isLoggingIn || isBootstrapping) {
+          return landingLocation;
+        }
+
+        if (!AppAccess.canOpen(authState.role, location)) {
+          return landingLocation;
         }
       }
 
       return null;
     },
     routes: [
-      // Вход в систему (MOB-05)
       GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        path: '/splash',
+        builder: (context, state) => const _BootstrapScreen(),
       ),
+
+      // Вход в систему (MOB-05)
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
 
       // Предупреждения / Инфо (MOB-04)
       GoRoute(
@@ -175,4 +204,20 @@ GoRouter createRouter(AuthBloc authBloc) {
       ),
     ],
   );
+}
+
+class _BootstrapScreen extends StatelessWidget {
+  const _BootstrapScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: SizedBox.square(
+          dimension: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      ),
+    );
+  }
 }

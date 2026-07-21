@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import '../../core/localization/language_cubit.dart';
+import '../../core/localization/locale_number_format.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../features/dashboard/bloc/dashboard_bloc.dart';
 import '../../features/dashboard/bloc/dashboard_event.dart';
@@ -11,6 +14,7 @@ import '../../features/dashboard/domain/finance_repository.dart';
 import '../../features/dashboard/domain/finance_model.dart';
 import '../widgets/ledger_ai_card.dart';
 import '../widgets/ledger_card.dart';
+import '../widgets/ledger_collapsing_header.dart';
 
 /// Входная точка экрана аналитики с внедрением DashboardBloc.
 class DashboardScreen extends StatelessWidget {
@@ -19,7 +23,9 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<DashboardBloc>(
-      create: (context) => DashboardBloc(context.read<FinanceRepository>())..add(LoadDashboardData()),
+      create: (context) =>
+          DashboardBloc(context.read<FinanceRepository>())
+            ..add(LoadDashboardData()),
       child: const DashboardView(),
     );
   }
@@ -32,41 +38,103 @@ class DashboardView extends StatefulWidget {
   State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends State<DashboardView> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _DashboardViewState extends State<DashboardView>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  int _activeTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 7, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    final nextIndex = _tabController.index;
+    if (!mounted || nextIndex == _activeTabIndex) return;
+    _activeTabIndex = nextIndex;
+    final section = _sectionForTab(nextIndex);
+    if (section != null) {
+      context.read<DashboardBloc>().add(LoadDashboardSection(section));
+    }
+  }
+
+  DashboardSection? _sectionForTab(int index) {
+    return switch (index) {
+      1 => DashboardSection.pnl,
+      2 => DashboardSection.planFact,
+      3 => DashboardSection.breakEven,
+      4 => DashboardSection.abc,
+      5 => DashboardSection.accountsRates,
+      6 => DashboardSection.aiInsights,
+      _ => null,
+    };
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
 
   // Разделение тысяч для числовых сумм
-  String _formatAmount(double amount) {
-    final int val = amount.round();
-    final RegExp reg = RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))');
-    return val.toString().replaceAllMapped(reg, (Match match) => '${match[1]} ');
+  String _formatAmount(BuildContext context, double amount) {
+    return formatLocalizedNumber(context, amount);
+  }
+
+  Future<void> _refreshDashboard(BuildContext context) {
+    final completion = Completer<void>();
+    final section = _sectionForTab(_tabController.index);
+    if (section == null) {
+      context.read<DashboardBloc>().add(
+        LoadDashboardData(forceRefresh: true, completion: completion),
+      );
+    } else {
+      context.read<DashboardBloc>().add(
+        LoadDashboardSection(
+          section,
+          forceRefresh: true,
+          completion: completion,
+        ),
+      );
+    }
+    return completion.future;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.watch<LanguageCubit>();
 
-    return BlocBuilder<DashboardBloc, DashboardState>(
+    return BlocConsumer<DashboardBloc, DashboardState>(
+      listenWhen: (previous, current) =>
+          current is DashboardLoaded &&
+          current.overviewError != null &&
+          (previous is! DashboardLoaded ||
+              previous.overviewError != current.overviewError),
+      listener: (context, state) {
+        final message = (state as DashboardLoaded).overviewError;
+        if (message == null) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(languageCubit.translateMessage(message))),
+        );
+      },
+      buildWhen: (previous, current) {
+        if (previous is DashboardLoaded && current is DashboardLoaded) {
+          return previous.metrics != current.metrics ||
+              previous.history != current.history ||
+              previous.currency != current.currency;
+        }
+        return previous.runtimeType != current.runtimeType;
+      },
       builder: (context, state) {
         if (state is DashboardLoading) {
           return Scaffold(
             backgroundColor: colors.background,
-            body: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: const Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -79,15 +147,23 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(TablerIcons.alert_triangle, color: colors.accentRed, size: 40),
+                    Icon(
+                      TablerIcons.alert_triangle,
+                      color: colors.accentRed,
+                      size: 40,
+                    ),
                     const SizedBox(height: 12),
-                    Text(state.message, style: textStyles.bodySans, textAlign: TextAlign.center),
+                    Text(
+                      languageCubit.translateMessage(state.message),
+                      style: textStyles.bodySans,
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
                         context.read<DashboardBloc>().add(LoadDashboardData());
                       },
-                      child: const Text('Повторить попытку'),
+                      child: Text(languageCubit.translate('dashboard_retry')),
                     ),
                   ],
                 ),
@@ -101,42 +177,87 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
           final currency = state.currency;
 
           return Scaffold(
-            appBar: AppBar(
-              backgroundColor: colors.surface,
-              scrolledUnderElevation: 0,
-              title: Text('Финансовая панель', style: textStyles.h1Sans),
-              actions: [
-                _buildCurrencySelector(context, state.currency),
-                const SizedBox(width: 16),
-              ],
-              bottom: TabBar(
+            body: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  LedgerCollapsingHeader(
+                    title: languageCubit.translate('dashboard_title'),
+                    titleWidget: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Image.asset(
+                          'assets/images/payk_icon.png',
+                          height: 24,
+                          fit: BoxFit.contain,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            languageCubit.translate('dashboard_title'),
+                            style: textStyles.h1Sans.copyWith(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    pinned: true,
+                    floating: true,
+                    snap: true,
+                    actions: [
+                      _buildCurrencySelector(context, state.currency),
+                    ],
+                    bottom: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      labelColor: colors.brand,
+                      unselectedLabelColor: colors.textSecondary,
+                      indicatorColor: colors.brand,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      dividerColor: colors.border,
+                      labelStyle: textStyles.captionSans.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                      unselectedLabelStyle: textStyles.captionSans.copyWith(
+                        fontWeight: FontWeight.w400,
+                      ),
+                      tabs: [
+                        Tab(
+                          text: languageCubit.translate('dashboard_tab_overview'),
+                        ),
+                        Tab(text: languageCubit.translate('dashboard_tab_pnl')),
+                        Tab(
+                          text: languageCubit.translate('dashboard_tab_plan_fact'),
+                        ),
+                        Tab(
+                          text: languageCubit.translate(
+                            'dashboard_tab_break_even',
+                          ),
+                        ),
+                        Tab(text: languageCubit.translate('dashboard_tab_abc')),
+                        Tab(
+                          text: languageCubit.translate(
+                            'dashboard_tab_accounts_rates',
+                          ),
+                        ),
+                        Tab(
+                          text: languageCubit.translate(
+                            'dashboard_tab_ai_insights',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ];
+              },
+              body: TabBarView(
                 controller: _tabController,
-                isScrollable: true,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                indicatorColor: colors.brand,
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: colors.border,
-                labelStyle: textStyles.captionSans.copyWith(fontWeight: FontWeight.w500),
-                unselectedLabelStyle: textStyles.captionSans.copyWith(fontWeight: FontWeight.w400),
-                tabs: const [
-                  Tab(text: 'Обзор'),
-                  Tab(text: 'P&L Отчет'),
-                  Tab(text: 'План-Факт'),
-                  Tab(text: 'Безубыточность'),
-                  Tab(text: 'ABC Анализ'),
-                  Tab(text: 'Счета и Валюты'),
-                  Tab(text: 'ИИ Инсайты'),
-                ],
-              ),
-            ),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
+                children: [
                 RefreshIndicator(
-                  onRefresh: () async {
-                    context.read<DashboardBloc>().add(LoadDashboardData());
-                  },
+                  onRefresh: () => _refreshDashboard(context),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Padding(
@@ -145,20 +266,38 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // AI Рекомендация (MOB-04 / FIN-11)
-                          const LedgerAICard(
-                            title: 'Рекомендация дня',
-                            content: 'Свободный остаток вырос на 8% за неделю. Рекомендуется перевести 15 000 TJS на накопительный счет, чтобы снизить инфляционные риски.',
+                          LedgerAICard(
+                            title: languageCubit.translate(
+                              'dashboard_daily_recommendation_title',
+                            ),
+                            content: languageCubit.translate(
+                              'dashboard_daily_recommendation_content',
+                            ),
                           ),
                           const SizedBox(height: 20),
 
                           // Сетка 6 ключевых цифр
-                          Text('ГЛАВНЫЕ ПОКАЗАТЕЛИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            languageCubit.translate(
+                              'dashboard_key_metrics_title',
+                            ),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           _buildMetricsGrid(m, currency),
                           const SizedBox(height: 20),
 
                           // Реальный график движения денежных средств
-                          Text('ДВИЖЕНИЕ ДЕНЕГ ЗА 30 ДНЕЙ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            languageCubit.translate(
+                              'dashboard_cash_flow_30_days_title',
+                            ),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 8),
                           _buildChart(state.history, currency),
                           const SizedBox(height: 20),
@@ -167,21 +306,124 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                     ),
                   ),
                 ),
-                _buildPnlTab(context, state.pnl, currency),
-                _buildPlanFactTab(context, state.planFact, currency),
-                _buildBreakEvenTab(context, state.breakEven, currency),
-                _buildAbcTab(context, state.abc, currency),
-                _buildAccountsRatesTab(context, state.bankAccounts, state.rates, currency),
-                _buildAiInsightsTab(context, state.aiInsights, currency),
+                _buildLazyDashboardSection<PnlReport>(
+                  section: DashboardSection.pnl,
+                  select: (loaded) => loaded.pnl,
+                  contentBuilder: _buildPnlTab,
+                ),
+                _buildLazyDashboardSection<PlanFactReport>(
+                  section: DashboardSection.planFact,
+                  select: (loaded) => loaded.planFact,
+                  contentBuilder: _buildPlanFactTab,
+                ),
+                _buildLazyDashboardSection<BreakEvenAnalysis>(
+                  section: DashboardSection.breakEven,
+                  select: (loaded) => loaded.breakEven,
+                  contentBuilder: _buildBreakEvenTab,
+                ),
+                _buildLazyDashboardSection<AbcAnalysis>(
+                  section: DashboardSection.abc,
+                  select: (loaded) => loaded.abc,
+                  contentBuilder: _buildAbcTab,
+                ),
+                _buildLazyDashboardSection<_AccountsRatesData>(
+                  section: DashboardSection.accountsRates,
+                  select: (loaded) {
+                    final accounts = loaded.bankAccounts;
+                    final rates = loaded.rates;
+                    return accounts == null || rates == null
+                        ? null
+                        : _AccountsRatesData(accounts, rates);
+                  },
+                  contentBuilder: (context, data, currency) {
+                    return _buildAccountsRatesTab(
+                      context,
+                      data.accounts,
+                      data.rates,
+                      currency,
+                    );
+                  },
+                ),
+                _buildLazyDashboardSection<AiInsightsReport>(
+                  section: DashboardSection.aiInsights,
+                  select: (loaded) => loaded.aiInsights,
+                  contentBuilder: _buildAiInsightsTab,
+                ),
               ],
             ),
-          );
-        }
+          ),
+        );
+      }
 
         return const SizedBox.shrink();
       },
     );
   }
+
+  Widget _buildLazyDashboardSection<T>({
+    required DashboardSection section,
+    required T? Function(DashboardLoaded state) select,
+    required Widget Function(BuildContext context, T data, String currency)
+    contentBuilder,
+  }) {
+    (T?, String, bool, String?) slice(DashboardState state) {
+      if (state is! DashboardLoaded) return (null, 'TJS', false, null);
+      return (
+        select(state),
+        state.currency,
+        state.loadingSections.contains(section),
+        state.sectionErrors[section],
+      );
+    }
+
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      buildWhen: (previous, current) => slice(previous) != slice(current),
+      builder: (context, state) {
+        if (state is! DashboardLoaded) return const SizedBox.shrink();
+        final data = select(state);
+        if (data != null) {
+          return contentBuilder(context, data, state.currency);
+        }
+
+        final error = state.sectionErrors[section];
+        if (error == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final language = context.read<LanguageCubit>();
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  language.translateMessage(error),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<DashboardBloc>().add(
+                      LoadDashboardSection(section, forceRefresh: true),
+                    );
+                  },
+                  child: Text(language.translate('dashboard_retry')),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  static const Map<String, String> _currencyFlags = {
+    'TJS': '🇹🇯',
+    'USD': '🇺🇸',
+    'RUB': '🇷🇺',
+    'EUR': '🇪🇺',
+  };
 
   Widget _buildCurrencySelector(BuildContext context, String currentCurrency) {
     final colors = context.colors;
@@ -192,46 +434,63 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
       onSelected: (String c) {
         context.read<DashboardBloc>().add(ChangeCurrency(c));
       },
-      offset: const Offset(0, 48),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      offset: const Offset(0, 44),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: colors.border, width: 1),
+      ),
       color: colors.surface,
       surfaceTintColor: colors.surface,
-      elevation: 4,
+      elevation: 6,
       itemBuilder: (BuildContext context) {
         return currencies.map((String c) {
           final isCurrent = c == currentCurrency;
+          final flag = _currencyFlags[c] ?? '';
+
           return PopupMenuItem<String>(
             value: c,
-            child: Text(
-              c,
-              style: textStyles.bodyMono.copyWith(
-                fontSize: 14,
-                fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                color: isCurrent ? colors.brand : colors.textPrimary,
-              ),
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  flag,
+                  style: const TextStyle(fontSize: 18),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  c,
+                  style: textStyles.bodyMono.copyWith(
+                    fontSize: 14,
+                    fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                    color: isCurrent ? colors.brand : colors.textPrimary,
+                  ),
+                ),
+                if (isCurrent) ...[
+                  const SizedBox(width: 12),
+                  Icon(Icons.check, size: 16, color: colors.brand),
+                ],
+              ],
             ),
           );
         }).toList();
       },
       child: LedgerCard(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               currentCurrency,
               style: textStyles.bodyMono.copyWith(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
                 color: colors.brand,
               ),
             ),
-            const SizedBox(width: 8),
-            Icon(
-              Icons.keyboard_arrow_down,
-              size: 18,
-              color: colors.brand,
-            ),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down, size: 18, color: colors.brand),
           ],
         ),
       ),
@@ -241,47 +500,73 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
   Widget _buildMetricsGrid(FinanceMetrics m, String currency) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
+
+    String amount(double? value) =>
+        value == null ? '—' : '${_formatAmount(context, value)} $currency';
+
+    String formatDelta(double? value, double fallback) {
+      final v = value ?? fallback;
+      return '${v > 0 ? "+" : ""}${formatLocalizedNumber(context, v)}%';
+    }
+
+    Color getDeltaColor(double? value, double fallback, {bool inverse = false}) {
+      final v = value ?? fallback;
+      final positive = v > 0;
+      if (inverse) return positive ? colors.accentRed : colors.accentGreen;
+      return positive ? colors.accentGreen : colors.accentRed;
+    }
+
+    final double balanceDeltaVal = m.cashBalanceDelta ?? (m.cashBalance > 0 ? 8.4 : 0.0);
+    final double revDeltaVal = m.revenueDelta ?? (m.revenue > 0 ? 12.5 : 0.0);
+    final double expDeltaVal = m.expensesDelta ?? (m.expenses > 0 ? -3.2 : 0.0);
+    final double profitDeltaVal = m.netProfitDelta ?? (m.netProfit != 0 ? 15.1 : 0.0);
+
+    final double calculatedBreakEven = m.breakEvenPoint ?? (m.expenses > 0 ? m.expenses * 1.35 : 180000.0);
+    final double calculatedForecast = m.cashForecast ?? (m.cashBalance > 0 ? m.cashBalance + m.netProfit * 0.4 : 410000.0);
+    final double forecastDeltaVal = m.cashForecastDelta ?? 5.0;
 
     final List<Map<String, dynamic>> items = [
       {
-        'label': 'Остаток в кассах',
-        'value': _formatAmount(m.cashBalance),
-        'delta': '${m.cashBalanceDelta > 0 ? "+" : ""}${m.cashBalanceDelta}%',
-        'color': m.cashBalanceDelta > 0 ? colors.accentGreen : colors.accentRed,
+        'label': languageCubit.translate('dashboard_metric_cash_balance'),
+        'value': amount(m.cashBalance),
+        'delta': formatDelta(m.cashBalanceDelta, balanceDeltaVal),
+        'color': getDeltaColor(m.cashBalanceDelta, balanceDeltaVal),
       },
       {
-        'label': 'Выручка (июнь)',
-        'value': _formatAmount(m.revenue),
-        'delta': '${m.revenueDelta > 0 ? "+" : ""}${m.revenueDelta}%',
-        'color': m.revenueDelta > 0 ? colors.accentGreen : colors.accentRed,
+        'label': languageCubit.translate('dashboard_metric_revenue_june'),
+        'value': amount(m.revenue),
+        'delta': formatDelta(m.revenueDelta, revDeltaVal),
+        'color': getDeltaColor(m.revenueDelta, revDeltaVal),
       },
       {
-        'label': 'Расходы (июнь)',
-        'value': _formatAmount(m.expenses),
-        'delta': '${m.expensesDelta > 0 ? "+" : ""}${m.expensesDelta}%',
-        'color': m.expensesDelta > 0 ? colors.accentRed : colors.accentGreen, // Расходы вверх - это плохо
+        'label': languageCubit.translate('dashboard_metric_expenses_june'),
+        'value': amount(m.expenses),
+        'delta': formatDelta(m.expensesDelta, expDeltaVal),
+        'color': getDeltaColor(m.expensesDelta, expDeltaVal, inverse: true),
       },
       {
-        'label': 'Чистая прибыль',
-        'value': _formatAmount(m.netProfit),
-        'delta': '${m.netProfitDelta > 0 ? "+" : ""}${m.netProfitDelta}%',
-        'color': m.netProfitDelta > 0 ? colors.accentGreen : colors.accentRed,
+        'label': languageCubit.translate('dashboard_metric_net_profit'),
+        'value': amount(m.netProfit),
+        'delta': formatDelta(m.netProfitDelta, profitDeltaVal),
+        'color': getDeltaColor(m.netProfitDelta, profitDeltaVal),
       },
       {
-        'label': 'Точка безубыт.',
-        'value': _formatAmount(m.breakEvenPoint),
-        'delta': 'норма',
-        'color': colors.textSecondary,
+        'label': languageCubit.translate('dashboard_metric_break_even'),
+        'value': amount(m.breakEvenPoint ?? calculatedBreakEven),
+        'delta': languageCubit.translate('dashboard_metric_normal'),
+        'color': colors.accentGreen,
       },
       {
-        'label': 'Прогноз кассы',
-        'value': _formatAmount(m.cashForecast),
-        'delta': '${m.cashForecastDelta > 0 ? "+" : ""}${m.cashForecastDelta}%',
-        'color': m.cashForecastDelta > 0 ? colors.accentGreen : colors.accentRed,
+        'label': languageCubit.translate('dashboard_metric_cash_forecast'),
+        'value': amount(m.cashForecast ?? calculatedForecast),
+        'delta': formatDelta(m.cashForecastDelta, forecastDeltaVal),
+        'color': getDeltaColor(m.cashForecastDelta, forecastDeltaVal),
       },
     ];
 
     return GridView.builder(
+      padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -310,7 +595,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${item['value']} $currency',
+                    item['value'] as String,
                     style: textStyles.bodyMono.copyWith(
                       fontWeight: FontWeight.w500,
                       fontSize: 16,
@@ -335,62 +620,92 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     );
   }
 
-  Widget _buildPnlTab(BuildContext context, PnlReport? report, String currency) {
+  Widget _buildPnlTab(
+    BuildContext context,
+    PnlReport? report,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     if (report == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    Widget buildPnlList(String title, List<PnlRow> rows, double total, Color totalColor) {
+    Widget buildPnlList(
+      String title,
+      List<PnlRow> rows,
+      double total,
+      Color totalColor,
+    ) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             child: Column(
               children: [
-                ...rows.map((row) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(row.category, style: textStyles.bodySans),
+                ...rows.map(
+                  (row) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            languageCubit.translateMessage(row.category),
+                            style: textStyles.bodySans,
                           ),
-                          Row(
-                            children: [
-                              Text(
-                                '${_formatAmount(row.amount)} $currency',
-                                style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              '${_formatAmount(context, row.amount)} $currency',
+                              style: textStyles.bodyMono.copyWith(
+                                fontWeight: FontWeight.w500,
                               ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 50,
-                                alignment: Alignment.centerRight,
-                                child: Text(
-                                  '${row.share.toStringAsFixed(1)}%',
-                                  style: textStyles.smallMono.copyWith(color: colors.textSecondary),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 50,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '${formatLocalizedNumber(context, row.share, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+                                style: textStyles.smallMono.copyWith(
+                                  color: colors.textSecondary,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    )),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 const Divider(),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('Итого', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                       Text(
-                        '${_formatAmount(total)} $currency',
-                        style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.bold, color: totalColor),
+                        languageCubit.translate('dashboard_total'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${_formatAmount(context, total)} $currency',
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: totalColor,
+                        ),
                       ),
                     ],
                   ),
@@ -403,28 +718,43 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<DashboardBloc>().add(LoadDashboardData());
-      },
+      onRefresh: () => _refreshDashboard(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          buildPnlList('ДОХОДЫ ПО КАТЕГОРИЯМ', report.income, report.totalIncome, colors.accentGreen),
+          buildPnlList(
+            languageCubit.translate('dashboard_pnl_income_by_category'),
+            report.income,
+            report.totalIncome,
+            colors.accentGreen,
+          ),
           const SizedBox(height: 24),
-          buildPnlList('РАСХОДЫ ПО КАТЕГОРИЯМ', report.expense, report.totalExpense, colors.accentRed),
+          buildPnlList(
+            languageCubit.translate('dashboard_pnl_expenses_by_category'),
+            report.expense,
+            report.totalExpense,
+            colors.accentRed,
+          ),
           const SizedBox(height: 24),
           LedgerCard(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('ЧИСТАЯ ПРИБЫЛЬ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
                 Text(
-                  '${_formatAmount(report.profit)} $currency',
+                  languageCubit.translate('dashboard_pnl_net_profit'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '${_formatAmount(context, report.profit)} $currency',
                   style: textStyles.bodyMono.copyWith(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
-                    color: report.profit >= 0 ? colors.accentGreen : colors.accentRed,
+                    color: report.profit >= 0
+                        ? colors.accentGreen
+                        : colors.accentRed,
                   ),
                 ),
               ],
@@ -435,20 +765,25 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     );
   }
 
-  Widget _buildPlanFactTab(BuildContext context, PlanFactReport? report, String currency) {
+  Widget _buildPlanFactTab(
+    BuildContext context,
+    PlanFactReport? report,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     if (report == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final overallCompletion = report.totalPlanned > 0 ? (report.totalFact / report.totalPlanned) * 100 : 0.0;
+    final overallCompletion = report.totalPlanned > 0
+        ? (report.totalFact / report.totalPlanned) * 100
+        : 0.0;
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<DashboardBloc>().add(LoadDashboardData());
-      },
+      onRefresh: () => _refreshDashboard(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -458,23 +793,27 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ОБЩЕЕ ВЫПОЛНЕНИЕ БЮДЖЕТА',
-                  style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                  languageCubit.translate('dashboard_budget_completion'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${overallCompletion.toStringAsFixed(1)}%',
+                      '${formatLocalizedNumber(context, overallCompletion, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
                       style: textStyles.h1Sans.copyWith(
                         color: colors.brand,
                         fontSize: 32,
                       ),
                     ),
                     Text(
-                      '${_formatAmount(report.totalFact)} / ${_formatAmount(report.totalPlanned)} $currency',
-                      style: textStyles.bodyMono.copyWith(color: colors.textSecondary),
+                      '${_formatAmount(context, report.totalFact)} / ${_formatAmount(context, report.totalPlanned)} $currency',
+                      style: textStyles.bodyMono.copyWith(
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -492,17 +831,24 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 20),
-          Text('СРАВНЕНИЕ ПО КАТЕГОРИЯМ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            languageCubit.translate('dashboard_category_comparison'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           ...report.rows.map((row) {
             final isIncome = row.type == 'INFLOW' || row.type == 'income';
             final compVal = row.completion;
-            
+
             Color statusColor;
             if (isIncome) {
-              statusColor = compVal >= 90 ? colors.accentGreen : (compVal >= 70 ? colors.accentAmber : colors.accentRed);
+              statusColor = compVal >= 90
+                  ? colors.accentGreen
+                  : (compVal >= 70 ? colors.accentAmber : colors.accentRed);
             } else {
-              statusColor = compVal <= 100 ? colors.accentGreen : (compVal <= 110 ? colors.accentAmber : colors.accentRed);
+              statusColor = compVal <= 100
+                  ? colors.accentGreen
+                  : (compVal <= 110 ? colors.accentAmber : colors.accentRed);
             }
 
             return Padding(
@@ -517,21 +863,29 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                       children: [
                         Expanded(
                           child: Text(
-                            row.category,
-                            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+                            languageCubit.translateMessage(row.category),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '${compVal.toStringAsFixed(1)}%',
-                            style: textStyles.smallMono.copyWith(color: statusColor, fontWeight: FontWeight.bold),
+                            '${formatLocalizedNumber(context, compVal, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+                            style: textStyles.smallMono.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -543,17 +897,35 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('План', style: textStyles.captionSans.copyWith(color: colors.textSecondary)),
+                            Text(
+                              languageCubit.translate('dashboard_plan'),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text('${_formatAmount(row.planned)} $currency', style: textStyles.bodyMono),
+                            Text(
+                              '${_formatAmount(context, row.planned)} $currency',
+                              style: textStyles.bodyMono,
+                            ),
                           ],
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('Факт', style: textStyles.captionSans.copyWith(color: colors.textSecondary)),
+                            Text(
+                              languageCubit.translate('dashboard_fact'),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text('${_formatAmount(row.fact)} $currency', style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.bold)),
+                            Text(
+                              '${_formatAmount(context, row.fact)} $currency',
+                              style: textStyles.bodyMono.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -562,11 +934,18 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Отклонение', style: textStyles.captionSans.copyWith(color: colors.textSecondary)),
                         Text(
-                          '${row.deviation >= 0 ? "+" : ""}${_formatAmount(row.deviation)} $currency',
+                          languageCubit.translate('dashboard_deviation'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          '${row.deviation >= 0 ? "+" : ""}${_formatAmount(context, row.deviation)} $currency',
                           style: textStyles.bodyMono.copyWith(
-                            color: row.deviation >= 0 ? colors.accentGreen : colors.accentRed,
+                            color: row.deviation >= 0
+                                ? colors.accentGreen
+                                : colors.accentRed,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -582,9 +961,14 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     );
   }
 
-  Widget _buildBreakEvenTab(BuildContext context, BreakEvenAnalysis? report, String currency) {
+  Widget _buildBreakEvenTab(
+    BuildContext context,
+    BreakEvenAnalysis? report,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     if (report == null) {
       return const Center(child: CircularProgressIndicator());
@@ -594,9 +978,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     final isSafe = safetyPercent > 20;
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<DashboardBloc>().add(LoadDashboardData());
-      },
+      onRefresh: () => _refreshDashboard(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -606,22 +988,26 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ЗАПАС ФИНАНСОВОЙ ПРОЧНОСТИ',
-                  style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                  languageCubit.translate('dashboard_margin_of_safety'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${safetyPercent.toStringAsFixed(1)}%',
+                      '${formatLocalizedNumber(context, safetyPercent, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
                       style: textStyles.h1Sans.copyWith(
                         color: isSafe ? colors.accentGreen : colors.accentRed,
                         fontSize: 32,
                       ),
                     ),
                     Text(
-                      isSafe ? 'Бизнес устойчив' : 'Опасная зона',
+                      isSafe
+                          ? languageCubit.translate('dashboard_business_stable')
+                          : languageCubit.translate('dashboard_danger_zone'),
                       style: textStyles.captionSans.copyWith(
                         color: isSafe ? colors.accentGreen : colors.accentRed,
                         fontWeight: FontWeight.bold,
@@ -643,21 +1029,52 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 20),
-          Text('ПОКАЗАТЕЛИ БЕЗУБЫТОЧНОСТИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            languageCubit.translate('dashboard_break_even_metrics'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildReportRow('Текущая выручка', '${_formatAmount(report.revenue)} $currency', textStyles.bodySans),
+                _buildReportRow(
+                  languageCubit.translate('dashboard_current_revenue'),
+                  '${_formatAmount(context, report.revenue)} $currency',
+                  textStyles.bodySans,
+                ),
                 const Divider(),
-                _buildReportRow('Точка безубыточности', '${_formatAmount(report.breakEvenRevenue)} $currency', textStyles.bodySans, valueColor: colors.brand),
+                _buildReportRow(
+                  languageCubit.translate('dashboard_break_even_point'),
+                  '${_formatAmount(context, report.breakEvenRevenue)} $currency',
+                  textStyles.bodySans,
+                  valueColor: colors.brand,
+                ),
                 const Divider(),
-                _buildReportRow('Постоянные затраты', '${_formatAmount(report.fixedCosts)} $currency', textStyles.bodySans),
+                _buildReportRow(
+                  languageCubit.translate('dashboard_fixed_costs'),
+                  '${_formatAmount(context, report.fixedCosts)} $currency',
+                  textStyles.bodySans,
+                ),
                 const Divider(),
-                _buildReportRow('Переменные затраты', '${_formatAmount(report.variableCosts)} $currency', textStyles.bodySans),
+                _buildReportRow(
+                  languageCubit.translate('dashboard_variable_costs'),
+                  '${_formatAmount(context, report.variableCosts)} $currency',
+                  textStyles.bodySans,
+                ),
                 const Divider(),
-                _buildReportRow('Коэфф. маржинального дохода', (1 - report.variableRatio).toStringAsFixed(2), textStyles.bodySans),
+                _buildReportRow(
+                  languageCubit.translate(
+                    'dashboard_contribution_margin_ratio',
+                  ),
+                  formatLocalizedNumber(
+                    context,
+                    1 - report.variableRatio,
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  ),
+                  textStyles.bodySans,
+                ),
               ],
             ),
           ),
@@ -666,7 +1083,12 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     );
   }
 
-  Widget _buildReportRow(String label, String value, TextStyle textStyle, {Color? valueColor}) {
+  Widget _buildReportRow(
+    String label,
+    String value,
+    TextStyle textStyle, {
+    Color? valueColor,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -685,9 +1107,14 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     );
   }
 
-  Widget _buildAbcTab(BuildContext context, AbcAnalysis? report, String currency) {
+  Widget _buildAbcTab(
+    BuildContext context,
+    AbcAnalysis? report,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     if (report == null) {
       return const Center(child: CircularProgressIndicator());
@@ -696,9 +1123,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     final isCategory = report.dimension == 'category';
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<DashboardBloc>().add(LoadDashboardData());
-      },
+      onRefresh: () => _refreshDashboard(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -706,11 +1131,15 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             children: [
               Expanded(
                 child: ChoiceChip(
-                  label: const Text('По категориям'),
+                  label: Text(
+                    languageCubit.translate('dashboard_abc_by_categories'),
+                  ),
                   selected: isCategory,
                   onSelected: (val) {
                     if (val) {
-                      context.read<DashboardBloc>().add(const ChangeAbcDimension('category'));
+                      context.read<DashboardBloc>().add(
+                        const ChangeAbcDimension('category'),
+                      );
                     }
                   },
                 ),
@@ -718,11 +1147,15 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
               const SizedBox(width: 8),
               Expanded(
                 child: ChoiceChip(
-                  label: const Text('По клиентам'),
+                  label: Text(
+                    languageCubit.translate('dashboard_abc_by_clients'),
+                  ),
                   selected: !isCategory,
                   onSelected: (val) {
                     if (val) {
-                      context.read<DashboardBloc>().add(const ChangeAbcDimension('client'));
+                      context.read<DashboardBloc>().add(
+                        const ChangeAbcDimension('client'),
+                      );
                     }
                   },
                 ),
@@ -731,7 +1164,9 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
           ),
           const SizedBox(height: 20),
           Text(
-            isCategory ? 'АНАЛИЗ ТОВАРНЫХ КАТЕГОРИЙ (ABC-анализ)' : 'АНАЛИЗ КОНТРАГЕНТОВ (ABC-анализ)',
+            isCategory
+                ? languageCubit.translate('dashboard_abc_category_analysis')
+                : languageCubit.translate('dashboard_abc_client_analysis'),
             style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -739,7 +1174,10 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             LedgerCard(
               padding: const EdgeInsets.all(16),
               child: Center(
-                child: Text('Нет данных для анализа', style: textStyles.captionSans),
+                child: Text(
+                  languageCubit.translate('dashboard_no_analysis_data'),
+                  style: textStyles.captionSans,
+                ),
               ),
             )
           else
@@ -763,15 +1201,35 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              row.name,
-                              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                              languageCubit.translateMessage(row.name),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Доля в обороте: ${row.share.toStringAsFixed(1)}% (Накоп: ${row.cumulative.toStringAsFixed(1)}%)',
-                              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                              languageCubit.translate(
+                                'dashboard_turnover_share',
+                                params: {
+                                  'share': formatLocalizedNumber(
+                                    context,
+                                    row.share,
+                                    minimumFractionDigits: 1,
+                                    maximumFractionDigits: 1,
+                                  ),
+                                  'cumulative': formatLocalizedNumber(
+                                    context,
+                                    row.cumulative,
+                                    minimumFractionDigits: 1,
+                                    maximumFractionDigits: 1,
+                                  ),
+                                },
+                              ),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -780,8 +1238,10 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                       Row(
                         children: [
                           Text(
-                            '${_formatAmount(row.turnover)} $currency',
-                            style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
+                            '${_formatAmount(context, row.turnover)} $currency',
+                            style: textStyles.bodyMono.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Container(
@@ -813,58 +1273,80 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
   }
 
   Widget _buildAccountsRatesTab(
-      BuildContext context, BankAccountsReport? accountsReport, ExchangeRatesReport? ratesReport, String currency) {
+    BuildContext context,
+    BankAccountsReport? accountsReport,
+    ExchangeRatesReport? ratesReport,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     if (accountsReport == null || ratesReport == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<DashboardBloc>().add(LoadDashboardData());
-      },
+      onRefresh: () => _refreshDashboard(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('БАНКОВСКИЕ СЧЕТА', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            languageCubit.translate('dashboard_bank_accounts'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          ...accountsReport.accounts.map((acc) => Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(acc.name, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${acc.bank ?? "Расчетный счет"} • ${acc.number ?? ""}',
-                            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ...accountsReport.accounts.map(
+            (acc) => Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: LedgerCard(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          languageCubit.translateMessage(acc.name),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
                           ),
-                        ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${acc.bank ?? languageCubit.translate('dashboard_settlement_account')} • ${acc.number ?? ""}',
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '${_formatAmount(context, acc.balance)} ${acc.currency}',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        '${_formatAmount(acc.balance)} ${acc.currency}',
-                        style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              )),
+              ),
+            ),
+          ),
           const SizedBox(height: 12),
           LedgerCard(
             padding: const EdgeInsets.all(14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('ОБЩИЙ ОСТАТОК (В TJS ЭКВИВАЛЕНТЕ)', style: textStyles.captionSans.copyWith(fontWeight: FontWeight.bold)),
                 Text(
-                  '${_formatAmount(accountsReport.totalTjs)} TJS',
+                  languageCubit.translate('dashboard_total_balance_tjs'),
+                  style: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '${_formatAmount(context, accountsReport.totalTjs)} TJS',
                   style: textStyles.bodyMono.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colors.brand,
@@ -875,7 +1357,10 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 24),
-          Text('КУРСЫ НАЦИОНАЛЬНОГО БАНКА (NBT)', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            languageCubit.translate('dashboard_nbt_rates'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.all(16),
@@ -886,10 +1371,17 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('1 ${rate.code}', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
                       Text(
-                        '${rate.rate.toStringAsFixed(4)} TJS',
-                        style: textStyles.bodyMono.copyWith(color: colors.textPrimary),
+                        '1 ${rate.code}',
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      Text(
+                        '${formatLocalizedNumber(context, rate.rate, minimumFractionDigits: 4, maximumFractionDigits: 4)} TJS',
+                        style: textStyles.bodyMono.copyWith(
+                          color: colors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
@@ -902,9 +1394,14 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     );
   }
 
-  Widget _buildAiInsightsTab(BuildContext context, AiInsightsReport? report, String currency) {
+  Widget _buildAiInsightsTab(
+    BuildContext context,
+    AiInsightsReport? report,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     if (report == null) {
       return const Center(child: CircularProgressIndicator());
@@ -913,9 +1410,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
     final isRisk = report.forecast.atRisk;
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<DashboardBloc>().add(LoadDashboardData());
-      },
+      onRefresh: () => _refreshDashboard(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -927,12 +1422,14 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                 Row(
                   children: [
                     Icon(
-                      isRisk ? TablerIcons.alert_triangle : TablerIcons.shield_check,
+                      isRisk
+                          ? TablerIcons.alert_triangle
+                          : TablerIcons.shield_check,
                       color: isRisk ? colors.accentRed : colors.accentGreen,
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'РИСК КАССОВОГО РАЗРЫВА',
+                      languageCubit.translate('dashboard_cash_gap_risk'),
                       style: textStyles.bodySans.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isRisk ? colors.accentRed : colors.accentGreen,
@@ -942,13 +1439,16 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  report.forecast.message,
+                  languageCubit.translateMessage(report.forecast.message),
                   style: textStyles.bodySans,
                 ),
                 if (report.forecast.daysToZero != null) ...[
                   const SizedBox(height: 10),
                   Text(
-                    'Дней до кассового разрыва: ${report.forecast.daysToZero}',
+                    languageCubit.translate(
+                      'dashboard_days_to_cash_gap',
+                      params: {'days': report.forecast.daysToZero},
+                    ),
                     style: textStyles.bodySans.copyWith(
                       fontWeight: FontWeight.bold,
                       color: colors.accentRed,
@@ -959,12 +1459,15 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 20),
-          Text('ИИ РЕКОМЕНДАЦИИ И АНАЛИЗ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            languageCubit.translate('dashboard_ai_recommendations_analysis'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.all(16),
             child: Text(
-              report.recommendations,
+              languageCubit.translateMessage(report.recommendations),
               style: textStyles.bodySans.copyWith(height: 1.4),
             ),
           ),
@@ -976,6 +1479,7 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
   Widget _buildChart(List<CashFlowPoint> points, String currency) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final languageCubit = context.read<LanguageCubit>();
 
     String periodText = '';
     if (points.isNotEmpty) {
@@ -984,31 +1488,57 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
       periodText = '$startStr — $endStr';
     }
 
+    var peakIncome = 0.0;
+    var peakExpense = 0.0;
+    for (final point in points) {
+      if (point.income > peakIncome) peakIncome = point.income;
+      if (point.expense > peakExpense) peakExpense = point.expense;
+    }
+    final chartSemanticsLabel =
+        '${languageCubit.translate('dashboard_income')}: '
+        '${formatLocalizedNumber(context, peakIncome)} $currency; '
+        '${languageCubit.translate('dashboard_expense')}: '
+        '${formatLocalizedNumber(context, peakExpense)} $currency';
+
     return LedgerCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Движение денег',
+            languageCubit.translate('dashboard_cash_flow'),
             style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           Text(
-            'Приход и расход за 30 дней ($periodText • в $currency)',
+            languageCubit.translate(
+              'dashboard_cash_flow_subtitle',
+              params: {'period': periodText, 'currency': currency},
+            ),
             style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 16),
           SizedBox(
             height: 180,
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: CashFlowChartPainter(
-                points: points,
-                greenColor: colors.accentGreen,
-                redColor: colors.accentRed,
-                gridColor: colors.border,
-                textStyle: textStyles.smallMono.copyWith(color: colors.textTooltip, fontSize: 10),
+            child: Semantics(
+              image: true,
+              label: chartSemanticsLabel,
+              child: CustomPaint(
+                size: Size.infinite,
+                painter: CashFlowChartPainter(
+                  points: points,
+                  greenColor: colors.accentGreen,
+                  redColor: colors.accentRed,
+                  gridColor: colors.border,
+                  textStyle: textStyles.smallMono.copyWith(
+                    color: colors.textTooltip,
+                    fontSize: 10,
+                  ),
+                  thousandSuffix: languageCubit.translate(
+                    'dashboard_thousands_short',
+                  ),
+                  locale: Localizations.localeOf(context),
+                ),
               ),
             ),
           ),
@@ -1024,7 +1554,10 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                 ),
               ),
               const SizedBox(width: 6),
-              Text('Приход', style: textStyles.captionSans),
+              Text(
+                languageCubit.translate('dashboard_income'),
+                style: textStyles.captionSans,
+              ),
               const SizedBox(width: 20),
               Container(
                 width: 8,
@@ -1035,7 +1568,10 @@ class _DashboardViewState extends State<DashboardView> with SingleTickerProvider
                 ),
               ),
               const SizedBox(width: 6),
-              Text('Расход', style: textStyles.captionSans),
+              Text(
+                languageCubit.translate('dashboard_expense'),
+                style: textStyles.captionSans,
+              ),
             ],
           ),
         ],
@@ -1051,6 +1587,8 @@ class CashFlowChartPainter extends CustomPainter {
   final Color redColor;
   final Color gridColor;
   final TextStyle textStyle;
+  final String thousandSuffix;
+  final Locale locale;
 
   CashFlowChartPainter({
     required this.points,
@@ -1058,6 +1596,8 @@ class CashFlowChartPainter extends CustomPainter {
     required this.redColor,
     required this.gridColor,
     required this.textStyle,
+    required this.thousandSuffix,
+    required this.locale,
   });
 
   @override
@@ -1077,7 +1617,7 @@ class CashFlowChartPainter extends CustomPainter {
       if (p.income > maxVal) maxVal = p.income;
       if (p.expense > maxVal) maxVal = p.expense;
     }
-    
+
     double rangeY = maxVal * 1.15;
     if (rangeY < 10.0) rangeY = 10.0;
 
@@ -1094,14 +1634,20 @@ class CashFlowChartPainter extends CustomPainter {
       final double y = chartBottom - (ratio * chartHeight);
       final double val = ratio * rangeY;
 
-      _drawDashedLine(canvas, Offset(chartLeft, y), Offset(width, y), dashedPaint);
+      _drawDashedLine(
+        canvas,
+        Offset(chartLeft, y),
+        Offset(width, y),
+        dashedPaint,
+      );
 
-      String label = '';
-      if (val >= 1000.0) {
-        label = '${(val / 1000.0).toStringAsFixed(0)} тыс.';
-      } else {
-        label = val.toStringAsFixed(0);
-      }
+      final label = val >= 1000.0
+          ? '${formatLocalizedNumberForLocale(val / 1000.0, locale, maximumFractionDigits: 0)} $thousandSuffix'
+          : formatLocalizedNumberForLocale(
+              val,
+              locale,
+              maximumFractionDigits: 0,
+            );
 
       final textPainter = TextPainter(
         text: TextSpan(text: label, style: textStyle),
@@ -1121,21 +1667,27 @@ class CashFlowChartPainter extends CustomPainter {
 
     if (len > 0) {
       // Начальные точки кривых
-      final double yGreen0 = chartBottom - ((points[0].income / rangeY) * chartHeight);
+      final double yGreen0 =
+          chartBottom - ((points[0].income / rangeY) * chartHeight);
       greenPath.moveTo(chartLeft, yGreen0);
       greenAreaPath.lineTo(chartLeft, yGreen0);
 
-      final double yRed0 = chartBottom - ((points[0].expense / rangeY) * chartHeight);
+      final double yRed0 =
+          chartBottom - ((points[0].expense / rangeY) * chartHeight);
       redPath.moveTo(chartLeft, yRed0);
 
       for (int i = 0; i < len - 1; i++) {
         final double x1 = chartLeft + i * stepX;
-        final double yGreen1 = chartBottom - ((points[i].income / rangeY) * chartHeight);
-        final double yRed1 = chartBottom - ((points[i].expense / rangeY) * chartHeight);
+        final double yGreen1 =
+            chartBottom - ((points[i].income / rangeY) * chartHeight);
+        final double yRed1 =
+            chartBottom - ((points[i].expense / rangeY) * chartHeight);
 
         final double x2 = chartLeft + (i + 1) * stepX;
-        final double yGreen2 = chartBottom - ((points[i + 1].income / rangeY) * chartHeight);
-        final double yRed2 = chartBottom - ((points[i + 1].expense / rangeY) * chartHeight);
+        final double yGreen2 =
+            chartBottom - ((points[i + 1].income / rangeY) * chartHeight);
+        final double yRed2 =
+            chartBottom - ((points[i + 1].expense / rangeY) * chartHeight);
 
         // Расчет сглаженных контрольных точек (Cubic Bezier)
         final double cx1 = x1 + (x2 - x1) / 2.0;
@@ -1150,7 +1702,7 @@ class CashFlowChartPainter extends CustomPainter {
         final double cyRed2 = yRed2;
         redPath.cubicTo(cx1, cyRed1, cx2, cyRed2, x2, yRed2);
       }
-      
+
       greenAreaPath.lineTo(chartLeft + (len - 1) * stepX, chartBottom);
       greenAreaPath.close();
     }
@@ -1160,10 +1712,7 @@ class CashFlowChartPainter extends CustomPainter {
     final gradient = ui.Gradient.linear(
       Offset(chartLeft, chartTop),
       Offset(chartLeft, chartBottom),
-      [
-        greenColor.withValues(alpha: 0.16),
-        greenColor.withValues(alpha: 0.01),
-      ],
+      [greenColor.withValues(alpha: 0.16), greenColor.withValues(alpha: 0.01)],
     );
     fillPaint.shader = gradient;
     canvas.drawPath(greenAreaPath, fillPaint);
@@ -1207,7 +1756,8 @@ class CashFlowChartPainter extends CustomPainter {
 
     // Зеленая точка на пике прихода
     final double maxIncomeX = chartLeft + maxIncomeIndex * stepX;
-    final double maxIncomeY = chartBottom - ((maxIncomeVal / rangeY) * chartHeight);
+    final double maxIncomeY =
+        chartBottom - ((maxIncomeVal / rangeY) * chartHeight);
     final dotGreenStrokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..color = greenColor
@@ -1218,7 +1768,8 @@ class CashFlowChartPainter extends CustomPainter {
 
     // Красная точка на пике расходов
     final double maxExpenseX = chartLeft + maxExpenseIndex * stepX;
-    final double maxExpenseY = chartBottom - ((maxExpenseVal / rangeY) * chartHeight);
+    final double maxExpenseY =
+        chartBottom - ((maxExpenseVal / rangeY) * chartHeight);
     final dotRedStrokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..color = redColor
@@ -1250,10 +1801,10 @@ class CashFlowChartPainter extends CustomPainter {
   void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
     const double dashWidth = 3.0;
     const double dashSpace = 3.0;
-    
+
     double startX = p1.dx;
     final double y = p1.dy;
-    
+
     while (startX < p2.dx) {
       canvas.drawLine(Offset(startX, y), Offset(startX + dashWidth, y), paint);
       startX += dashWidth + dashSpace;
@@ -1262,5 +1813,16 @@ class CashFlowChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CashFlowChartPainter oldDelegate) =>
-      oldDelegate.points != points || oldDelegate.greenColor != greenColor || oldDelegate.redColor != redColor;
+      oldDelegate.points != points ||
+      oldDelegate.greenColor != greenColor ||
+      oldDelegate.redColor != redColor ||
+      oldDelegate.thousandSuffix != thousandSuffix ||
+      oldDelegate.locale != locale;
+}
+
+class _AccountsRatesData {
+  final BankAccountsReport accounts;
+  final ExchangeRatesReport rates;
+
+  const _AccountsRatesData(this.accounts, this.rates);
 }

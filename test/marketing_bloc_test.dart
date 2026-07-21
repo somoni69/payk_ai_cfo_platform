@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/bloc/marketing_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/bloc/marketing_event.dart';
@@ -7,12 +9,29 @@ import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_reposit
 
 class MockMarketingTestRepository implements MarketingRepository {
   bool shouldFail = false;
+  Completer<void>? loadGate;
+  int campaignReads = 0;
+  int postReads = 0;
 
   @override
-  Future<List<MarketingCampaign>> getCampaigns() async {
+  Future<List<MarketingCampaign>> getCampaigns({
+    bool forceRefresh = false,
+  }) async {
+    campaignReads++;
     if (shouldFail) throw Exception('Campaigns failed');
+    final gate = loadGate;
+    if (gate != null) await gate.future;
     return [
-      const MarketingCampaign(id: '1', name: 'Camp 1', budget: 100.0, spent: 50.0, leads: 10, conversions: 2, revenue: 500.0, roi: 900.0),
+      const MarketingCampaign(
+        id: '1',
+        name: 'Camp 1',
+        budget: 100.0,
+        spent: 50.0,
+        leads: 10,
+        conversions: 2,
+        revenue: 500.0,
+        roi: 900.0,
+      ),
     ];
   }
 
@@ -41,23 +60,47 @@ class MockMarketingTestRepository implements MarketingRepository {
   }
 
   @override
-  Future<List<SocialPost>> getPosts() async {
+  Future<List<SocialPost>> getPosts({bool forceRefresh = false}) async {
+    postReads++;
     if (shouldFail) throw Exception('Posts failed');
+    final gate = loadGate;
+    if (gate != null) await gate.future;
     return [
-      SocialPost(id: '1', text: 'Post 1', channel: 'telegram', status: 'draft', createdAt: DateTime.now()),
+      SocialPost(
+        id: '1',
+        text: 'Post 1',
+        channel: 'telegram',
+        status: 'draft',
+        createdAt: DateTime.now(),
+      ),
     ];
   }
 
   @override
-  Future<SocialPost> createPost({required String text, required String channel}) async {
+  Future<SocialPost> createPost({
+    required String text,
+    required String channel,
+  }) async {
     if (shouldFail) throw Exception('Create post failed');
-    return SocialPost(id: '2', text: text, channel: channel, status: 'draft', createdAt: DateTime.now());
+    return SocialPost(
+      id: '2',
+      text: text,
+      channel: channel,
+      status: 'draft',
+      createdAt: DateTime.now(),
+    );
   }
 
   @override
   Future<SocialPost> publishPost(String id) async {
     if (shouldFail) throw Exception('Publish post failed');
-    return SocialPost(id: id, text: 'Published Text', channel: 'telegram', status: 'published', createdAt: DateTime.now());
+    return SocialPost(
+      id: id,
+      text: 'Published Text',
+      channel: 'telegram',
+      status: 'published',
+      createdAt: DateTime.now(),
+    );
   }
 
   @override
@@ -93,49 +136,107 @@ void main() {
       expect(bloc.state.isCampaignsLoading, false);
     });
 
-    test('LoadMarketingData emits loading states and populated campaigns/posts lists', () async {
-      final expected = [
-        isA<MarketingState>().having((s) => s.isCampaignsLoading, 'loading campaigns', true),
-        isA<MarketingState>()
-            .having((s) => s.isCampaignsLoading, 'loading campaigns', false)
-            .having((s) => s.campaigns.first.name, 'first camp name', 'Camp 1')
-            .having((s) => s.posts.first.text, 'first post text', 'Post 1'),
-      ];
+    test(
+      'LoadMarketingData emits loading states and populated campaigns/posts lists',
+      () async {
+        final expected = [
+          isA<MarketingState>().having(
+            (s) => s.isCampaignsLoading,
+            'loading campaigns',
+            true,
+          ),
+          isA<MarketingState>()
+              .having((s) => s.isCampaignsLoading, 'loading campaigns', false)
+              .having(
+                (s) => s.campaigns.first.name,
+                'first camp name',
+                'Camp 1',
+              )
+              .having((s) => s.posts.first.text, 'first post text', 'Post 1'),
+        ];
 
-      expectLater(bloc.stream, emitsInOrder(expected));
-      bloc.add(LoadMarketingData());
-    });
+        expectLater(bloc.stream, emitsInOrder(expected));
+        bloc.add(LoadMarketingData());
+      },
+    );
 
-    test('CreateCampaignRequested inserts campaign to campaigns list', () async {
-      final expected = [
-        isA<MarketingState>().having((s) => s.isCreatingCampaign, 'isCreatingCampaign', true),
-        isA<MarketingState>()
-            .having((s) => s.isCreatingCampaign, 'isCreatingCampaign', false)
-            .having((s) => s.campaigns.first.name, 'new camp name', 'Promo A'),
-      ];
+    test(
+      'CreateCampaignRequested inserts campaign to campaigns list',
+      () async {
+        final expected = [
+          isA<MarketingState>().having(
+            (s) => s.isCreatingCampaign,
+            'isCreatingCampaign',
+            true,
+          ),
+          isA<MarketingState>()
+              .having((s) => s.isCreatingCampaign, 'isCreatingCampaign', false)
+              .having(
+                (s) => s.campaigns.first.name,
+                'new camp name',
+                'Promo A',
+              ),
+        ];
 
-      expectLater(bloc.stream, emitsInOrder(expected));
-      bloc.add(const CreateCampaignRequested(
-        name: 'Promo A',
-        channel: 'telegram',
-        budget: 500,
-        spent: 400,
-        leads: 100,
-        conversions: 10,
-        revenue: 2000,
-      ));
-    });
+        expectLater(bloc.stream, emitsInOrder(expected));
+        bloc.add(
+          const CreateCampaignRequested(
+            name: 'Promo A',
+            channel: 'telegram',
+            budget: 500,
+            spent: 400,
+            leads: 100,
+            conversions: 10,
+            revenue: 2000,
+          ),
+        );
+      },
+    );
 
-    test('GenerateIdeasRequested returns list of generated marketing ideas', () async {
-      final expected = [
-        isA<MarketingState>().having((s) => s.isGenerating, 'generating', true),
-        isA<MarketingState>()
-            .having((s) => s.isGenerating, 'generating', false)
-            .having((s) => s.generatedIdeas.length, 'ideas count', 2),
-      ];
+    test(
+      'GenerateIdeasRequested returns list of generated marketing ideas',
+      () async {
+        final expected = [
+          isA<MarketingState>().having(
+            (s) => s.isGenerating,
+            'generating',
+            true,
+          ),
+          isA<MarketingState>()
+              .having((s) => s.isGenerating, 'generating', false)
+              .having((s) => s.generatedIdeas.length, 'ideas count', 2),
+        ];
 
-      expectLater(bloc.stream, emitsInOrder(expected));
-      bloc.add(const GenerateIdeasRequested('Cement ads'));
-    });
+        expectLater(bloc.stream, emitsInOrder(expected));
+        bloc.add(const GenerateIdeasRequested('Cement ads'));
+      },
+    );
+    test(
+      'reload during initial load waits and does not duplicate reads',
+      () async {
+        final gate = Completer<void>();
+        repository.loadGate = gate;
+        bloc.add(const LoadMarketingData());
+
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        var completed = false;
+        final first = bloc.reload();
+        final second = bloc.reload();
+        expect(identical(first, second), true);
+        first.then((_) => completed = true);
+
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(repository.campaignReads, 1);
+        expect(repository.postReads, 1);
+        expect(completed, false);
+
+        gate.complete();
+        await Future.wait<void>([first, second]);
+
+        expect(completed, true);
+        expect(bloc.state.campaigns, isNotEmpty);
+        expect(bloc.state.posts, isNotEmpty);
+      },
+    );
   });
 }

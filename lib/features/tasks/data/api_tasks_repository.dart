@@ -21,13 +21,19 @@ class ApiTasksRepository implements TasksRepository {
           title: map['title'] ?? '',
           description: map['description'] ?? '',
           status: _parseStatus(map['status']),
-          dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
+          dueDate: DateTime.parse(
+            map['due_date'] ??
+                map['dueDate'] ??
+                DateTime.now().toIso8601String(),
+          ),
           priority: _parsePriority(map['priority']),
           projectId: map['project_id']?.toString(),
           projectName: map['project_name'],
           assigneeId: map['assignee_id']?.toString(),
           assigneeName: map['assignee_name'],
-          startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+          startDate: map['start_date'] != null
+              ? DateTime.parse(map['start_date'])
+              : null,
           dependsOnId: map['depends_on_id']?.toString(),
           position: map['position'] as int?,
         );
@@ -51,13 +57,17 @@ class ApiTasksRepository implements TasksRepository {
         title: map['title'] ?? '',
         description: map['description'] ?? '',
         status: _parseStatus(map['status']),
-        dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
+        dueDate: DateTime.parse(
+          map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String(),
+        ),
         priority: _parsePriority(map['priority']),
         projectId: map['project_id']?.toString(),
         projectName: map['project_name'],
         assigneeId: map['assignee_id']?.toString(),
         assigneeName: map['assignee_name'],
-        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+        startDate: map['start_date'] != null
+            ? DateTime.parse(map['start_date'])
+            : null,
         dependsOnId: map['depends_on_id']?.toString(),
         position: map['position'] as int?,
       );
@@ -75,9 +85,12 @@ class ApiTasksRepository implements TasksRepository {
         'due_date': DateFormat('yyyy-MM-dd').format(task.dueDate),
         'priority': _priorityToName(task.priority),
         if (task.projectId != null) 'project_id': int.tryParse(task.projectId!),
-        if (task.assigneeId != null) 'assignee_id': int.tryParse(task.assigneeId!),
-        if (task.startDate != null) 'start_date': DateFormat('yyyy-MM-dd').format(task.startDate!),
-        if (task.dependsOnId != null) 'depends_on_id': int.tryParse(task.dependsOnId!),
+        if (task.assigneeId != null)
+          'assignee_id': int.tryParse(task.assigneeId!),
+        if (task.startDate != null)
+          'start_date': DateFormat('yyyy-MM-dd').format(task.startDate!),
+        if (task.dependsOnId != null)
+          'depends_on_id': int.tryParse(task.dependsOnId!),
       };
 
       final response = await _apiClient.dio.post('/tasks', data: payload);
@@ -88,13 +101,17 @@ class ApiTasksRepository implements TasksRepository {
         title: map['title'] ?? '',
         description: map['description'] ?? '',
         status: _parseStatus(map['status']),
-        dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
+        dueDate: DateTime.parse(
+          map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String(),
+        ),
         priority: _parsePriority(map['priority']),
         projectId: map['project_id']?.toString(),
         projectName: map['project_name'],
         assigneeId: map['assignee_id']?.toString(),
         assigneeName: map['assignee_name'],
-        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+        startDate: map['start_date'] != null
+            ? DateTime.parse(map['start_date'])
+            : null,
         dependsOnId: map['depends_on_id']?.toString(),
         position: map['position'] as int?,
       );
@@ -112,12 +129,21 @@ class ApiTasksRepository implements TasksRepository {
         'status': _statusToName(task.status),
         'due_date': DateFormat('yyyy-MM-dd').format(task.dueDate),
         'priority': _priorityToName(task.priority),
-        'project_id': task.projectId != null ? int.tryParse(task.projectId!) : null,
-        'assignee_id': task.assigneeId != null ? int.tryParse(task.assigneeId!) : null,
-        'start_date': task.startDate != null ? DateFormat('yyyy-MM-dd').format(task.startDate!) : null,
+        'project_id': task.projectId != null
+            ? int.tryParse(task.projectId!)
+            : null,
+        'assignee_id': task.assigneeId != null
+            ? int.tryParse(task.assigneeId!)
+            : null,
+        'start_date': task.startDate != null
+            ? DateFormat('yyyy-MM-dd').format(task.startDate!)
+            : null,
       };
 
-      final response = await _apiClient.dio.patch('/tasks/${task.id}', data: payload);
+      final response = await _apiClient.dio.patch(
+        '/tasks/${task.id}',
+        data: payload,
+      );
       final map = response.data as Map<String, dynamic>;
 
       return Task(
@@ -125,13 +151,17 @@ class ApiTasksRepository implements TasksRepository {
         title: map['title'] ?? '',
         description: map['description'] ?? '',
         status: _parseStatus(map['status']),
-        dueDate: DateTime.parse(map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String()),
+        dueDate: DateTime.parse(
+          map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String(),
+        ),
         priority: _parsePriority(map['priority']),
         projectId: map['project_id']?.toString(),
         projectName: map['project_name'],
         assigneeId: map['assignee_id']?.toString(),
         assigneeName: map['assignee_name'],
-        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+        startDate: map['start_date'] != null
+            ? DateTime.parse(map['start_date'])
+            : null,
         dependsOnId: map['depends_on_id']?.toString(),
         position: map['position'] as int?,
       );
@@ -173,9 +203,10 @@ class ApiTasksRepository implements TasksRepository {
 
       return list.map((item) {
         final map = item as Map<String, dynamic>;
-        final fullName = (map['full_name'] ?? map['fullName'] ?? map['name'] ?? '')
-            .toString()
-            .trim();
+        final fullName =
+            (map['full_name'] ?? map['fullName'] ?? map['name'] ?? '')
+                .toString()
+                .trim();
         return TaskAssignee(
           id: (map['id'] ?? '').toString(),
           fullName: fullName.isNotEmpty ? fullName : 'Без имени',
@@ -271,7 +302,9 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить перегрузку сотрудников: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить перегрузку сотрудников: ${e.toString()}',
+      );
     }
   }
 
@@ -288,7 +321,9 @@ class ApiTasksRepository implements TasksRepository {
           title: map['title'] ?? '',
           status: map['status'] ?? 'new',
           blocksCount: map['blocks_count'] ?? 0,
-          dueDate: map['due_date'] != null ? DateTime.parse(map['due_date']) : null,
+          dueDate: map['due_date'] != null
+              ? DateTime.parse(map['due_date'])
+              : null,
         );
       }).toList();
     } catch (e) {

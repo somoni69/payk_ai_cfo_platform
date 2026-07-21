@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import '../../core/localization/locale_date_time_format.dart';
+import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../features/integrations/bloc/integrations_bloc.dart';
 import '../../features/integrations/bloc/integrations_event.dart';
@@ -14,28 +16,72 @@ class IntegrationsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LanguageCubit>();
     return BlocProvider<IntegrationsBloc>(
-      create: (context) => IntegrationsBloc(context.read<IntegrationsRepository>())..add(LoadIntegrationsData()),
+      create: (context) =>
+          IntegrationsBloc(context.read<IntegrationsRepository>())
+            ..add(LoadIntegrationsData()),
       child: const IntegrationsView(),
     );
   }
 }
 
-class IntegrationsView extends StatelessWidget {
+class IntegrationsView extends StatefulWidget {
   const IntegrationsView({super.key});
+
+  @override
+  State<IntegrationsView> createState() => _IntegrationsViewState();
+}
+
+class _IntegrationsViewState extends State<IntegrationsView> {
+  static const _logPageSize = 50;
+
+  final ScrollController _scrollController = ScrollController();
+  int _visibleLogs = _logPageSize;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_revealMoreLogs);
+  }
+
+  void _revealMoreLogs() {
+    if (!_scrollController.hasClients ||
+        _scrollController.position.extentAfter > 600) {
+      return;
+    }
+    final total = context.read<IntegrationsBloc>().state.logs.length;
+    if (_visibleLogs >= total) return;
+    final next = _visibleLogs + _logPageSize;
+    setState(() => _visibleLogs = next < total ? next : total);
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_revealMoreLogs)
+      ..dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
         title: Text(
-          'Внешние интеграции (INT)',
-          style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
+          localeCubit.translate('integrations_title'),
+          style: textStyles.h1Sans.copyWith(
+            fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
       body: BlocListener<IntegrationsBloc, IntegrationsState>(
@@ -43,7 +89,9 @@ class IntegrationsView extends StatelessWidget {
           if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.errorMessage!),
+                content: Text(
+                  localeCubit.translateMessage(state.errorMessage!),
+                ),
                 backgroundColor: colors.accentRed,
               ),
             );
@@ -51,28 +99,53 @@ class IntegrationsView extends StatelessWidget {
           if (state.syncMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.syncMessage!),
+                content: Text(localeCubit.translateMessage(state.syncMessage!)),
                 backgroundColor: colors.accentGreen,
               ),
             );
           }
         },
         child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
+          buildWhen: (previous, current) =>
+              previous.integrations != current.integrations ||
+              previous.logs != current.logs ||
+              previous.isLoading != current.isLoading ||
+              previous.isSyncing != current.isSyncing,
           builder: (context, state) {
-            if (state.isLoading) {
+            if (state.isLoading &&
+                state.integrations.isEmpty &&
+                state.logs.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
 
+            final visibleLogCount = _visibleLogs < state.logs.length
+                ? _visibleLogs
+                : state.logs.length;
+            final logsHeaderIndex = state.integrations.length + 1;
+            final logItemCount = state.logs.isEmpty ? 1 : visibleLogCount;
+
             return RefreshIndicator(
-              onRefresh: () async {
-                context.read<IntegrationsBloc>().add(LoadIntegrationsData());
-              },
-              child: ListView(
+              onRefresh: context.read<IntegrationsBloc>().reload,
+              child: ListView.builder(
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
-                children: [
-                  Text('ПОДКЛЮЧЕННЫЕ СИСТЕМЫ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  ...state.integrations.map((integration) {
+                itemCount: state.integrations.length + logItemCount + 2,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        localeCubit.translate('integrations_connected_systems'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (index <= state.integrations.length) {
+                    final integration = state.integrations[index - 1];
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
                       child: LedgerCard(
@@ -85,7 +158,9 @@ class IntegrationsView extends StatelessWidget {
                               children: [
                                 Text(
                                   integration.name,
-                                  style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+                                  style: textStyles.bodySans.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
@@ -94,14 +169,22 @@ class IntegrationsView extends StatelessWidget {
                                       width: 8,
                                       height: 8,
                                       decoration: BoxDecoration(
-                                        color: integration.available ? colors.accentGreen : colors.textSecondary,
+                                        color: integration.available
+                                            ? colors.accentGreen
+                                            : colors.textSecondary,
                                         shape: BoxShape.circle,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      integration.available ? 'Активна' : 'Неактивна',
-                                      style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                                      localeCubit.translate(
+                                        integration.available
+                                            ? 'integrations_status_active'
+                                            : 'integrations_status_inactive',
+                                      ),
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -112,75 +195,123 @@ class IntegrationsView extends StatelessWidget {
                                 onPressed: state.isSyncing
                                     ? null
                                     : () {
-                                        context.read<IntegrationsBloc>().add(TriggerSyncRequested(integration.system));
+                                        context.read<IntegrationsBloc>().add(
+                                          TriggerSyncRequested(
+                                            integration.system,
+                                          ),
+                                        );
                                       },
                                 icon: const Icon(TablerIcons.refresh, size: 16),
-                                label: const Text('Синхр.', style: TextStyle(fontSize: 13)),
+                                label: Text(
+                                  localeCubit.translate('integrations_sync'),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
                                 ),
                               ),
                           ],
                         ),
                       ),
                     );
-                  }),
-                  const SizedBox(height: 24),
-                  Text('ЛОГИ СИНХРОНИЗАЦИИ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 10),
-                  if (state.logs.isEmpty)
-                    const Center(child: Text('Логи синхронизации пусты.'))
-                  else
-                    ...state.logs.map((log) {
-                      final isSuccess = log.success;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: LedgerCard(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  }
+
+                  if (index == logsHeaderIndex) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 10),
+                      child: Text(
+                        localeCubit.translate('integrations_sync_logs'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (state.logs.isEmpty) {
+                    return Center(
+                      child: Text(
+                        localeCubit.translate('integrations_empty_logs'),
+                      ),
+                    );
+                  }
+
+                  final logIndex = index - logsHeaderIndex - 1;
+                  final log = state.logs[logIndex];
+                  final isSuccess = log.success;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10.0),
+                    child: LedgerCard(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    log.system.toUpperCase(),
-                                    style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
-                                  ),
-                                  LedgerPill(
-                                    text: isSuccess ? 'Успешно' : 'Ошибка',
-                                    backgroundColor: isSuccess ? colors.accentGreen.withValues(alpha: 0.1) : colors.accentRed.withValues(alpha: 0.1),
-                                    textColor: isSuccess ? colors.accentGreen : colors.accentRed,
-                                  ),
-                                ],
-                              ),
-                              if (log.message != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  log.message!,
-                                  style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                              Text(
+                                log.system.toUpperCase(),
+                                style: textStyles.bodySans.copyWith(
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              ],
-                              const Divider(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Импортировано: ${log.records} записей',
-                                    style: textStyles.captionSans.copyWith(color: colors.textSecondary),
-                                  ),
-                                  Text(
-                                    '${log.createdAt.day}.${log.createdAt.month} ${log.createdAt.hour}:${log.createdAt.minute}',
-                                    style: textStyles.captionSans.copyWith(color: colors.textSecondary),
-                                  ),
-                                ],
+                              ),
+                              LedgerPill(
+                                text: localeCubit.translate(
+                                  isSuccess
+                                      ? 'integrations_success'
+                                      : 'integrations_error',
+                                ),
+                                backgroundColor: isSuccess
+                                    ? colors.accentGreen.withValues(alpha: 0.1)
+                                    : colors.accentRed.withValues(alpha: 0.1),
+                                textColor: isSuccess
+                                    ? colors.accentGreen
+                                    : colors.accentRed,
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    }),
-                ],
+                          if (log.message != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              localeCubit.translateMessage(log.message!),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                localeCubit.translatePlural(
+                                  'integrations_records_imported',
+                                  log.records,
+                                ),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              Text(
+                                formatLocalizedDateTime(
+                                  context,
+                                  log.createdAt,
+                                  style: LocalizedDateTimeStyle.dayMonthTime,
+                                ),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             );
           },

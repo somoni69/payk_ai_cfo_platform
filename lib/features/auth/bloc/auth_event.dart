@@ -11,13 +11,11 @@ class LoginSubmitted extends AuthEvent {
   final String username;
   final String password;
 
-  const LoginSubmitted({
-    required this.username,
-    required this.password,
-  });
+  const LoginSubmitted({required this.username, required this.password});
 
   @override
-  List<Object?> get props => [username, password];
+  // Passwords must never be included in Equatable's diagnostic output.
+  List<Object?> get props => [username];
 }
 
 class BiometricLoginRequested extends AuthEvent {}
@@ -25,4 +23,3 @@ class BiometricLoginRequested extends AuthEvent {}
 class LogoutRequested extends AuthEvent {}
 
 class CheckAuthStatus extends AuthEvent {}
-

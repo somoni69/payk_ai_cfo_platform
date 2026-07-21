@@ -1,12 +1,19 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../domain/integrations_models.dart';
 import '../domain/integrations_repository.dart';
 
 class ApiIntegrationsRepository implements IntegrationsRepository {
   final ApiClient _apiClient = ApiClient();
+  final _statusCache = ExpiringRequestCache<List<IntegrationInfo>>();
+  final _logsCache = ExpiringRequestCache<List<SyncLog>>();
 
   @override
-  Future<List<IntegrationInfo>> getIntegrationsStatus() async {
+  Future<List<IntegrationInfo>> getIntegrationsStatus({
+    bool forceRefresh = false,
+  }) => _statusCache.get(_fetchStatus, forceRefresh: forceRefresh);
+
+  Future<List<IntegrationInfo>> _fetchStatus() async {
     try {
       final response = await _apiClient.dio.get('/integrations/status');
       final list = response.data as List<dynamic>;
@@ -21,12 +28,17 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить статус интеграций: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить статус интеграций: ${e.toString()}',
+      );
     }
   }
 
   @override
-  Future<List<SyncLog>> getSyncLogs() async {
+  Future<List<SyncLog>> getSyncLogs({bool forceRefresh = false}) =>
+      _logsCache.get(_fetchLogs, forceRefresh: forceRefresh);
+
+  Future<List<SyncLog>> _fetchLogs() async {
     try {
       final response = await _apiClient.dio.get('/integrations/logs');
       final dynamic responseData = response.data;
@@ -43,12 +55,18 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
           success: map['success'] ?? false,
           records: (map['records'] ?? 0) as int,
           message: map['message'],
-          finishedAt: map['finished_at'] != null ? DateTime.parse(map['finished_at']) : null,
-          createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+          finishedAt: map['finished_at'] != null
+              ? DateTime.parse(map['finished_at'])
+              : null,
+          createdAt: DateTime.parse(
+            map['created_at'] ?? DateTime.now().toIso8601String(),
+          ),
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить логи синхронизации: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить логи синхронизации: ${e.toString()}',
+      );
     }
   }
 
@@ -57,6 +75,8 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
     try {
       final response = await _apiClient.dio.post('/integrations/sync/$system');
       final map = response.data as Map<String, dynamic>;
+      _statusCache.invalidate();
+      _logsCache.invalidate();
 
       return SyncResult(
         system: map['system'] ?? system,

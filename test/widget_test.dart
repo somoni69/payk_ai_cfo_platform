@@ -6,7 +6,9 @@ import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_pill.dart';
 
 void main() {
   group('Ledger Design System Widgets Tests', () {
-    testWidgets('LedgerPill displays text and uses given colors', (WidgetTester tester) async {
+    testWidgets('LedgerPill displays text and uses given colors', (
+      WidgetTester tester,
+    ) async {
       const pillText = 'Test Pill';
       const bgColor = Colors.yellow;
       const txColor = Colors.purple;
@@ -36,17 +38,15 @@ void main() {
       expect(decoration.borderRadius, BorderRadius.circular(999));
     });
 
-    testWidgets('LedgerCard displays child content and default styles', (WidgetTester tester) async {
+    testWidgets('LedgerCard displays child content and default styles', (
+      WidgetTester tester,
+    ) async {
       const cardContent = 'Card Content Text';
 
       await tester.pumpWidget(
         MaterialApp(
           theme: LedgerTheme.light,
-          home: const Scaffold(
-            body: LedgerCard(
-              child: Text(cardContent),
-            ),
-          ),
+          home: const Scaffold(body: LedgerCard(child: Text(cardContent))),
         ),
       );
 

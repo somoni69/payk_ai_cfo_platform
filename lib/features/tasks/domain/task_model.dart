@@ -1,20 +1,20 @@
 /// Статусы задач согласно ТЗ (TASK-01).
 enum TaskStatus {
-  todo,       // Новая
+  todo, // Новая
   inProgress, // В работе
-  review,     // На проверке
-  done;       // Готово
+  review, // На проверке
+  done; // Готово
 
-  String get label {
+  String get localizationKey {
     switch (this) {
       case TaskStatus.todo:
-        return 'Новая';
+        return 'tasks_status_todo';
       case TaskStatus.inProgress:
-        return 'В работе';
+        return 'tasks_status_in_progress';
       case TaskStatus.review:
-        return 'На проверке';
+        return 'tasks_status_review';
       case TaskStatus.done:
-        return 'Готово';
+        return 'tasks_status_done';
     }
   }
 }
@@ -26,16 +26,16 @@ enum TaskPriority {
   high,
   urgent;
 
-  String get label {
+  String get localizationKey {
     switch (this) {
       case TaskPriority.low:
-        return 'Низкий';
+        return 'tasks_priority_low';
       case TaskPriority.medium:
-        return 'Средний';
+        return 'tasks_priority_medium';
       case TaskPriority.high:
-        return 'Высокий';
+        return 'tasks_priority_high';
       case TaskPriority.urgent:
-        return 'Критический';
+        return 'tasks_priority_urgent';
     }
   }
 }
@@ -46,11 +46,7 @@ class TaskProject {
   final String name;
   final String? description;
 
-  const TaskProject({
-    required this.id,
-    required this.name,
-    this.description,
-  });
+  const TaskProject({required this.id, required this.name, this.description});
 }
 
 /// Исполнитель задачи (сотрудник из /users).
@@ -58,10 +54,7 @@ class TaskAssignee {
   final String id;
   final String fullName;
 
-  const TaskAssignee({
-    required this.id,
-    required this.fullName,
-  });
+  const TaskAssignee({required this.id, required this.fullName});
 }
 
 /// Модель задачи в PAYK Platform.

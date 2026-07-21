@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:intl/intl.dart';
+import '../../core/localization/locale_number_format.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../core/localization/language_cubit.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
+import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/domain/app_access.dart';
 import '../../features/crm/bloc/crm_bloc.dart';
 import '../../features/crm/bloc/crm_event.dart';
 import '../../features/crm/bloc/crm_state.dart';
@@ -13,6 +18,7 @@ import '../widgets/ledger_card.dart';
 import '../widgets/ledger_pill.dart';
 import '../widgets/ledger_bottom_sheet.dart';
 import '../widgets/expansible_widget.dart';
+import '../widgets/ledger_collapsing_header.dart';
 
 class CrmScreen extends StatelessWidget {
   const CrmScreen({super.key});
@@ -20,7 +26,8 @@ class CrmScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<CrmBloc>(
-      create: (context) => CrmBloc(context.read<CrmRepository>())..add(LoadCrmData()),
+      create: (context) =>
+          CrmBloc(context.read<CrmRepository>())..add(const LoadCrmData()),
       child: const CrmView(),
     );
   }
@@ -40,71 +47,122 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabSelection);
+  }
+
+  void _handleTabSelection() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabSelection);
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshCrm(BuildContext context) {
+    final completion = Completer<void>();
+    context.read<CrmBloc>().add(
+      LoadCrmData(forceRefresh: true, completion: completion),
+    );
+    return completion.future;
+  }
+
+  Widget? _buildFab(
+    BuildContext context,
+    LanguageCubit localeCubit,
+    dynamic colors,
+    dynamic textStyles,
+  ) {
+    if (_tabController.index == 0) {
+      return FloatingActionButton.extended(
+        onPressed: () => _showAddClientBottomSheet(context),
+        backgroundColor: colors.brand,
+        foregroundColor: Colors.white,
+        icon: const Icon(TablerIcons.user_plus),
+        label: Text(
+          localeCubit.translate('crm_new_client'),
+          style: textStyles.bodySans.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    } else if (_tabController.index == 1) {
+      return FloatingActionButton.extended(
+        onPressed: () => _showAddDealBottomSheet(context),
+        backgroundColor: colors.brand,
+        foregroundColor: Colors.white,
+        icon: const Icon(TablerIcons.plus),
+        label: Text(
+          localeCubit.translate('crm_new_deal'),
+          style: textStyles.bodySans.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
+    final localeCubit = context.watch<LanguageCubit>();
+    final authState = context.watch<AuthBloc>().state;
+    final canManage =
+        authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.crm);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        title: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: Text(
-            localeCubit.translate('crm_title'),
-            style: textStyles.h1Sans,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(TablerIcons.user_plus),
-            color: colors.brand,
-            onPressed: () => _showAddClientBottomSheet(context),
-          ),
-          IconButton(
-            icon: const Icon(TablerIcons.plus),
-            color: colors.brand,
-            onPressed: () => _showAddDealBottomSheet(context),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: colors.brand,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textSecondary,
-          labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          tabs: [
-            Tab(text: localeCubit.translate('crm_tab_clients')),
-            Tab(text: localeCubit.translate('crm_tab_deals')),
-            Tab(text: localeCubit.translate('crm_tab_stats')),
-          ],
-        ),
-      ),
-      body: BlocListener<CrmBloc, CrmState>(
+      floatingActionButton:
+          canManage ? _buildFab(context, localeCubit, colors, textStyles) : null,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            LedgerCollapsingHeader(
+              title: localeCubit.translate('crm_title'),
+              pinned: true,
+              floating: true,
+              snap: true,
+              bottom: TabBar(
+                controller: _tabController,
+                indicatorColor: colors.brand,
+                labelColor: colors.brand,
+                unselectedLabelColor: colors.textSecondary,
+                labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                tabs: [
+                  Tab(text: localeCubit.translate('crm_tab_clients')),
+                  Tab(text: localeCubit.translate('crm_tab_deals')),
+                  Tab(text: localeCubit.translate('crm_tab_stats')),
+                ],
+              ),
+            ),
+          ];
+        },
+        body: BlocListener<CrmBloc, CrmState>(
         listener: (context, state) {
           if (state is CrmLoaded) {
             if (state.errorMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.errorMessage!),
+                  content: Text(
+                    localeCubit.translateMessage(state.errorMessage!),
+                  ),
                   backgroundColor: colors.accentRed,
                 ),
               );
             } else if (state.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.successMessage!),
+                  content: Text(
+                    localeCubit.translateMessage(state.successMessage!),
+                  ),
                   backgroundColor: colors.accentGreen,
                 ),
               );
@@ -124,13 +182,22 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(TablerIcons.alert_circle, size: 48, color: colors.accentRed),
+                      Icon(
+                        TablerIcons.alert_circle,
+                        size: 48,
+                        color: colors.accentRed,
+                      ),
                       const SizedBox(height: 16),
-                      Text(state.message, style: textStyles.bodySans, textAlign: TextAlign.center),
+                      Text(
+                        localeCubit.translateMessage(state.message),
+                        style: textStyles.bodySans,
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: () => context.read<CrmBloc>().add(LoadCrmData()),
-                        child: const Text('Повторить попытку'),
+                        onPressed: () =>
+                            context.read<CrmBloc>().add(LoadCrmData()),
+                        child: Text(localeCubit.translate('crm_retry')),
                       ),
                     ],
                   ),
@@ -153,14 +220,15 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
           },
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildClientsTab(BuildContext context, CrmLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
-    final oCcy = NumberFormat("#,##0.00", "ru_RU");
+    final oCcy = localizedDecimalFormat(context);
 
     if (state.clients.isEmpty) {
       return Center(
@@ -172,9 +240,7 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<CrmBloc>().add(LoadCrmData());
-      },
+      onRefresh: () => _refreshCrm(context),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: state.clients.length,
@@ -208,11 +274,16 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                         children: [
                           Text(
                             client.fullName,
-                            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           LedgerPill(
-                            text: client.loyaltyLevel.toUpperCase(),
+                            text: _loyaltyLabel(
+                              localeCubit,
+                              client.loyaltyLevel,
+                            ),
                             backgroundColor: loyaltyBg,
                             textColor: loyaltyText,
                           ),
@@ -222,12 +293,22 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                       if (client.phone != null)
                         Text(
                           client.phone!,
-                          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
                         ),
                       const SizedBox(height: 2),
                       Text(
-                        'LTV: ${oCcy.format(client.totalSpent)} TJS (заказы: ${client.purchasesCount})',
-                        style: textStyles.smallMono.copyWith(color: colors.textTooltip),
+                        localeCubit.translate(
+                          'crm_ltv_orders',
+                          params: {
+                            'amount': oCcy.format(client.totalSpent),
+                            'count': client.purchasesCount,
+                          },
+                        ),
+                        style: textStyles.smallMono.copyWith(
+                          color: colors.textTooltip,
+                        ),
                       ),
                     ],
                   ),
@@ -238,13 +319,17 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     if (client.churnRisk)
                       LedgerPill(
                         text: localeCubit.translate('crm_churn_risk'),
-                        backgroundColor: colors.accentRed.withValues(alpha: 0.08),
+                        backgroundColor: colors.accentRed.withValues(
+                          alpha: 0.08,
+                        ),
                         textColor: colors.accentRed,
                       ),
                     const SizedBox(height: 8),
                     Text(
                       'CAC: ${oCcy.format(client.acquisitionCost)} TJS',
-                      style: textStyles.smallMono.copyWith(color: colors.textSecondary),
+                      style: textStyles.smallMono.copyWith(
+                        color: colors.textSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -260,7 +345,7 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
-    final oCcy = NumberFormat("#,##0.00", "ru_RU");
+    final oCcy = localizedDecimalFormat(context);
 
     if (state.deals.isEmpty) {
       return Center(
@@ -272,9 +357,7 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<CrmBloc>().add(LoadCrmData());
-      },
+      onRefresh: () => _refreshCrm(context),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: state.deals.length,
@@ -284,20 +367,20 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
 
           Color stageBg = colors.border;
           Color stageText = colors.textPrimary;
-          String stageLabel = deal.stage.toUpperCase();
+          String stageLabel = _dealStatusLabel(localeCubit, deal.stage);
 
           if (deal.stage == 'won') {
             stageBg = colors.accentGreen.withValues(alpha: 0.1);
             stageText = colors.accentGreen;
-            stageLabel = 'УСПЕШНО';
+            stageLabel = localeCubit.translate('crm_stage_won');
           } else if (deal.stage == 'lost') {
             stageBg = colors.accentRed.withValues(alpha: 0.1);
             stageText = colors.accentRed;
-            stageLabel = 'ПРОИГРАНО';
+            stageLabel = localeCubit.translate('crm_stage_lost');
           } else if (deal.stage == 'negotiation') {
             stageBg = colors.accentAmber.withValues(alpha: 0.1);
             stageText = colors.accentAmber;
-            stageLabel = 'ПЕРЕГОВОРЫ';
+            stageLabel = localeCubit.translate('crm_stage_negotiation');
           }
 
           return LedgerCard(
@@ -311,12 +394,23 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     children: [
                       Text(
                         deal.title,
-                        style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${localeCubit.translate('crm_client')}: ${deal.clientName ?? "Неизвестный"}',
-                        style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                        localeCubit.translate(
+                          'crm_client_value',
+                          params: {
+                            'client':
+                                deal.clientName ??
+                                localeCubit.translate('common_unknown'),
+                          },
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -332,7 +426,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     const SizedBox(height: 8),
                     Text(
                       '${oCcy.format(deal.amount)} TJS',
-                      style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -348,12 +444,10 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
-    final oCcy = NumberFormat("#,##0.00", "ru_RU");
+    final oCcy = localizedDecimalFormat(context);
 
     return RefreshIndicator(
-      onRefresh: () async {
-        context.read<CrmBloc>().add(LoadCrmData());
-      },
+      onRefresh: () => _refreshCrm(context),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -367,12 +461,16 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     children: [
                       Text(
                         localeCubit.translate('crm_stat_total_clients'),
-                        style: textStyles.smallSans.copyWith(color: colors.textSecondary),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${state.stats.clientsTotal}',
-                        style: textStyles.h1Mono.copyWith(fontWeight: FontWeight.w500),
+                        style: textStyles.h1Mono.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -387,12 +485,16 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     children: [
                       Text(
                         localeCubit.translate('crm_stat_active_clients'),
-                        style: textStyles.smallSans.copyWith(color: colors.textSecondary),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${state.stats.activeClients}',
-                        style: textStyles.h1Mono.copyWith(fontWeight: FontWeight.w500),
+                        style: textStyles.h1Mono.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -411,7 +513,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     children: [
                       Text(
                         localeCubit.translate('crm_stat_total_ltv'),
-                        style: textStyles.smallSans.copyWith(color: colors.textSecondary),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -434,7 +538,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     children: [
                       Text(
                         localeCubit.translate('crm_stat_total_cac'),
-                        style: textStyles.smallSans.copyWith(color: colors.textSecondary),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -457,8 +563,11 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ОТТОК КЛИЕНТОВ (CHURN)',
-                  style: textStyles.captionSans.copyWith(color: colors.textSecondary, fontWeight: FontWeight.w500),
+                  localeCubit.translate('crm_churn_title'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Column(
@@ -466,10 +575,18 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Клиентов под риском оттока', style: textStyles.bodySans.copyWith(color: colors.textSecondary)),
+                        Text(
+                          localeCubit.translate('crm_churn_at_risk'),
+                          style: textStyles.bodySans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
                         Text(
                           '${state.stats.churnCount}',
-                          style: textStyles.h1Mono.copyWith(color: colors.accentRed, fontWeight: FontWeight.w500),
+                          style: textStyles.h1Mono.copyWith(
+                            color: colors.accentRed,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -477,10 +594,18 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Реактивировано клиентов', style: textStyles.bodySans.copyWith(color: colors.textSecondary)),
+                        Text(
+                          localeCubit.translate('crm_reactivated'),
+                          style: textStyles.bodySans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
                         Text(
                           '${state.stats.reactivationCount}',
-                          style: textStyles.h1Mono.copyWith(color: colors.accentGreen, fontWeight: FontWeight.w500),
+                          style: textStyles.h1Mono.copyWith(
+                            color: colors.accentGreen,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),
@@ -494,8 +619,42 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     );
   }
 
-  void _showAddClientBottomSheet(BuildContext context) {
-    final colors = context.colors;
+  String _loyaltyLabel(LanguageCubit language, String loyaltyLevel) {
+    final key = switch (loyaltyLevel) {
+      'gold' => 'crm_loyalty_gold',
+      'silver' => 'crm_loyalty_silver',
+      'platinum' => 'crm_loyalty_platinum',
+      'bronze' => 'crm_loyalty_bronze',
+      _ => null,
+    };
+    return key == null
+        ? loyaltyLevel.toUpperCase()
+        : language.translate(key).toUpperCase();
+  }
+
+  String _dealStatusLabel(LanguageCubit language, String stage) {
+    final key = switch (stage) {
+      'lead' => 'crm_stage_lead',
+      'proposal' => 'crm_stage_proposal_status',
+      'negotiation' => 'crm_stage_negotiation',
+      'won' => 'crm_stage_won',
+      'lost' => 'crm_stage_lost',
+      _ => null,
+    };
+    return key == null ? stage.toUpperCase() : language.translate(key);
+  }
+
+  String _dealStageTranslationKey(String stage) {
+    return switch (stage) {
+      'lead' => 'crm_stage_lead_label',
+      'proposal' => 'crm_stage_proposal',
+      'negotiation' => 'crm_stage_negotiation_label',
+      _ => 'crm_stage_won_label',
+    };
+  }
+
+  Future<void> _showAddClientBottomSheet(BuildContext context) async {
+    final language = context.read<LanguageCubit>();
     final textStyles = context.textStyles;
     final crmBloc = context.read<CrmBloc>();
     final nameController = TextEditingController();
@@ -515,121 +674,134 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
           noteController.text.trim().isNotEmpty;
     }
 
-    LedgerBottomSheet.show(
-      context: context,
-      title: 'Новый контрагент',
-      builder: (context, setSheetState) {
-        return PopScope(
-          canPop: !isDirty() || allowPop,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) return;
-            if (isShowingDiscardDialog) return;
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: language.translate('crm_new_client'),
+        builder: (context, setSheetState) {
+          return PopScope(
+            canPop: !isDirty() || allowPop,
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) return;
+              if (isShowingDiscardDialog) return;
 
-            isShowingDiscardDialog = true;
-            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
-            isShowingDiscardDialog = false;
+              isShowingDiscardDialog = true;
+              final shouldClose = await LedgerBottomSheet.confirmDiscard(
+                context,
+              );
+              isShowingDiscardDialog = false;
 
-            if (shouldClose == true) {
-              allowPop = true;
-              if (context.mounted) {
-                Navigator.of(context).pop();
+              if (shouldClose == true) {
+                allowPop = true;
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               }
-            }
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: textStyles.bodySans,
-                decoration: const InputDecoration(labelText: 'ФИО / Компания'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Телефон'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Email'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: cacController,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Стоимость привлечения (CAC)'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteController,
-                style: textStyles.bodySans,
-                decoration: const InputDecoration(labelText: 'Примечание'),
-              ),
-            ],
-          ),
-        );
-      },
-      footerBuilder: (context, setSheetState) {
-        return Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Отмена'),
-              ),
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_full_name_company'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneController,
+                  style: textStyles.bodySans,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_phone'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  style: textStyles.bodySans,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_email'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: cacController,
+                  style: textStyles.bodySans,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_acquisition_cost'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_note'),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  final name = nameController.text.trim();
-                  final cac = double.tryParse(cacController.text) ?? 0.0;
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          return ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              final cac =
+                  parseLocalizedNumber(context, cacController.text) ?? 0.0;
 
-                  if (name.isEmpty) return;
+              if (name.isEmpty) return;
 
-                  crmBloc.add(
-                    CreateClientRequested(
-                      CrmClient(
-                        id: '',
-                        fullName: name,
-                        phone: phoneController.text.trim(),
-                        email: emailController.text.trim(),
-                        loyaltyLevel: 'bronze',
-                        bonusPoints: 0,
-                        totalSpent: 0,
-                        acquisitionCost: cac,
-                        purchasesCount: 0,
-                        note: noteController.text.trim(),
-                        createdAt: DateTime.now(),
-                        churnRisk: false,
-                      ),
-                    ),
-                  );
-                  Navigator.pop(context);
-                },
-                child: const Text('Добавить'),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+              crmBloc.add(
+                CreateClientRequested(
+                  CrmClient(
+                    id: '',
+                    fullName: name,
+                    phone: phoneController.text.trim(),
+                    email: emailController.text.trim(),
+                    loyaltyLevel: 'bronze',
+                    bonusPoints: 0,
+                    totalSpent: 0,
+                    acquisitionCost: cac,
+                    purchasesCount: 0,
+                    note: noteController.text.trim(),
+                    createdAt: DateTime.now(),
+                    churnRisk: false,
+                  ),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(language.translate('common_add')),
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+      phoneController.dispose();
+      emailController.dispose();
+      cacController.dispose();
+      noteController.dispose();
+    }
   }
 
-  void _showAddDealBottomSheet(BuildContext context) {
+  Future<void> _showAddDealBottomSheet(BuildContext context) async {
+    final language = context.read<LanguageCubit>();
     final colors = context.colors;
     final textStyles = context.textStyles;
     final crmBloc = context.read<CrmBloc>();
     final state = crmBloc.state;
     if (state is! CrmLoaded) return;
 
-    CrmClient? selectedClient = state.clients.isNotEmpty ? state.clients.first : null;
+    CrmClient? selectedClient = state.clients.isNotEmpty
+        ? state.clients.first
+        : null;
     final titleController = TextEditingController();
     final amountController = TextEditingController();
     String stage = 'lead';
@@ -640,130 +812,148 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     bool isDirty() {
       return titleController.text.trim().isNotEmpty ||
           amountController.text.trim().isNotEmpty ||
-          selectedClient != (state.clients.isNotEmpty ? state.clients.first : null);
+          selectedClient !=
+              (state.clients.isNotEmpty ? state.clients.first : null);
     }
 
-    LedgerBottomSheet.show(
-      context: context,
-      title: 'Новая сделка',
-      builder: (context, setSheetState) {
-        return PopScope(
-          canPop: !isDirty() || allowPop,
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) return;
-            if (isShowingDiscardDialog) return;
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: language.translate('crm_new_deal'),
+        builder: (context, setSheetState) {
+          return PopScope(
+            canPop: !isDirty() || allowPop,
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) return;
+              if (isShowingDiscardDialog) return;
 
-            isShowingDiscardDialog = true;
-            final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
-            isShowingDiscardDialog = false;
+              isShowingDiscardDialog = true;
+              final shouldClose = await LedgerBottomSheet.confirmDiscard(
+                context,
+              );
+              isShowingDiscardDialog = false;
 
-            if (shouldClose == true) {
-              allowPop = true;
-              if (context.mounted) {
-                Navigator.of(context).pop();
+              if (shouldClose == true) {
+                allowPop = true;
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
               }
-            }
-          },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('Клиент', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 6),
-              ExpansibleWidget<CrmClient?>.selection(
-                key: ValueKey(selectedClient?.id ?? 'no-client'),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(
-                  selectedClient?.fullName ?? 'Выберите клиента',
-                  style: textStyles.bodySans.copyWith(color: selectedClient == null ? colors.textTooltip : colors.textPrimary),
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  language.translate('crm_client_label'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
-                items: state.clients,
-                selectedValue: selectedClient,
-                itemLabelBuilder: (c) => c?.fullName ?? 'Без клиента',
-                onSelected: (c) {
-                  setSheetState(() {
-                    selectedClient = c;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleController,
-                style: textStyles.bodySans,
-                decoration: const InputDecoration(labelText: 'Название сделки'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Сумма сделки (TJS)'),
-              ),
-              const SizedBox(height: 16),
-              Text('Этап воронки', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600, fontSize: 14)),
-              const SizedBox(height: 8),
-              ExpansibleWidget<String>.selection(
-                key: ValueKey(stage),
-                cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                title: Text(
-                  stage == 'lead' ? 'Лид / Заявка' : 
-                  stage == 'proposal' ? 'Коммерческое предл.' :
-                  stage == 'negotiation' ? 'Согласование / Договор' : 'Сделка выиграна',
-                  style: textStyles.bodySans,
-                ),
-                items: const ['lead', 'proposal', 'negotiation', 'won'],
-                selectedValue: stage,
-                itemLabelBuilder: (s) {
-                  if (s == 'lead') return 'Лид / Заявка';
-                  if (s == 'proposal') return 'Коммерческое предл.';
-                  if (s == 'negotiation') return 'Согласование / Договор';
-                  return 'Сделка выиграна';
-                },
-                onSelected: (val) {
-                  setSheetState(() {
-                    stage = val;
-                  });
-                },
-              ),
-            ],
-          ),
-        );
-      },
-      footerBuilder: (context, setSheetState) {
-        return Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Отмена'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () {
-                  final title = titleController.text.trim();
-                  final amount = double.tryParse(amountController.text) ?? 0.0;
-                  final cliId = selectedClient?.id;
-
-                  if (title.isEmpty || cliId == null) return;
-
-                  crmBloc.add(
-                    CreateDealRequested(
-                      clientId: cliId,
-                      title: title,
-                      amount: amount,
-                      stage: stage,
+                const SizedBox(height: 6),
+                ExpansibleWidget<CrmClient?>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    selectedClient?.fullName ??
+                        language.translate('crm_select_client'),
+                    style: textStyles.bodySans.copyWith(
+                      color: selectedClient == null
+                          ? colors.textTooltip
+                          : colors.textPrimary,
                     ),
-                  );
-                  Navigator.pop(context);
-                },
-                child: const Text('Открыть'),
-              ),
+                  ),
+                  items: state.clients,
+                  selectedValue: selectedClient,
+                  itemLabelBuilder: (c) =>
+                      c?.fullName ?? language.translate('crm_no_client'),
+                  onSelected: (c) {
+                    setSheetState(() {
+                      selectedClient = c;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: titleController,
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_deal_title'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: amountController,
+                  style: textStyles.bodySans,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: language.translate('crm_deal_amount'),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  language.translate('crm_funnel_stage'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ExpansibleWidget<String>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  title: Text(
+                    language.translate(_dealStageTranslationKey(stage)),
+                    style: textStyles.bodySans,
+                  ),
+                  items: const ['lead', 'proposal', 'negotiation', 'won'],
+                  selectedValue: stage,
+                  itemLabelBuilder: (stageCode) =>
+                      language.translate(_dealStageTranslationKey(stageCode)),
+                  onSelected: (val) {
+                    setSheetState(() {
+                      stage = val;
+                    });
+                  },
+                ),
+              ],
             ),
-          ],
-        );
-      },
-    );
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          return ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              final amount =
+                  parseLocalizedNumber(context, amountController.text) ?? 0.0;
+              final cliId = selectedClient?.id;
+
+              if (title.isEmpty || cliId == null) return;
+
+              crmBloc.add(
+                CreateDealRequested(
+                  clientId: cliId,
+                  title: title,
+                  amount: amount,
+                  stage: stage,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(language.translate('common_open')),
+          );
+        },
+      );
+    } finally {
+      titleController.dispose();
+      amountController.dispose();
+    }
   }
 }

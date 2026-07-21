@@ -3,11 +3,15 @@ import '../domain/notifications_repository.dart';
 
 /// Моковый репозиторий уведомлений и критического аудита.
 class MockNotificationsRepository implements NotificationsRepository {
+  @override
+  Future<List<AppNotification>> refreshNotifications() => getNotifications();
+
   static final List<AppNotification> _notifications = [
     AppNotification(
       id: '1',
       title: 'Подозрение на дробление платежей (AUD-02)',
-      description: 'Обнаружена серия из 4 транзакций по 2 000 TJS поставщику «Согдиана» за последние 2 часа. Возможно, платеж разделен для обхода лимита согласования.',
+      description:
+          'Обнаружена серия из 4 транзакций по 2 000 TJS поставщику «Согдиана» за последние 2 часа. Возможно, платеж разделен для обхода лимита согласования.',
       type: NotificationType.audit,
       severity: NotificationSeverity.critical,
       dateTime: DateTime.now().subtract(const Duration(minutes: 10)),
@@ -15,7 +19,8 @@ class MockNotificationsRepository implements NotificationsRepository {
     AppNotification(
       id: '2',
       title: 'Проведение операции в ночное время (AUD-05)',
-      description: 'Кассир Салихов С. провел ручной возврат в кассе А в 02:45 ночи на сумму 1 200 TJS. Рекомендуется проверить видеокамеры.',
+      description:
+          'Кассир Салихов С. провел ручной возврат в кассе А в 02:45 ночи на сумму 1 200 TJS. Рекомендуется проверить видеокамеры.',
       type: NotificationType.audit,
       severity: NotificationSeverity.critical,
       dateTime: DateTime.now().subtract(const Duration(hours: 3)),
@@ -23,7 +28,8 @@ class MockNotificationsRepository implements NotificationsRepository {
     AppNotification(
       id: '3',
       title: 'Прогноз кассового разрыва',
-      description: 'С вероятностью 85% ожидается дефицит средств в размере 14 000 TJS через 7 дней в связи с задержкой оплаты по договору №14.',
+      description:
+          'С вероятностью 85% ожидается дефицит средств в размере 14 000 TJS через 7 дней в связи с задержкой оплаты по договору №14.',
       type: NotificationType.aiForecast,
       severity: NotificationSeverity.important,
       dateTime: DateTime.now().subtract(const Duration(hours: 5)),
@@ -31,7 +37,8 @@ class MockNotificationsRepository implements NotificationsRepository {
     AppNotification(
       id: '4',
       title: 'Угроза оттока клиентов',
-      description: 'AI-модель прогнозирует высокую вероятность ухода клиента «Азиз-Торг» в течение 30 дней. Объем их закупок снизился на 25%.',
+      description:
+          'AI-модель прогнозирует высокую вероятность ухода клиента «Азиз-Торг» в течение 30 дней. Объем их закупок снизился на 25%.',
       type: NotificationType.aiForecast,
       severity: NotificationSeverity.important,
       dateTime: DateTime.now().subtract(const Duration(hours: 12)),
@@ -39,7 +46,8 @@ class MockNotificationsRepository implements NotificationsRepository {
     AppNotification(
       id: '5',
       title: 'Ежедневные AI-рекомендации',
-      description: 'Рекомендация №1: Загрузка склада Худжанд превышает 90% — рассмотрите распродажу остатков.\nРекомендация №2: Переведите 15 000 TJS на депозит для минимизации инфляции.\nРекомендация №3: Проверьте просроченную задачу по сверке транзитных счетов.',
+      description:
+          'Рекомендация №1: Загрузка склада Худжанд превышает 90% — рассмотрите распродажу остатков.\nРекомендация №2: Переведите 15 000 TJS на депозит для минимизации инфляции.\nРекомендация №3: Проверьте просроченную задачу по сверке транзитных счетов.',
       type: NotificationType.aiAdvice,
       severity: NotificationSeverity.important,
       dateTime: DateTime.now().subtract(const Duration(hours: 18)),
@@ -47,7 +55,8 @@ class MockNotificationsRepository implements NotificationsRepository {
     AppNotification(
       id: '6',
       title: 'Налоговый календарь РТ',
-      description: 'Приближается срок уплаты налога по упрощенной системе. Срок: до 15 Июля. Расчетная сумма: 18 450 TJS.',
+      description:
+          'Приближается срок уплаты налога по упрощенной системе. Срок: до 15 Июля. Расчетная сумма: 18 450 TJS.',
       type: NotificationType.legalCalendar,
       severity: NotificationSeverity.info,
       dateTime: DateTime.now().subtract(const Duration(days: 1)),
@@ -55,7 +64,8 @@ class MockNotificationsRepository implements NotificationsRepository {
     AppNotification(
       id: '7',
       title: 'Окончание лицензии 1С',
-      description: 'Внимание: срок действия корпоративной лицензии 1С:Бухгалтерия истекает через 14 дней (15 июля). Требуется продление.',
+      description:
+          'Внимание: срок действия корпоративной лицензии 1С:Бухгалтерия истекает через 14 дней (15 июля). Требуется продление.',
       type: NotificationType.legalCalendar,
       severity: NotificationSeverity.info,
       dateTime: DateTime.now().subtract(const Duration(days: 2)),
