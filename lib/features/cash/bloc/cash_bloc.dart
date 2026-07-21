@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../domain/transaction_model.dart';
 import '../domain/cash_repository.dart';
@@ -14,6 +16,8 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   List<CashRegister> _cachedRegisters = [];
   String _currentQuery = '';
   String _currentFilterType = 'all';
+  Future<List<Object>>? _loadRequest;
+  int _searchRevision = 0;
 
   CashBloc(this._repository) : super(CashLoading()) {
     on<LoadCashData>(_onLoadCashData);
@@ -23,78 +27,155 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     on<SearchFilterChanged>(_onSearchFilterChanged);
   }
 
-  void _onLoadCashData(LoadCashData event, Emitter<CashState> emit) async {
-    if (_cachedTransactions.isNotEmpty) {
-      _emitCurrentState(emit);
-    } else {
-      emit(CashLoading());
-    }
-    try {
-      final results = await Future.wait([
+  Future<void> _onLoadCashData(
+    LoadCashData event,
+    Emitter<CashState> emit,
+  ) async {
+    final previous = state is CashLoaded ? state as CashLoaded : null;
+    var request = _loadRequest;
+    final ownsRequest = request == null;
+
+    if (ownsRequest) {
+      if (previous == null) {
+        emit(CashLoading());
+      }
+      request = Future.wait<Object>([
         _repository.getTransactions(),
-        _repository.getActiveShift(),
         _repository.getSummary(),
         _repository.getShifts(),
         _repository.getRegisters(),
       ]);
-      _cachedTransactions = results[0] as List<Transaction>;
-      _cachedActiveShift = results[1] as CashShift?;
-      _cachedSummaries = results[2] as List<CashSummary>;
-      _cachedShifts = results[3] as List<CashShift>;
-      _cachedRegisters = results[4] as List<CashRegister>;
+      _loadRequest = request;
+    }
+
+    try {
+      final results = await request;
+      if (!ownsRequest || emit.isDone) return;
+
+      _cachedTransactions = (results[0] as List).cast<Transaction>();
+      _cachedSummaries = (results[1] as List).cast<CashSummary>();
+      _cachedShifts = (results[2] as List).cast<CashShift>();
+      _cachedRegisters = (results[3] as List).cast<CashRegister>();
+      _cachedActiveShift = null;
+      for (final shift in _cachedShifts) {
+        if (shift.isOpen) {
+          _cachedActiveShift = shift;
+          break;
+        }
+      }
       _emitCurrentState(emit);
-    } catch (e) {
-      emit(CashError('Не удалось загрузить данные кассы: ${e.toString()}'));
+    } catch (_) {
+      if (!ownsRequest || emit.isDone) return;
+      const message =
+          'Не удалось загрузить данные кассы. Проверьте соединение.';
+      if (previous != null) {
+        _emitCurrentState(emit, errorMessage: message);
+      } else {
+        emit(const CashError(message));
+      }
+    } finally {
+      if (ownsRequest && identical(_loadRequest, request)) {
+        _loadRequest = null;
+      }
+      final completion = event.completion;
+      if (completion != null && !completion.isCompleted) {
+        completion.complete();
+      }
     }
   }
 
-  void _onSearchFilterChanged(SearchFilterChanged event, Emitter<CashState> emit) {
+  Future<void> _onSearchFilterChanged(
+    SearchFilterChanged event,
+    Emitter<CashState> emit,
+  ) async {
+    final revision = ++_searchRevision;
+    if (event.filterType == _currentFilterType) {
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      if (revision != _searchRevision) return;
+    }
     _currentQuery = event.query;
     _currentFilterType = event.filterType;
     _emitCurrentState(emit);
   }
 
-  void _onAddTransactionRequested(AddTransactionRequested event, Emitter<CashState> emit) async {
+  void _onAddTransactionRequested(
+    AddTransactionRequested event,
+    Emitter<CashState> emit,
+  ) async {
     if (state is! CashLoaded) return;
     final currentState = state as CashLoaded;
 
     // Валидация: Нельзя провести операцию без открытой смены (CASH-05)
     if (_cachedActiveShift == null) {
-      emit(currentState.copyWith(
-        errorMessage: 'Ошибка: кассовая смена закрыта. Сначала откройте смену.',
-      ));
+      emit(
+        currentState.copyWith(
+          errorMessage:
+              'Ошибка: кассовая смена закрыта. Сначала откройте смену.',
+        ),
+      );
       return;
     }
 
+    late final Transaction newTx;
     try {
-      final newTx = await _repository.addTransaction(event.transaction);
-      _cachedTransactions = List<Transaction>.from(_cachedTransactions)..insert(0, newTx);
-      _cachedSummaries = await _repository.getSummary();
-      _emitCurrentState(emit);
+      newTx = await _repository.addTransaction(event.transaction);
     } catch (e) {
-      emit(currentState.copyWith(
-        errorMessage: 'Ошибка добавления транзакции: ${e.toString()}',
-      ));
+      if (emit.isDone) return;
+      _emitCurrentState(
+        emit,
+        errorMessage: 'Не удалось добавить транзакцию. Повторите попытку.',
+      );
+      return;
     }
+
+    _cachedTransactions = List<Transaction>.from(_cachedTransactions)
+      ..removeWhere((transaction) => transaction.id == newTx.id)
+      ..insert(0, newTx);
+
+    String? refreshWarning;
+    try {
+      _cachedSummaries = await _repository.getSummary();
+    } catch (e) {
+      refreshWarning =
+          'Транзакция сохранена, но сводку обновить не удалось. Обновите экран.';
+    }
+
+    if (emit.isDone) return;
+    _emitCurrentState(emit, errorMessage: refreshWarning);
   }
 
-  void _onOpenShiftRequested(OpenShiftRequested event, Emitter<CashState> emit) async {
+  void _onOpenShiftRequested(
+    OpenShiftRequested event,
+    Emitter<CashState> emit,
+  ) async {
     if (state is! CashLoaded) return;
     final currentState = state as CashLoaded;
 
     try {
-      _cachedActiveShift = await _repository.openShift(event.startingBalance);
-      _cachedSummaries = await _repository.getSummary();
-      _cachedShifts = await _repository.getShifts();
+      _cachedActiveShift = await _repository.openShiftForRegister(
+        event.startingBalance,
+        registerId: _cachedRegisters.isEmpty ? null : _cachedRegisters.first.id,
+      );
+      final refreshed = await Future.wait([
+        _repository.getSummary(),
+        _repository.getShifts(),
+      ]);
+      _cachedSummaries = refreshed[0] as List<CashSummary>;
+      _cachedShifts = refreshed[1] as List<CashShift>;
       _emitCurrentState(emit);
     } catch (e) {
-      emit(currentState.copyWith(
-        errorMessage: 'Не удалось открыть смену: ${e.toString()}',
-      ));
+      emit(
+        currentState.copyWith(
+          errorMessage: 'Не удалось открыть смену. Повторите попытку.',
+        ),
+      );
     }
   }
 
-  void _onCloseShiftRequested(CloseShiftRequested event, Emitter<CashState> emit) async {
+  void _onCloseShiftRequested(
+    CloseShiftRequested event,
+    Emitter<CashState> emit,
+  ) async {
     if (state is! CashLoaded) return;
     final currentState = state as CashLoaded;
     final currentShift = _cachedActiveShift;
@@ -102,7 +183,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     if (currentShift == null) return;
 
     try {
-      final closedShift = await _repository.closeShift(event.endingBalance);
+      final closedShift = await _repository.closeShiftById(
+        event.endingBalance,
+        shiftId: currentShift.id,
+      );
 
       // CASH-06: Автоматический подсчет разницы
       final double netFlow = _cachedTransactions
@@ -116,48 +200,63 @@ class CashBloc extends Bloc<CashEvent, CashState> {
       if (diff.abs() < 0.01) {
         message += 'Остаток сошелся (Разница: 0 TJS)';
       } else {
-        message += 'Внимание! Расхождение: ${diff > 0 ? "+" : ""}${diff.toStringAsFixed(2)} TJS (Ожидалось в кассе: ${expectedBalance.toStringAsFixed(2)} TJS)';
+        message +=
+            'Внимание! Расхождение: ${diff > 0 ? "+" : ""}${diff.toStringAsFixed(2)} TJS (Ожидалось в кассе: ${expectedBalance.toStringAsFixed(2)} TJS)';
       }
 
       _cachedActiveShift = null;
-      _cachedSummaries = await _repository.getSummary();
-      _cachedShifts = await _repository.getShifts();
+      final refreshed = await Future.wait([
+        _repository.getSummary(),
+        _repository.getShifts(),
+      ]);
+      _cachedSummaries = refreshed[0] as List<CashSummary>;
+      _cachedShifts = refreshed[1] as List<CashShift>;
 
-      emit(currentState.copyWith(
-        activeShift: null,
-        clearActiveShift: true,
-        summaries: _cachedSummaries,
-        shifts: _cachedShifts,
-        errorMessage: message, // Выводим сообщение в виде алерта на UI
-      ));
+      emit(
+        currentState.copyWith(
+          activeShift: null,
+          clearActiveShift: true,
+          summaries: _cachedSummaries,
+          shifts: _cachedShifts,
+          errorMessage: message, // Выводим сообщение в виде алерта на UI
+        ),
+      );
     } catch (e) {
-      emit(currentState.copyWith(
-        errorMessage: 'Не удалось закрыть смену: ${e.toString()}',
-      ));
+      emit(
+        currentState.copyWith(
+          errorMessage: 'Не удалось закрыть смену. Повторите попытку.',
+        ),
+      );
     }
   }
 
-  void _emitCurrentState(Emitter<CashState> emit) {
+  void _emitCurrentState(Emitter<CashState> emit, {String? errorMessage}) {
+    final normalizedQuery = _currentQuery.trim().toLowerCase();
     final filtered = _cachedTransactions.where((tx) {
-      final matchesSearch = tx.title.toLowerCase().contains(_currentQuery.toLowerCase()) ||
-          tx.category.toLowerCase().contains(_currentQuery.toLowerCase());
+      final matchesSearch =
+          tx.title.toLowerCase().contains(normalizedQuery) ||
+          tx.category.toLowerCase().contains(normalizedQuery);
 
-      final matchesFilter = _currentFilterType == 'all' ||
+      final matchesFilter =
+          _currentFilterType == 'all' ||
           (_currentFilterType == 'income' && tx.isIncome) ||
           (_currentFilterType == 'expense' && !tx.isIncome);
 
       return matchesSearch && matchesFilter;
     }).toList();
 
-    emit(CashLoaded(
-      transactions: _cachedTransactions,
-      filteredTransactions: filtered,
-      activeShift: _cachedActiveShift,
-      summaries: _cachedSummaries,
-      shifts: _cachedShifts,
-      registers: _cachedRegisters,
-      query: _currentQuery,
-      filterType: _currentFilterType,
-    ));
+    emit(
+      CashLoaded(
+        transactions: _cachedTransactions,
+        filteredTransactions: filtered,
+        activeShift: _cachedActiveShift,
+        summaries: _cachedSummaries,
+        shifts: _cachedShifts,
+        registers: _cachedRegisters,
+        query: _currentQuery,
+        filterType: _currentFilterType,
+        errorMessage: errorMessage,
+      ),
+    );
   }
 }

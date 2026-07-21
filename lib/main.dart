@@ -1,8 +1,17 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:payk_ai_cfo_platform/core/observability/app_error_reporter.dart';
 import 'package:payk_ai_cfo_platform/core/localization/language_cubit.dart';
+import 'package:payk_ai_cfo_platform/core/localization/tajik_cupertino_localizations.dart';
+import 'package:payk_ai_cfo_platform/core/localization/tajik_material_localizations.dart';
 import 'package:payk_ai_cfo_platform/core/routing/app_router.dart';
+import 'package:payk_ai_cfo_platform/core/routing/go_router_refresh_stream.dart';
 import 'package:payk_ai_cfo_platform/core/theme/app_theme.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_event.dart';
@@ -34,7 +43,34 @@ import 'package:payk_ai_cfo_platform/features/users/domain/users_repository.dart
 import 'package:payk_ai_cfo_platform/features/users/data/api_users_repository.dart';
 
 void main() {
-  runApp(const MyApp());
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      FlutterError.onError = (details) {
+        FlutterError.presentError(details);
+        unawaited(AppErrorReporter.captureFlutterError(details));
+      };
+      PlatformDispatcher.instance.onError = (error, stackTrace) {
+        unawaited(
+          AppErrorReporter.capture(
+            error,
+            stackTrace,
+            context: 'platform-dispatcher',
+          ),
+        );
+        return true;
+      };
+
+      await ApiClient().bootstrap();
+      runApp(const MyApp());
+    },
+    (error, stackTrace) {
+      unawaited(
+        AppErrorReporter.capture(error, stackTrace, context: 'root-zone'),
+      );
+    },
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -46,21 +82,27 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final AuthBloc _authBloc;
+  late final GoRouterRefreshStream _routerRefresh;
   late final GoRouter _router;
 
   @override
   void initState() {
     super.initState();
-    _authBloc = AuthBloc()..add(CheckAuthStatus());
-    _router = createRouter(_authBloc);
+    _authBloc = AuthBloc();
+    _routerRefresh = GoRouterRefreshStream(_authBloc.stream);
+    _router = createRouter(_authBloc, refreshListenable: _routerRefresh);
     ApiClient().onUnauthorized = () {
       _authBloc.add(LogoutRequested());
     };
+    _authBloc.add(CheckAuthStatus());
   }
 
   @override
   void dispose() {
-    _authBloc.close();
+    ApiClient().onUnauthorized = null;
+    _router.dispose();
+    _routerRefresh.dispose();
+    unawaited(_authBloc.close());
     super.dispose();
   }
 
@@ -68,23 +110,52 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<FinanceRepository>(create: (context) => ApiFinanceRepository()),
-        RepositoryProvider<CashRepository>(create: (context) => ApiCashRepository()),
-        RepositoryProvider<TasksRepository>(create: (context) => ApiTasksRepository()),
-        RepositoryProvider<NotificationsRepository>(create: (context) => ApiNotificationsRepository()),
-        RepositoryProvider<WarehouseRepository>(create: (context) => ApiWarehouseRepository()),
-        RepositoryProvider<HrRepository>(create: (context) => ApiHrRepository()),
-        RepositoryProvider<CrmRepository>(create: (context) => ApiCrmRepository()),
-        RepositoryProvider<StrategyRepository>(create: (context) => ApiStrategyRepository()),
-        RepositoryProvider<LegalRepository>(create: (context) => ApiLegalRepository()),
-        RepositoryProvider<MarketingRepository>(create: (context) => ApiMarketingRepository()),
-        RepositoryProvider<IntegrationsRepository>(create: (context) => ApiIntegrationsRepository()),
-        RepositoryProvider<UsersRepository>(create: (context) => ApiUsersRepository()),
+        RepositoryProvider<FinanceRepository>(
+          create: (context) => ApiFinanceRepository(),
+        ),
+        RepositoryProvider<CashRepository>(
+          create: (context) => ApiCashRepository(),
+        ),
+        RepositoryProvider<TasksRepository>(
+          create: (context) => ApiTasksRepository(),
+        ),
+        RepositoryProvider<NotificationsRepository>(
+          create: (context) => ApiNotificationsRepository(),
+        ),
+        RepositoryProvider<WarehouseRepository>(
+          create: (context) => ApiWarehouseRepository(),
+        ),
+        RepositoryProvider<HrRepository>(
+          create: (context) => ApiHrRepository(),
+        ),
+        RepositoryProvider<CrmRepository>(
+          create: (context) => ApiCrmRepository(),
+        ),
+        RepositoryProvider<StrategyRepository>(
+          create: (context) => ApiStrategyRepository(),
+        ),
+        RepositoryProvider<LegalRepository>(
+          create: (context) => ApiLegalRepository(),
+        ),
+        RepositoryProvider<MarketingRepository>(
+          create: (context) => ApiMarketingRepository(),
+        ),
+        RepositoryProvider<IntegrationsRepository>(
+          create: (context) => ApiIntegrationsRepository(),
+        ),
+        RepositoryProvider<UsersRepository>(
+          create: (context) => ApiUsersRepository(),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
           BlocProvider<AuthBloc>.value(value: _authBloc),
-          BlocProvider<LanguageCubit>(create: (context) => LanguageCubit()),
+          BlocProvider<LanguageCubit>(
+            create: (context) => LanguageCubit(
+              storage: const FlutterSecureStorage(),
+              initialLanguageCode: ApiClient().interfaceLanguage,
+            ),
+          ),
         ],
         child: BlocBuilder<LanguageCubit, Locale>(
           builder: (context, locale) {
@@ -94,20 +165,14 @@ class _MyAppState extends State<MyApp> {
               routerConfig: _router,
               debugShowCheckedModeBanner: false,
               locale: locale,
-              builder: (context, child) {
-                final mediaQueryData = MediaQuery.of(context);
-                final width = mediaQueryData.size.width;
-                // Базовая ширина дизайна: 375 pt (iPhone 13 mini)
-                // Рассчитываем коэффициент масштабирования в пределах [0.85, 1.1]
-                final double scale = (width / 375.0).clamp(0.85, 1.1);
-
-                return MediaQuery(
-                  data: mediaQueryData.copyWith(
-                    textScaler: TextScaler.linear(scale),
-                  ),
-                  child: child!,
-                );
-              },
+              supportedLocales: const [Locale('ru'), Locale('tg')],
+              localizationsDelegates: const [
+                TajikMaterialLocalizationsDelegate(),
+                TajikCupertinoLocalizationsDelegate(),
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
             );
           },
         ),

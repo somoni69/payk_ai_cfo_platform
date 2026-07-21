@@ -43,7 +43,13 @@ class MockUsersRepository implements UsersRepository {
     await Future.delayed(const Duration(milliseconds: 200));
     if (search != null && search.isNotEmpty) {
       final term = search.toLowerCase();
-      return _users.where((u) => u.fullName.toLowerCase().contains(term) || u.username.toLowerCase().contains(term)).toList();
+      return _users
+          .where(
+            (u) =>
+                u.fullName.toLowerCase().contains(term) ||
+                u.username.toLowerCase().contains(term),
+          )
+          .toList();
     }
     return _users;
   }

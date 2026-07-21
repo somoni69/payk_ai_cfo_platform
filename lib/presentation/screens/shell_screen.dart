@@ -2,92 +2,86 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/domain/app_access.dart';
 
 class TabItem {
-  final int branchIndex;
-  final IconData icon;
-  final String label;
-  final List<UserRole> permittedRoles;
-
   const TabItem({
     required this.branchIndex,
     required this.icon,
-    required this.label,
-    required this.permittedRoles,
+    required this.labelKey,
+    this.capability,
   });
+
+  final int branchIndex;
+  final IconData icon;
+  final String labelKey;
+  final AppCapability? capability;
 }
 
-/// Все доступные вкладки и правила разграничения доступа согласно ТЗ.
-final List<TabItem> _allTabs = [
-  const TabItem(
+const List<TabItem> _allTabs = [
+  TabItem(
     branchIndex: 0,
     icon: TablerIcons.layout_dashboard,
-    label: 'Панель',
-    permittedRoles: [UserRole.director, UserRole.manager, UserRole.accountant, UserRole.viewer],
+    labelKey: 'nav_dashboard',
+    capability: AppCapability.dashboard,
   ),
-  const TabItem(
+  TabItem(
     branchIndex: 1,
     icon: TablerIcons.wallet,
-    label: 'Касса',
-    permittedRoles: [UserRole.director, UserRole.manager, UserRole.accountant, UserRole.cashier],
+    labelKey: 'nav_cash',
+    capability: AppCapability.cash,
   ),
-  const TabItem(
+  TabItem(
     branchIndex: 2,
     icon: TablerIcons.checkbox,
-    label: 'Задачи',
-    permittedRoles: [UserRole.director, UserRole.manager, UserRole.hr],
+    labelKey: 'nav_tasks',
+    capability: AppCapability.tasks,
   ),
-  const TabItem(
+  TabItem(
     branchIndex: 3,
     icon: TablerIcons.package,
-    label: 'Склад',
-    permittedRoles: [UserRole.director, UserRole.manager, UserRole.accountant],
+    labelKey: 'nav_warehouse',
+    capability: AppCapability.warehouse,
   ),
-  const TabItem(
-    branchIndex: 4,
-    icon: TablerIcons.menu_2,
-    label: 'Еще',
-    permittedRoles: UserRole.values, // Доступно всем
-  ),
+  TabItem(branchIndex: 4, icon: TablerIcons.menu_2, labelKey: 'nav_more'),
 ];
 
 class ShellScreen extends StatelessWidget {
-  final StatefulNavigationShell navigationShell;
+  const ShellScreen({super.key, required this.navigationShell});
 
-  const ShellScreen({
-    super.key,
-    required this.navigationShell,
-  });
+  final StatefulNavigationShell navigationShell;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-
-    // Считываем текущую роль
+    final language = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
-    final userRole = authState is AuthAuthenticated ? authState.role : UserRole.viewer;
+    final userRole = authState is AuthAuthenticated
+        ? authState.role
+        : UserRole.viewer;
 
-    // Фильтруем вкладки под роль пользователя
-    final visibleTabs = _allTabs.where((tab) => tab.permittedRoles.contains(userRole)).toList();
+    final visibleTabs = _allTabs
+        .where((tab) {
+          final capability = tab.capability;
+          return capability == null || userRole.can(capability);
+        })
+        .toList(growable: false);
 
-    // Находим текущий индекс в отфильтрованном списке
-    int activeNavbarIndex = visibleTabs.indexWhere(
+    var activeNavbarIndex = visibleTabs.indexWhere(
       (tab) => tab.branchIndex == navigationShell.currentIndex,
     );
-    if (activeNavbarIndex == -1) {
-      activeNavbarIndex = 0;
-    }
+    if (activeNavbarIndex == -1) activeNavbarIndex = 0;
 
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: colors.border, width: 1.0),
-          ),
+          border: Border(top: BorderSide(color: colors.border)),
         ),
         child: BottomNavigationBar(
           currentIndex: activeNavbarIndex,
@@ -95,16 +89,19 @@ class ShellScreen extends StatelessWidget {
             final targetTab = visibleTabs[index];
             navigationShell.goBranch(
               targetTab.branchIndex,
-              initialLocation: targetTab.branchIndex == navigationShell.currentIndex,
+              initialLocation:
+                  targetTab.branchIndex == navigationShell.currentIndex,
             );
           },
-          items: visibleTabs.map((tab) {
-            return BottomNavigationBarItem(
-              icon: Icon(tab.icon),
-              activeIcon: Icon(tab.icon),
-              label: tab.label,
-            );
-          }).toList(),
+          items: visibleTabs
+              .map((tab) {
+                return BottomNavigationBarItem(
+                  icon: Icon(tab.icon),
+                  activeIcon: Icon(tab.icon),
+                  label: language.translate(tab.labelKey),
+                );
+              })
+              .toList(growable: false),
         ),
       ),
     );

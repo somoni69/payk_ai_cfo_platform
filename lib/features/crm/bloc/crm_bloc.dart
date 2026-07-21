@@ -9,6 +9,9 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
 
   List<CrmClient> _cachedClients = [];
   List<CrmDeal> _cachedDeals = [];
+  Future<List<Object>>? _loadRequest;
+  int _loadGeneration = 0;
+
   CrmStatsData _cachedStats = const CrmStatsData(
     clientsTotal: 0,
     activeClients: 0,
@@ -24,37 +27,76 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
     on<CreateDealRequested>(_onCreateDealRequested);
   }
 
-  void _onLoadCrmData(LoadCrmData event, Emitter<CrmState> emit) async {
-    if (_cachedClients.isNotEmpty) {
-      emit(CrmLoaded(
-        clients: _cachedClients,
-        deals: _cachedDeals,
-        stats: _cachedStats,
-      ));
+  Future<void> _onLoadCrmData(LoadCrmData event, Emitter<CrmState> emit) async {
+    final generation = ++_loadGeneration;
+    final previous = state is CrmLoaded ? state as CrmLoaded : null;
+
+    if (previous != null) {
+      emit(
+        previous.copyWith(
+          isRefreshing: true,
+          clearError: true,
+          clearSuccess: true,
+        ),
+      );
     } else {
       emit(CrmLoading());
     }
-    try {
-      final results = await Future.wait([
-        _repository.getClients(),
-        _repository.getDeals(),
-        _repository.getCrmStats(),
+
+    var request = _loadRequest;
+    if (request == null) {
+      request = Future.wait<Object>([
+        _repository.getClients(forceRefresh: event.forceRefresh),
+        _repository.getDeals(forceRefresh: event.forceRefresh),
+        _repository.getCrmStats(forceRefresh: event.forceRefresh),
       ]);
-      _cachedClients = results[0] as List<CrmClient>;
-      _cachedDeals = results[1] as List<CrmDeal>;
+      _loadRequest = request;
+    }
+
+    try {
+      final results = await request;
+      if (generation != _loadGeneration) return;
+
+      _cachedClients = (results[0] as List).cast<CrmClient>();
+      _cachedDeals = (results[1] as List).cast<CrmDeal>();
       _cachedStats = results[2] as CrmStatsData;
 
-      emit(CrmLoaded(
-        clients: _cachedClients,
-        deals: _cachedDeals,
-        stats: _cachedStats,
-      ));
-    } catch (e) {
-      emit(CrmError('Ошибка загрузки CRM: ${e.toString()}'));
+      emit(
+        CrmLoaded(
+          clients: _cachedClients,
+          deals: _cachedDeals,
+          stats: _cachedStats,
+        ),
+      );
+    } catch (_) {
+      if (generation != _loadGeneration) return;
+      if (previous != null) {
+        emit(
+          previous.copyWith(
+            isRefreshing: false,
+            errorMessage:
+                'Не удалось обновить CRM. Проверьте соединение и повторите.',
+          ),
+        );
+      } else {
+        emit(
+          const CrmError(
+            'Не удалось загрузить CRM. Проверьте соединение и повторите.',
+          ),
+        );
+      }
+    } finally {
+      if (identical(_loadRequest, request)) _loadRequest = null;
+      if (event.completion?.isCompleted == false) {
+        event.completion!.complete();
+      }
     }
   }
 
-  void _onCreateClientRequested(CreateClientRequested event, Emitter<CrmState> emit) async {
+  void _onCreateClientRequested(
+    CreateClientRequested event,
+    Emitter<CrmState> emit,
+  ) async {
     if (state is! CrmLoaded) return;
     final currentState = state as CrmLoaded;
 
@@ -73,19 +115,28 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         reactivationCount: _cachedStats.reactivationCount,
       );
 
-      emit(currentState.copyWith(
-        clients: _cachedClients,
-        stats: _cachedStats,
-        successMessage: 'Клиент "${created.fullName}" успешно зарегистрирован.',
-      ));
-    } catch (e) {
-      emit(currentState.copyWith(
-        errorMessage: 'Не удалось добавить клиента: ${e.toString()}',
-      ));
+      emit(
+        currentState.copyWith(
+          clients: _cachedClients,
+          stats: _cachedStats,
+          successMessage:
+              'Клиент "${created.fullName}" успешно зарегистрирован.',
+        ),
+      );
+    } catch (_) {
+      emit(
+        currentState.copyWith(
+          errorMessage:
+              'Не удалось добавить клиента. Проверьте данные и соединение.',
+        ),
+      );
     }
   }
 
-  void _onCreateDealRequested(CreateDealRequested event, Emitter<CrmState> emit) async {
+  void _onCreateDealRequested(
+    CreateDealRequested event,
+    Emitter<CrmState> emit,
+  ) async {
     if (state is! CrmLoaded) return;
     final currentState = state as CrmLoaded;
 
@@ -116,13 +167,16 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
       clientName: client.fullName,
     );
 
-    final optimisticDeals = List<CrmDeal>.from(_cachedDeals)..insert(0, tempDeal);
+    final optimisticDeals = List<CrmDeal>.from(_cachedDeals)
+      ..insert(0, tempDeal);
 
-    emit(currentState.copyWith(
-      deals: optimisticDeals,
-      clearSuccess: true,
-      clearError: true,
-    ));
+    emit(
+      currentState.copyWith(
+        deals: optimisticDeals,
+        clearSuccess: true,
+        clearError: true,
+      ),
+    );
 
     try {
       final createdDeal = await _repository.createDeal(
@@ -134,21 +188,26 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
 
       // Заменяем временную сделку реальным объектом с сервера
       _cachedDeals = List<CrmDeal>.from(_cachedDeals)..insert(0, createdDeal);
-      
-      // Обновляем статистику
-      _cachedStats = await _repository.getCrmStats();
 
-      emit(currentState.copyWith(
-        deals: _cachedDeals,
-        stats: _cachedStats,
-        successMessage: 'Сделка "${createdDeal.title}" успешно открыта.',
-      ));
-    } catch (e) {
+      // Обновляем статистику
+      _cachedStats = await _repository.getCrmStats(forceRefresh: true);
+
+      emit(
+        currentState.copyWith(
+          deals: _cachedDeals,
+          stats: _cachedStats,
+          successMessage: 'Сделка "${createdDeal.title}" успешно открыта.',
+        ),
+      );
+    } catch (_) {
       // Откат оптимистичных сделок в случае ошибки
-      emit(currentState.copyWith(
-        deals: _cachedDeals,
-        errorMessage: 'Не удалось открыть сделку: ${e.toString()}',
-      ));
+      emit(
+        currentState.copyWith(
+          deals: _cachedDeals,
+          errorMessage:
+              'Не удалось открыть сделку. Проверьте данные и соединение.',
+        ),
+      );
     }
   }
 }

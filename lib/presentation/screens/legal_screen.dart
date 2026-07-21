@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
+import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/domain/app_access.dart';
 import '../../features/legal/bloc/legal_bloc.dart';
 import '../../features/legal/bloc/legal_event.dart';
 import '../../features/legal/bloc/legal_state.dart';
@@ -11,6 +15,12 @@ import '../widgets/ledger_card.dart';
 import '../widgets/expansible_widget.dart';
 import '../widgets/ledger_bottom_sheet.dart';
 
+bool shouldAutoScrollLegalChat(LegalState previous, LegalState current) {
+  return current is LegalLoaded &&
+      (previous is! LegalLoaded ||
+          !identical(previous.chatHistory, current.chatHistory));
+}
+
 class LegalScreen extends StatefulWidget {
   const LegalScreen({super.key});
 
@@ -18,12 +28,13 @@ class LegalScreen extends StatefulWidget {
   State<LegalScreen> createState() => _LegalScreenState();
 }
 
-class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStateMixin {
+class _LegalScreenState extends State<LegalScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _chatInputController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   String _lawSearchQuery = '';
-  String _selectedLawCategory = 'Все';
+  int _selectedLawCategoryIndex = 0;
 
   @override
   void initState() {
@@ -39,15 +50,20 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
+  bool _canManageLegal(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.legal);
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_chatScrollController.hasClients) {
-        _chatScrollController.animateTo(
-          _chatScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      if (!mounted || !_chatScrollController.hasClients) return;
+      _chatScrollController.animateTo(
+        _chatScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     });
   }
 
@@ -55,31 +71,47 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
 
     return BlocProvider(
-      create: (context) => LegalBloc(context.read())..add(LoadLegalData()),
-      child: BlocConsumer<LegalBloc, LegalState>(
-        listener: (context, state) {
-          if (state is LegalLoaded) {
-            if (state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(state.errorMessage!),
-                  backgroundColor: colors.accentRed,
-                ),
-              );
-            }
-            // Auto scroll chat when new messages arrive
-            _scrollToBottom();
-          }
+      create: (context) =>
+          LegalBloc(context.read())..add(const LoadLegalData()),
+      child: BlocListener<LegalBloc, LegalState>(
+        listenWhen: (previous, current) {
+          return current is LegalLoaded &&
+              current.errorMessage != null &&
+              (previous is! LegalLoaded ||
+                  previous.errorMessage != current.errorMessage);
         },
-        builder: (context, state) {
+        listener: (context, state) {
+          final loaded = state as LegalLoaded;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                localeCubit.translateMessage(loaded.errorMessage!),
+              ),
+              backgroundColor: colors.accentRed,
+            ),
+          );
+        },
+        child: BlocConsumer<LegalBloc, LegalState>(
+          listenWhen: shouldAutoScrollLegalChat,
+          listener: (context, state) => _scrollToBottom(),
+          builder: (context, state) {
           if (state is LegalLoading) {
             return Scaffold(
               backgroundColor: colors.background,
               appBar: AppBar(
                 backgroundColor: colors.surface,
-                title: Text('База законов и ИИ-Юрист', style: textStyles.h1Sans),
+                title: Text(
+                  localeCubit.translate('legal_loading_title'),
+                  style: textStyles.h1Sans.copyWith(
+                    fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               body: const Center(child: CircularProgressIndicator()),
             );
@@ -90,7 +122,15 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
               backgroundColor: colors.background,
               appBar: AppBar(
                 backgroundColor: colors.surface,
-                title: Text('Ошибка', style: textStyles.h1Sans),
+                title: Text(
+                  localeCubit.translate('legal_error_title'),
+                  style: textStyles.h1Sans.copyWith(
+                    fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               body: Center(
                 child: Padding(
@@ -98,15 +138,25 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(TablerIcons.alert_triangle, color: colors.accentRed, size: 40),
+                      Icon(
+                        TablerIcons.alert_triangle,
+                        color: colors.accentRed,
+                        size: 40,
+                      ),
                       const SizedBox(height: 12),
-                      Text(state.message, style: textStyles.bodySans, textAlign: TextAlign.center),
+                      Text(
+                        localeCubit.translateMessage(state.message),
+                        style: textStyles.bodySans,
+                        textAlign: TextAlign.center,
+                      ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: () {
-                          context.read<LegalBloc>().add(LoadLegalData());
+                          context.read<LegalBloc>().add(
+                            const LoadLegalData(forceRefresh: true),
+                          );
                         },
-                        child: const Text('Повторить попытку'),
+                        child: Text(localeCubit.translate('legal_retry')),
                       ),
                     ],
                   ),
@@ -121,7 +171,15 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
               appBar: AppBar(
                 backgroundColor: colors.surface,
                 scrolledUnderElevation: 0,
-                title: Text('Юридический блок РТ', style: textStyles.h1Sans),
+                title: Text(
+                  localeCubit.translate('legal_title'),
+                  style: textStyles.h1Sans.copyWith(
+                    fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 bottom: TabBar(
                   controller: _tabController,
                   isScrollable: true,
@@ -130,13 +188,17 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                   indicatorColor: colors.brand,
                   indicatorSize: TabBarIndicatorSize.tab,
                   dividerColor: colors.border,
-                  labelStyle: textStyles.captionSans.copyWith(fontWeight: FontWeight.w500),
-                  unselectedLabelStyle: textStyles.captionSans.copyWith(fontWeight: FontWeight.w400),
-                  tabs: const [
-                    Tab(text: 'ИИ-Юрист'),
-                    Tab(text: 'Законы РТ'),
-                    Tab(text: 'Конструктор'),
-                    Tab(text: 'Сроки'),
+                  labelStyle: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  unselectedLabelStyle: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  tabs: [
+                    Tab(text: localeCubit.translate('legal_tab_ai_lawyer')),
+                    Tab(text: localeCubit.translate('legal_tab_laws')),
+                    Tab(text: localeCubit.translate('legal_tab_constructor')),
+                    Tab(text: localeCubit.translate('legal_tab_deadlines')),
                   ],
                 ),
               ),
@@ -155,6 +217,7 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
           return const SizedBox.shrink();
         },
       ),
+      ),
     );
   }
 
@@ -162,11 +225,12 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
   Widget _buildAiLawyerTab(BuildContext context, LegalLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     final chips = [
-      'Ставка по упрощенке в РТ',
-      'Как оформить трудовой договор в РТ?',
-      'Сроки уплаты соцналога за сотрудников',
+      localeCubit.translate('legal_prompt_simplified_tax'),
+      localeCubit.translate('legal_prompt_employment_contract'),
+      localeCubit.translate('legal_prompt_social_tax_deadlines'),
     ];
 
     return Column(
@@ -185,12 +249,18 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                 padding: const EdgeInsets.only(right: 8.0),
                 child: ActionChip(
                   label: Text(chips[index]),
-                  labelStyle: textStyles.captionSans.copyWith(color: colors.brand),
+                  labelStyle: textStyles.captionSans.copyWith(
+                    color: colors.brand,
+                  ),
                   backgroundColor: colors.brand.withValues(alpha: 0.05),
                   side: BorderSide(color: colors.brand.withValues(alpha: 0.1)),
-                  onPressed: () {
-                    context.read<LegalBloc>().add(AskLawyerQuestion(chips[index]));
-                  },
+                  onPressed: _canManageLegal(context)
+                      ? () {
+                          context.read<LegalBloc>().add(
+                            AskLawyerQuestion(chips[index]),
+                          );
+                        }
+                      : null,
                 ),
               );
             },
@@ -207,23 +277,34 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
               final isUser = msg['sender'] == 'user';
 
               return Align(
-                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: isUser
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width * 0.8,
                   ),
                   decoration: BoxDecoration(
                     color: isUser ? colors.brand : colors.surface,
                     borderRadius: BorderRadius.circular(12).copyWith(
-                      bottomRight: isUser ? const Radius.circular(0) : const Radius.circular(12),
-                      bottomLeft: isUser ? const Radius.circular(12) : const Radius.circular(0),
+                      bottomRight: isUser
+                          ? const Radius.circular(0)
+                          : const Radius.circular(12),
+                      bottomLeft: isUser
+                          ? const Radius.circular(12)
+                          : const Radius.circular(0),
                     ),
                     border: isUser ? null : Border.all(color: colors.border),
                   ),
                   child: Text(
-                    msg['text'] ?? '',
+                    isUser
+                        ? msg['text'] ?? ''
+                        : localeCubit.translateMessage(msg['text'] ?? ''),
                     style: textStyles.bodySans.copyWith(
                       color: isUser ? Colors.white : colors.textPrimary,
                     ),
@@ -245,7 +326,10 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 const SizedBox(width: 8),
-                Text('ИИ-Юрист думает...', style: textStyles.captionSans),
+                Text(
+                  localeCubit.translate('legal_ai_thinking'),
+                  style: textStyles.captionSans,
+                ),
               ],
             ),
           ),
@@ -261,6 +345,7 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
               children: [
                 IconButton(
                   icon: Icon(TablerIcons.trash, color: colors.textSecondary),
+                  tooltip: localeCubit.translate('legal_clear_history'),
                   onPressed: () {
                     context.read<LegalBloc>().add(ClearLawyerHistory());
                   },
@@ -268,29 +353,39 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                 Expanded(
                   child: TextField(
                     controller: _chatInputController,
+                    enabled: _canManageLegal(context),
                     style: textStyles.bodySans,
-                    decoration: const InputDecoration(
-                      hintText: 'Задайте вопрос юристу...',
+                    decoration: InputDecoration(
+                      hintText: localeCubit.translate('legal_question_hint'),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
-                    onSubmitted: (val) {
-                      if (val.trim().isNotEmpty) {
-                        context.read<LegalBloc>().add(AskLawyerQuestion(val.trim()));
-                        _chatInputController.clear();
-                      }
-                    },
+                    onSubmitted: _canManageLegal(context)
+                        ? (val) {
+                            if (val.trim().isNotEmpty) {
+                              context.read<LegalBloc>().add(
+                                AskLawyerQuestion(val.trim()),
+                              );
+                              _chatInputController.clear();
+                            }
+                          }
+                        : null,
                   ),
                 ),
                 IconButton(
                   icon: Icon(TablerIcons.send, color: colors.brand),
-                  onPressed: () {
-                    final text = _chatInputController.text.trim();
-                    if (text.isNotEmpty) {
-                      context.read<LegalBloc>().add(AskLawyerQuestion(text));
-                      _chatInputController.clear();
-                    }
-                  },
+                  tooltip: localeCubit.translate('common_send'),
+                  onPressed: _canManageLegal(context)
+                      ? () {
+                          final text = _chatInputController.text.trim();
+                          if (text.isNotEmpty) {
+                            context.read<LegalBloc>().add(
+                              AskLawyerQuestion(text),
+                            );
+                            _chatInputController.clear();
+                          }
+                        }
+                      : null,
                 ),
               ],
             ),
@@ -304,14 +399,23 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
   Widget _buildLawsTab(BuildContext context, LegalLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     // Categories filter list
-    final categories = ['Все', 'Налоги', 'Трудовое право', 'Корпоративное право'];
+    final categories = <({String? value, String labelKey})>[
+      (value: null, labelKey: 'legal_category_all'),
+      (value: 'Налоги', labelKey: 'legal_category_taxes'),
+      (value: 'Трудовое право', labelKey: 'legal_category_labor_law'),
+      (value: 'Корпоративное право', labelKey: 'legal_category_corporate_law'),
+    ];
+    final selectedCategory = categories[_selectedLawCategoryIndex].value;
 
     final filteredLaws = state.laws.where((law) {
-      final matchesSearch = law.title.toLowerCase().contains(_lawSearchQuery.toLowerCase()) ||
+      final matchesSearch =
+          law.title.toLowerCase().contains(_lawSearchQuery.toLowerCase()) ||
           law.body.toLowerCase().contains(_lawSearchQuery.toLowerCase());
-      final matchesCategory = _selectedLawCategory == 'Все' || law.category == _selectedLawCategory;
+      final matchesCategory =
+          selectedCategory == null || law.category == selectedCategory;
       return matchesSearch && matchesCategory;
     }).toList();
 
@@ -326,8 +430,11 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
               TextField(
                 style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  hintText: 'Поиск по базе законов...',
-                  prefixIcon: Icon(TablerIcons.search, color: colors.textSecondary),
+                  hintText: localeCubit.translate('legal_search_hint'),
+                  prefixIcon: Icon(
+                    TablerIcons.search,
+                    color: colors.textSecondary,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: BorderSide(color: colors.border),
@@ -348,17 +455,17 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                   scrollDirection: Axis.horizontal,
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
-                    final cat = categories[index];
-                    final isSel = _selectedLawCategory == cat;
+                    final category = categories[index];
+                    final isSel = _selectedLawCategoryIndex == index;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: ChoiceChip(
-                        label: Text(cat),
+                        label: Text(localeCubit.translate(category.labelKey)),
                         selected: isSel,
                         onSelected: (val) {
                           if (val) {
                             setState(() {
-                              _selectedLawCategory = cat;
+                              _selectedLawCategoryIndex = index;
                             });
                           }
                         },
@@ -373,7 +480,12 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
         // Laws List
         Expanded(
           child: filteredLaws.isEmpty
-              ? Center(child: Text('Ничего не найдено', style: textStyles.captionSans))
+              ? Center(
+                  child: Text(
+                    localeCubit.translate('legal_nothing_found'),
+                    style: textStyles.captionSans,
+                  ),
+                )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: filteredLaws.length,
@@ -385,11 +497,15 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                         cardPadding: const EdgeInsets.all(16),
                         title: Text(
                           law.title,
-                          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         subtitle: Text(
-                          law.category ?? 'Законодательство',
-                          style: textStyles.captionSans.copyWith(color: colors.brand),
+                          _localizedLawCategory(localeCubit, law.category),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.brand,
+                          ),
                         ),
                         children: [
                           const SizedBox(height: 12),
@@ -405,10 +521,16 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                               },
                               child: Row(
                                 children: [
-                                  Icon(TablerIcons.link, color: colors.brand, size: 14),
+                                  Icon(
+                                    TablerIcons.link,
+                                    color: colors.brand,
+                                    size: 14,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    'Читать на официальном сайте',
+                                    localeCubit.translate(
+                                      'legal_read_official_site',
+                                    ),
                                     style: textStyles.captionSans.copyWith(
                                       color: colors.brand,
                                       decoration: TextDecoration.underline,
@@ -428,10 +550,23 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
     );
   }
 
+  String _localizedLawCategory(LanguageCubit localeCubit, String? category) {
+    return switch (category) {
+      'Налоги' => localeCubit.translate('legal_category_taxes'),
+      'Трудовое право' => localeCubit.translate('legal_category_labor_law'),
+      'Корпоративное право' => localeCubit.translate(
+        'legal_category_corporate_law',
+      ),
+      null => localeCubit.translate('legal_default_law_category'),
+      _ => category,
+    };
+  }
+
   // --- 3. Вкладка Конструктор договоров ---
   Widget _buildConstructorTab(BuildContext context, LegalLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     if (state.generatedContract != null) {
       // Show generated contract view
@@ -443,11 +578,19 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('ДОКУМЕНТ СГЕНЕРИРОВАН', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  localeCubit.translate('legal_document_generated'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 IconButton(
                   icon: Icon(TablerIcons.x, color: colors.textSecondary),
+                  tooltip: localeCubit.translate('common_close'),
                   onPressed: () {
-                    context.read<LegalBloc>().add(LoadLegalData());
+                    context.read<LegalBloc>().add(
+                      const ClearGeneratedContract(),
+                    );
                   },
                 ),
               ],
@@ -461,18 +604,35 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        state.generatedContract!.title,
-                        style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold),
+                        localeCubit.translateMessage(
+                          state.generatedContract!.title,
+                        ),
+                        style: textStyles.h2Sans.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Дата: ${state.generatedContract!.createdAt.toIso8601String().split('T').first}',
-                        style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                        localeCubit.translate(
+                          'legal_date',
+                          params: {
+                            'date': state.generatedContract!.createdAt
+                                .toIso8601String()
+                                .split('T')
+                                .first,
+                          },
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                       const Divider(height: 24),
                       Text(
                         state.generatedContract!.body,
-                        style: textStyles.bodySans.copyWith(height: 1.5, fontFamily: 'monospace'),
+                        style: textStyles.bodySans.copyWith(
+                          height: 1.5,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ],
                   ),
@@ -485,23 +645,31 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: state.generatedContract!.body));
+                      Clipboard.setData(
+                        ClipboardData(text: state.generatedContract!.body),
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Текст договора скопирован в буфер обмена')),
+                        SnackBar(
+                          content: Text(
+                            localeCubit.translate('legal_contract_copied'),
+                          ),
+                        ),
                       );
                     },
                     icon: const Icon(TablerIcons.copy),
-                    label: const Text('Копировать текст'),
+                    label: Text(localeCubit.translate('legal_copy_text')),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () {
-                      context.read<LegalBloc>().add(LoadLegalData());
+                      context.read<LegalBloc>().add(
+                        const ClearGeneratedContract(),
+                      );
                     },
                     icon: const Icon(TablerIcons.file_text),
-                    label: const Text('Создать новый'),
+                    label: Text(localeCubit.translate('legal_create_new')),
                   ),
                 ),
               ],
@@ -512,13 +680,13 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
     }
 
     return state.isGenerating
-        ? const Center(
+        ? Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Генерация документа на основе реквизитов...'),
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(localeCubit.translate('legal_generating_document')),
               ],
             ),
           )
@@ -539,20 +707,29 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                         children: [
                           Text(
                             template.name,
-                            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           Icon(TablerIcons.file_plus, color: colors.brand),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        template.category ?? 'Общий шаблон',
-                        style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                        template.category ??
+                            localeCubit.translate('legal_general_template'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       ElevatedButton(
-                        onPressed: () => _showGenerateForm(context, template),
-                        child: const Text('Заполнить реквизиты'),
+                        onPressed: _canManageLegal(context)
+                            ? () => _showGenerateForm(context, template)
+                            : null,
+                        child: Text(
+                          localeCubit.translate('legal_fill_details'),
+                        ),
                       ),
                     ],
                   ),
@@ -563,21 +740,25 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
   }
 
   void _showGenerateForm(BuildContext context, ContractTemplate template) {
+    if (!_canManageLegal(context)) return;
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
     final Map<String, String> values = {};
     final bloc = context.read<LegalBloc>();
 
     LedgerBottomSheet.show(
       context: context,
-      title: 'Реквизиты для договора',
+      title: localeCubit.translate('legal_contract_details'),
       builder: (context, setSheetState) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               template.name,
-              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
             const SizedBox(height: 16),
             ...template.variables.map((variable) {
@@ -595,24 +776,30 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                 ),
               );
             }),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                // Check variables filled
-                for (var v in template.variables) {
-                  if (!values.containsKey(v.key) || values[v.key]!.trim().isEmpty) {
-                    values[v.key] = '[${v.label} не указан]';
-                  }
-                }
-                bloc.add(GenerateContractFromTemplate(
-                  templateId: template.id,
-                  variables: values,
-                ));
-                Navigator.pop(context);
-              },
-              child: const Text('Сгенерировать договор'),
-            ),
           ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            // Check variables filled
+            for (var v in template.variables) {
+              if (!values.containsKey(v.key) || values[v.key]!.trim().isEmpty) {
+                values[v.key] = localeCubit.translate(
+                  'legal_not_specified',
+                  params: {'label': v.label},
+                );
+              }
+            }
+            bloc.add(
+              GenerateContractFromTemplate(
+                templateId: template.id,
+                variables: values,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          child: Text(localeCubit.translate('legal_generate_contract')),
         );
       },
     );
@@ -622,6 +809,7 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
   Widget _buildDeadlinesTab(BuildContext context, LegalLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -638,13 +826,15 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                 Checkbox.adaptive(
                   value: dl.isDone,
                   activeColor: colors.accentGreen,
-                  onChanged: (val) {
-                    if (val != null) {
-                      context.read<LegalBloc>().add(
-                            ToggleDeadlineStatus(id: dl.id, isDone: val),
-                          );
-                    }
-                  },
+                  onChanged: !_canManageLegal(context)
+                      ? null
+                      : (val) {
+                          if (val != null) {
+                            context.read<LegalBloc>().add(
+                              ToggleDeadlineStatus(id: dl.id, isDone: val),
+                            );
+                          }
+                        },
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -655,26 +845,41 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                         dl.title,
                         style: textStyles.bodySans.copyWith(
                           fontWeight: FontWeight.w600,
-                          decoration: dl.isDone ? TextDecoration.lineThrough : null,
-                          color: dl.isDone ? colors.textSecondary : colors.textPrimary,
+                          decoration: dl.isDone
+                              ? TextDecoration.lineThrough
+                              : null,
+                          color: dl.isDone
+                              ? colors.textSecondary
+                              : colors.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Срок сдачи: ${dl.dueDate.toIso8601String().split('T').first} (${dl.daysLeft ?? 0} дн. осталось)',
+                        localeCubit.translate(
+                          'legal_deadline_summary',
+                          params: {
+                            'date': dl.dueDate
+                                .toIso8601String()
+                                .split('T')
+                                .first,
+                            'days': '${dl.daysLeft ?? 0}',
+                          },
+                        ),
                         style: textStyles.captionSans.copyWith(
                           color: dl.isDone
                               ? colors.textSecondary
                               : (dl.daysLeft != null && dl.daysLeft! <= 5)
-                                  ? colors.accentRed
-                                  : colors.brand,
+                              ? colors.accentRed
+                              : colors.brand,
                         ),
                       ),
                       if (dl.note != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           dl.note!,
-                          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ],
@@ -684,7 +889,9 @@ class _LegalScreenState extends State<LegalScreen> with SingleTickerProviderStat
                   const SizedBox(width: 8),
                   Text(
                     dl.amount!,
-                    style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.bold),
+                    style: textStyles.bodyMono.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ],

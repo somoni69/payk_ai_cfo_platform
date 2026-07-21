@@ -9,8 +9,16 @@ abstract class StrategyRepository {
   Future<AiIdeasResponseData> generateAiIdeas(String prompt);
 
   /// Получить список стратегических анализов по типу (swot, bcg, pestel)
-  Future<List<StrategicAnalysis>> getAnalyses(String type);
+  Future<List<StrategicAnalysis>> getAnalyses(
+    String type, {
+    bool forceRefresh = false,
+  });
 
   /// Запустить AI-генерацию анализа
   Future<StrategicAnalysis> generateAnalysis(String type, String period);
+}
+
+/// Optional lifecycle contract for repositories with long-running requests.
+abstract interface class CancellableStrategyRepository {
+  void cancelPendingRequests();
 }

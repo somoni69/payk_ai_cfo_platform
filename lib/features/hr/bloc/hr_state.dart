@@ -17,6 +17,7 @@ class HrLoaded extends HrState {
   final String period;
   final String? errorMessage;
   final String? successMessage;
+  final bool isRefreshing;
 
   const HrLoaded({
     required this.employees,
@@ -25,6 +26,7 @@ class HrLoaded extends HrState {
     required this.period,
     this.errorMessage,
     this.successMessage,
+    this.isRefreshing = false,
   });
 
   HrLoaded copyWith({
@@ -36,6 +38,7 @@ class HrLoaded extends HrState {
     String? successMessage,
     bool clearError = false,
     bool clearSuccess = false,
+    bool? isRefreshing,
   }) {
     return HrLoaded(
       employees: employees ?? this.employees,
@@ -43,19 +46,23 @@ class HrLoaded extends HrState {
       salaryRecords: salaryRecords ?? this.salaryRecords,
       period: period ?? this.period,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
+      isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
 
   @override
   List<Object?> get props => [
-        employees,
-        kpiAlerts,
-        salaryRecords,
-        period,
-        errorMessage,
-        successMessage,
-      ];
+    employees,
+    kpiAlerts,
+    salaryRecords,
+    period,
+    errorMessage,
+    successMessage,
+    isRefreshing,
+  ];
 }
 
 class HrError extends HrState {

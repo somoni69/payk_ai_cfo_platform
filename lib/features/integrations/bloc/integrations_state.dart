@@ -40,11 +40,11 @@ class IntegrationsState extends Equatable {
 
   @override
   List<Object?> get props => [
-        integrations,
-        logs,
-        isLoading,
-        isSyncing,
-        syncMessage,
-        errorMessage,
-      ];
+    integrations,
+    logs,
+    isLoading,
+    isSyncing,
+    syncMessage,
+    errorMessage,
+  ];
 }

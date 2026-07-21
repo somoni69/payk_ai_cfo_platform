@@ -7,7 +7,14 @@ abstract class MarketingEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadMarketingData extends MarketingEvent {}
+class LoadMarketingData extends MarketingEvent {
+  final bool forceRefresh;
+
+  const LoadMarketingData({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
 
 class CreateCampaignRequested extends MarketingEvent {
   final String name;
@@ -29,7 +36,15 @@ class CreateCampaignRequested extends MarketingEvent {
   });
 
   @override
-  List<Object?> get props => [name, channel, budget, spent, leads, conversions, revenue];
+  List<Object?> get props => [
+    name,
+    channel,
+    budget,
+    spent,
+    leads,
+    conversions,
+    revenue,
+  ];
 }
 
 class CreatePostRequested extends MarketingEvent {

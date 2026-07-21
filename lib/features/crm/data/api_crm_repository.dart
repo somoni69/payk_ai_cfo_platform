@@ -1,10 +1,22 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../domain/crm_models.dart';
 import '../domain/crm_repository.dart';
 
 /// Конкретная реализация CRM репозитория для бэкенда PAYK.
 class ApiCrmRepository implements CrmRepository {
   final ApiClient _apiClient = ApiClient();
+  final _clientsCache = ExpiringRequestCache<List<CrmClient>>();
+  final _dealsCache = ExpiringRequestCache<List<CrmDeal>>();
+  final _statsCache = ExpiringRequestCache<CrmStatsData>();
+
+  int _requirePositiveId(String value, String fieldName) {
+    final id = int.tryParse(value);
+    if (id == null || id <= 0) {
+      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+    }
+    return id;
+  }
 
   double _toDouble(dynamic val) {
     if (val == null) return 0.0;
@@ -13,7 +25,10 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<List<CrmClient>> getClients() async {
+  Future<List<CrmClient>> getClients({bool forceRefresh = false}) =>
+      _clientsCache.get(_fetchClients, forceRefresh: forceRefresh);
+
+  Future<List<CrmClient>> _fetchClients() async {
     try {
       final response = await _apiClient.dio.get(
         '/crm/clients',
@@ -35,7 +50,9 @@ class ApiCrmRepository implements CrmRepository {
           acquisitionCost: _toDouble(map['acquisition_cost']),
           purchasesCount: map['purchases_count'] ?? 0,
           note: map['note']?.toString(),
-          createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+          createdAt: DateTime.parse(
+            map['created_at'] ?? DateTime.now().toIso8601String(),
+          ),
           roi: map['roi'] != null ? _toDouble(map['roi']) : null,
           churnRisk: map['churn_risk'] ?? false,
         );
@@ -46,7 +63,10 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<List<CrmDeal>> getDeals() async {
+  Future<List<CrmDeal>> getDeals({bool forceRefresh = false}) =>
+      _dealsCache.get(_fetchDeals, forceRefresh: forceRefresh);
+
+  Future<List<CrmDeal>> _fetchDeals() async {
     try {
       final response = await _apiClient.dio.get('/crm/deals');
       final list = response.data as List<dynamic>;
@@ -59,7 +79,9 @@ class ApiCrmRepository implements CrmRepository {
           title: map['title'] ?? '',
           amount: _toDouble(map['amount']),
           stage: map['stage'] ?? 'lead',
-          createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+          createdAt: DateTime.parse(
+            map['created_at'] ?? DateTime.now().toIso8601String(),
+          ),
           clientName: map['client_name']?.toString(),
         );
       }).toList();
@@ -69,7 +91,10 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<CrmStatsData> getCrmStats() async {
+  Future<CrmStatsData> getCrmStats({bool forceRefresh = false}) =>
+      _statsCache.get(_fetchCrmStats, forceRefresh: forceRefresh);
+
+  Future<CrmStatsData> _fetchCrmStats() async {
     try {
       final response = await _apiClient.dio.get('/crm/stats');
       final map = response.data as Map<String, dynamic>;
@@ -101,6 +126,8 @@ class ApiCrmRepository implements CrmRepository {
 
       final response = await _apiClient.dio.post('/crm/clients', data: payload);
       final map = response.data as Map<String, dynamic>;
+      _clientsCache.invalidate();
+      _statsCache.invalidate();
 
       return CrmClient(
         id: (map['id'] ?? '').toString(),
@@ -113,7 +140,9 @@ class ApiCrmRepository implements CrmRepository {
         acquisitionCost: _toDouble(map['acquisition_cost']),
         purchasesCount: map['purchases_count'] ?? 0,
         note: map['note']?.toString(),
-        createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+        createdAt: DateTime.parse(
+          map['created_at'] ?? DateTime.now().toIso8601String(),
+        ),
         roi: map['roi'] != null ? _toDouble(map['roi']) : null,
         churnRisk: map['churn_risk'] ?? false,
       );
@@ -123,10 +152,15 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<CrmDeal> createDeal(String clientId, String title, double amount, String stage) async {
+  Future<CrmDeal> createDeal(
+    String clientId,
+    String title,
+    double amount,
+    String stage,
+  ) async {
     try {
       final payload = {
-        'client_id': int.tryParse(clientId) ?? 0,
+        'client_id': _requirePositiveId(clientId, 'clientId'),
         'title': title,
         'amount': amount,
         'stage': stage,
@@ -134,6 +168,8 @@ class ApiCrmRepository implements CrmRepository {
 
       final response = await _apiClient.dio.post('/crm/deals', data: payload);
       final map = response.data as Map<String, dynamic>;
+      _dealsCache.invalidate();
+      _statsCache.invalidate();
 
       return CrmDeal(
         id: (map['id'] ?? '').toString(),
@@ -141,7 +177,9 @@ class ApiCrmRepository implements CrmRepository {
         title: map['title'] ?? '',
         amount: _toDouble(map['amount']),
         stage: map['stage'] ?? 'lead',
-        createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+        createdAt: DateTime.parse(
+          map['created_at'] ?? DateTime.now().toIso8601String(),
+        ),
         clientName: map['client_name']?.toString(),
       );
     } catch (e) {

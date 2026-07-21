@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../domain/finance_model.dart';
+import 'dashboard_event.dart';
 
 abstract class DashboardState extends Equatable {
   const DashboardState();
@@ -21,6 +22,9 @@ class DashboardLoaded extends DashboardState {
   final ExchangeRatesReport? rates;
   final AiInsightsReport? aiInsights;
   final PlanFactReport? planFact;
+  final Set<DashboardSection> loadingSections;
+  final Map<DashboardSection, String> sectionErrors;
+  final String? overviewError;
 
   const DashboardLoaded({
     required this.metrics,
@@ -33,6 +37,9 @@ class DashboardLoaded extends DashboardState {
     this.rates,
     this.aiInsights,
     this.planFact,
+    this.loadingSections = const {},
+    this.sectionErrors = const {},
+    this.overviewError,
   });
 
   DashboardLoaded copyWith({
@@ -46,6 +53,10 @@ class DashboardLoaded extends DashboardState {
     ExchangeRatesReport? rates,
     AiInsightsReport? aiInsights,
     PlanFactReport? planFact,
+    Set<DashboardSection>? loadingSections,
+    Map<DashboardSection, String>? sectionErrors,
+    String? overviewError,
+    bool clearOverviewError = false,
   }) {
     return DashboardLoaded(
       metrics: metrics ?? this.metrics,
@@ -58,22 +69,30 @@ class DashboardLoaded extends DashboardState {
       rates: rates ?? this.rates,
       aiInsights: aiInsights ?? this.aiInsights,
       planFact: planFact ?? this.planFact,
+      loadingSections: loadingSections ?? this.loadingSections,
+      sectionErrors: sectionErrors ?? this.sectionErrors,
+      overviewError: clearOverviewError
+          ? null
+          : (overviewError ?? this.overviewError),
     );
   }
 
   @override
   List<Object?> get props => [
-        metrics,
-        history,
-        currency,
-        pnl,
-        breakEven,
-        abc,
-        bankAccounts,
-        rates,
-        aiInsights,
-        planFact,
-      ];
+    metrics,
+    history,
+    currency,
+    pnl,
+    breakEven,
+    abc,
+    bankAccounts,
+    rates,
+    aiInsights,
+    planFact,
+    loadingSections,
+    sectionErrors,
+    overviewError,
+  ];
 }
 
 class DashboardError extends DashboardState {

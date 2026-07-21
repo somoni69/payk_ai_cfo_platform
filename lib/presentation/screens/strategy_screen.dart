@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../core/theme/theme_extensions.dart';
 import '../../core/localization/language_cubit.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
+import '../../features/auth/bloc/auth_state.dart';
+import '../../features/auth/domain/app_access.dart';
 import '../../features/strategy/bloc/strategy_bloc.dart';
 import '../../features/strategy/bloc/strategy_event.dart';
 import '../../features/strategy/bloc/strategy_state.dart';
@@ -15,6 +20,7 @@ class StrategyScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LanguageCubit>();
     return BlocProvider<StrategyBloc>(
       create: (context) => StrategyBloc(context.read<StrategyRepository>()),
       child: const StrategyView(),
@@ -29,33 +35,70 @@ class StrategyView extends StatefulWidget {
   State<StrategyView> createState() => _StrategyViewState();
 }
 
-class _StrategyViewState extends State<StrategyView> with SingleTickerProviderStateMixin {
+class _StrategyViewState extends State<StrategyView>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _whatIfController = TextEditingController();
   final TextEditingController _marketingController = TextEditingController();
 
-  final List<String> _whatIfTemplates = [
-    'Что будет, если выручка снизится на 15%?',
-    'Что будет, если расходы на закупки увеличатся на 10%?',
-    'Что будет при найме нового сотрудника с окладом 3000 TJS?',
+  static const List<String> _whatIfTemplateKeys = [
+    'strategy_whatif_template_revenue_drop',
+    'strategy_whatif_template_purchase_costs',
+    'strategy_whatif_template_new_employee',
   ];
 
-  final List<String> _marketingTemplates = [
-    'Идеи продвижения производства бетона в Худжанде',
-    'Креативные слоганы для кассы самообслуживания',
-    'Каналы привлечения оптовых строителей в Душанбе',
+  static const List<String> _marketingTemplateKeys = [
+    'strategy_marketing_template_concrete',
+    'strategy_marketing_template_self_checkout',
+    'strategy_marketing_template_wholesale_builders',
   ];
 
   String _selectedAnalysisType = 'swot';
+  bool _analysisRequested = false;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  bool _canManageStrategy(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.strategy);
+  }
+
+  String get _currentQuarter {
+    final now = DateTime.now();
+    final year = now.year;
+    final quarter = ((now.month - 1) ~/ 3) + 1;
+    return '$year-Q$quarter';
+  }
+
+  void _handleTabChange() {
+    if (!mounted || _tabController.index != 2 || _analysisRequested) return;
+    _analysisRequested = true;
+    context.read<StrategyBloc>().add(
+      LoadStrategicAnalyses(_selectedAnalysisType),
+    );
+  }
+
+  Future<void> _refreshAnalyses(BuildContext context) {
+    final completion = Completer<void>();
+    context.read<StrategyBloc>().add(
+      LoadStrategicAnalyses(
+        _selectedAnalysisType,
+        forceRefresh: true,
+        completion: completion,
+      ),
+    );
+    return completion.future;
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _whatIfController.dispose();
     _marketingController.dispose();
@@ -66,15 +109,20 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
+    final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: colors.surface,
         elevation: 0,
         title: Text(
-          localeCubit.translate('strat_title'),
-          style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
+          localeCubit.translate('strategy_title'),
+          style: textStyles.h1Sans.copyWith(
+            fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -83,9 +131,9 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
           unselectedLabelColor: colors.textSecondary,
           labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
           tabs: [
-            Tab(text: localeCubit.translate('strat_tab_whatif')),
-            Tab(text: localeCubit.translate('strat_tab_marketing')),
-            const Tab(text: 'Матрицы'),
+            Tab(text: localeCubit.translate('strategy_tab_whatif')),
+            Tab(text: localeCubit.translate('strategy_tab_marketing')),
+            Tab(text: localeCubit.translate('strategy_tab_matrices')),
           ],
         ),
       ),
@@ -94,7 +142,9 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
           if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.errorMessage!),
+                content: Text(
+                  localeCubit.translateMessage(state.errorMessage!),
+                ),
                 backgroundColor: colors.accentRed,
               ),
             );
@@ -123,8 +173,10 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              localeCubit.translate('strat_whatif_desc'),
-              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+              localeCubit.translate('strategy_whatif_description'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -132,11 +184,14 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _whatIfTemplates.map((template) {
+              children: _whatIfTemplateKeys.map((templateKey) {
+                final template = localeCubit.translate(templateKey);
                 return ActionChip(
                   label: Text(template, style: textStyles.smallSans),
                   backgroundColor: colors.surfaceNested,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   onPressed: () {
                     _whatIfController.text = template;
                   },
@@ -152,7 +207,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                   child: TextField(
                     controller: _whatIfController,
                     decoration: InputDecoration(
-                      hintText: localeCubit.translate('strat_whatif_hint'),
+                      hintText: localeCubit.translate('strategy_whatif_hint'),
                       fillColor: colors.surface,
                       filled: true,
                     ),
@@ -160,21 +215,32 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: state.isWhatIfLoading
+                  onPressed:
+                      state.isWhatIfLoading || !_canManageStrategy(context)
                       ? null
                       : () {
                           final query = _whatIfController.text.trim();
                           if (query.isNotEmpty) {
-                            context.read<StrategyBloc>().add(AskWhatIfRequested(query));
+                            context.read<StrategyBloc>().add(
+                              AskWhatIfRequested(query),
+                            );
                           }
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
-                  child: const Icon(TablerIcons.send),
+                  child: Icon(
+                    TablerIcons.send,
+                    semanticLabel: localeCubit.translate('common_send'),
+                  ),
                 ),
               ],
             ),
@@ -200,7 +266,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                         Icon(TablerIcons.brain, color: colors.accentAmber),
                         const SizedBox(width: 8),
                         Text(
-                          'AI АНАЛИЗ СЦЕНАРИЯ',
+                          localeCubit.translate('strategy_scenario_analysis'),
                           style: textStyles.captionSans.copyWith(
                             color: colors.accentAmber,
                             fontWeight: FontWeight.w600,
@@ -210,7 +276,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      state.whatIfAnswer!,
+                      localeCubit.translateMessage(state.whatIfAnswer!),
                       style: textStyles.bodySans.copyWith(height: 1.4),
                     ),
                   ],
@@ -233,8 +299,10 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              localeCubit.translate('strat_marketing_desc'),
-              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+              localeCubit.translate('strategy_marketing_description'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
             const SizedBox(height: 12),
 
@@ -242,11 +310,14 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _marketingTemplates.map((template) {
+              children: _marketingTemplateKeys.map((templateKey) {
+                final template = localeCubit.translate(templateKey);
                 return ActionChip(
                   label: Text(template, style: textStyles.smallSans),
                   backgroundColor: colors.surfaceNested,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   onPressed: () {
                     _marketingController.text = template;
                   },
@@ -262,7 +333,9 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                   child: TextField(
                     controller: _marketingController,
                     decoration: InputDecoration(
-                      hintText: localeCubit.translate('strat_marketing_hint'),
+                      hintText: localeCubit.translate(
+                        'strategy_marketing_hint',
+                      ),
                       fillColor: colors.surface,
                       filled: true,
                     ),
@@ -270,21 +343,34 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
-                  onPressed: state.isMarketingLoading
+                  onPressed:
+                      state.isMarketingLoading || !_canManageStrategy(context)
                       ? null
                       : () {
                           final prompt = _marketingController.text.trim();
                           if (prompt.isNotEmpty) {
-                            context.read<StrategyBloc>().add(GenerateMarketingIdeasRequested(prompt));
+                            context.read<StrategyBloc>().add(
+                              GenerateMarketingIdeasRequested(prompt),
+                            );
                           }
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
-                  child: const Icon(TablerIcons.bulb),
+                  child: Icon(
+                    TablerIcons.bulb,
+                    semanticLabel: localeCubit.translate(
+                      'strategy_generate_ideas_action',
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -308,7 +394,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                         Icon(TablerIcons.target, color: colors.brand),
                         const SizedBox(width: 8),
                         Text(
-                          'ИИ ИДЕИ ПРОДВИЖЕНИЯ',
+                          localeCubit.translate('strategy_marketing_ideas'),
                           style: textStyles.captionSans.copyWith(
                             color: colors.brand,
                             fontWeight: FontWeight.w600,
@@ -321,15 +407,23 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: state.marketingIdeas.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 8),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('• ', style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+                            Text(
+                              '• ',
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             Expanded(
                               child: Text(
-                                state.marketingIdeas[index],
+                                localeCubit.translateMessage(
+                                  state.marketingIdeas[index],
+                                ),
                                 style: textStyles.bodySans,
                               ),
                             ),
@@ -349,15 +443,14 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
   Widget _buildAnalysisTab(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
       builder: (context, state) {
         final analysis = state.latestAnalysis;
 
         return RefreshIndicator(
-          onRefresh: () async {
-            context.read<StrategyBloc>().add(LoadStrategicAnalyses(_selectedAnalysisType));
-          },
+          onRefresh: () => _refreshAnalyses(context),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -373,7 +466,9 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                           setState(() {
                             _selectedAnalysisType = 'swot';
                           });
-                          context.read<StrategyBloc>().add(const LoadStrategicAnalyses('swot'));
+                          context.read<StrategyBloc>().add(
+                            const LoadStrategicAnalyses('swot'),
+                          );
                         }
                       },
                     ),
@@ -388,7 +483,9 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                           setState(() {
                             _selectedAnalysisType = 'pestel';
                           });
-                          context.read<StrategyBloc>().add(const LoadStrategicAnalyses('pestel'));
+                          context.read<StrategyBloc>().add(
+                            const LoadStrategicAnalyses('pestel'),
+                          );
                         }
                       },
                     ),
@@ -403,7 +500,9 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                           setState(() {
                             _selectedAnalysisType = 'bcg';
                           });
-                          context.read<StrategyBloc>().add(const LoadStrategicAnalyses('bcg'));
+                          context.read<StrategyBloc>().add(
+                            const LoadStrategicAnalyses('bcg'),
+                          );
                         }
                       },
                     ),
@@ -414,16 +513,25 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
 
               // Кнопка AI генерации
               ElevatedButton.icon(
-                onPressed: state.isGeneratingAnalysis
+                onPressed:
+                    state.isGeneratingAnalysis || !_canManageStrategy(context)
                     ? null
                     : () {
-                        context.read<StrategyBloc>().add(GenerateStrategicAnalysis(
-                              type: _selectedAnalysisType,
-                              period: '2026-Q2',
-                            ));
+                        context.read<StrategyBloc>().add(
+                          GenerateStrategicAnalysis(
+                            type: _selectedAnalysisType,
+                            period: _currentQuarter,
+                          ),
+                        );
                       },
                 icon: const Icon(TablerIcons.sparkles),
-                label: Text(state.isGeneratingAnalysis ? 'ИИ анализирует компанию...' : 'Сгенерировать AI-анализ РТ'),
+                label: Text(
+                  localeCubit.translate(
+                    state.isGeneratingAnalysis
+                        ? 'strategy_analyzing_company'
+                        : 'strategy_generate_analysis',
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -440,16 +548,26 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                   child: Center(
                     child: Column(
                       children: [
-                        Icon(TablerIcons.target_off, color: colors.textSecondary, size: 36),
+                        Icon(
+                          TablerIcons.target_off,
+                          color: colors.textSecondary,
+                          size: 36,
+                        ),
                         const SizedBox(height: 8),
-                        Text('Нет сгенерированного анализа для этой матрицы', style: textStyles.captionSans),
+                        Text(
+                          localeCubit.translate('strategy_no_analysis'),
+                          style: textStyles.captionSans,
+                        ),
                       ],
                     ),
                   ),
                 )
               else ...[
                 Text(
-                  'AI АНАЛИЗ ЗА ПЕРИОД: ${analysis.period}',
+                  localeCubit.translate(
+                    'strategy_analysis_period',
+                    params: {'period': analysis.period},
+                  ),
                   style: textStyles.smallSans,
                 ),
                 const SizedBox(height: 8),
@@ -470,6 +588,7 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
   Widget _buildSwotGrid(Map<String, dynamic> data) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     Widget buildQuadrantCard(String title, dynamic itemsVal, Color color) {
       final List<dynamic> items = itemsVal is List ? itemsVal : [];
@@ -482,24 +601,41 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
           children: [
             Text(
               title,
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold, color: color),
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
             const Divider(),
             if (items.isEmpty)
-              Text('Нет данных', style: textStyles.captionSans)
+              Text(
+                localeCubit.translate('strategy_no_data'),
+                style: textStyles.captionSans,
+              )
             else
-              ...items.map((it) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('• ', style: TextStyle(color: color, fontWeight: FontWeight.bold)),
-                        Expanded(
-                          child: Text(it.toString(), style: textStyles.bodySans.copyWith(fontSize: 14)),
+              ...items.map(
+                (it) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '• ',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
-                  )),
+                      ),
+                      Expanded(
+                        child: Text(
+                          localeCubit.translateMessage(it.toString()),
+                          style: textStyles.bodySans.copyWith(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       );
@@ -507,13 +643,29 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
 
     return Column(
       children: [
-        buildQuadrantCard('Сильные стороны (Strengths)', data['strengths'], colors.accentGreen),
+        buildQuadrantCard(
+          localeCubit.translate('strategy_swot_strengths'),
+          data['strengths'],
+          colors.accentGreen,
+        ),
         const SizedBox(height: 12),
-        buildQuadrantCard('Слабые стороны (Weaknesses)', data['weaknesses'], colors.accentRed),
+        buildQuadrantCard(
+          localeCubit.translate('strategy_swot_weaknesses'),
+          data['weaknesses'],
+          colors.accentRed,
+        ),
         const SizedBox(height: 12),
-        buildQuadrantCard('Возможности (Opportunities)', data['opportunities'], colors.brand),
+        buildQuadrantCard(
+          localeCubit.translate('strategy_swot_opportunities'),
+          data['opportunities'],
+          colors.brand,
+        ),
         const SizedBox(height: 12),
-        buildQuadrantCard('Угрозы (Threats)', data['threats'], colors.textSecondary),
+        buildQuadrantCard(
+          localeCubit.translate('strategy_swot_threats'),
+          data['threats'],
+          colors.textSecondary,
+        ),
       ],
     );
   }
@@ -521,44 +673,67 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
   Widget _buildPestelList(Map<String, dynamic> data) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
 
     final factors = [
-      {'key': 'political', 'label': 'Политические факторы'},
-      {'key': 'economic', 'label': 'Экономические факторы'},
-      {'key': 'social', 'label': 'Социальные факторы'},
-      {'key': 'technological', 'label': 'Технологические факторы'},
-      {'key': 'environmental', 'label': 'Экологические факторы'},
-      {'key': 'legal', 'label': 'Правовые факторы'},
+      {'key': 'political', 'labelKey': 'strategy_pestel_political'},
+      {'key': 'economic', 'labelKey': 'strategy_pestel_economic'},
+      {'key': 'social', 'labelKey': 'strategy_pestel_social'},
+      {'key': 'technological', 'labelKey': 'strategy_pestel_technological'},
+      {'key': 'environmental', 'labelKey': 'strategy_pestel_environmental'},
+      {'key': 'legal', 'labelKey': 'strategy_pestel_legal'},
     ];
 
     return Column(
       children: factors.map((f) {
-        final List<dynamic> items = (data[f['key']] is List) ? data[f['key']] : [];
+        final List<dynamic> items = (data[f['key']] is List)
+            ? data[f['key']]
+            : [];
         return Padding(
           padding: const EdgeInsets.only(bottom: 12.0),
           child: ExpansibleWidget(
             title: Text(
-              f['label']!,
+              localeCubit.translate(f['labelKey']!),
               style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
             ),
-            subtitle: Text('${items.length} факторов найдено', style: textStyles.captionSans),
+            subtitle: Text(
+              localeCubit.translatePlural(
+                'strategy_factors_found',
+                items.length,
+              ),
+              style: textStyles.captionSans,
+            ),
             children: [
               const SizedBox(height: 8),
               if (items.isEmpty)
-                Text('Данные отсутствуют', style: textStyles.captionSans)
+                Text(
+                  localeCubit.translate('strategy_data_unavailable'),
+                  style: textStyles.captionSans,
+                )
               else
-                ...items.map((it) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('• ', style: TextStyle(color: colors.brand, fontWeight: FontWeight.bold)),
-                          Expanded(
-                            child: Text(it.toString(), style: textStyles.bodySans),
+                ...items.map(
+                  (it) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '• ',
+                          style: TextStyle(
+                            color: colors.brand,
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
-                    )),
+                        ),
+                        Expanded(
+                          child: Text(
+                            localeCubit.translateMessage(it.toString()),
+                            style: textStyles.bodySans,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -569,18 +744,19 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
   Widget _buildBcgList(Map<String, dynamic> data) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
     final List<dynamic> items = data['items'] is List ? data['items'] : [];
 
     String translateQuadrant(String q) {
       switch (q) {
         case 'star':
-          return 'Звезда';
+          return localeCubit.translate('strategy_bcg_star');
         case 'cash_cow':
-          return 'Дойная корова';
+          return localeCubit.translate('strategy_bcg_cash_cow');
         case 'question':
-          return 'Трудные дети';
+          return localeCubit.translate('strategy_bcg_question');
         case 'dog':
-          return 'Собака';
+          return localeCubit.translate('strategy_bcg_dog');
         default:
           return q;
       }
@@ -604,7 +780,12 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
         if (items.isEmpty)
           LedgerCard(
             padding: const EdgeInsets.all(16),
-            child: Center(child: Text('Нет товарных категорий в BCG анализе', style: textStyles.captionSans)),
+            child: Center(
+              child: Text(
+                localeCubit.translate('strategy_bcg_no_categories'),
+                style: textStyles.captionSans,
+              ),
+            ),
           )
         else
           ...items.map((it) {
@@ -626,25 +807,44 @@ class _StrategyViewState extends State<StrategyView> with SingleTickerProviderSt
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(name, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold)),
+                          Text(
+                            name,
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Text(
-                            'Доля рынка: ${(share * 100).toStringAsFixed(1)}% • Рост рынка: ${(growth * 100).toStringAsFixed(1)}%',
-                            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                            localeCubit.translate(
+                              'strategy_bcg_market_metrics',
+                              params: {
+                                'share': (share * 100).toStringAsFixed(1),
+                                'growth': (growth * 100).toStringAsFixed(1),
+                              },
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         translateQuadrant(quadrant),
-                        style: textStyles.smallSans.copyWith(color: color, fontWeight: FontWeight.bold),
+                        style: textStyles.smallSans.copyWith(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],

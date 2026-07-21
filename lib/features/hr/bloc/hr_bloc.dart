@@ -10,6 +10,8 @@ class HrBloc extends Bloc<HrEvent, HrState> {
   List<Employee> _cachedEmployees = [];
   List<KpiAlert> _cachedKpiAlerts = [];
   List<SalaryRecord> _cachedSalaries = [];
+  final Map<String, Future<List<Object>>> _loadRequests = {};
+  int _loadGeneration = 0;
 
   HrBloc(this._repository) : super(HrLoading()) {
     on<LoadHrData>(_onLoadHrData);
@@ -17,58 +19,111 @@ class HrBloc extends Bloc<HrEvent, HrState> {
     on<RecalcSalaryRequested>(_onRecalcSalaryRequested);
   }
 
-  void _onLoadHrData(LoadHrData event, Emitter<HrState> emit) async {
-    if (_cachedEmployees.isNotEmpty) {
-      emit(HrLoaded(
-        employees: _cachedEmployees,
-        kpiAlerts: _cachedKpiAlerts,
-        salaryRecords: _cachedSalaries,
-        period: event.period,
-      ));
+  Future<void> _onLoadHrData(LoadHrData event, Emitter<HrState> emit) async {
+    final generation = ++_loadGeneration;
+    final previous = state is HrLoaded ? state as HrLoaded : null;
+    final canKeepCurrent = previous?.period == event.period;
+
+    if (canKeepCurrent) {
+      emit(
+        previous!.copyWith(
+          isRefreshing: true,
+          clearError: true,
+          clearSuccess: true,
+        ),
+      );
     } else {
       emit(HrLoading());
     }
-    try {
-      final results = await Future.wait([
-        _repository.getEmployees(),
-        _repository.getKpiAlerts(event.period),
-        _repository.getSalaryRecords(event.period),
+
+    var request = _loadRequests[event.period];
+    if (request == null) {
+      request = Future.wait<Object>([
+        _repository.getEmployees(forceRefresh: event.forceRefresh),
+        _repository.getKpiAlerts(
+          event.period,
+          forceRefresh: event.forceRefresh,
+        ),
+        _repository.getSalaryRecords(
+          event.period,
+          forceRefresh: event.forceRefresh,
+        ),
       ]);
-      _cachedEmployees = results[0] as List<Employee>;
-      _cachedKpiAlerts = results[1] as List<KpiAlert>;
-      _cachedSalaries = results[2] as List<SalaryRecord>;
-      
-      emit(HrLoaded(
-        employees: _cachedEmployees,
-        kpiAlerts: _cachedKpiAlerts,
-        salaryRecords: _cachedSalaries,
-        period: event.period,
-      ));
-    } catch (e) {
-      emit(HrError('Ошибка загрузки данных HR: ${e.toString()}'));
+      _loadRequests[event.period] = request;
+    }
+
+    try {
+      final results = await request;
+      if (generation != _loadGeneration) return;
+
+      _cachedEmployees = (results[0] as List).cast<Employee>();
+      _cachedKpiAlerts = (results[1] as List).cast<KpiAlert>();
+      _cachedSalaries = (results[2] as List).cast<SalaryRecord>();
+
+      emit(
+        HrLoaded(
+          employees: _cachedEmployees,
+          kpiAlerts: _cachedKpiAlerts,
+          salaryRecords: _cachedSalaries,
+          period: event.period,
+        ),
+      );
+    } catch (error) {
+      if (generation != _loadGeneration) return;
+      if (canKeepCurrent) {
+        emit(
+          previous!.copyWith(
+            isRefreshing: false,
+            errorMessage:
+                'Не удалось обновить данные HR. Проверьте соединение.',
+          ),
+        );
+      } else {
+        emit(
+          const HrError(
+            'Не удалось загрузить данные HR. Проверьте соединение.',
+          ),
+        );
+      }
+    } finally {
+      if (identical(_loadRequests[event.period], request)) {
+        _loadRequests.remove(event.period);
+      }
+      if (event.completion?.isCompleted == false) event.completion!.complete();
     }
   }
 
-  void _onCreateEmployeeRequested(CreateEmployeeRequested event, Emitter<HrState> emit) async {
+  void _onCreateEmployeeRequested(
+    CreateEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
     if (state is! HrLoaded) return;
     final currentState = state as HrLoaded;
 
     try {
       final created = await _repository.createEmployee(event.employee);
       _cachedEmployees = List<Employee>.from(_cachedEmployees)..add(created);
-      
-      emit(currentState.copyWith(
-        employees: _cachedEmployees,
-        successMessage: 'Сотрудник "${created.fullName}" успешно принят на работу.',
-      ));
+
+      emit(
+        currentState.copyWith(
+          employees: _cachedEmployees,
+          successMessage:
+              'Сотрудник "${created.fullName}" успешно принят на работу.',
+        ),
+      );
     } catch (e) {
-      emit(currentState.copyWith(
-        errorMessage: 'Не удалось добавить сотрудника: ${e.toString()}',
-      ));
+      emit(
+        currentState.copyWith(
+          errorMessage: 'Не удалось добавить сотрудника. Проверьте данные.',
+        ),
+      );
     }
   }
 
-  void _onRecalcSalaryRequested(RecalcSalaryRequested event, Emitter<HrState> emit) async {
+  void _onRecalcSalaryRequested(
+    RecalcSalaryRequested event,
+    Emitter<HrState> emit,
+  ) async {
     if (state is! HrLoaded) return;
     final currentState = state as HrLoaded;
 
@@ -83,24 +138,33 @@ class HrBloc extends Bloc<HrEvent, HrState> {
 
       // Ищем и заменяем запись в локальном списке расчетных листков
       final updatedSalaries = _cachedSalaries.map((s) {
-        return (s.employeeId == event.employeeId && s.period == event.period) ? recalculated : s;
+        return (s.employeeId == event.employeeId && s.period == event.period)
+            ? recalculated
+            : s;
       }).toList();
 
       // Если записи не было в списке, добавляем её
-      if (!updatedSalaries.any((s) => s.employeeId == event.employeeId && s.period == event.period)) {
+      if (!updatedSalaries.any(
+        (s) => s.employeeId == event.employeeId && s.period == event.period,
+      )) {
         updatedSalaries.add(recalculated);
       }
 
       _cachedSalaries = updatedSalaries;
 
-      emit(currentState.copyWith(
-        salaryRecords: _cachedSalaries,
-        successMessage: 'Расчет по сотруднику "${recalculated.employeeName}" успешно обновлен.',
-      ));
+      emit(
+        currentState.copyWith(
+          salaryRecords: _cachedSalaries,
+          successMessage:
+              'Расчет по сотруднику "${recalculated.employeeName}" успешно обновлен.',
+        ),
+      );
     } catch (e) {
-      emit(currentState.copyWith(
-        errorMessage: 'Не удалось выполнить перерасчет: ${e.toString()}',
-      ));
+      emit(
+        currentState.copyWith(
+          errorMessage: 'Не удалось выполнить перерасчёт. Проверьте данные.',
+        ),
+      );
     }
   }
 }

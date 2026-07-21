@@ -51,14 +51,14 @@ class StrategyState extends Equatable {
 
   @override
   List<Object?> get props => [
-        isWhatIfLoading,
-        whatIfAnswer,
-        isMarketingLoading,
-        marketingIdeas,
-        isAnalysisLoading,
-        analyses,
-        isGeneratingAnalysis,
-        latestAnalysis,
-        errorMessage,
-      ];
+    isWhatIfLoading,
+    whatIfAnswer,
+    isMarketingLoading,
+    marketingIdeas,
+    isAnalysisLoading,
+    analyses,
+    isGeneratingAnalysis,
+    latestAnalysis,
+    errorMessage,
+  ];
 }

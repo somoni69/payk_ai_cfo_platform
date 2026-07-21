@@ -69,7 +69,8 @@ class CrmDeal {
   final String clientId;
   final String title;
   final double amount;
-  final String stage; // 'lead', 'contact', 'proposal', 'negotiation', 'won', 'lost'
+  final String
+  stage; // 'lead', 'contact', 'proposal', 'negotiation', 'won', 'lost'
   final DateTime createdAt;
   final String? clientName;
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 abstract class StrategyEvent extends Equatable {
@@ -29,11 +31,17 @@ class GenerateMarketingIdeasRequested extends StrategyEvent {
 
 class LoadStrategicAnalyses extends StrategyEvent {
   final String type; // 'swot', 'bcg', 'pestel'
+  final bool forceRefresh;
+  final Completer<void>? completion;
 
-  const LoadStrategicAnalyses(this.type);
+  const LoadStrategicAnalyses(
+    this.type, {
+    this.forceRefresh = false,
+    this.completion,
+  });
 
   @override
-  List<Object?> get props => [type];
+  List<Object?> get props => [type, forceRefresh];
 }
 
 class GenerateStrategicAnalysis extends StrategyEvent {

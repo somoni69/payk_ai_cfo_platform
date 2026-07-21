@@ -55,15 +55,15 @@ class MarketingState extends Equatable {
 
   @override
   List<Object?> get props => [
-        campaigns,
-        posts,
-        isCampaignsLoading,
-        isPostsLoading,
-        isCreatingCampaign,
-        isCreatingPost,
-        isGenerating,
-        generatedIdeas,
-        generatedText,
-        errorMessage,
-      ];
+    campaigns,
+    posts,
+    isCampaignsLoading,
+    isPostsLoading,
+    isCreatingCampaign,
+    isCreatingPost,
+    isGenerating,
+    generatedIdeas,
+    generatedText,
+    errorMessage,
+  ];
 }

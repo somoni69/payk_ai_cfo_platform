@@ -35,7 +35,8 @@ class MockMarketingRepository implements MarketingRepository {
   final List<SocialPost> _posts = [
     SocialPost(
       id: '1',
-      text: 'Новое поступление высококачественного бетона марки М400. Доставка по Душанбе в течение 2 часов!',
+      text:
+          'Новое поступление высококачественного бетона марки М400. Доставка по Душанбе в течение 2 часов!',
       channel: 'telegram',
       status: 'published',
       publishedAt: DateTime(2026, 7, 5, 10, 0),
@@ -43,7 +44,8 @@ class MockMarketingRepository implements MarketingRepository {
     ),
     SocialPost(
       id: '2',
-      text: 'Спешите заказать металлоконструкции любого уровня сложности. Цены снижены до конца недели!',
+      text:
+          'Спешите заказать металлоконструкции любого уровня сложности. Цены снижены до конца недели!',
       channel: 'facebook',
       status: 'draft',
       createdAt: DateTime(2026, 7, 6, 14, 0),
@@ -51,7 +53,9 @@ class MockMarketingRepository implements MarketingRepository {
   ];
 
   @override
-  Future<List<MarketingCampaign>> getCampaigns() async {
+  Future<List<MarketingCampaign>> getCampaigns({
+    bool forceRefresh = false,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return _campaigns;
   }
@@ -85,7 +89,7 @@ class MockMarketingRepository implements MarketingRepository {
   }
 
   @override
-  Future<List<SocialPost>> getPosts() async {
+  Future<List<SocialPost>> getPosts({bool forceRefresh = false}) async {
     await Future.delayed(const Duration(milliseconds: 200));
     return _posts;
   }

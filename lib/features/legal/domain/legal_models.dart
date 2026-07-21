@@ -2,10 +2,7 @@ class TemplateVariable {
   final String key;
   final String label;
 
-  const TemplateVariable({
-    required this.key,
-    required this.label,
-  });
+  const TemplateVariable({required this.key, required this.label});
 }
 
 class ContractTemplate {

@@ -1,8 +1,8 @@
 import 'marketing_models.dart';
 
 abstract class MarketingRepository {
-  Future<List<MarketingCampaign>> getCampaigns();
-  
+  Future<List<MarketingCampaign>> getCampaigns({bool forceRefresh = false});
+
   Future<MarketingCampaign> createCampaign({
     required String name,
     required String channel,
@@ -13,7 +13,7 @@ abstract class MarketingRepository {
     required double revenue,
   });
 
-  Future<List<SocialPost>> getPosts();
+  Future<List<SocialPost>> getPosts({bool forceRefresh = false});
 
   Future<SocialPost> createPost({
     required String text,
@@ -25,4 +25,8 @@ abstract class MarketingRepository {
   Future<List<String>> generateAiIdeas(String prompt);
 
   Future<String> generateAiText(String prompt);
+}
+
+abstract interface class CancellableMarketingRepository {
+  void cancelPendingRequests();
 }

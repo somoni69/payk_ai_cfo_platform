@@ -14,7 +14,8 @@ class LegalLoaded extends LegalState {
   final List<ContractTemplate> templates;
   final List<Law> laws;
   final List<LegalDeadline> deadlines;
-  final List<Map<String, String>> chatHistory; // sender: 'user'/'ai', text: '...'
+  final List<Map<String, String>>
+  chatHistory; // sender: 'user'/'ai', text: '...'
   final bool isAskingAi;
   final bool isGenerating;
   final GeneratedContract? generatedContract;
@@ -40,6 +41,7 @@ class LegalLoaded extends LegalState {
     bool? isGenerating,
     GeneratedContract? generatedContract,
     String? errorMessage,
+    bool clearGeneratedContract = false,
   }) {
     return LegalLoaded(
       templates: templates ?? this.templates,
@@ -48,22 +50,24 @@ class LegalLoaded extends LegalState {
       chatHistory: chatHistory ?? this.chatHistory,
       isAskingAi: isAskingAi ?? this.isAskingAi,
       isGenerating: isGenerating ?? this.isGenerating,
-      generatedContract: generatedContract ?? this.generatedContract,
+      generatedContract: clearGeneratedContract
+          ? null
+          : (generatedContract ?? this.generatedContract),
       errorMessage: errorMessage, // We reset error on update usually
     );
   }
 
   @override
   List<Object?> get props => [
-        templates,
-        laws,
-        deadlines,
-        chatHistory,
-        isAskingAi,
-        isGenerating,
-        generatedContract,
-        errorMessage,
-      ];
+    templates,
+    laws,
+    deadlines,
+    chatHistory,
+    isAskingAi,
+    isGenerating,
+    generatedContract,
+    errorMessage,
+  ];
 }
 
 class LegalError extends LegalState {

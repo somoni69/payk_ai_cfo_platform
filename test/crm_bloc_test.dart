@@ -20,19 +20,19 @@ class MockCrmRepository implements CrmRepository {
   bool shouldFail = false;
 
   @override
-  Future<List<CrmClient>> getClients() async {
+  Future<List<CrmClient>> getClients({bool forceRefresh = false}) async {
     if (shouldFail) throw Exception('Get clients error');
     return List.from(clients);
   }
 
   @override
-  Future<List<CrmDeal>> getDeals() async {
+  Future<List<CrmDeal>> getDeals({bool forceRefresh = false}) async {
     if (shouldFail) throw Exception('Get deals error');
     return List.from(deals);
   }
 
   @override
-  Future<CrmStatsData> getCrmStats() async {
+  Future<CrmStatsData> getCrmStats({bool forceRefresh = false}) async {
     if (shouldFail) throw Exception('Get CRM stats error');
     return stats;
   }
@@ -46,7 +46,12 @@ class MockCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<CrmDeal> createDeal(String clientId, String title, double amount, String stage) async {
+  Future<CrmDeal> createDeal(
+    String clientId,
+    String title,
+    double amount,
+    String stage,
+  ) async {
     if (shouldFail) throw Exception('Create deal error');
     final newDeal = CrmDeal(
       id: (deals.length + 1).toString(),
@@ -125,58 +130,73 @@ void main() {
       bloc.add(LoadCrmData());
     });
 
-    test('CreateClientRequested appends client and updates stats cost', () async {
-      bloc.add(LoadCrmData());
-      await bloc.stream.firstWhere((s) => s is CrmLoaded);
+    test(
+      'CreateClientRequested appends client and updates stats cost',
+      () async {
+        bloc.add(LoadCrmData());
+        await bloc.stream.firstWhere((s) => s is CrmLoaded);
 
-      bloc.add(CreateClientRequested(
-        CrmClient(
-          id: '',
-          fullName: 'Зоир Тошев',
-          loyaltyLevel: 'bronze',
-          bonusPoints: 0,
-          totalSpent: 0,
-          acquisitionCost: 100.0,
-          purchasesCount: 0,
-          createdAt: DateTime.now(),
-          churnRisk: false,
-        ),
-      ));
+        bloc.add(
+          CreateClientRequested(
+            CrmClient(
+              id: '',
+              fullName: 'Зоир Тошев',
+              loyaltyLevel: 'bronze',
+              bonusPoints: 0,
+              totalSpent: 0,
+              acquisitionCost: 100.0,
+              purchasesCount: 0,
+              createdAt: DateTime.now(),
+              churnRisk: false,
+            ),
+          ),
+        );
 
-      final List<CrmState> emitted = [];
-      final sub = bloc.stream.listen(emitted.add);
+        final List<CrmState> emitted = [];
+        final sub = bloc.stream.listen(emitted.add);
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      sub.cancel();
+        await Future.delayed(const Duration(milliseconds: 50));
+        sub.cancel();
 
-      expect(emitted, isNotEmpty);
-      final loaded = emitted.first as CrmLoaded;
-      expect(loaded.clients.length, 2);
-      expect(loaded.clients.last.fullName, 'Зоир Тошев');
-      expect(loaded.stats.cacTotal, 250.0); // 150 + 100
-    });
+        expect(emitted, isNotEmpty);
+        final loaded = emitted.first as CrmLoaded;
+        expect(loaded.clients.length, 2);
+        expect(loaded.clients.last.fullName, 'Зоир Тошев');
+        expect(loaded.stats.cacTotal, 250.0); // 150 + 100
+      },
+    );
 
-    test('CreateDealRequested optimistically registers deal and loads real item', () async {
-      bloc.add(LoadCrmData());
-      await bloc.stream.firstWhere((s) => s is CrmLoaded);
+    test(
+      'CreateDealRequested optimistically registers deal and loads real item',
+      () async {
+        bloc.add(LoadCrmData());
+        await bloc.stream.firstWhere((s) => s is CrmLoaded);
 
-      bloc.add(const CreateDealRequested(
-        clientId: '1',
-        title: 'Укладка плитки',
-        amount: 2500.0,
-        stage: 'proposal',
-      ));
+        bloc.add(
+          const CreateDealRequested(
+            clientId: '1',
+            title: 'Укладка плитки',
+            amount: 2500.0,
+            stage: 'proposal',
+          ),
+        );
 
-      final List<CrmState> emitted = [];
-      final sub = bloc.stream.listen(emitted.add);
+        final List<CrmState> emitted = [];
+        final sub = bloc.stream.listen(emitted.add);
 
-      await Future.delayed(const Duration(milliseconds: 50));
-      sub.cancel();
+        await Future.delayed(const Duration(milliseconds: 50));
+        sub.cancel();
 
-      expect(emitted, isNotEmpty);
-      final firstLoaded = emitted.first as CrmLoaded;
-      // В списке должен сразу появиться временный лид
-      expect(firstLoaded.deals.firstWhere((d) => d.title == 'Укладка плитки').amount, 2500.0);
-    });
+        expect(emitted, isNotEmpty);
+        final firstLoaded = emitted.first as CrmLoaded;
+        // В списке должен сразу появиться временный лид
+        expect(
+          firstLoaded.deals
+              .firstWhere((d) => d.title == 'Укладка плитки')
+              .amount,
+          2500.0,
+        );
+      },
+    );
   });
 }

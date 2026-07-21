@@ -1,12 +1,15 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/user_facing_error.dart';
 import '../domain/marketing_models.dart';
 import '../domain/marketing_repository.dart';
 import 'marketing_event.dart';
 import 'marketing_state.dart';
 
 class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
-  final MarketingRepository _repository;
-
   MarketingBloc(this._repository) : super(const MarketingState()) {
     on<LoadMarketingData>(_onLoadMarketingData);
     on<CreateCampaignRequested>(_onCreateCampaignRequested);
@@ -16,38 +19,78 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     on<GenerateTextRequested>(_onGenerateTextRequested);
   }
 
-  void _onLoadMarketingData(LoadMarketingData event, Emitter<MarketingState> emit) async {
-    Future<List<T>> safeList<T>(Future<List<T>> future) async {
-      try {
-        return await future;
-      } catch (_) {
-        return <T>[];
-      }
+  final MarketingRepository _repository;
+  Future<List<Object>>? _dataRequest;
+  Completer<void>? _reloadCompleter;
+
+  Future<void> reload() {
+    final active = _reloadCompleter;
+    if (active != null) return active.future;
+
+    final completer = Completer<void>();
+    _reloadCompleter = completer;
+    add(const LoadMarketingData(forceRefresh: true));
+    return completer.future;
+  }
+
+  Future<void> _onLoadMarketingData(
+    LoadMarketingData event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        isCampaignsLoading: true,
+        isPostsLoading: true,
+        clearError: true,
+      ),
+    );
+
+    var request = _dataRequest;
+    if (request == null) {
+      request = Future.wait<Object>([
+        _repository.getCampaigns(forceRefresh: event.forceRefresh),
+        _repository.getPosts(forceRefresh: event.forceRefresh),
+      ]);
+      _dataRequest = request;
     }
 
-    emit(state.copyWith(isCampaignsLoading: true, isPostsLoading: true, clearError: true));
     try {
-      final results = await Future.wait([
-        safeList(_repository.getCampaigns()),
-        safeList(_repository.getPosts()),
-      ]);
-
-      emit(state.copyWith(
-        isCampaignsLoading: false,
-        isPostsLoading: false,
-        campaigns: results[0] as List<MarketingCampaign>,
-        posts: results[1] as List<SocialPost>,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isCampaignsLoading: false,
-        isPostsLoading: false,
-        errorMessage: 'Ошибка загрузки данных маркетинга: ${e.toString()}',
-      ));
+      final results = await request;
+      if (emit.isDone) return;
+      emit(
+        state.copyWith(
+          isCampaignsLoading: false,
+          isPostsLoading: false,
+          campaigns: (results[0] as List).cast<MarketingCampaign>(),
+          posts: (results[1] as List).cast<SocialPost>(),
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone) return;
+      emit(
+        state.copyWith(
+          isCampaignsLoading: false,
+          isPostsLoading: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось обновить маркетинг. Проверьте соединение.',
+          ),
+        ),
+      );
+    } finally {
+      if (identical(_dataRequest, request)) _dataRequest = null;
+      final completer = _reloadCompleter;
+      _reloadCompleter = null;
+      if (completer != null && !completer.isCompleted) {
+        completer.complete();
+      }
     }
   }
 
-  void _onCreateCampaignRequested(CreateCampaignRequested event, Emitter<MarketingState> emit) async {
+  Future<void> _onCreateCampaignRequested(
+    CreateCampaignRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
     emit(state.copyWith(isCreatingCampaign: true, clearError: true));
     try {
       final campaign = await _repository.createCampaign(
@@ -60,20 +103,27 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
         revenue: event.revenue,
       );
 
-      final updated = List<MarketingCampaign>.from(state.campaigns)..insert(0, campaign);
-      emit(state.copyWith(
-        isCreatingCampaign: false,
-        campaigns: updated,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isCreatingCampaign: false,
-        errorMessage: 'Не удалось создать рекламную кампанию: ${e.toString()}',
-      ));
+      final updated = List<MarketingCampaign>.from(state.campaigns)
+        ..insert(0, campaign);
+      emit(state.copyWith(isCreatingCampaign: false, campaigns: updated));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          isCreatingCampaign: false,
+          errorMessage: userFacingError(
+            error,
+            fallback:
+                'Не удалось создать рекламную кампанию. Проверьте данные.',
+          ),
+        ),
+      );
     }
   }
 
-  void _onCreatePostRequested(CreatePostRequested event, Emitter<MarketingState> emit) async {
+  Future<void> _onCreatePostRequested(
+    CreatePostRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
     emit(state.copyWith(isCreatingPost: true, clearError: true));
     try {
       final post = await _repository.createPost(
@@ -82,59 +132,98 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       );
 
       final updated = List<SocialPost>.from(state.posts)..insert(0, post);
-      emit(state.copyWith(
-        isCreatingPost: false,
-        posts: updated,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isCreatingPost: false,
-        errorMessage: 'Не удалось создать публикацию: ${e.toString()}',
-      ));
+      emit(state.copyWith(isCreatingPost: false, posts: updated));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          isCreatingPost: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось создать публикацию. Проверьте данные.',
+          ),
+        ),
+      );
     }
   }
 
-  void _onPublishPostRequested(PublishPostRequested event, Emitter<MarketingState> emit) async {
+  Future<void> _onPublishPostRequested(
+    PublishPostRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
     emit(state.copyWith(clearError: true));
     try {
       final published = await _repository.publishPost(event.id);
-      final updated = state.posts.map((p) => p.id == event.id ? published : p).toList();
-
+      final updated = state.posts
+          .map((post) => post.id == event.id ? published : post)
+          .toList();
       emit(state.copyWith(posts: updated));
-    } catch (e) {
-      emit(state.copyWith(errorMessage: 'Не удалось опубликовать пост: ${e.toString()}'));
+    } catch (error) {
+      emit(
+        state.copyWith(
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось опубликовать пост. Повторите попытку.',
+          ),
+        ),
+      );
     }
   }
 
-  void _onGenerateIdeasRequested(GenerateIdeasRequested event, Emitter<MarketingState> emit) async {
+  Future<void> _onGenerateIdeasRequested(
+    GenerateIdeasRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
     emit(state.copyWith(isGenerating: true, clearError: true));
     try {
       final ideas = await _repository.generateAiIdeas(event.prompt);
-      emit(state.copyWith(
-        isGenerating: false,
-        generatedIdeas: ideas,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isGenerating: false,
-        errorMessage: 'Ошибка AI: ${e.toString()}',
-      ));
+      if (emit.isDone) return;
+      emit(state.copyWith(isGenerating: false, generatedIdeas: ideas));
+    } catch (error) {
+      if (_isCancelled(error) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isGenerating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось получить AI-идеи. Повторите попытку.',
+          ),
+        ),
+      );
     }
   }
 
-  void _onGenerateTextRequested(GenerateTextRequested event, Emitter<MarketingState> emit) async {
+  Future<void> _onGenerateTextRequested(
+    GenerateTextRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
     emit(state.copyWith(isGenerating: true, clearError: true));
     try {
-      final text = await _repository.generateAiText(event.prompt);
-      emit(state.copyWith(
-        isGenerating: false,
-        generatedText: text,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isGenerating: false,
-        errorMessage: 'Ошибка AI: ${e.toString()}',
-      ));
+      final generatedText = await _repository.generateAiText(event.prompt);
+      if (emit.isDone) return;
+      emit(state.copyWith(isGenerating: false, generatedText: generatedText));
+    } catch (error) {
+      if (_isCancelled(error) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isGenerating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось сгенерировать текст. Повторите попытку.',
+          ),
+        ),
+      );
     }
+  }
+
+  bool _isCancelled(Object error) =>
+      error is DioException && CancelToken.isCancel(error);
+
+  @override
+  Future<void> close() {
+    final repository = _repository;
+    if (repository is CancellableMarketingRepository) {
+      (repository as CancellableMarketingRepository).cancelPendingRequests();
+    }
+    return super.close();
   }
 }

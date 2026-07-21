@@ -22,10 +22,7 @@ class BottomActionWrapper extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: SizedBox(
-            width: double.infinity,
-            child: child,
-          ),
+          child: SizedBox(width: double.infinity, child: child),
         ),
       ),
     );

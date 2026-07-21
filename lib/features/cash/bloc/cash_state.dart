@@ -19,7 +19,8 @@ class CashLoaded extends CashState {
   final List<CashRegister> registers;
   final String query;
   final String filterType;
-  final String? errorMessage; // Для показа временных ошибок на UI (например, при валидации сумм)
+  final String?
+  errorMessage; // Для показа временных ошибок на UI (например, при валидации сумм)
 
   const CashLoaded({
     required this.transactions,
@@ -61,16 +62,16 @@ class CashLoaded extends CashState {
 
   @override
   List<Object?> get props => [
-        transactions,
-        filteredTransactions,
-        activeShift,
-        summaries,
-        shifts,
-        registers,
-        query,
-        filterType,
-        errorMessage,
-      ];
+    transactions,
+    filteredTransactions,
+    activeShift,
+    summaries,
+    shifts,
+    registers,
+    query,
+    filterType,
+    errorMessage,
+  ];
 }
 
 class CashError extends CashState {

@@ -1,10 +1,26 @@
+import 'dart:collection';
+
 import '../../../core/network/api_client.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../domain/hr_models.dart';
 import '../domain/hr_repository.dart';
 
 /// Конкретная реализация репозитория кадров и KPI для бэкенда PAYK.
 class ApiHrRepository implements HrRepository {
   final ApiClient _apiClient = ApiClient();
+  final _employeesCache = ExpiringRequestCache<List<Employee>>();
+  final _kpiCaches = BoundedPeriodRequestCache<List<KpiAlert>>(capacity: 8);
+  final _salaryCaches = BoundedPeriodRequestCache<List<SalaryRecord>>(
+    capacity: 8,
+  );
+
+  int _requirePositiveId(String value, String fieldName) {
+    final id = int.tryParse(value);
+    if (id == null || id <= 0) {
+      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+    }
+    return id;
+  }
 
   double _toDouble(dynamic val) {
     if (val == null) return 0.0;
@@ -13,7 +29,10 @@ class ApiHrRepository implements HrRepository {
   }
 
   @override
-  Future<List<Employee>> getEmployees() async {
+  Future<List<Employee>> getEmployees({bool forceRefresh = false}) =>
+      _employeesCache.get(_fetchEmployees, forceRefresh: forceRefresh);
+
+  Future<List<Employee>> _fetchEmployees() async {
     try {
       // Запрашиваем первую страницу с большим размером для мобильного списка
       final response = await _apiClient.dio.get(
@@ -35,7 +54,9 @@ class ApiHrRepository implements HrRepository {
           status: map['status'] ?? 'active',
           departmentName: map['department_name']?.toString(),
           managerName: map['manager_name']?.toString(),
-          createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+          createdAt: DateTime.parse(
+            map['created_at'] ?? DateTime.now().toIso8601String(),
+          ),
         );
       }).toList();
     } catch (e) {
@@ -44,7 +65,16 @@ class ApiHrRepository implements HrRepository {
   }
 
   @override
-  Future<List<KpiAlert>> getKpiAlerts(String period) async {
+  Future<List<KpiAlert>> getKpiAlerts(
+    String period, {
+    bool forceRefresh = false,
+  }) => _kpiCaches.get(
+    period,
+    () => _fetchKpiAlerts(period),
+    forceRefresh: forceRefresh,
+  );
+
+  Future<List<KpiAlert>> _fetchKpiAlerts(String period) async {
     try {
       final response = await _apiClient.dio.get(
         '/hr/kpi/alerts',
@@ -68,12 +98,23 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить предупреждения по KPI: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить предупреждения по KPI: ${e.toString()}',
+      );
     }
   }
 
   @override
-  Future<List<SalaryRecord>> getSalaryRecords(String period) async {
+  Future<List<SalaryRecord>> getSalaryRecords(
+    String period, {
+    bool forceRefresh = false,
+  }) => _salaryCaches.get(
+    period,
+    () => _fetchSalaryRecords(period),
+    forceRefresh: forceRefresh,
+  );
+
+  Future<List<SalaryRecord>> _fetchSalaryRecords(String period) async {
     try {
       final response = await _apiClient.dio.get(
         '/hr/salary',
@@ -96,7 +137,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить расчетную ведомость: ${e.toString()}');
+      throw Exception(
+        'Не удалось загрузить расчетную ведомость: ${e.toString()}',
+      );
     }
   }
 
@@ -110,15 +153,19 @@ class ApiHrRepository implements HrRepository {
   }) async {
     try {
       final payload = <String, dynamic>{
-        'employee_id': int.tryParse(employeeId) ?? 0,
+        'employee_id': _requirePositiveId(employeeId, 'employeeId'),
         'period': period,
       };
       if (baseAmount != null) payload['base_amount'] = baseAmount;
       if (deductions != null) payload['deductions'] = deductions;
       if (bonusFormula != null) payload['bonus_formula'] = bonusFormula;
 
-      final response = await _apiClient.dio.post('/hr/salary/recalc', data: payload);
+      final response = await _apiClient.dio.post(
+        '/hr/salary/recalc',
+        data: payload,
+      );
       final map = response.data as Map<String, dynamic>;
+      _salaryCaches.invalidate(period);
 
       return SalaryRecord(
         id: (map['id'] ?? '').toString(),
@@ -149,8 +196,12 @@ class ApiHrRepository implements HrRepository {
         'hire_date': DateTime.now().toIso8601String().substring(0, 10),
       };
 
-      final response = await _apiClient.dio.post('/hr/employees', data: payload);
+      final response = await _apiClient.dio.post(
+        '/hr/employees',
+        data: payload,
+      );
       final map = response.data as Map<String, dynamic>;
+      _employeesCache.invalidate();
 
       return Employee(
         id: (map['id'] ?? '').toString(),
@@ -162,10 +213,45 @@ class ApiHrRepository implements HrRepository {
         status: map['status'] ?? 'active',
         departmentName: map['department_name']?.toString(),
         managerName: map['manager_name']?.toString(),
-        createdAt: DateTime.parse(map['created_at'] ?? DateTime.now().toIso8601String()),
+        createdAt: DateTime.parse(
+          map['created_at'] ?? DateTime.now().toIso8601String(),
+        ),
       );
     } catch (e) {
-      throw Exception('Не удалось зарегистрировать сотрудника: ${e.toString()}');
+      throw Exception(
+        'Не удалось зарегистрировать сотрудника: ${e.toString()}',
+      );
     }
   }
+}
+
+class BoundedPeriodRequestCache<T> {
+  final int capacity;
+  final LinkedHashMap<String, ExpiringRequestCache<T>> _caches =
+      LinkedHashMap();
+
+  BoundedPeriodRequestCache({required this.capacity})
+    : assert(capacity > 0, 'capacity must be positive');
+
+  int get length => _caches.length;
+
+  Iterable<String> get keys => _caches.keys;
+
+  Future<T> get(
+    String period,
+    Future<T> Function() loader, {
+    bool forceRefresh = false,
+  }) {
+    final existing = _caches.remove(period);
+    final cache = existing ?? ExpiringRequestCache<T>();
+    _caches[period] = cache;
+
+    while (_caches.length > capacity) {
+      _caches.remove(_caches.keys.first);
+    }
+
+    return cache.get(loader, forceRefresh: forceRefresh);
+  }
+
+  void invalidate(String period) => _caches[period]?.invalidate();
 }

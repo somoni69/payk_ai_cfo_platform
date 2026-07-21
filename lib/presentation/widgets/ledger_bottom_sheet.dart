@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import '../../core/localization/language_cubit.dart';
 import '../../core/theme/theme_extensions.dart';
 import 'bottom_action_wrapper.dart';
 
@@ -24,49 +26,52 @@ class LedgerBottomSheet extends StatelessWidget {
   static Future<T?> show<T>({
     required BuildContext context,
     required String title,
-    required Widget Function(BuildContext context, StateSetter setSheetState) builder,
-    Widget Function(BuildContext context, StateSetter setSheetState)? footerBuilder,
+    required Widget Function(BuildContext context, StateSetter setSheetState)
+    builder,
+    Widget Function(BuildContext context, StateSetter setSheetState)?
+    footerBuilder,
     bool isDismissible = true,
     bool enableDrag = true,
   }) {
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
-      useRootNavigator: true,
       useSafeArea: true,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: Colors.transparent,
       elevation: 0,
       builder: (context) {
-        final mediaQuery = MediaQuery.of(context);
-        final screenHeight = mediaQuery.size.height;
-        final keyboardHeight = mediaQuery.viewInsets.bottom;
-        final topSafeArea = mediaQuery.padding.top;
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final mediaQuery = MediaQuery.of(context);
+            final screenHeight = mediaQuery.size.height;
+            final keyboardHeight = mediaQuery.viewInsets.bottom;
+            final topSafeArea = mediaQuery.padding.top;
 
-        // Вычисляем доступную высоту над клавиатурой с запасом под челку
-        final availableHeight = screenHeight - keyboardHeight - (topSafeArea > 0 ? topSafeArea : 24) - 48;
-        final maxAvailableHeight = availableHeight * 0.92;
+            // Вычисляем доступную высоту над клавиатурой с запасом под челку
+            final availableHeight =
+                screenHeight -
+                keyboardHeight -
+                (topSafeArea > 0 ? topSafeArea : 24) -
+                48;
+            final maxAvailableHeight = availableHeight * 0.92;
 
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(
-            bottom: keyboardHeight + 16,
-            left: 16,
-            right: 16,
-            top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setSheetState) {
-              return LedgerBottomSheet(
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: keyboardHeight + 16,
+                left: 16,
+                right: 16,
+                top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
+              ),
+              child: LedgerBottomSheet(
                 title: title,
                 maxHeight: maxAvailableHeight,
                 footer: footerBuilder?.call(context, setSheetState),
                 child: builder(context, setSheetState),
-              );
-            },
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -78,10 +83,9 @@ class LedgerBottomSheet extends StatelessWidget {
     final textStyles = context.textStyles;
 
     return ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: maxHeight,
-      ),
+      constraints: BoxConstraints(maxHeight: maxHeight),
       child: Container(
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(24),
@@ -123,13 +127,19 @@ class LedgerBottomSheet extends StatelessWidget {
             const Divider(height: 16),
             Flexible(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, footer == null ? 20 : 8),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  4,
+                  20,
+                  footer == null ? 20 : 8,
+                ),
                 child: child,
               ),
             ),
             if (footer != null) ...[
               const Divider(height: 1),
               BottomActionWrapper(
+                backgroundColor: colors.surface,
                 child: footer!,
               ),
             ],
@@ -143,6 +153,7 @@ class LedgerBottomSheet extends StatelessWidget {
   static Future<bool?> confirmDiscard(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
 
     return showDialog<bool>(
       context: context,
@@ -165,18 +176,29 @@ class LedgerBottomSheet extends StatelessWidget {
                   color: colors.accentAmber.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(TablerIcons.alert_triangle, color: colors.accentAmber, size: 36),
+                child: Icon(
+                  TablerIcons.alert_triangle,
+                  color: colors.accentAmber,
+                  size: 36,
+                ),
               ),
               const SizedBox(height: 20),
               Text(
-                'Изменения не сохранены',
-                style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold, fontSize: 20),
+                language.translate('discard_title'),
+                style: textStyles.h2Sans.copyWith(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               Text(
-                'Если закрыть окно сейчас,\nвведённые данные будут потеряны.',
-                style: textStyles.bodySans.copyWith(color: colors.textSecondary, height: 1.5, fontSize: 15),
+                language.translate('discard_message'),
+                style: textStyles.bodySans.copyWith(
+                  color: colors.textSecondary,
+                  height: 1.5,
+                  fontSize: 15,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 32),
@@ -189,11 +211,16 @@ class LedgerBottomSheet extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(
-                    'Продолжить редактирование',
-                    style: textStyles.bodySans.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                    language.translate('discard_continue'),
+                    style: textStyles.bodySans.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
@@ -201,11 +228,17 @@ class LedgerBottomSheet extends StatelessWidget {
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 16,
+                  ),
                 ),
                 child: Text(
-                  'Закрыть без сохранения',
-                  style: textStyles.bodySans.copyWith(color: colors.accentRed, fontWeight: FontWeight.w500),
+                  language.translate('discard_close'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.accentRed,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],

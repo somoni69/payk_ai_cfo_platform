@@ -4,16 +4,29 @@ import '../domain/tasks_repository.dart';
 /// Моковый репозиторий задач для локального тестирования.
 class MockTasksRepository implements TasksRepository {
   static final List<TaskProject> _projects = [
-    const TaskProject(id: '1', name: 'Автоматизация оплат', description: 'Оптимизация платежных процессов'),
-    const TaskProject(id: '2', name: 'Отчетность регионов', description: 'Формирование P&L для филиалов'),
-    const TaskProject(id: '3', name: 'Договоры и контрагенты', description: 'Работа с партнерами и поставщиками'),
+    const TaskProject(
+      id: '1',
+      name: 'Автоматизация оплат',
+      description: 'Оптимизация платежных процессов',
+    ),
+    const TaskProject(
+      id: '2',
+      name: 'Отчетность регионов',
+      description: 'Формирование P&L для филиалов',
+    ),
+    const TaskProject(
+      id: '3',
+      name: 'Договоры и контрагенты',
+      description: 'Работа с партнерами и поставщиками',
+    ),
   ];
 
   static final List<Task> _tasks = [
     Task(
       id: '1',
       title: 'Составить реестр платежей на июль',
-      description: 'Необходимо собрать счета от арендодателя, интернет-провайдеров и коммунальных служб.',
+      description:
+          'Необходимо собрать счета от арендодателя, интернет-провайдеров и коммунальных служб.',
       status: TaskStatus.inProgress,
       dueDate: DateTime.now().add(const Duration(days: 4)),
       priority: TaskPriority.high,
@@ -26,7 +39,8 @@ class MockTasksRepository implements TasksRepository {
     Task(
       id: '2',
       title: 'Сдать отчет P&L по филиалу Худжанд',
-      description: 'Проверить розничную выручку в iiko за прошлую неделю и сопоставить с выпиской из банка.',
+      description:
+          'Проверить розничную выручку в iiko за прошлую неделю и сопоставить с выпиской из банка.',
       status: TaskStatus.review,
       dueDate: DateTime.now().add(const Duration(hours: 3)),
       priority: TaskPriority.urgent,
@@ -39,7 +53,8 @@ class MockTasksRepository implements TasksRepository {
     Task(
       id: '3',
       title: 'Подписать договор с поставщиком «Алиф»',
-      description: 'Шаблон готов и согласован юристами. Ждем подписи директора.',
+      description:
+          'Шаблон готов и согласован юристами. Ждем подписи директора.',
       status: TaskStatus.todo,
       dueDate: DateTime.now().add(const Duration(days: 9)),
       priority: TaskPriority.medium,
@@ -75,7 +90,7 @@ class MockTasksRepository implements TasksRepository {
     if (index == -1) {
       throw Exception('Задача не найдена');
     }
-    
+
     final updatedTask = _tasks[index].copyWith(status: status);
     _tasks[index] = updatedTask;
     return updatedTask;
@@ -117,14 +132,14 @@ class MockTasksRepository implements TasksRepository {
     if (index == -1) {
       throw Exception('Задача не найдена');
     }
-    
+
     String? pName = task.projectName;
     if (task.projectId != null) {
       try {
         pName = _projects.firstWhere((p) => p.id == task.projectId).name;
       } catch (_) {}
     }
-    
+
     final updated = task.copyWith(projectName: pName);
     _tasks[index] = updated;
     return updated;

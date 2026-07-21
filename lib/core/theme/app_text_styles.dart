@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Дизайн-токены типографики Ledger для PAYK.
 ///
 /// Основные правила:
-/// - IBM Plex Sans для интерфейса
-/// - IBM Plex Mono с [FontFeature.tabularFigures] для денежных сумм и цифр
+/// - системный sans-serif для интерфейса без сетевой загрузки шрифтов
+/// - системный monospace с [FontFeature.tabularFigures] для сумм и цифр
 /// - Начертания строго w400 (Regular) и w500 (Medium)
 class LedgerTextStyles extends ThemeExtension<LedgerTextStyles> {
   final TextStyle displayMono; // 28px - Крупные суммы
-  final TextStyle h1Sans;      // 22px - Заголовки экранов
-  final TextStyle h1Mono;      // 22px - Крупные суммы / счета
-  final TextStyle h2Sans;      // 18px - Заголовки карточек
-  final TextStyle bodySans;    // 15px - Основной текст
-  final TextStyle bodyMono;    // 15px - Денежные значения в строках
+  final TextStyle h1Sans; // 22px - Заголовки экранов
+  final TextStyle h1Mono; // 22px - Крупные суммы / счета
+  final TextStyle h2Sans; // 18px - Заголовки карточек
+  final TextStyle bodySans; // 15px - Основной текст
+  final TextStyle bodyMono; // 15px - Денежные значения в строках
   final TextStyle captionSans; // 13px - Вторичный текст / подписи
-  final TextStyle smallSans;   // 12px - Подсказки / лейблы
-  final TextStyle smallMono;   // 12px - Мелкие цифры / дельты
+  final TextStyle smallSans; // 12px - Подсказки / лейблы
+  final TextStyle smallMono; // 12px - Мелкие цифры / дельты
 
   const LedgerTextStyles({
     required this.displayMono,
@@ -36,58 +35,62 @@ class LedgerTextStyles extends ThemeExtension<LedgerTextStyles> {
     const baseMonoFeatures = [FontFeature.tabularFigures()];
 
     return LedgerTextStyles(
-      displayMono: GoogleFonts.ibmPlexMono(
+      displayMono: TextStyle(
+        fontFamily: 'monospace',
         fontSize: 30,
         fontWeight: FontWeight.w500,
         color: colors.textPrimary,
         fontFeatures: baseMonoFeatures,
         height: 1.2,
       ),
-      h1Sans: GoogleFonts.ibmPlexSans(
+      h1Sans: TextStyle(
         fontSize: 24,
         fontWeight: FontWeight.w500,
         color: colors.textPrimary,
         height: 1.25,
       ),
-      h1Mono: GoogleFonts.ibmPlexMono(
+      h1Mono: TextStyle(
+        fontFamily: 'monospace',
         fontSize: 24,
         fontWeight: FontWeight.w500,
         color: colors.textPrimary,
         fontFeatures: baseMonoFeatures,
         height: 1.25,
       ),
-      h2Sans: GoogleFonts.ibmPlexSans(
+      h2Sans: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w500,
         color: colors.textPrimary,
         height: 1.3,
       ),
-      bodySans: GoogleFonts.ibmPlexSans(
+      bodySans: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: colors.textPrimary,
         height: 1.4,
       ),
-      bodyMono: GoogleFonts.ibmPlexMono(
+      bodyMono: TextStyle(
+        fontFamily: 'monospace',
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: colors.textPrimary,
         fontFeatures: baseMonoFeatures,
         height: 1.4,
       ),
-      captionSans: GoogleFonts.ibmPlexSans(
+      captionSans: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: colors.textSecondary,
         height: 1.4,
       ),
-      smallSans: GoogleFonts.ibmPlexSans(
+      smallSans: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w500,
         color: colors.textTooltip,
         height: 1.3,
       ),
-      smallMono: GoogleFonts.ibmPlexMono(
+      smallMono: TextStyle(
+        fontFamily: 'monospace',
         fontSize: 13,
         fontWeight: FontWeight.w400,
         color: colors.textTooltip,

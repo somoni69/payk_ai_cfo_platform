@@ -4,15 +4,15 @@ class FinanceMetrics {
   final double revenue; // Выручка
   final double expenses; // Расходы
   final double netProfit; // Чистая прибыль
-  final double breakEvenPoint; // Точка безубыточности
-  final double cashForecast; // Прогноз кассы
+  final double? breakEvenPoint; // Точка безубыточности
+  final double? cashForecast; // Прогноз кассы
 
   // Процентное изменение (дельты) к предыдущему периоду
-  final double cashBalanceDelta;
-  final double revenueDelta;
-  final double expensesDelta;
-  final double netProfitDelta;
-  final double cashForecastDelta;
+  final double? cashBalanceDelta;
+  final double? revenueDelta;
+  final double? expensesDelta;
+  final double? netProfitDelta;
+  final double? cashForecastDelta;
 
   const FinanceMetrics({
     required this.cashBalance,
@@ -42,6 +42,17 @@ class CashFlowPoint {
     this.income = 0.0,
     this.expense = 0.0,
   });
+}
+
+/// Core dashboard payload returned by `/finance/overview`.
+///
+/// Keeping metrics and cash-flow history together prevents two identical
+/// network requests during the initial dashboard load.
+class FinanceOverview {
+  final FinanceMetrics metrics;
+  final List<CashFlowPoint> history;
+
+  const FinanceOverview({required this.metrics, required this.history});
 }
 
 class PnlRow {
@@ -140,10 +151,7 @@ class BankAccountsReport {
   final List<BankAccountInfo> accounts;
   final double totalTjs;
 
-  const BankAccountsReport({
-    required this.accounts,
-    required this.totalTjs,
-  });
+  const BankAccountsReport({required this.accounts, required this.totalTjs});
 }
 
 class RateRow {
@@ -161,9 +169,7 @@ class RateRow {
 class ExchangeRatesReport {
   final List<RateRow> rates;
 
-  const ExchangeRatesReport({
-    required this.rates,
-  });
+  const ExchangeRatesReport({required this.rates});
 }
 
 class CashGapForecast {

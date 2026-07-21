@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import '../domain/crm_models.dart';
 
@@ -9,7 +11,15 @@ abstract class CrmEvent extends Equatable {
 }
 
 /// Загрузка данных клиентов, сделок и статистики
-class LoadCrmData extends CrmEvent {}
+class LoadCrmData extends CrmEvent {
+  final bool forceRefresh;
+  final Completer<void>? completion;
+
+  const LoadCrmData({this.forceRefresh = false, this.completion});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
 
 /// Запрос на создание клиента
 class CreateClientRequested extends CrmEvent {
@@ -26,7 +36,8 @@ class CreateDealRequested extends CrmEvent {
   final String clientId;
   final String title;
   final double amount;
-  final String stage; // 'lead', 'contact', 'proposal', 'negotiation', 'won', 'lost'
+  final String
+  stage; // 'lead', 'contact', 'proposal', 'negotiation', 'won', 'lost'
 
   const CreateDealRequested({
     required this.clientId,

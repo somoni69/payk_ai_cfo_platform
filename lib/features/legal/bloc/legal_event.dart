@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 
 abstract class LegalEvent extends Equatable {
@@ -7,7 +9,15 @@ abstract class LegalEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadLegalData extends LegalEvent {}
+class LoadLegalData extends LegalEvent {
+  final bool forceRefresh;
+  final Completer<void>? completion;
+
+  const LoadLegalData({this.forceRefresh = false, this.completion});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
 
 class ToggleDeadlineStatus extends LegalEvent {
   final String id;
@@ -30,11 +40,18 @@ class AskLawyerQuestion extends LegalEvent {
 
 class ClearLawyerHistory extends LegalEvent {}
 
+class ClearGeneratedContract extends LegalEvent {
+  const ClearGeneratedContract();
+}
+
 class GenerateContractFromTemplate extends LegalEvent {
   final String templateId;
   final Map<String, String> variables;
 
-  const GenerateContractFromTemplate({required this.templateId, required this.variables});
+  const GenerateContractFromTemplate({
+    required this.templateId,
+    required this.variables,
+  });
 
   @override
   List<Object?> get props => [templateId, variables];

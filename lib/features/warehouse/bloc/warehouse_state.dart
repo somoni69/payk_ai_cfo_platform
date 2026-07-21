@@ -39,12 +39,20 @@ class WarehouseLoaded extends WarehouseState {
       movements: movements ?? this.movements,
       summary: summary ?? this.summary,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      successMessage: clearSuccess ? null : (successMessage ?? this.successMessage),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
     );
   }
 
   @override
-  List<Object?> get props => [products, movements, summary, errorMessage, successMessage];
+  List<Object?> get props => [
+    products,
+    movements,
+    summary,
+    errorMessage,
+    successMessage,
+  ];
 }
 
 class WarehouseError extends WarehouseState {

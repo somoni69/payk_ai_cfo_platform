@@ -2,7 +2,7 @@ import 'user_models.dart';
 
 abstract class UsersRepository {
   Future<List<UserProfile>> getUsers({String? search});
-  
+
   Future<UserProfile> createUser({
     required String fullName,
     required String username,
