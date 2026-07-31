@@ -95,10 +95,10 @@ class ChecklistRun extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        branchName,
-        responsiblePerson,
-        entries,
-      ];
+    id,
+    title,
+    branchName,
+    responsiblePerson,
+    entries,
+  ];
 }

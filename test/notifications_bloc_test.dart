@@ -94,18 +94,12 @@ void main() {
       refreshGate.complete([refreshed]);
       await second.future;
 
-      expect(
-        (bloc.state as NotificationsLoaded).notifications.single.id,
-        '2',
-      );
+      expect((bloc.state as NotificationsLoaded).notifications.single.id, '2');
 
       loadGate.complete(List<AppNotification>.from(repository.notifications));
       await first.future;
 
-      expect(
-        (bloc.state as NotificationsLoaded).notifications.single.id,
-        '2',
-      );
+      expect((bloc.state as NotificationsLoaded).notifications.single.id, '2');
     });
 
     test(
@@ -170,8 +164,7 @@ void main() {
         );
         final refreshed = bloc.stream.firstWhere(
           (state) =>
-              state is NotificationsLoaded &&
-              state.notifications.length == 2,
+              state is NotificationsLoaded && state.notifications.length == 2,
         );
         bloc.add(const LoadNotifications(forceRefresh: true));
         await refreshed;
@@ -185,7 +178,10 @@ void main() {
         markGate.complete();
         final state = await marked as NotificationsLoaded;
 
-        expect(state.notifications.map((item) => item.id), containsAll(['1', '2']));
+        expect(
+          state.notifications.map((item) => item.id),
+          containsAll(['1', '2']),
+        );
       },
     );
   });

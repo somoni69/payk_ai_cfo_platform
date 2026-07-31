@@ -75,10 +75,7 @@ class RepayFinancialAidRequested extends FinOpsEvent {
   final String aidId;
   final double amount;
 
-  const RepayFinancialAidRequested({
-    required this.aidId,
-    required this.amount,
-  });
+  const RepayFinancialAidRequested({required this.aidId, required this.amount});
 
   @override
   List<Object?> get props => [aidId, amount];

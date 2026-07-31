@@ -19,7 +19,8 @@ class AuditScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocProvider<AuditBloc>(
       create: (context) =>
-          AuditBloc(context.read<AuditRepository>())..add(const LoadAuditData()),
+          AuditBloc(context.read<AuditRepository>())
+            ..add(const LoadAuditData()),
       child: const AuditView(),
     );
   }
@@ -95,9 +96,9 @@ class _AuditViewState extends State<AuditView>
         body: BlocConsumer<AuditBloc, AuditState>(
           listener: (context, state) {
             if (state is AuditLoaded && state.message != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message!)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message!)));
             }
           },
           builder: (context, state) {
@@ -246,10 +247,7 @@ class _AuditViewState extends State<AuditView>
                 ],
               ),
               const SizedBox(height: 8),
-              Text(
-                alt.message,
-                style: textStyles.bodySans,
-              ),
+              Text(alt.message, style: textStyles.bodySans),
             ],
           ),
         );
@@ -268,8 +266,11 @@ class _AuditViewState extends State<AuditView>
           LedgerCard(
             child: Column(
               children: [
-                Icon(TablerIcons.shield_check_filled,
-                    size: 48, color: colors.accentGreen),
+                Icon(
+                  TablerIcons.shield_check_filled,
+                  size: 48,
+                  color: colors.accentGreen,
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Статус безопасности системы',

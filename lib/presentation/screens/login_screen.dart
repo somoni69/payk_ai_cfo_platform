@@ -61,9 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Брендовый логотип PAYK из Брендбука
-                  const Center(
-                    child: PaykLogo(height: 52),
-                  ),
+                  const Center(child: PaykLogo(height: 52)),
                   const SizedBox(height: 32),
 
                   // Форма входа

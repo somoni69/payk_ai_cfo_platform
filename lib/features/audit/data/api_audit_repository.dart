@@ -91,7 +91,8 @@ class ApiAuditRepository implements AuditRepository {
       id: 'alt-${DateTime.now().millisecondsSinceEpoch}',
       type: 'Проверка завершена',
       severity: 'low',
-      message: 'AI-детектор: Системных аномалий не обнаружено (100% закрепелено)',
+      message:
+          'AI-детектор: Системных аномалий не обнаружено (100% закрепелено)',
       timestamp: DateTime.now(),
     );
     _mockAlerts.insert(0, newAlert);

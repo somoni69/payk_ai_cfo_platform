@@ -212,8 +212,7 @@ void main() {
 
       final fourthCreated = bloc.stream.firstWhere(
         (state) =>
-            state is TasksLoaded &&
-            state.tasks.any((task) => task.id == '4'),
+            state is TasksLoaded && state.tasks.any((task) => task.id == '4'),
       );
       fourthGate.complete(fourth);
       await fourthCreated;

@@ -110,7 +110,9 @@ class _NotificationsViewState extends State<NotificationsView> {
               title: Text(
                 languageCubit.translate('notifications_title'),
                 style: textStyles.h1Sans.copyWith(
-                  fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+                  fontSize: MediaQuery.of(context).size.width >= 600
+                      ? 22.0
+                      : 20.0,
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,
@@ -184,7 +186,9 @@ class _NotificationsViewState extends State<NotificationsView> {
               title: Text(
                 languageCubit.translate('notifications_title'),
                 style: textStyles.h1Sans.copyWith(
-                  fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
+                  fontSize: MediaQuery.of(context).size.width >= 600
+                      ? 22.0
+                      : 20.0,
                   fontWeight: FontWeight.w600,
                 ),
                 maxLines: 1,

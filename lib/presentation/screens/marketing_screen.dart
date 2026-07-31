@@ -126,7 +126,9 @@ class _MarketingViewState extends State<MarketingView>
                 indicatorColor: colors.brand,
                 labelColor: colors.brand,
                 unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                labelStyle: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
                 tabs: [
                   Tab(text: localeCubit.translate('marketing_tab_ai_writer')),
                   Tab(text: localeCubit.translate('marketing_tab_campaigns')),
@@ -137,29 +139,29 @@ class _MarketingViewState extends State<MarketingView>
           ];
         },
         body: BlocListener<MarketingBloc, MarketingState>(
-        listener: (context, state) {
-          if (state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  localeCubit.translateMessage(state.errorMessage!),
+          listener: (context, state) {
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    localeCubit.translateMessage(state.errorMessage!),
+                  ),
+                  backgroundColor: colors.accentRed,
                 ),
-                backgroundColor: colors.accentRed,
-              ),
-            );
-          }
-        },
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildAiWriterTab(context),
-            _buildCampaignsTab(context),
-            _buildPostsTab(context),
-          ],
+              );
+            }
+          },
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAiWriterTab(context),
+              _buildCampaignsTab(context),
+              _buildPostsTab(context),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildAiWriterTab(BuildContext context) {
@@ -427,8 +429,7 @@ class _MarketingViewState extends State<MarketingView>
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12.0),
                   child: InkWell(
-                    onTap: () =>
-                        _showCampaignDetailsBottomSheet(context, camp),
+                    onTap: () => _showCampaignDetailsBottomSheet(context, camp),
                     borderRadius: BorderRadius.circular(12),
                     child: LedgerCard(
                       padding: const EdgeInsets.all(16),
@@ -444,10 +445,9 @@ class _MarketingViewState extends State<MarketingView>
                           ),
                           const SizedBox(width: 8),
                           LedgerPill(
-                            text: camp.channel?.toUpperCase() ??
-                                localeCubit.translate(
-                                  'marketing_channel_none',
-                                ),
+                            text:
+                                camp.channel?.toUpperCase() ??
+                                localeCubit.translate('marketing_channel_none'),
                             backgroundColor: colors.brand.withValues(
                               alpha: 0.1,
                             ),
@@ -663,7 +663,8 @@ class _MarketingViewState extends State<MarketingView>
                   ),
                 ),
                 LedgerPill(
-                  text: campaign.channel?.toUpperCase() ??
+                  text:
+                      campaign.channel?.toUpperCase() ??
                       localeCubit.translate('marketing_channel_none'),
                   backgroundColor: colors.brand.withValues(alpha: 0.1),
                   textColor: colors.brand,

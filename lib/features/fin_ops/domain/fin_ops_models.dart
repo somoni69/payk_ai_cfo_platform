@@ -122,14 +122,7 @@ class StoreTransfer extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-        id,
-        fromBranch,
-        toBranch,
-        amount,
-        status,
-        date,
-      ];
+  List<Object?> get props => [id, fromBranch, toBranch, amount, status, date];
 }
 
 class FinancialAid extends Equatable {
@@ -177,11 +170,11 @@ class FinancialAid extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        employeeName,
-        amount,
-        repaidAmount,
-        status,
-        date,
-      ];
+    id,
+    employeeName,
+    amount,
+    repaidAmount,
+    status,
+    date,
+  ];
 }

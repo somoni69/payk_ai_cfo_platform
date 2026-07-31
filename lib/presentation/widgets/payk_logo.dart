@@ -6,11 +6,7 @@ class PaykLogo extends StatelessWidget {
   final double height;
   final Color? color;
 
-  const PaykLogo({
-    super.key,
-    this.height = 26.0,
-    this.color,
-  });
+  const PaykLogo({super.key, this.height = 26.0, this.color});
 
   @override
   Widget build(BuildContext context) {

@@ -67,7 +67,8 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
   @override
   void didUpdateWidget(ExpansibleWidget<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.controller != null && widget.controller != oldWidget.controller) {
+    if (widget.controller != null &&
+        widget.controller != oldWidget.controller) {
       _controller = widget.controller!;
     }
     if (oldWidget.initiallyExpanded != widget.initiallyExpanded) {

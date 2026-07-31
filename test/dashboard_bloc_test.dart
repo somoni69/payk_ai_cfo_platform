@@ -240,44 +240,47 @@ void main() {
         expect(loaded.abc?.dimension, 'client');
       },
     );
-    test('latest ABC dimension wins when responses finish out of order', () async {
-      bloc.add(const LoadDashboardData());
-      await bloc.stream.firstWhere((state) => state is DashboardLoaded);
+    test(
+      'latest ABC dimension wins when responses finish out of order',
+      () async {
+        bloc.add(const LoadDashboardData());
+        await bloc.stream.firstWhere((state) => state is DashboardLoaded);
 
-      final categoryGate = Completer<AbcAnalysis>();
-      final clientGate = Completer<AbcAnalysis>();
-      repository
-        ..abcGates['category'] = categoryGate
-        ..abcGates['client'] = clientGate
-        ..abcRequestsStarted['category'] = Completer<void>()
-        ..abcRequestsStarted['client'] = Completer<void>();
+        final categoryGate = Completer<AbcAnalysis>();
+        final clientGate = Completer<AbcAnalysis>();
+        repository
+          ..abcGates['category'] = categoryGate
+          ..abcGates['client'] = clientGate
+          ..abcRequestsStarted['category'] = Completer<void>()
+          ..abcRequestsStarted['client'] = Completer<void>();
 
-      bloc.add(const ChangeAbcDimension('category'));
-      await repository.abcRequestsStarted['category']!.future;
-      bloc.add(const ChangeAbcDimension('client'));
-      await repository.abcRequestsStarted['client']!.future;
+        bloc.add(const ChangeAbcDimension('category'));
+        await repository.abcRequestsStarted['category']!.future;
+        bloc.add(const ChangeAbcDimension('client'));
+        await repository.abcRequestsStarted['client']!.future;
 
-      final clientLoaded = bloc.stream.firstWhere(
-        (state) =>
-            state is DashboardLoaded &&
-            state.abc?.dimension == 'client' &&
-            !state.loadingSections.contains(DashboardSection.abc),
-      );
-      clientGate.complete(
-        const AbcAnalysis(dimension: 'client', rows: [], total: 20),
-      );
-      await clientLoaded;
+        final clientLoaded = bloc.stream.firstWhere(
+          (state) =>
+              state is DashboardLoaded &&
+              state.abc?.dimension == 'client' &&
+              !state.loadingSections.contains(DashboardSection.abc),
+        );
+        clientGate.complete(
+          const AbcAnalysis(dimension: 'client', rows: [], total: 20),
+        );
+        await clientLoaded;
 
-      categoryGate.complete(
-        const AbcAnalysis(dimension: 'category', rows: [], total: 10),
-      );
-      await Future<void>.delayed(Duration.zero);
+        categoryGate.complete(
+          const AbcAnalysis(dimension: 'category', rows: [], total: 10),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      final state = bloc.state as DashboardLoaded;
-      expect(state.abc?.dimension, 'client');
-      expect(state.abc?.total, 20);
-      expect(state.loadingSections, isNot(contains(DashboardSection.abc)));
-    });
+        final state = bloc.state as DashboardLoaded;
+        expect(state.abc?.dimension, 'client');
+        expect(state.abc?.total, 20);
+        expect(state.loadingSections, isNot(contains(DashboardSection.abc)));
+      },
+    );
     test(
       'currency conversion uses loaded rates for every monetary report',
       () async {

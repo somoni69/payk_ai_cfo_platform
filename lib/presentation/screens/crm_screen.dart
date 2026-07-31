@@ -120,8 +120,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
         authState.role.canManage(AppCapability.crm);
 
     return Scaffold(
-      floatingActionButton:
-          canManage ? _buildFab(context, localeCubit, colors, textStyles) : null,
+      floatingActionButton: canManage
+          ? _buildFab(context, localeCubit, colors, textStyles)
+          : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -135,7 +136,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                 indicatorColor: colors.brand,
                 labelColor: colors.brand,
                 unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                labelStyle: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
                 tabs: [
                   Tab(text: localeCubit.translate('crm_tab_clients')),
                   Tab(text: localeCubit.translate('crm_tab_deals')),
@@ -146,82 +149,82 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
           ];
         },
         body: BlocListener<CrmBloc, CrmState>(
-        listener: (context, state) {
-          if (state is CrmLoaded) {
-            if (state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localeCubit.translateMessage(state.errorMessage!),
-                  ),
-                  backgroundColor: colors.accentRed,
-                ),
-              );
-            } else if (state.successMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localeCubit.translateMessage(state.successMessage!),
-                  ),
-                  backgroundColor: colors.accentGreen,
-                ),
-              );
-            }
-          }
-        },
-        child: BlocBuilder<CrmBloc, CrmState>(
-          builder: (context, state) {
-            if (state is CrmLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (state is CrmError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        TablerIcons.alert_circle,
-                        size: 48,
-                        color: colors.accentRed,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        localeCubit.translateMessage(state.message),
-                        style: textStyles.bodySans,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () =>
-                            context.read<CrmBloc>().add(LoadCrmData()),
-                        child: Text(localeCubit.translate('crm_retry')),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
+          listener: (context, state) {
             if (state is CrmLoaded) {
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildClientsTab(context, state),
-                  _buildDealsTab(context, state),
-                  _buildStatsTab(context, state),
-                ],
-              );
+              if (state.errorMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      localeCubit.translateMessage(state.errorMessage!),
+                    ),
+                    backgroundColor: colors.accentRed,
+                  ),
+                );
+              } else if (state.successMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      localeCubit.translateMessage(state.successMessage!),
+                    ),
+                    backgroundColor: colors.accentGreen,
+                  ),
+                );
+              }
             }
-
-            return const SizedBox();
           },
+          child: BlocBuilder<CrmBloc, CrmState>(
+            builder: (context, state) {
+              if (state is CrmLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (state is CrmError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          TablerIcons.alert_circle,
+                          size: 48,
+                          color: colors.accentRed,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          localeCubit.translateMessage(state.message),
+                          style: textStyles.bodySans,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () =>
+                              context.read<CrmBloc>().add(LoadCrmData()),
+                          child: Text(localeCubit.translate('crm_retry')),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (state is CrmLoaded) {
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildClientsTab(context, state),
+                    _buildDealsTab(context, state),
+                    _buildStatsTab(context, state),
+                  ],
+                );
+              }
+
+              return const SizedBox();
+            },
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildClientsTab(BuildContext context, CrmLoaded state) {

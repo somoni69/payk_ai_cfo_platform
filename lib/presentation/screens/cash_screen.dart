@@ -109,10 +109,16 @@ class _CashViewState extends State<CashView>
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Отчет Excel успешно экспортирован')),
+                          const SnackBar(
+                            content: Text('Отчет Excel успешно экспортирован'),
+                          ),
                         );
                       },
-                      icon: Icon(TablerIcons.file_spreadsheet, color: colors.accentGreen, size: 18),
+                      icon: Icon(
+                        TablerIcons.file_spreadsheet,
+                        color: colors.accentGreen,
+                        size: 18,
+                      ),
                       label: Text(language.translate('cash_export_excel')),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -125,10 +131,16 @@ class _CashViewState extends State<CashView>
                       onPressed: () {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Отчет PDF успешно экспортирован')),
+                          const SnackBar(
+                            content: Text('Отчет PDF успешно экспортирован'),
+                          ),
                         );
                       },
-                      icon: Icon(TablerIcons.file_text, color: colors.accentRed, size: 18),
+                      icon: Icon(
+                        TablerIcons.file_text,
+                        color: colors.accentRed,
+                        size: 18,
+                      ),
                       label: Text(language.translate('cash_export_pdf')),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -144,7 +156,11 @@ class _CashViewState extends State<CashView>
                           const SnackBar(content: Text('Окно импорта вызвано')),
                         );
                       },
-                      icon: Icon(TablerIcons.upload, color: colors.brand, size: 18),
+                      icon: Icon(
+                        TablerIcons.upload,
+                        color: colors.brand,
+                        size: 18,
+                      ),
                       label: Text(language.translate('cash_import')),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -182,11 +198,11 @@ class _CashViewState extends State<CashView>
               ),
               backgroundColor:
                   state.errorMessage!.contains('Внимание') ||
-                          state.errorMessage!.contains('Ошибка')
-                      ? colors.accentRed
-                      : (state.errorMessage!.contains('успешно')
-                          ? colors.accentGreen
-                          : colors.textPrimary),
+                      state.errorMessage!.contains('Ошибка')
+                  ? colors.accentRed
+                  : (state.errorMessage!.contains('успешно')
+                        ? colors.accentGreen
+                        : colors.textPrimary),
               duration: const Duration(seconds: 4),
             ),
           );
@@ -255,23 +271,23 @@ class _CashViewState extends State<CashView>
                     ),
                   )
                 : (!isViewer && _tabController.index == 1
-                    ? FloatingActionButton.extended(
-                        onPressed: () => _showOpenShiftBottomSheet(
-                          context,
-                          state.registers,
-                        ),
-                        backgroundColor: colors.brand,
-                        foregroundColor: Colors.white,
-                        icon: const Icon(TablerIcons.plus),
-                        label: Text(
-                          language.translate('cash_open_shift_btn'),
-                          style: textStyles.bodySans.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                      ? FloatingActionButton.extended(
+                          onPressed: () => _showOpenShiftBottomSheet(
+                            context,
+                            state.registers,
                           ),
-                        ),
-                      )
-                    : null),
+                          backgroundColor: colors.brand,
+                          foregroundColor: Colors.white,
+                          icon: const Icon(TablerIcons.plus),
+                          label: Text(
+                            language.translate('cash_open_shift_btn'),
+                            style: textStyles.bodySans.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : null),
             body: NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
@@ -282,7 +298,8 @@ class _CashViewState extends State<CashView>
                     snap: true,
                     actions: [
                       OutlinedButton.icon(
-                        onPressed: () => _showReportDownloadBottomSheet(context),
+                        onPressed: () =>
+                            _showReportDownloadBottomSheet(context),
                         icon: const Icon(TablerIcons.download, size: 16),
                         label: Text(
                           language.translate('cash_download_report'),
@@ -358,11 +375,11 @@ class _CashViewState extends State<CashView>
                 style: textStyles.bodySans,
                 onChanged: (val) {
                   context.read<CashBloc>().add(
-                        SearchFilterChanged(
-                          query: val,
-                          filterType: state.filterType,
-                        ),
-                      );
+                    SearchFilterChanged(
+                      query: val,
+                      filterType: state.filterType,
+                    ),
+                  );
                 },
                 decoration: InputDecoration(
                   hintText: language.translate('cash_search_counterparty_hint'),
@@ -382,14 +399,17 @@ class _CashViewState extends State<CashView>
                     SizedBox(
                       width: 145,
                       child: ExpansibleWidget<String>.selection(
-                        cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                        cardPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 0,
+                        ),
                         tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                         title: Text(
                           _selectedType == 'all'
                               ? language.translate('cash_filter_all_types')
                               : (_selectedType == 'income'
-                                  ? language.translate('cash_income')
-                                  : language.translate('cash_expense')),
+                                    ? language.translate('cash_income')
+                                    : language.translate('cash_expense')),
                           style: textStyles.captionSans.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -399,18 +419,20 @@ class _CashViewState extends State<CashView>
                         items: const ['all', 'income', 'expense'],
                         selectedValue: _selectedType,
                         itemLabelBuilder: (item) {
-                          if (item == 'income') return language.translate('cash_income');
-                          if (item == 'expense') return language.translate('cash_expense');
+                          if (item == 'income')
+                            return language.translate('cash_income');
+                          if (item == 'expense')
+                            return language.translate('cash_expense');
                           return language.translate('cash_filter_all_types');
                         },
                         onSelected: (val) {
                           setState(() => _selectedType = val);
                           context.read<CashBloc>().add(
-                                SearchFilterChanged(
-                                  query: state.query,
-                                  filterType: val,
-                                ),
-                              );
+                            SearchFilterChanged(
+                              query: state.query,
+                              filterType: val,
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -420,12 +442,19 @@ class _CashViewState extends State<CashView>
                     SizedBox(
                       width: 180,
                       child: ExpansibleWidget<String>.selection(
-                        cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                        cardPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 0,
+                        ),
                         tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                         title: Text(
                           _selectedPaymentMethod == 'all'
-                              ? language.translate('cash_filter_all_payment_methods')
-                              : (_selectedPaymentMethod == 'cash' ? 'Наличные' : 'Карта'),
+                              ? language.translate(
+                                  'cash_filter_all_payment_methods',
+                                )
+                              : (_selectedPaymentMethod == 'cash'
+                                    ? 'Наличные'
+                                    : 'Карта'),
                           style: textStyles.captionSans.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -437,7 +466,9 @@ class _CashViewState extends State<CashView>
                         itemLabelBuilder: (item) {
                           if (item == 'cash') return 'Наличные';
                           if (item == 'card') return 'Карта';
-                          return language.translate('cash_filter_all_payment_methods');
+                          return language.translate(
+                            'cash_filter_all_payment_methods',
+                          );
                         },
                         onSelected: (val) {
                           setState(() => _selectedPaymentMethod = val);
@@ -450,15 +481,23 @@ class _CashViewState extends State<CashView>
                     SizedBox(
                       width: 155,
                       child: ExpansibleWidget<String>.selection(
-                        cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                        cardPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 0,
+                        ),
                         tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                         title: Text(
                           _selectedRegister == 'all'
                               ? language.translate('cash_filter_all_registers')
-                              : (state.registers.firstWhere(
-                                  (r) => r.id == _selectedRegister,
-                                  orElse: () => const CashRegister(id: '', name: 'Касса'),
-                                ).name),
+                              : (state.registers
+                                    .firstWhere(
+                                      (r) => r.id == _selectedRegister,
+                                      orElse: () => const CashRegister(
+                                        id: '',
+                                        name: 'Касса',
+                                      ),
+                                    )
+                                    .name),
                           style: textStyles.captionSans.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -468,7 +507,10 @@ class _CashViewState extends State<CashView>
                         items: registerIds,
                         selectedValue: _selectedRegister,
                         itemLabelBuilder: (id) {
-                          if (id == 'all') return language.translate('cash_filter_all_registers');
+                          if (id == 'all')
+                            return language.translate(
+                              'cash_filter_all_registers',
+                            );
                           final reg = state.registers.firstWhere(
                             (r) => r.id == id,
                             orElse: () => CashRegister(id: id, name: id),
@@ -500,7 +542,10 @@ class _CashViewState extends State<CashView>
                 final tx = state.filteredTransactions[index];
 
                 return ExpansibleWidget(
-                  cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   title: Row(
                     children: [
                       Container(
@@ -589,16 +634,14 @@ class _CashViewState extends State<CashView>
                             tx.paymentMethod.label,
                           ),
                           const SizedBox(height: 6),
-                          _buildDetailRow(
-                            context,
-                            'Категория:',
-                            tx.category,
-                          ),
+                          _buildDetailRow(context, 'Категория:', tx.category),
                           const SizedBox(height: 6),
                           _buildDetailRow(
                             context,
                             'Кассовый аппарат:',
-                            tx.registerId != null ? 'Касса #${tx.registerId}' : 'Главная касса',
+                            tx.registerId != null
+                                ? 'Касса #${tx.registerId}'
+                                : 'Главная касса',
                           ),
                         ],
                       ),
@@ -643,7 +686,10 @@ class _CashViewState extends State<CashView>
           final isZeroDiff = diff == 0.0;
 
           return ExpansibleWidget(
-            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            cardPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
             title: Row(
               children: [
                 Expanded(
@@ -895,7 +941,9 @@ class _CashViewState extends State<CashView>
     final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
     final controller = TextEditingController(text: '5000');
-    String? selectedRegisterId = registers.isNotEmpty ? registers.first.id : null;
+    String? selectedRegisterId = registers.isNotEmpty
+        ? registers.first.id
+        : null;
 
     LedgerBottomSheet.show(
       context: context,
@@ -922,13 +970,17 @@ class _CashViewState extends State<CashView>
               ),
               const SizedBox(height: 6),
               ExpansibleWidget<String>.selection(
-                cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                cardPadding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 0,
+                ),
                 tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                 title: Text(
                   registers
                       .firstWhere(
                         (r) => r.id == selectedRegisterId,
-                        orElse: () => const CashRegister(id: '', name: 'Главная касса'),
+                        orElse: () =>
+                            const CashRegister(id: '', name: 'Главная касса'),
                       )
                       .name,
                   style: textStyles.bodySans,
@@ -941,16 +993,15 @@ class _CashViewState extends State<CashView>
                       orElse: () => CashRegister(id: id, name: id),
                     )
                     .name,
-                onSelected: (val) => setSheetState(() => selectedRegisterId = val),
+                onSelected: (val) =>
+                    setSheetState(() => selectedRegisterId = val),
               ),
               const SizedBox(height: 16),
             ],
 
             Text(
               language.translate('cash_starting_balance_label'),
-              style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
             TextField(
@@ -1024,9 +1075,18 @@ class _CashViewState extends State<CashView>
     final descriptionController = TextEditingController();
     PaymentMethod selectedPaymentMethod = PaymentMethod.cash;
     String? selectedCategory;
-    String? selectedRegisterId = registers.isNotEmpty ? registers.first.id : null;
+    String? selectedRegisterId = registers.isNotEmpty
+        ? registers.first.id
+        : null;
 
-    final categories = ['Зарплата', 'Продажи', 'Услуги', 'Аванс', 'Инвентарь', 'Прочее'];
+    final categories = [
+      'Зарплата',
+      'Продажи',
+      'Услуги',
+      'Аванс',
+      'Инвентарь',
+      'Прочее',
+    ];
 
     LedgerBottomSheet.show(
       context: context,
@@ -1053,7 +1113,9 @@ class _CashViewState extends State<CashView>
                               : colors.surface,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: isIncome ? colors.accentGreen : colors.border,
+                            color: isIncome
+                                ? colors.accentGreen
+                                : colors.border,
                             width: isIncome ? 1.5 : 1.0,
                           ),
                         ),
@@ -1120,13 +1182,17 @@ class _CashViewState extends State<CashView>
                 ),
                 const SizedBox(height: 6),
                 ExpansibleWidget<String>.selection(
-                  cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 0,
+                  ),
                   tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                   title: Text(
                     registers
                         .firstWhere(
                           (r) => r.id == selectedRegisterId,
-                          orElse: () => const CashRegister(id: '', name: 'Главная касса'),
+                          orElse: () =>
+                              const CashRegister(id: '', name: 'Главная касса'),
                         )
                         .name,
                     style: textStyles.bodySans,
@@ -1139,7 +1205,8 @@ class _CashViewState extends State<CashView>
                         orElse: () => CashRegister(id: id, name: id),
                       )
                       .name,
-                  onSelected: (val) => setSheetState(() => selectedRegisterId = val),
+                  onSelected: (val) =>
+                      setSheetState(() => selectedRegisterId = val),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -1147,7 +1214,9 @@ class _CashViewState extends State<CashView>
               // 3. Сумма операции (Иконка доллара)
               TextFormField(
                 controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 style: textStyles.bodySans,
                 decoration: InputDecoration(
                   hintText: language.translate('cash_operation_amount'),
@@ -1186,7 +1255,9 @@ class _CashViewState extends State<CashView>
                     selectedColor: colors.brand.withValues(alpha: 0.12),
                     labelStyle: textStyles.captionSans.copyWith(
                       color: isSelected ? colors.brand : colors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                     side: BorderSide(
                       color: isSelected ? colors.brand : colors.border,
@@ -1208,10 +1279,14 @@ class _CashViewState extends State<CashView>
               ),
               const SizedBox(height: 6),
               ExpansibleWidget<String>.selection(
-                cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                cardPadding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 0,
+                ),
                 tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                 title: Text(
-                  selectedCategory ?? language.translate('cash_select_category'),
+                  selectedCategory ??
+                      language.translate('cash_select_category'),
                   style: textStyles.bodySans.copyWith(
                     color: selectedCategory != null
                         ? colors.textPrimary
@@ -1221,7 +1296,8 @@ class _CashViewState extends State<CashView>
                 items: categories,
                 selectedValue: selectedCategory,
                 itemLabelBuilder: (category) => category,
-                onSelected: (val) => setSheetState(() => selectedCategory = val),
+                onSelected: (val) =>
+                    setSheetState(() => selectedCategory = val),
               ),
               const SizedBox(height: 16),
 
@@ -1268,7 +1344,10 @@ class _CashViewState extends State<CashView>
                 child: ElevatedButton(
                   onPressed: () {
                     if (!formKey.currentState!.validate()) return;
-                    final amt = parseLocalizedNumber(context, amountController.text)!;
+                    final amt = parseLocalizedNumber(
+                      context,
+                      amountController.text,
+                    )!;
 
                     final tx = Transaction(
                       id: 'tx-${DateTime.now().millisecondsSinceEpoch}',

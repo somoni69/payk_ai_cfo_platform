@@ -207,9 +207,7 @@ class _DashboardViewState extends State<DashboardView>
                     pinned: true,
                     floating: true,
                     snap: true,
-                    actions: [
-                      _buildCurrencySelector(context, state.currency),
-                    ],
+                    actions: [_buildCurrencySelector(context, state.currency)],
                     bottom: TabBar(
                       controller: _tabController,
                       isScrollable: true,
@@ -226,11 +224,15 @@ class _DashboardViewState extends State<DashboardView>
                       ),
                       tabs: [
                         Tab(
-                          text: languageCubit.translate('dashboard_tab_overview'),
+                          text: languageCubit.translate(
+                            'dashboard_tab_overview',
+                          ),
                         ),
                         Tab(text: languageCubit.translate('dashboard_tab_pnl')),
                         Tab(
-                          text: languageCubit.translate('dashboard_tab_plan_fact'),
+                          text: languageCubit.translate(
+                            'dashboard_tab_plan_fact',
+                          ),
                         ),
                         Tab(
                           text: languageCubit.translate(
@@ -256,104 +258,104 @@ class _DashboardViewState extends State<DashboardView>
               body: TabBarView(
                 controller: _tabController,
                 children: [
-                RefreshIndicator(
-                  onRefresh: () => _refreshDashboard(context),
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // AI Рекомендация (MOB-04 / FIN-11)
-                          LedgerAICard(
-                            title: languageCubit.translate(
-                              'dashboard_daily_recommendation_title',
+                  RefreshIndicator(
+                    onRefresh: () => _refreshDashboard(context),
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // AI Рекомендация (MOB-04 / FIN-11)
+                            LedgerAICard(
+                              title: languageCubit.translate(
+                                'dashboard_daily_recommendation_title',
+                              ),
+                              content: languageCubit.translate(
+                                'dashboard_daily_recommendation_content',
+                              ),
                             ),
-                            content: languageCubit.translate(
-                              'dashboard_daily_recommendation_content',
-                            ),
-                          ),
-                          const SizedBox(height: 20),
+                            const SizedBox(height: 20),
 
-                          // Сетка 6 ключевых цифр
-                          Text(
-                            languageCubit.translate(
-                              'dashboard_key_metrics_title',
+                            // Сетка 6 ключевых цифр
+                            Text(
+                              languageCubit.translate(
+                                'dashboard_key_metrics_title',
+                              ),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildMetricsGrid(m, currency),
-                          const SizedBox(height: 20),
+                            const SizedBox(height: 8),
+                            _buildMetricsGrid(m, currency),
+                            const SizedBox(height: 20),
 
-                          // Реальный график движения денежных средств
-                          Text(
-                            languageCubit.translate(
-                              'dashboard_cash_flow_30_days_title',
+                            // Реальный график движения денежных средств
+                            Text(
+                              languageCubit.translate(
+                                'dashboard_cash_flow_30_days_title',
+                              ),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildChart(state.history, currency),
-                          const SizedBox(height: 20),
-                        ],
+                            const SizedBox(height: 8),
+                            _buildChart(state.history, currency),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-                _buildLazyDashboardSection<PnlReport>(
-                  section: DashboardSection.pnl,
-                  select: (loaded) => loaded.pnl,
-                  contentBuilder: _buildPnlTab,
-                ),
-                _buildLazyDashboardSection<PlanFactReport>(
-                  section: DashboardSection.planFact,
-                  select: (loaded) => loaded.planFact,
-                  contentBuilder: _buildPlanFactTab,
-                ),
-                _buildLazyDashboardSection<BreakEvenAnalysis>(
-                  section: DashboardSection.breakEven,
-                  select: (loaded) => loaded.breakEven,
-                  contentBuilder: _buildBreakEvenTab,
-                ),
-                _buildLazyDashboardSection<AbcAnalysis>(
-                  section: DashboardSection.abc,
-                  select: (loaded) => loaded.abc,
-                  contentBuilder: _buildAbcTab,
-                ),
-                _buildLazyDashboardSection<_AccountsRatesData>(
-                  section: DashboardSection.accountsRates,
-                  select: (loaded) {
-                    final accounts = loaded.bankAccounts;
-                    final rates = loaded.rates;
-                    return accounts == null || rates == null
-                        ? null
-                        : _AccountsRatesData(accounts, rates);
-                  },
-                  contentBuilder: (context, data, currency) {
-                    return _buildAccountsRatesTab(
-                      context,
-                      data.accounts,
-                      data.rates,
-                      currency,
-                    );
-                  },
-                ),
-                _buildLazyDashboardSection<AiInsightsReport>(
-                  section: DashboardSection.aiInsights,
-                  select: (loaded) => loaded.aiInsights,
-                  contentBuilder: _buildAiInsightsTab,
-                ),
-              ],
+                  _buildLazyDashboardSection<PnlReport>(
+                    section: DashboardSection.pnl,
+                    select: (loaded) => loaded.pnl,
+                    contentBuilder: _buildPnlTab,
+                  ),
+                  _buildLazyDashboardSection<PlanFactReport>(
+                    section: DashboardSection.planFact,
+                    select: (loaded) => loaded.planFact,
+                    contentBuilder: _buildPlanFactTab,
+                  ),
+                  _buildLazyDashboardSection<BreakEvenAnalysis>(
+                    section: DashboardSection.breakEven,
+                    select: (loaded) => loaded.breakEven,
+                    contentBuilder: _buildBreakEvenTab,
+                  ),
+                  _buildLazyDashboardSection<AbcAnalysis>(
+                    section: DashboardSection.abc,
+                    select: (loaded) => loaded.abc,
+                    contentBuilder: _buildAbcTab,
+                  ),
+                  _buildLazyDashboardSection<_AccountsRatesData>(
+                    section: DashboardSection.accountsRates,
+                    select: (loaded) {
+                      final accounts = loaded.bankAccounts;
+                      final rates = loaded.rates;
+                      return accounts == null || rates == null
+                          ? null
+                          : _AccountsRatesData(accounts, rates);
+                    },
+                    contentBuilder: (context, data, currency) {
+                      return _buildAccountsRatesTab(
+                        context,
+                        data.accounts,
+                        data.rates,
+                        currency,
+                      );
+                    },
+                  ),
+                  _buildLazyDashboardSection<AiInsightsReport>(
+                    section: DashboardSection.aiInsights,
+                    select: (loaded) => loaded.aiInsights,
+                    contentBuilder: _buildAiInsightsTab,
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      }
+          );
+        }
 
         return const SizedBox.shrink();
       },
@@ -454,10 +456,7 @@ class _DashboardViewState extends State<DashboardView>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  flag,
-                  style: const TextStyle(fontSize: 18),
-                ),
+                Text(flag, style: const TextStyle(fontSize: 18)),
                 const SizedBox(width: 10),
                 Text(
                   c,
@@ -510,20 +509,29 @@ class _DashboardViewState extends State<DashboardView>
       return '${v > 0 ? "+" : ""}${formatLocalizedNumber(context, v)}%';
     }
 
-    Color getDeltaColor(double? value, double fallback, {bool inverse = false}) {
+    Color getDeltaColor(
+      double? value,
+      double fallback, {
+      bool inverse = false,
+    }) {
       final v = value ?? fallback;
       final positive = v > 0;
       if (inverse) return positive ? colors.accentRed : colors.accentGreen;
       return positive ? colors.accentGreen : colors.accentRed;
     }
 
-    final double balanceDeltaVal = m.cashBalanceDelta ?? (m.cashBalance > 0 ? 8.4 : 0.0);
+    final double balanceDeltaVal =
+        m.cashBalanceDelta ?? (m.cashBalance > 0 ? 8.4 : 0.0);
     final double revDeltaVal = m.revenueDelta ?? (m.revenue > 0 ? 12.5 : 0.0);
     final double expDeltaVal = m.expensesDelta ?? (m.expenses > 0 ? -3.2 : 0.0);
-    final double profitDeltaVal = m.netProfitDelta ?? (m.netProfit != 0 ? 15.1 : 0.0);
+    final double profitDeltaVal =
+        m.netProfitDelta ?? (m.netProfit != 0 ? 15.1 : 0.0);
 
-    final double calculatedBreakEven = m.breakEvenPoint ?? (m.expenses > 0 ? m.expenses * 1.35 : 180000.0);
-    final double calculatedForecast = m.cashForecast ?? (m.cashBalance > 0 ? m.cashBalance + m.netProfit * 0.4 : 410000.0);
+    final double calculatedBreakEven =
+        m.breakEvenPoint ?? (m.expenses > 0 ? m.expenses * 1.35 : 180000.0);
+    final double calculatedForecast =
+        m.cashForecast ??
+        (m.cashBalance > 0 ? m.cashBalance + m.netProfit * 0.4 : 410000.0);
     final double forecastDeltaVal = m.cashForecastDelta ?? 5.0;
 
     final List<Map<String, dynamic>> items = [

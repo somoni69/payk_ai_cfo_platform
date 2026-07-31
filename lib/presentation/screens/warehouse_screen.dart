@@ -79,32 +79,32 @@ class _WarehouseViewState extends State<WarehouseView>
     return Scaffold(
       floatingActionButton: canManage
           ? (_tabController.index == 0
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showAddProductDialog(context),
-                  backgroundColor: colors.brand,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(TablerIcons.plus),
-                  label: Text(
-                    localeCubit.translate('warehouse_add_product_btn'),
-                    style: textStyles.bodySans.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                ? FloatingActionButton.extended(
+                    onPressed: () => _showAddProductDialog(context),
+                    backgroundColor: colors.brand,
+                    foregroundColor: Colors.white,
+                    icon: const Icon(TablerIcons.plus),
+                    label: Text(
+                      localeCubit.translate('warehouse_add_product_btn'),
+                      style: textStyles.bodySans.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                )
-              : FloatingActionButton.extended(
-                  onPressed: () => _showAddMovementDialog(context),
-                  backgroundColor: colors.brand,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(TablerIcons.arrow_left_right),
-                  label: Text(
-                    localeCubit.translate('warehouse_movement_btn'),
-                    style: textStyles.bodySans.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                  )
+                : FloatingActionButton.extended(
+                    onPressed: () => _showAddMovementDialog(context),
+                    backgroundColor: colors.brand,
+                    foregroundColor: Colors.white,
+                    icon: const Icon(TablerIcons.arrow_left_right),
+                    label: Text(
+                      localeCubit.translate('warehouse_movement_btn'),
+                      style: textStyles.bodySans.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ))
+                  ))
           : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -119,7 +119,9 @@ class _WarehouseViewState extends State<WarehouseView>
                 indicatorColor: colors.brand,
                 labelColor: colors.brand,
                 unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                labelStyle: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
                 tabs: [
                   Tab(text: localeCubit.translate('warehouse_tab_products')),
                   Tab(text: localeCubit.translate('warehouse_tab_movements')),
@@ -129,91 +131,91 @@ class _WarehouseViewState extends State<WarehouseView>
           ];
         },
         body: BlocListener<WarehouseBloc, WarehouseState>(
-        listener: (context, state) {
-          if (state is WarehouseLoaded) {
-            if (state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localeCubit.translateMessage(state.errorMessage!),
-                  ),
-                  backgroundColor: colors.accentRed,
-                ),
-              );
-            } else if (state.successMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localeCubit.translateMessage(state.successMessage!),
-                  ),
-                  backgroundColor: colors.accentGreen,
-                ),
-              );
-            }
-          }
-        },
-        child: BlocBuilder<WarehouseBloc, WarehouseState>(
-          buildWhen: (previous, current) {
-            if (previous is WarehouseLoaded && current is WarehouseLoaded) {
-              return previous.products != current.products ||
-                  previous.movements != current.movements ||
-                  previous.summary != current.summary;
-            }
-            return previous.runtimeType != current.runtimeType ||
-                previous != current;
-          },
-          builder: (context, state) {
-            if (state is WarehouseLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (state is WarehouseError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        TablerIcons.alert_circle,
-                        size: 48,
-                        color: colors.accentRed,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        localeCubit.translateMessage(state.message),
-                        style: textStyles.bodySans,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () => context.read<WarehouseBloc>().add(
-                          LoadWarehouseData(),
-                        ),
-                        child: Text(localeCubit.translate('common_retry')),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-
+          listener: (context, state) {
             if (state is WarehouseLoaded) {
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildProductsTab(context, state),
-                  _buildMovementsTab(context, state),
-                ],
-              );
+              if (state.errorMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      localeCubit.translateMessage(state.errorMessage!),
+                    ),
+                    backgroundColor: colors.accentRed,
+                  ),
+                );
+              } else if (state.successMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      localeCubit.translateMessage(state.successMessage!),
+                    ),
+                    backgroundColor: colors.accentGreen,
+                  ),
+                );
+              }
             }
-
-            return const SizedBox();
           },
+          child: BlocBuilder<WarehouseBloc, WarehouseState>(
+            buildWhen: (previous, current) {
+              if (previous is WarehouseLoaded && current is WarehouseLoaded) {
+                return previous.products != current.products ||
+                    previous.movements != current.movements ||
+                    previous.summary != current.summary;
+              }
+              return previous.runtimeType != current.runtimeType ||
+                  previous != current;
+            },
+            builder: (context, state) {
+              if (state is WarehouseLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (state is WarehouseError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          TablerIcons.alert_circle,
+                          size: 48,
+                          color: colors.accentRed,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          localeCubit.translateMessage(state.message),
+                          style: textStyles.bodySans,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => context.read<WarehouseBloc>().add(
+                            LoadWarehouseData(),
+                          ),
+                          child: Text(localeCubit.translate('common_retry')),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              if (state is WarehouseLoaded) {
+                return TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildProductsTab(context, state),
+                    _buildMovementsTab(context, state),
+                  ],
+                );
+              }
+
+              return const SizedBox();
+            },
+          ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
