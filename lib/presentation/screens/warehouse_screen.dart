@@ -50,10 +50,18 @@ class _WarehouseViewState extends State<WarehouseView>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -69,6 +77,35 @@ class _WarehouseViewState extends State<WarehouseView>
         authState.role.canManage(AppCapability.warehouse);
 
     return Scaffold(
+      floatingActionButton: canManage
+          ? (_tabController.index == 0
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showAddProductDialog(context),
+                  backgroundColor: colors.brand,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(TablerIcons.plus),
+                  label: Text(
+                    localeCubit.translate('warehouse_add_product_btn'),
+                    style: textStyles.bodySans.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              : FloatingActionButton.extended(
+                  onPressed: () => _showAddMovementDialog(context),
+                  backgroundColor: colors.brand,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(TablerIcons.arrow_left_right),
+                  label: Text(
+                    localeCubit.translate('warehouse_movement_btn'),
+                    style: textStyles.bodySans.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ))
+          : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -77,22 +114,6 @@ class _WarehouseViewState extends State<WarehouseView>
               pinned: true,
               floating: true,
               snap: true,
-              actions: [
-                if (canManage)
-                  IconButton(
-                    icon: const Icon(TablerIcons.plus),
-                    tooltip: localeCubit.translate('warehouse_add_product_title'),
-                    color: colors.brand,
-                    onPressed: () => _showAddProductDialog(context),
-                  ),
-                if (canManage)
-                  IconButton(
-                    icon: const Icon(TablerIcons.arrow_left_right),
-                    tooltip: localeCubit.translate('warehouse_movement_title'),
-                    color: colors.brand,
-                    onPressed: () => _showAddMovementDialog(context),
-                  ),
-              ],
               bottom: TabBar(
                 controller: _tabController,
                 indicatorColor: colors.brand,

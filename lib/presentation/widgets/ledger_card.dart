@@ -8,6 +8,7 @@ class LedgerCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Color? backgroundColor;
   final Color? borderColor;
+  final double borderRadius;
 
   const LedgerCard({
     super.key,
@@ -15,6 +16,7 @@ class LedgerCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.backgroundColor,
     this.borderColor,
+    this.borderRadius = 16,
   });
 
   @override
@@ -26,7 +28,7 @@ class LedgerCard extends StatelessWidget {
           color: borderColor ?? context.colors.border,
           width: 1,
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
       padding: padding,
       child: child,

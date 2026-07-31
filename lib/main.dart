@@ -41,6 +41,16 @@ import 'package:payk_ai_cfo_platform/features/integrations/domain/integrations_r
 import 'package:payk_ai_cfo_platform/features/integrations/data/api_integrations_repository.dart';
 import 'package:payk_ai_cfo_platform/features/users/domain/users_repository.dart';
 import 'package:payk_ai_cfo_platform/features/users/data/api_users_repository.dart';
+import 'package:payk_ai_cfo_platform/features/branches/domain/branches_repository.dart';
+import 'package:payk_ai_cfo_platform/features/branches/data/api_branches_repository.dart';
+import 'package:payk_ai_cfo_platform/features/checklists/domain/checklists_repository.dart';
+import 'package:payk_ai_cfo_platform/features/checklists/data/api_checklists_repository.dart';
+import 'package:payk_ai_cfo_platform/features/fin_ops/domain/fin_ops_repository.dart';
+import 'package:payk_ai_cfo_platform/features/fin_ops/data/api_fin_ops_repository.dart';
+import 'package:payk_ai_cfo_platform/features/reports/domain/reports_repository.dart';
+import 'package:payk_ai_cfo_platform/features/reports/data/api_reports_repository.dart';
+import 'package:payk_ai_cfo_platform/features/audit/domain/audit_repository.dart';
+import 'package:payk_ai_cfo_platform/features/audit/data/api_audit_repository.dart';
 
 void main() {
   runZonedGuarded(
@@ -145,6 +155,21 @@ class _MyAppState extends State<MyApp> {
         ),
         RepositoryProvider<UsersRepository>(
           create: (context) => ApiUsersRepository(),
+        ),
+        RepositoryProvider<BranchesRepository>(
+          create: (context) => ApiBranchesRepository(),
+        ),
+        RepositoryProvider<ChecklistsRepository>(
+          create: (context) => ApiChecklistsRepository(),
+        ),
+        RepositoryProvider<FinOpsRepository>(
+          create: (context) => ApiFinOpsRepository(),
+        ),
+        RepositoryProvider<ReportsRepository>(
+          create: (context) => ApiReportsRepository(),
+        ),
+        RepositoryProvider<AuditRepository>(
+          create: (context) => ApiAuditRepository(),
         ),
       ],
       child: MultiBlocProvider(

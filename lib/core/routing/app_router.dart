@@ -18,6 +18,11 @@ import '../../presentation/screens/legal_screen.dart';
 import '../../presentation/screens/marketing_screen.dart';
 import '../../presentation/screens/integrations_screen.dart';
 import '../../presentation/screens/users_screen.dart';
+import '../../presentation/screens/branches_screen.dart';
+import '../../presentation/screens/checklists_screen.dart';
+import '../../presentation/screens/fin_ops_screen.dart';
+import '../../presentation/screens/reports_screen.dart';
+import '../../presentation/screens/audit_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -142,6 +147,41 @@ GoRouter createRouter(
         path: '/users',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const UsersScreen(),
+      ),
+
+      // Филиалы и точки
+      GoRoute(
+        path: '/branches',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BranchesScreen(),
+      ),
+
+      // Операционные чек-листы
+      GoRoute(
+        path: '/checklists',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ChecklistsScreen(),
+      ),
+
+      // Финансовые операции
+      GoRoute(
+        path: '/fin-ops',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const FinOpsScreen(),
+      ),
+
+      // Финансовые отчеты
+      GoRoute(
+        path: '/reports',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ReportsScreen(),
+      ),
+
+      // Аудит решений и безопасность
+      GoRoute(
+        path: '/audit',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AuditScreen(),
       ),
 
       // Основная оболочка приложения с BottomNavigationBar (Stateful Navigation)

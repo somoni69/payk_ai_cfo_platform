@@ -10,6 +10,7 @@ import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_event.dart';
 import '../../features/auth/bloc/auth_state.dart';
 import '../../features/auth/domain/app_access.dart';
+import '../widgets/expansible_widget.dart';
 import '../widgets/ledger_card.dart';
 import '../widgets/ledger_collapsing_header.dart';
 import '../widgets/payk_logo.dart';
@@ -124,7 +125,6 @@ class _MoreScreenState extends State<MoreScreen> {
         : context.translate('language_russian');
     final authState = context.watch<AuthBloc>().state;
     final role = authState is AuthAuthenticated ? authState.role : null;
-    final moduleRows = role == null ? <Widget>[] : _buildModuleRows(role);
 
     return Scaffold(
       body: NestedScrollView(
@@ -161,40 +161,54 @@ class _MoreScreenState extends State<MoreScreen> {
               const SizedBox(height: 8),
               LedgerCard(
                 padding: EdgeInsets.zero,
-                child: Column(
+                child: _buildSettingsToggleRow(
+                  icon: TablerIcons.fingerprint,
+                  title: context.translate('biometrics'),
+                  value: _biometricEnabled,
+                  onChanged: _onBiometricToggleChanged,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ExpansibleWidget<String>.selection(
+                cardPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 6,
+                ),
+                tilePadding: EdgeInsets.zero,
+                title: Row(
                   children: [
-                    _buildSettingsToggleRow(
-                      icon: TablerIcons.fingerprint,
-                      title: context.translate('biometrics'),
-                      value: _biometricEnabled,
-                      onChanged: _onBiometricToggleChanged,
+                    Icon(
+                      TablerIcons.language,
+                      color: colors.textSecondary,
+                      size: 20,
                     ),
-                    const Divider(),
-                    _buildSettingsActionRow(
-                      icon: TablerIcons.language,
-                      title: context.translate('language'),
-                      value: currentLanguageLabel,
-                      onTap: _showLanguageSelector,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.translate('language'),
+                        style: textStyles.bodySans,
+                      ),
                     ),
                   ],
                 ),
+                subtitle: Text(
+                  currentLanguageLabel,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                items: const ['ru', 'tg'],
+                selectedValue: locale.languageCode,
+                itemLabelBuilder: (code) => code == 'tg'
+                    ? context.translate('language_tajik')
+                    : context.translate('language_russian'),
+                onSelected: (val) {
+                  context.read<LanguageCubit>().setLanguage(val);
+                },
               ),
               const SizedBox(height: 20),
 
-              if (moduleRows.isNotEmpty) ...[
-                Text(
-                  context.translate('more_additional_modules'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                LedgerCard(
-                  padding: EdgeInsets.zero,
-                  child: Column(children: moduleRows),
-                ),
-                const SizedBox(height: 32),
-              ],
+              if (role != null) ..._buildGroupedModules(role),
 
               // Выход (Смена сессии)
               OutlinedButton(
@@ -217,79 +231,146 @@ class _MoreScreenState extends State<MoreScreen> {
   );
   }
 
-  List<Widget> _buildModuleRows(UserRole role) {
-    final modules =
-        <
-          ({
-            AppCapability capability,
-            IconData icon,
-            String title,
-            String route,
-          })
-        >[
-          (
-            capability: AppCapability.notifications,
-            icon: TablerIcons.alert_triangle,
-            title: context.translate('more_notifications'),
-            route: '/notifications',
-          ),
+  List<Widget> _buildGroupedModules(UserRole role) {
+    final textStyles = context.textStyles;
+
+    final groups = [
+      (
+        titleKey: 'more_group_business',
+        modules: [
           (
             capability: AppCapability.hr,
             icon: TablerIcons.briefcase,
-            title: context.translate('hr_menu'),
+            titleKey: 'hr_menu',
             route: '/hr',
           ),
           (
             capability: AppCapability.crm,
             icon: TablerIcons.users,
-            title: context.translate('crm_menu'),
+            titleKey: 'crm_menu',
             route: '/crm',
+          ),
+          (
+            capability: AppCapability.checklists,
+            icon: TablerIcons.checkbox,
+            titleKey: 'more_checklists',
+            route: '/checklists',
+          ),
+        ],
+      ),
+      (
+        titleKey: 'more_group_finance',
+        modules: [
+          (
+            capability: AppCapability.finOps,
+            icon: TablerIcons.businessplan,
+            titleKey: 'more_fin_ops',
+            route: '/fin-ops',
+          ),
+          (
+            capability: AppCapability.reports,
+            icon: TablerIcons.report_analytics,
+            titleKey: 'more_reports',
+            route: '/reports',
           ),
           (
             capability: AppCapability.strategy,
             icon: TablerIcons.bulb,
-            title: context.translate('more_strategy'),
+            titleKey: 'more_strategy',
             route: '/strategy',
           ),
           (
+            capability: AppCapability.notifications,
+            icon: TablerIcons.alert_triangle,
+            titleKey: 'more_notifications',
+            route: '/notifications',
+          ),
+        ],
+      ),
+      (
+        titleKey: 'more_group_marketing',
+        modules: [
+          (
             capability: AppCapability.marketing,
             icon: TablerIcons.speakerphone,
-            title: context.translate('more_marketing'),
+            titleKey: 'more_marketing',
             route: '/marketing',
           ),
           (
             capability: AppCapability.legal,
             icon: TablerIcons.gavel,
-            title: context.translate('more_legal'),
+            titleKey: 'more_legal',
             route: '/legal',
+          ),
+        ],
+      ),
+      (
+        titleKey: 'more_group_system',
+        modules: [
+          (
+            capability: AppCapability.branches,
+            icon: TablerIcons.building_store,
+            titleKey: 'more_branches',
+            route: '/branches',
           ),
           (
             capability: AppCapability.integrations,
             icon: TablerIcons.link,
-            title: context.translate('more_integrations'),
+            titleKey: 'more_integrations',
             route: '/integrations',
           ),
           (
             capability: AppCapability.users,
             icon: TablerIcons.users_group,
-            title: context.translate('more_users'),
+            titleKey: 'more_users',
             route: '/users',
           ),
-        ];
+          (
+            capability: AppCapability.audit,
+            icon: TablerIcons.shield_check,
+            titleKey: 'more_audit',
+            route: '/audit',
+          ),
+        ],
+      ),
+    ];
 
-    final rows = <Widget>[];
-    for (final module in modules) {
-      if (!role.can(module.capability)) continue;
-      if (rows.isNotEmpty) rows.add(const Divider());
-      rows.add(
-        _buildSettingsNavigationRow(
-          icon: module.icon,
-          title: module.title,
-          onTap: () => GoRouter.of(context).push(module.route),
+    final widgets = <Widget>[];
+
+    for (final group in groups) {
+      final allowedModules =
+          group.modules.where((m) => role.can(m.capability)).toList();
+
+      if (allowedModules.isEmpty) continue;
+
+      widgets.add(
+        Text(
+          context.translate(group.titleKey),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
         ),
       );
+      widgets.add(const SizedBox(height: 8));
+
+      final rows = <Widget>[];
+      for (var i = 0; i < allowedModules.length; i++) {
+        final module = allowedModules[i];
+        if (i > 0) rows.add(const Divider());
+        rows.add(
+          _buildSettingsNavigationRow(
+            icon: module.icon,
+            title: context.translate(module.titleKey),
+            onTap: () => GoRouter.of(context).push(module.route),
+          ),
+        );
+      }
+
+      widgets.add(
+        LedgerCard(padding: EdgeInsets.zero, child: Column(children: rows)),
+      );
+      widgets.add(const SizedBox(height: 20));
     }
-    return rows;
+
+    return widgets;
   }
 
   Widget _buildProfileCard() {
@@ -373,43 +454,6 @@ class _MoreScreenState extends State<MoreScreen> {
     );
   }
 
-  Widget _buildSettingsActionRow({
-    required IconData icon,
-    required String title,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-        child: Row(
-          children: [
-            Icon(icon, color: colors.textSecondary, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(title, style: textStyles.bodySans)),
-            const SizedBox(width: 8),
-            Text(
-              value,
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              TablerIcons.chevron_right,
-              color: colors.textTooltip,
-              size: 16,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSettingsNavigationRow({
     required IconData icon,
     required String title,
@@ -435,63 +479,6 @@ class _MoreScreenState extends State<MoreScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _showLanguageSelector() {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final currentLanguage = context.read<LanguageCubit>().state.languageCode;
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: colors.border),
-          ),
-          title: Text(
-            context.translate('language_dialog_title'),
-            style: textStyles.h2Sans,
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                selected: currentLanguage == 'ru',
-                title: Text(
-                  context.translate('language_russian'),
-                  style: textStyles.bodySans,
-                ),
-                trailing: currentLanguage == 'ru'
-                    ? const Icon(TablerIcons.check)
-                    : null,
-                onTap: () {
-                  context.read<LanguageCubit>().setLanguage('ru');
-                  Navigator.pop(context);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                selected: currentLanguage == 'tg',
-                title: Text(
-                  context.translate('language_tajik'),
-                  style: textStyles.bodySans,
-                ),
-                trailing: currentLanguage == 'tg'
-                    ? const Icon(TablerIcons.check)
-                    : null,
-                onTap: () {
-                  context.read<LanguageCubit>().setLanguage('tg');
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
