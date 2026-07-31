@@ -15,6 +15,7 @@ class ExpansibleWidget<T> extends StatefulWidget {
   final EdgeInsetsGeometry tilePadding;
   final ExpansibleController? controller;
   final bool initiallyExpanded;
+  final double? borderRadius;
 
   const ExpansibleWidget({
     super.key,
@@ -25,6 +26,7 @@ class ExpansibleWidget<T> extends StatefulWidget {
     this.tilePadding = EdgeInsets.zero,
     this.controller,
     this.initiallyExpanded = false,
+    this.borderRadius,
   }) : items = null,
        selectedValue = null,
        itemLabelBuilder = null,
@@ -42,6 +44,7 @@ class ExpansibleWidget<T> extends StatefulWidget {
     this.tilePadding = EdgeInsets.zero,
     this.controller,
     this.initiallyExpanded = false,
+    this.borderRadius,
   }) : children = null;
 
   @override
@@ -153,6 +156,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
 
     return LedgerCard(
       padding: widget.cardPadding,
+      borderRadius: widget.borderRadius ?? 16,
       child: Material(
         type: MaterialType.transparency,
         child: ExpansionTile(

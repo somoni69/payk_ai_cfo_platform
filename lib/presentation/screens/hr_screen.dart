@@ -685,8 +685,10 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.spaceBetween,
                     children: [
                       Text(
                         localeCubit.translate(

@@ -14,6 +14,11 @@ enum AppCapability {
   marketing,
   integrations,
   users,
+  branches,
+  checklists,
+  finOps,
+  reports,
+  audit,
   backups,
 }
 
@@ -36,12 +41,18 @@ extension UserRoleAccess on UserRole {
       AppCapability.strategy,
       AppCapability.legal,
       AppCapability.marketing,
+      AppCapability.branches,
+      AppCapability.checklists,
+      AppCapability.finOps,
+      AppCapability.reports,
     },
     UserRole.accountant => const <AppCapability>{
       AppCapability.dashboard,
       AppCapability.cash,
+      AppCapability.finOps,
+      AppCapability.reports,
     },
-    UserRole.cashier => const <AppCapability>{AppCapability.cash},
+    UserRole.cashier => const <AppCapability>{AppCapability.cash, AppCapability.checklists},
     UserRole.hr => const <AppCapability>{AppCapability.tasks, AppCapability.hr},
     UserRole.viewer => const <AppCapability>{
       AppCapability.dashboard,
@@ -54,6 +65,10 @@ extension UserRoleAccess on UserRole {
       AppCapability.strategy,
       AppCapability.legal,
       AppCapability.marketing,
+      AppCapability.branches,
+      AppCapability.checklists,
+      AppCapability.finOps,
+      AppCapability.reports,
     },
   };
 
@@ -65,7 +80,10 @@ extension UserRoleAccess on UserRole {
     if (!can(capability)) return false;
     return switch (this) {
       UserRole.director || UserRole.manager => true,
-      UserRole.accountant ||
+      UserRole.accountant =>
+        capability == AppCapability.cash ||
+        capability == AppCapability.finOps ||
+        capability == AppCapability.reports,
       UserRole.cashier => capability == AppCapability.cash,
       UserRole.hr =>
         capability == AppCapability.tasks || capability == AppCapability.hr,
@@ -97,6 +115,11 @@ abstract final class AppAccess {
     '/marketing': AppCapability.marketing,
     '/integrations': AppCapability.integrations,
     '/users': AppCapability.users,
+    '/branches': AppCapability.branches,
+    '/checklists': AppCapability.checklists,
+    '/fin-ops': AppCapability.finOps,
+    '/reports': AppCapability.reports,
+    '/audit': AppCapability.audit,
     '/backups': AppCapability.backups,
   };
 
