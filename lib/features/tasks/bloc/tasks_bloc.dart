@@ -269,12 +269,7 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
       final updatedList = List<Task>.from(latestState.tasks)
         ..removeWhere((task) => task.id == created.id)
         ..add(created);
-      emit(
-        latestState.copyWith(
-          tasks: updatedList,
-          clearLoadError: true,
-        ),
-      );
+      emit(latestState.copyWith(tasks: updatedList, clearLoadError: true));
     } catch (e) {
       if (emit.isDone || state is! TasksLoaded) return;
       emit(

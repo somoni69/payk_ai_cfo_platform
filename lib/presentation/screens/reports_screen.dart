@@ -50,7 +50,10 @@ class ReportsView extends StatelessWidget {
     try {
       final branches = await branchesRepo.getBranches();
       if (branches.isNotEmpty) {
-        final activeNames = branches.where((b) => b.isActive).map((b) => b.name).toList();
+        final activeNames = branches
+            .where((b) => b.isActive)
+            .map((b) => b.name)
+            .toList();
         if (activeNames.isNotEmpty) {
           branchNames = activeNames;
         } else {
@@ -109,36 +112,54 @@ class ReportsView extends StatelessWidget {
 
             TextField(
               controller: revCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: textStyles.bodySans,
-              decoration: const InputDecoration(labelText: 'Выручка за день (TJS)'),
+              decoration: const InputDecoration(
+                labelText: 'Выручка за день (TJS)',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: expCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: textStyles.bodySans,
-              decoration: const InputDecoration(labelText: 'Расходы за день (TJS)'),
+              decoration: const InputDecoration(
+                labelText: 'Расходы за день (TJS)',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: cashCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: textStyles.bodySans,
-              decoration: const InputDecoration(labelText: 'Остаток в кассе (TJS)'),
+              decoration: const InputDecoration(
+                labelText: 'Остаток в кассе (TJS)',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: bankCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: textStyles.bodySans,
-              decoration: const InputDecoration(labelText: 'Остаток в банке (TJS)'),
+              decoration: const InputDecoration(
+                labelText: 'Остаток в банке (TJS)',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: commCtrl,
               style: textStyles.bodySans,
-              decoration: const InputDecoration(labelText: 'Комментарии / Замечания'),
+              decoration: const InputDecoration(
+                labelText: 'Комментарии / Замечания',
+              ),
             ),
           ],
         ),
@@ -148,23 +169,27 @@ class ReportsView extends StatelessWidget {
             height: 48,
             child: ElevatedButton(
               onPressed: () {
-                final rev = parseLocalizedNumber(context, revCtrl.text.trim()) ?? 0.0;
-                final exp = parseLocalizedNumber(context, expCtrl.text.trim()) ?? 0.0;
-                final cash = parseLocalizedNumber(context, cashCtrl.text.trim()) ?? 0.0;
-                final bank = parseLocalizedNumber(context, bankCtrl.text.trim()) ?? 0.0;
+                final rev =
+                    parseLocalizedNumber(context, revCtrl.text.trim()) ?? 0.0;
+                final exp =
+                    parseLocalizedNumber(context, expCtrl.text.trim()) ?? 0.0;
+                final cash =
+                    parseLocalizedNumber(context, cashCtrl.text.trim()) ?? 0.0;
+                final bank =
+                    parseLocalizedNumber(context, bankCtrl.text.trim()) ?? 0.0;
 
                 if (rev <= 0) return;
 
                 context.read<ReportsBloc>().add(
-                      CreateDailyReportRequested(
-                        branchName: selectedBranch,
-                        revenue: rev,
-                        expenses: exp,
-                        cashEndBalance: cash,
-                        bankEndBalance: bank,
-                        comments: commCtrl.text.trim(),
-                      ),
-                    );
+                  CreateDailyReportRequested(
+                    branchName: selectedBranch,
+                    revenue: rev,
+                    expenses: exp,
+                    cashEndBalance: cash,
+                    bankEndBalance: bank,
+                    comments: commCtrl.text.trim(),
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -202,7 +227,8 @@ class ReportsView extends StatelessWidget {
     final textStyles = context.textStyles;
     final locale = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
-    final canManage = authState is AuthAuthenticated &&
+    final canManage =
+        authState is AuthAuthenticated &&
         authState.role.canManage(AppCapability.reports);
     final oCcy = localizedDecimalFormat(context);
 
@@ -244,9 +270,9 @@ class ReportsView extends StatelessWidget {
             if (state is ReportsLoaded) {
               return RefreshIndicator(
                 onRefresh: () async {
-                  context
-                      .read<ReportsBloc>()
-                      .add(const LoadReportsData(forceRefresh: true));
+                  context.read<ReportsBloc>().add(
+                    const LoadReportsData(forceRefresh: true),
+                  );
                 },
                 child: ListView(
                   padding: const EdgeInsets.all(16),
@@ -359,10 +385,12 @@ class ReportsView extends StatelessWidget {
                                         ? 'Проверен'
                                         : 'Отправлен',
                                     backgroundColor: rep.status == 'verified'
-                                        ? colors.accentGreen
-                                            .withValues(alpha: 0.1)
-                                        : colors.accentAmber
-                                            .withValues(alpha: 0.1),
+                                        ? colors.accentGreen.withValues(
+                                            alpha: 0.1,
+                                          )
+                                        : colors.accentAmber.withValues(
+                                            alpha: 0.1,
+                                          ),
                                     textColor: rep.status == 'verified'
                                         ? colors.accentGreen
                                         : colors.accentAmber,

@@ -39,12 +39,24 @@ class ApiFinanceRepository implements FinanceRepository {
     try {
       final data = await _getOverviewData();
 
-      final double currentBalance = (data['balance'] ?? data['cash_balance'] ?? data['cashBalance'] ?? 0.0).toDouble();
+      final double currentBalance =
+          (data['balance'] ??
+                  data['cash_balance'] ??
+                  data['cashBalance'] ??
+                  0.0)
+              .toDouble();
       final double revenue = (data['revenue'] ?? 0.0).toDouble();
-      final double expenses = (data['expenses'] ?? data['expense'] ?? 0.0).toDouble();
-      final double profit = (data['profit'] ?? data['net_profit'] ?? data['netProfit'] ?? (revenue - expenses)).toDouble();
+      final double expenses = (data['expenses'] ?? data['expense'] ?? 0.0)
+          .toDouble();
+      final double profit =
+          (data['profit'] ??
+                  data['net_profit'] ??
+                  data['netProfit'] ??
+                  (revenue - expenses))
+              .toDouble();
 
-      final deltasMap = (data['deltas'] as Map<String, dynamic>?) ??
+      final deltasMap =
+          (data['deltas'] as Map<String, dynamic>?) ??
           (data['growth'] as Map<String, dynamic>?) ??
           (data['changes'] as Map<String, dynamic>?) ??
           (data['percentages'] as Map<String, dynamic>?);

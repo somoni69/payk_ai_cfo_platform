@@ -56,10 +56,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
-  Future<void> _onAuthEvent(
-    AuthEvent event,
-    Emitter<AuthState> emit,
-  ) async {
+  Future<void> _onAuthEvent(AuthEvent event, Emitter<AuthState> emit) async {
     if (event is CheckAuthStatus) {
       await _onCheckAuthStatus(event, emit);
       return;

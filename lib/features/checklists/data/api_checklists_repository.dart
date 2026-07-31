@@ -6,7 +6,7 @@ class ApiChecklistsRepository implements ChecklistsRepository {
   final ApiClient _client;
 
   ApiChecklistsRepository({ApiClient? client})
-      : _client = client ?? ApiClient();
+    : _client = client ?? ApiClient();
 
   final List<ChecklistRun> _mockRuns = [
     ChecklistRun(

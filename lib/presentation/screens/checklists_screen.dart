@@ -77,9 +77,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
           const SizedBox(height: 12),
           TextField(
             controller: branchCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Филиал / Точка',
-            ),
+            decoration: const InputDecoration(labelText: 'Филиал / Точка'),
           ),
           const SizedBox(height: 16),
           Row(
@@ -129,17 +127,17 @@ class _ChecklistsViewState extends State<ChecklistsView>
             onPressed: () {
               if (titleCtrl.text.trim().isEmpty) return;
               context.read<ChecklistsBloc>().add(
-                    CreateChecklistRunRequested(
-                      title: titleCtrl.text.trim(),
-                      branchName: branchCtrl.text.trim().isEmpty
-                          ? 'Главный офис'
-                          : branchCtrl.text.trim(),
-                      responsiblePerson: 'Ответственный сотрудник',
-                      items: items.isEmpty
-                          ? ['Проверить оборудование', 'Сдать кассу']
-                          : items,
-                    ),
-                  );
+                CreateChecklistRunRequested(
+                  title: titleCtrl.text.trim(),
+                  branchName: branchCtrl.text.trim().isEmpty
+                      ? 'Главный офис'
+                      : branchCtrl.text.trim(),
+                  responsiblePerson: 'Ответственный сотрудник',
+                  items: items.isEmpty
+                      ? ['Проверить оборудование', 'Сдать кассу']
+                      : items,
+                ),
+              );
               Navigator.pop(context);
             },
             child: Text(locale.translate('save_to_ledger')),
@@ -155,7 +153,8 @@ class _ChecklistsViewState extends State<ChecklistsView>
     final textStyles = context.textStyles;
     final locale = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
-    final canManage = authState is AuthAuthenticated &&
+    final canManage =
+        authState is AuthAuthenticated &&
         authState.role.canManage(AppCapability.checklists);
 
     return Scaffold(
@@ -236,9 +235,9 @@ class _ChecklistsViewState extends State<ChecklistsView>
 
     return RefreshIndicator(
       onRefresh: () async {
-        context
-            .read<ChecklistsBloc>()
-            .add(const LoadChecklists(forceRefresh: true));
+        context.read<ChecklistsBloc>().add(
+          const LoadChecklists(forceRefresh: true),
+        );
       },
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
@@ -316,12 +315,12 @@ class _ChecklistsViewState extends State<ChecklistsView>
                     onChanged: (val) {
                       if (val != null) {
                         context.read<ChecklistsBloc>().add(
-                              ToggleEntryRequested(
-                                runId: run.id,
-                                entryId: entry.id,
-                                isDone: val,
-                              ),
-                            );
+                          ToggleEntryRequested(
+                            runId: run.id,
+                            entryId: entry.id,
+                            isDone: val,
+                          ),
+                        );
                       }
                     },
                   ),

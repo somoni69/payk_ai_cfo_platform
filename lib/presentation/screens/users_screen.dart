@@ -183,7 +183,9 @@ class _UsersViewState extends State<UsersView>
             if (state.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(language.translateMessage(state.successMessage!)),
+                  content: Text(
+                    language.translateMessage(state.successMessage!),
+                  ),
                   backgroundColor: colors.accentGreen,
                 ),
               );
@@ -191,10 +193,7 @@ class _UsersViewState extends State<UsersView>
           },
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildUsersTab(context),
-              _buildAccessTab(context),
-            ],
+            children: [_buildUsersTab(context), _buildAccessTab(context)],
           ),
         ),
       ),
@@ -255,7 +254,10 @@ class _UsersViewState extends State<UsersView>
                       child: ListView.builder(
                         controller: _scrollController,
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         itemCount: state.users.isEmpty ? 1 : visibleUsers,
                         itemBuilder: (context, index) {
                           if (state.users.isEmpty) {
@@ -281,7 +283,8 @@ class _UsersViewState extends State<UsersView>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Expanded(
                                         child: Text(
@@ -291,7 +294,11 @@ class _UsersViewState extends State<UsersView>
                                           ),
                                         ),
                                       ),
-                                      _buildRolePill(context, user.role, colors),
+                                      _buildRolePill(
+                                        context,
+                                        user.role,
+                                        colors,
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 6),
@@ -304,7 +311,8 @@ class _UsersViewState extends State<UsersView>
                                       color: colors.textSecondary,
                                     ),
                                   ),
-                                  if (user.email != null && user.email!.isNotEmpty) ...[
+                                  if (user.email != null &&
+                                      user.email!.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       language.translate(
@@ -316,7 +324,8 @@ class _UsersViewState extends State<UsersView>
                                       ),
                                     ),
                                   ],
-                                  if (user.phone != null && user.phone!.isNotEmpty) ...[
+                                  if (user.phone != null &&
+                                      user.phone!.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       language.translate(
@@ -330,7 +339,8 @@ class _UsersViewState extends State<UsersView>
                                   ],
                                   const Divider(height: 16),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Row(
                                         children: [
@@ -347,11 +357,16 @@ class _UsersViewState extends State<UsersView>
                                           const SizedBox(width: 6),
                                           Text(
                                             user.active
-                                                ? language.translate('users_active')
-                                                : language.translate('users_blocked'),
-                                            style: textStyles.captionSans.copyWith(
-                                              color: colors.textSecondary,
-                                            ),
+                                                ? language.translate(
+                                                    'users_active',
+                                                  )
+                                                : language.translate(
+                                                    'users_blocked',
+                                                  ),
+                                            style: textStyles.captionSans
+                                                .copyWith(
+                                                  color: colors.textSecondary,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -363,7 +378,9 @@ class _UsersViewState extends State<UsersView>
                                               color: colors.brand,
                                               size: 18,
                                             ),
-                                            tooltip: language.translate('common_edit'),
+                                            tooltip: language.translate(
+                                              'common_edit',
+                                            ),
                                             onPressed: () => _showUserDialog(
                                               context,
                                               user: user,
@@ -375,7 +392,9 @@ class _UsersViewState extends State<UsersView>
                                               color: colors.accentRed,
                                               size: 18,
                                             ),
-                                            tooltip: language.translate('common_delete'),
+                                            tooltip: language.translate(
+                                              'common_delete',
+                                            ),
                                             onPressed: () {
                                               _confirmDelete(context, user.id);
                                             },
@@ -461,7 +480,9 @@ class _UsersViewState extends State<UsersView>
                   selectedColor: colors.brand.withValues(alpha: 0.15),
                   labelStyle: textStyles.captionSans.copyWith(
                     color: isSelected ? colors.brand : colors.textPrimary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                   side: BorderSide(
                     color: isSelected ? colors.brand : colors.border,
@@ -484,15 +505,36 @@ class _UsersViewState extends State<UsersView>
             children: [
               Text(
                 'Модуль',
-                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Row(
                 children: [
-                  SizedBox(width: 34, child: Center(child: _buildActionLegend('Пр', 'Просмотр'))),
-                  SizedBox(width: 34, child: Center(child: _buildActionLegend('Доб', 'Добавление'))),
-                  SizedBox(width: 34, child: Center(child: _buildActionLegend('Изм', 'Изменение'))),
-                  SizedBox(width: 34, child: Center(child: _buildActionLegend('Уд', 'Удаление'))),
-                  SizedBox(width: 34, child: Center(child: _buildActionLegend('Дей', 'Действия'))),
+                  SizedBox(
+                    width: 34,
+                    child: Center(child: _buildActionLegend('Пр', 'Просмотр')),
+                  ),
+                  SizedBox(
+                    width: 34,
+                    child: Center(
+                      child: _buildActionLegend('Доб', 'Добавление'),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 34,
+                    child: Center(
+                      child: _buildActionLegend('Изм', 'Изменение'),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 34,
+                    child: Center(child: _buildActionLegend('Уд', 'Удаление')),
+                  ),
+                  SizedBox(
+                    width: 34,
+                    child: Center(child: _buildActionLegend('Дей', 'Действия')),
+                  ),
                 ],
               ),
             ],
@@ -522,11 +564,31 @@ class _UsersViewState extends State<UsersView>
                   ),
                   Row(
                     children: [
-                      _buildPermCheckbox('view', perms['view'] ?? false, moduleName),
-                      _buildPermCheckbox('add', perms['add'] ?? false, moduleName),
-                      _buildPermCheckbox('edit', perms['edit'] ?? false, moduleName),
-                      _buildPermCheckbox('del', perms['del'] ?? false, moduleName),
-                      _buildPermCheckbox('act', perms['act'] ?? false, moduleName),
+                      _buildPermCheckbox(
+                        'view',
+                        perms['view'] ?? false,
+                        moduleName,
+                      ),
+                      _buildPermCheckbox(
+                        'add',
+                        perms['add'] ?? false,
+                        moduleName,
+                      ),
+                      _buildPermCheckbox(
+                        'edit',
+                        perms['edit'] ?? false,
+                        moduleName,
+                      ),
+                      _buildPermCheckbox(
+                        'del',
+                        perms['del'] ?? false,
+                        moduleName,
+                      ),
+                      _buildPermCheckbox(
+                        'act',
+                        perms['act'] ?? false,
+                        moduleName,
+                      ),
                     ],
                   ),
                 ],
@@ -576,7 +638,8 @@ class _UsersViewState extends State<UsersView>
           onChanged: (val) {
             if (val == null) return;
             setState(() {
-              _permissionsMatrix[_selectedAccessRole]?[moduleName]?[actionKey] = val;
+              _permissionsMatrix[_selectedAccessRole]?[moduleName]?[actionKey] =
+                  val;
             });
           },
         ),
@@ -687,7 +750,14 @@ class _UsersViewState extends State<UsersView>
     bool twoFactor = user?.twoFactor ?? false;
 
     final branches = ['Без филиала', 'Главный филиал', 'Филиал №2'];
-    final roles = ['observer', 'manager', 'accountant', 'cashier', 'hr', 'director'];
+    final roles = [
+      'observer',
+      'manager',
+      'accountant',
+      'cashier',
+      'hr',
+      'director',
+    ];
 
     try {
       await LedgerBottomSheet.show(
@@ -730,9 +800,7 @@ class _UsersViewState extends State<UsersView>
                 TextField(
                   controller: usernameCtrl,
                   style: textStyles.bodySans,
-                  decoration: const InputDecoration(
-                    hintText: 'ivanov',
-                  ),
+                  decoration: const InputDecoration(hintText: 'ivanov'),
                 ),
                 const SizedBox(height: 14),
               ],
@@ -810,7 +878,9 @@ class _UsersViewState extends State<UsersView>
                             horizontal: 4,
                             vertical: 0,
                           ),
-                          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                          tilePadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                          ),
                           title: Text(
                             language.translate(_userRoleTranslationKey(role)),
                             style: textStyles.captionSans.copyWith(
@@ -821,8 +891,9 @@ class _UsersViewState extends State<UsersView>
                           ),
                           items: roles,
                           selectedValue: role,
-                          itemLabelBuilder: (rCode) =>
-                              language.translate(_userRoleTranslationKey(rCode)),
+                          itemLabelBuilder: (rCode) => language.translate(
+                            _userRoleTranslationKey(rCode),
+                          ),
                           onSelected: (val) {
                             setModalState(() => role = val);
                           },
@@ -848,7 +919,9 @@ class _UsersViewState extends State<UsersView>
                             horizontal: 4,
                             vertical: 0,
                           ),
-                          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                          tilePadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                          ),
                           title: Text(
                             branch,
                             style: textStyles.captionSans.copyWith(

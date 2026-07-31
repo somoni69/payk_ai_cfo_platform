@@ -81,10 +81,7 @@ class ApiReportsRepository implements ReportsRepository {
       comments: comments ?? '',
     );
     try {
-      await _client.dio.post(
-        '/api/v1/reports/daily',
-        data: report.toJson(),
-      );
+      await _client.dio.post('/api/v1/reports/daily', data: report.toJson());
     } catch (_) {}
 
     _mockReports.insert(0, report);

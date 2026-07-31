@@ -112,7 +112,9 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<StoreTransfer>> getStoreTransfers() async {
     try {
-      final response = await _client.dio.get('/api/v1/finance-ops/store-transfers');
+      final response = await _client.dio.get(
+        '/api/v1/finance-ops/store-transfers',
+      );
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => StoreTransfer.fromJson(e as Map<String, dynamic>))
@@ -125,7 +127,9 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<FinancialAid>> getFinancialAids() async {
     try {
-      final response = await _client.dio.get('/api/v1/finance-ops/financial-aid');
+      final response = await _client.dio.get(
+        '/api/v1/finance-ops/financial-aid',
+      );
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => FinancialAid.fromJson(e as Map<String, dynamic>))

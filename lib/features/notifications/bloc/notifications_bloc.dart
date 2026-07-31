@@ -42,10 +42,16 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
 
     try {
       final notifications = await activeRequest;
-      if (!ownsRequest || emit.isDone || !identical(_loadRequest, activeRequest)) return;
+      if (!ownsRequest ||
+          emit.isDone ||
+          !identical(_loadRequest, activeRequest))
+        return;
       emit(NotificationsLoaded(_reconcileConfirmedReads(notifications)));
     } catch (_) {
-      if (!ownsRequest || emit.isDone || !identical(_loadRequest, activeRequest)) return;
+      if (!ownsRequest ||
+          emit.isDone ||
+          !identical(_loadRequest, activeRequest))
+        return;
       const message = 'Не удалось загрузить уведомления. Проверьте соединение.';
       if (previous != null) {
         emit(previous.copyWith(errorMessage: message));
@@ -67,12 +73,15 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   List<AppNotification> _reconcileConfirmedReads(
     List<AppNotification> notifications,
   ) {
-    return notifications.map((notification) {
-      if (_confirmedReadIds.contains(notification.id) && !notification.isRead) {
-        return notification.copyWith(isRead: true);
-      }
-      return notification;
-    }).toList(growable: false);
+    return notifications
+        .map((notification) {
+          if (_confirmedReadIds.contains(notification.id) &&
+              !notification.isRead) {
+            return notification.copyWith(isRead: true);
+          }
+          return notification;
+        })
+        .toList(growable: false);
   }
 
   Future<void> _onMarkNotificationAsRead(
@@ -88,11 +97,13 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       if (emit.isDone || state is! NotificationsLoaded) return;
       final current = state as NotificationsLoaded;
 
-      final updatedList = current.notifications.map((notification) {
-        return notification.id == event.id
-            ? notification.copyWith(isRead: true)
-            : notification;
-      }).toList(growable: false);
+      final updatedList = current.notifications
+          .map((notification) {
+            return notification.id == event.id
+                ? notification.copyWith(isRead: true)
+                : notification;
+          })
+          .toList(growable: false);
 
       emit(current.copyWith(notifications: updatedList, clearError: true));
     } catch (_) {

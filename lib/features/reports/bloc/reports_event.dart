@@ -34,13 +34,13 @@ class CreateDailyReportRequested extends ReportsEvent {
 
   @override
   List<Object?> get props => [
-        branchName,
-        revenue,
-        expenses,
-        cashEndBalance,
-        bankEndBalance,
-        comments,
-      ];
+    branchName,
+    revenue,
+    expenses,
+    cashEndBalance,
+    bankEndBalance,
+    comments,
+  ];
 }
 
 class DeleteDailyReportRequested extends ReportsEvent {

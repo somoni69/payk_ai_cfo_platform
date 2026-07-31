@@ -198,7 +198,10 @@ class _TasksViewState extends State<TasksView>
                   BlocBuilder<TasksBloc, TasksState>(
                     buildWhen: (previous, current) {
                       if (previous is TasksLoaded && current is TasksLoaded) {
-                        return !identical(previous.projects, current.projects) ||
+                        return !identical(
+                              previous.projects,
+                              current.projects,
+                            ) ||
                             !identical(previous.assignees, current.assignees);
                       }
                       return previous.runtimeType != current.runtimeType;
@@ -214,8 +217,11 @@ class _TasksViewState extends State<TasksView>
                         icon: const Icon(TablerIcons.plus),
                         tooltip: language.translate('tasks_add_title'),
                         color: colors.brand,
-                        onPressed: () =>
-                            _showAddTaskBottomSheet(context, projects, assignees),
+                        onPressed: () => _showAddTaskBottomSheet(
+                          context,
+                          projects,
+                          assignees,
+                        ),
                       );
                     },
                   ),
@@ -841,7 +847,9 @@ class _TasksViewState extends State<TasksView>
                 child: Text(
                   language.translate(priority.localizationKey),
                   style: textStyles.captionSans.copyWith(
-                    color: isSelected ? selectedTextColor : colors.textSecondary,
+                    color: isSelected
+                        ? selectedTextColor
+                        : colors.textSecondary,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),

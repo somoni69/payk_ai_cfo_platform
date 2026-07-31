@@ -126,9 +126,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     Emitter<DashboardState> emit, {
     bool forceRefresh = false,
   }) async {
-    final abcRevision = section == DashboardSection.abc
-        ? ++_abcRevision
-        : null;
+    final abcRevision = section == DashboardSection.abc ? ++_abcRevision : null;
     _loadingSections.add(section);
     _sectionErrors.remove(section);
     _emitCurrentState(emit);
@@ -169,8 +167,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (error) {
       if (abcRevision == null || abcRevision == _abcRevision) {
-      _sectionErrors[section] =
-          'Не удалось загрузить раздел. Повторите попытку.';
+        _sectionErrors[section] =
+            'Не удалось загрузить раздел. Повторите попытку.';
       }
     } finally {
       if (abcRevision == null || abcRevision == _abcRevision) {
@@ -272,8 +270,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedAbc = abc;
     } catch (error) {
       if (revision == _abcRevision && !emit.isDone) {
-      _sectionErrors[DashboardSection.abc] =
-          'Не удалось загрузить ABC-анализ. Повторите попытку.';
+        _sectionErrors[DashboardSection.abc] =
+            'Не удалось загрузить ABC-анализ. Повторите попытку.';
       }
     } finally {
       if (revision == _abcRevision) {

@@ -43,13 +43,13 @@ class AuditLog extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        timestamp,
-        userName,
-        action,
-        entityType,
-        details,
-      ];
+    id,
+    timestamp,
+    userName,
+    action,
+    entityType,
+    details,
+  ];
 }
 
 class AuditAlert extends Equatable {

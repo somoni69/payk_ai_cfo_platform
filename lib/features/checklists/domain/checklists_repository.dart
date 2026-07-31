@@ -17,8 +17,5 @@ abstract class ChecklistsRepository {
     required String runId,
     required String text,
   });
-  Future<void> deleteRunEntry({
-    required String runId,
-    required String entryId,
-  });
+  Future<void> deleteRunEntry({required String runId, required String entryId});
 }

@@ -69,10 +69,7 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
     Emitter<ChecklistsState> emit,
   ) async {
     try {
-      await _repository.addRunEntry(
-        runId: event.runId,
-        text: event.text,
-      );
+      await _repository.addRunEntry(runId: event.runId, text: event.text);
       final runs = await _repository.getTodayRuns();
       emit(ChecklistsLoaded(todayRuns: runs));
     } catch (e) {

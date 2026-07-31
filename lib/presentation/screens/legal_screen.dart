@@ -87,9 +87,7 @@ class _LegalScreenState extends State<LegalScreen>
           final loaded = state as LegalLoaded;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                localeCubit.translateMessage(loaded.errorMessage!),
-              ),
+              content: Text(localeCubit.translateMessage(loaded.errorMessage!)),
               backgroundColor: colors.accentRed,
             ),
           );
@@ -98,125 +96,131 @@ class _LegalScreenState extends State<LegalScreen>
           listenWhen: shouldAutoScrollLegalChat,
           listener: (context, state) => _scrollToBottom(),
           builder: (context, state) {
-          if (state is LegalLoading) {
-            return Scaffold(
-              backgroundColor: colors.background,
-              appBar: AppBar(
-                backgroundColor: colors.surface,
-                title: Text(
-                  localeCubit.translate('legal_loading_title'),
-                  style: textStyles.h1Sans.copyWith(
-                    fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
-                    fontWeight: FontWeight.w600,
+            if (state is LegalLoading) {
+              return Scaffold(
+                backgroundColor: colors.background,
+                appBar: AppBar(
+                  backgroundColor: colors.surface,
+                  title: Text(
+                    localeCubit.translate('legal_loading_title'),
+                    style: textStyles.h1Sans.copyWith(
+                      fontSize: MediaQuery.of(context).size.width >= 600
+                          ? 22.0
+                          : 20.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              body: const Center(child: CircularProgressIndicator()),
-            );
-          }
+                body: const Center(child: CircularProgressIndicator()),
+              );
+            }
 
-          if (state is LegalError) {
-            return Scaffold(
-              backgroundColor: colors.background,
-              appBar: AppBar(
-                backgroundColor: colors.surface,
-                title: Text(
-                  localeCubit.translate('legal_error_title'),
-                  style: textStyles.h1Sans.copyWith(
-                    fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
-                    fontWeight: FontWeight.w600,
+            if (state is LegalError) {
+              return Scaffold(
+                backgroundColor: colors.background,
+                appBar: AppBar(
+                  backgroundColor: colors.surface,
+                  title: Text(
+                    localeCubit.translate('legal_error_title'),
+                    style: textStyles.h1Sans.copyWith(
+                      fontSize: MediaQuery.of(context).size.width >= 600
+                          ? 22.0
+                          : 20.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        TablerIcons.alert_triangle,
-                        color: colors.accentRed,
-                        size: 40,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        localeCubit.translateMessage(state.message),
-                        style: textStyles.bodySans,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          context.read<LegalBloc>().add(
-                            const LoadLegalData(forceRefresh: true),
-                          );
-                        },
-                        child: Text(localeCubit.translate('legal_retry')),
-                      ),
+                body: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          TablerIcons.alert_triangle,
+                          color: colors.accentRed,
+                          size: 40,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          localeCubit.translateMessage(state.message),
+                          style: textStyles.bodySans,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            context.read<LegalBloc>().add(
+                              const LoadLegalData(forceRefresh: true),
+                            );
+                          },
+                          child: Text(localeCubit.translate('legal_retry')),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            if (state is LegalLoaded) {
+              return Scaffold(
+                backgroundColor: colors.background,
+                appBar: AppBar(
+                  backgroundColor: colors.surface,
+                  scrolledUnderElevation: 0,
+                  title: Text(
+                    localeCubit.translate('legal_title'),
+                    style: textStyles.h1Sans.copyWith(
+                      fontSize: MediaQuery.of(context).size.width >= 600
+                          ? 22.0
+                          : 20.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  bottom: TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    labelColor: colors.brand,
+                    unselectedLabelColor: colors.textSecondary,
+                    indicatorColor: colors.brand,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: colors.border,
+                    labelStyle: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    unselectedLabelStyle: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w400,
+                    ),
+                    tabs: [
+                      Tab(text: localeCubit.translate('legal_tab_ai_lawyer')),
+                      Tab(text: localeCubit.translate('legal_tab_laws')),
+                      Tab(text: localeCubit.translate('legal_tab_constructor')),
+                      Tab(text: localeCubit.translate('legal_tab_deadlines')),
                     ],
                   ),
                 ),
-              ),
-            );
-          }
-
-          if (state is LegalLoaded) {
-            return Scaffold(
-              backgroundColor: colors.background,
-              appBar: AppBar(
-                backgroundColor: colors.surface,
-                scrolledUnderElevation: 0,
-                title: Text(
-                  localeCubit.translate('legal_title'),
-                  style: textStyles.h1Sans.copyWith(
-                    fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                bottom: TabBar(
+                body: TabBarView(
                   controller: _tabController,
-                  isScrollable: true,
-                  labelColor: colors.brand,
-                  unselectedLabelColor: colors.textSecondary,
-                  indicatorColor: colors.brand,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: colors.border,
-                  labelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                  unselectedLabelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w400,
-                  ),
-                  tabs: [
-                    Tab(text: localeCubit.translate('legal_tab_ai_lawyer')),
-                    Tab(text: localeCubit.translate('legal_tab_laws')),
-                    Tab(text: localeCubit.translate('legal_tab_constructor')),
-                    Tab(text: localeCubit.translate('legal_tab_deadlines')),
+                  children: [
+                    _buildAiLawyerTab(context, state),
+                    _buildLawsTab(context, state),
+                    _buildConstructorTab(context, state),
+                    _buildDeadlinesTab(context, state),
                   ],
                 ),
-              ),
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildAiLawyerTab(context, state),
-                  _buildLawsTab(context, state),
-                  _buildConstructorTab(context, state),
-                  _buildDeadlinesTab(context, state),
-                ],
-              ),
-            );
-          }
+              );
+            }
 
-          return const SizedBox.shrink();
-        },
-      ),
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }

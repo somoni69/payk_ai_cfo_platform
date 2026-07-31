@@ -135,100 +135,98 @@ class _MoreScreenState extends State<MoreScreen> {
               pinned: true,
               floating: true,
               snap: true,
-              actions: const [
-                PaykLogo(height: 22),
-              ],
+              actions: const [PaykLogo(height: 22)],
             ),
           ];
         },
         body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Профиль пользователя
-              _buildProfileCard(),
-              const SizedBox(height: 20),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Профиль пользователя
+                _buildProfileCard(),
+                const SizedBox(height: 20),
 
-              // Безопасность и настройки
-              Text(
-                context.translate('more_access_settings'),
-                style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.bold,
+                // Безопасность и настройки
+                Text(
+                  context.translate('more_access_settings'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              LedgerCard(
-                padding: EdgeInsets.zero,
-                child: _buildSettingsToggleRow(
-                  icon: TablerIcons.fingerprint,
-                  title: context.translate('biometrics'),
-                  value: _biometricEnabled,
-                  onChanged: _onBiometricToggleChanged,
+                const SizedBox(height: 8),
+                LedgerCard(
+                  padding: EdgeInsets.zero,
+                  child: _buildSettingsToggleRow(
+                    icon: TablerIcons.fingerprint,
+                    title: context.translate('biometrics'),
+                    value: _biometricEnabled,
+                    onChanged: _onBiometricToggleChanged,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              ExpansibleWidget<String>.selection(
-                cardPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 6,
-                ),
-                tilePadding: EdgeInsets.zero,
-                title: Row(
-                  children: [
-                    Icon(
-                      TablerIcons.language,
-                      color: colors.textSecondary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        context.translate('language'),
-                        style: textStyles.bodySans,
+                const SizedBox(height: 12),
+                ExpansibleWidget<String>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  title: Row(
+                    children: [
+                      Icon(
+                        TablerIcons.language,
+                        color: colors.textSecondary,
+                        size: 20,
                       ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          context.translate('language'),
+                          style: textStyles.bodySans,
+                        ),
+                      ),
+                    ],
+                  ),
+                  subtitle: Text(
+                    currentLanguageLabel,
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
                     ),
-                  ],
-                ),
-                subtitle: Text(
-                  currentLanguageLabel,
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
                   ),
+                  items: const ['ru', 'tg'],
+                  selectedValue: locale.languageCode,
+                  itemLabelBuilder: (code) => code == 'tg'
+                      ? context.translate('language_tajik')
+                      : context.translate('language_russian'),
+                  onSelected: (val) {
+                    context.read<LanguageCubit>().setLanguage(val);
+                  },
                 ),
-                items: const ['ru', 'tg'],
-                selectedValue: locale.languageCode,
-                itemLabelBuilder: (code) => code == 'tg'
-                    ? context.translate('language_tajik')
-                    : context.translate('language_russian'),
-                onSelected: (val) {
-                  context.read<LanguageCubit>().setLanguage(val);
-                },
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 20),
 
-              if (role != null) ..._buildGroupedModules(role),
+                if (role != null) ..._buildGroupedModules(role),
 
-              // Выход (Смена сессии)
-              OutlinedButton(
-                onPressed: () {
-                  context.read<AuthBloc>().add(LogoutRequested());
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.accentRed,
-                  side: BorderSide(
-                    color: colors.accentRed.withValues(alpha: 0.5),
+                // Выход (Смена сессии)
+                OutlinedButton(
+                  onPressed: () {
+                    context.read<AuthBloc>().add(LogoutRequested());
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.accentRed,
+                    side: BorderSide(
+                      color: colors.accentRed.withValues(alpha: 0.5),
+                    ),
                   ),
+                  child: Text(context.translate('logout')),
                 ),
-                child: Text(context.translate('logout')),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 
   List<Widget> _buildGroupedModules(UserRole role) {
@@ -338,8 +336,9 @@ class _MoreScreenState extends State<MoreScreen> {
     final widgets = <Widget>[];
 
     for (final group in groups) {
-      final allowedModules =
-          group.modules.where((m) => role.can(m.capability)).toList();
+      final allowedModules = group.modules
+          .where((m) => role.can(m.capability))
+          .toList();
 
       if (allowedModules.isEmpty) continue;
 
@@ -365,7 +364,10 @@ class _MoreScreenState extends State<MoreScreen> {
       }
 
       widgets.add(
-        LedgerCard(padding: EdgeInsets.zero, child: Column(children: rows)),
+        LedgerCard(
+          padding: EdgeInsets.zero,
+          child: Column(children: rows),
+        ),
       );
       widgets.add(const SizedBox(height: 20));
     }

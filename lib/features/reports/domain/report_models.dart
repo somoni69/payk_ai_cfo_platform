@@ -59,15 +59,15 @@ class DailyReport extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        branchName,
-        date,
-        revenue,
-        expenses,
-        netProfit,
-        cashEndBalance,
-        bankEndBalance,
-        status,
-        comments,
-      ];
+    id,
+    branchName,
+    date,
+    revenue,
+    expenses,
+    netProfit,
+    cashEndBalance,
+    bankEndBalance,
+    status,
+    comments,
+  ];
 }

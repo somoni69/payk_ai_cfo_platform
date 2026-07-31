@@ -72,9 +72,7 @@ class _FinOpsViewState extends State<FinOpsView>
         children: [
           Text(
             'Банк зачисления',
-            style: textStyles.bodySans.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
           ExpansibleWidget<BankAccount>.selection(
@@ -96,12 +94,16 @@ class _FinOpsViewState extends State<FinOpsView>
           TextField(
             controller: amountCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Сумма инкассации (TJS)'),
+            decoration: const InputDecoration(
+              labelText: 'Сумма инкассации (TJS)',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: respCtrl,
-            decoration: const InputDecoration(labelText: 'Ответственный ликвидтор'),
+            decoration: const InputDecoration(
+              labelText: 'Ответственный ликвидтор',
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton(
@@ -109,12 +111,12 @@ class _FinOpsViewState extends State<FinOpsView>
               final amt = double.tryParse(amountCtrl.text.trim());
               if (amt == null || amt <= 0) return;
               context.read<FinOpsBloc>().add(
-                    CreateEncashmentRequested(
-                      bankName: selectedBank?.bankName ?? 'Ориёнбанк',
-                      amount: amt,
-                      responsiblePerson: respCtrl.text.trim(),
-                    ),
-                  );
+                CreateEncashmentRequested(
+                  bankName: selectedBank?.bankName ?? 'Ориёнбанк',
+                  amount: amt,
+                  responsiblePerson: respCtrl.text.trim(),
+                ),
+              );
               Navigator.pop(context);
             },
             child: Text(locale.translate('save_to_ledger')),
@@ -139,7 +141,9 @@ class _FinOpsViewState extends State<FinOpsView>
         children: [
           TextField(
             controller: fromCtrl,
-            decoration: const InputDecoration(labelText: 'Откуда (Филиал/Касса)'),
+            decoration: const InputDecoration(
+              labelText: 'Откуда (Филиал/Касса)',
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -150,7 +154,9 @@ class _FinOpsViewState extends State<FinOpsView>
           TextField(
             controller: amountCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Сумма перевода (TJS)'),
+            decoration: const InputDecoration(
+              labelText: 'Сумма перевода (TJS)',
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton(
@@ -158,12 +164,12 @@ class _FinOpsViewState extends State<FinOpsView>
               final amt = double.tryParse(amountCtrl.text.trim());
               if (amt == null || amt <= 0) return;
               context.read<FinOpsBloc>().add(
-                    CreateStoreTransferRequested(
-                      fromBranch: fromCtrl.text.trim(),
-                      toBranch: toCtrl.text.trim(),
-                      amount: amt,
-                    ),
-                  );
+                CreateStoreTransferRequested(
+                  fromBranch: fromCtrl.text.trim(),
+                  toBranch: toCtrl.text.trim(),
+                  amount: amt,
+                ),
+              );
               Navigator.pop(context);
             },
             child: Text(locale.translate('save_to_ledger')),
@@ -193,7 +199,9 @@ class _FinOpsViewState extends State<FinOpsView>
           TextField(
             controller: amountCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Сумма займа/помощи (TJS)'),
+            decoration: const InputDecoration(
+              labelText: 'Сумма займа/помощи (TJS)',
+            ),
           ),
           const SizedBox(height: 20),
           ElevatedButton(
@@ -203,11 +211,11 @@ class _FinOpsViewState extends State<FinOpsView>
                 return;
               }
               context.read<FinOpsBloc>().add(
-                    CreateFinancialAidRequested(
-                      employeeName: empCtrl.text.trim(),
-                      amount: amt,
-                    ),
-                  );
+                CreateFinancialAidRequested(
+                  employeeName: empCtrl.text.trim(),
+                  amount: amt,
+                ),
+              );
               Navigator.pop(context);
             },
             child: Text(locale.translate('save_to_ledger')),
@@ -222,7 +230,8 @@ class _FinOpsViewState extends State<FinOpsView>
     final colors = context.colors;
     final locale = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
-    final canManage = authState is AuthAuthenticated &&
+    final canManage =
+        authState is AuthAuthenticated &&
         authState.role.canManage(AppCapability.finOps);
 
     return Scaffold(
@@ -286,7 +295,8 @@ class _FinOpsViewState extends State<FinOpsView>
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
-              onPressed: () => _showEncashmentModal(context, state.bankAccounts),
+              onPressed: () =>
+                  _showEncashmentModal(context, state.bankAccounts),
               backgroundColor: colors.brand,
               foregroundColor: Colors.white,
               icon: const Icon(TablerIcons.cash_banknote),
@@ -444,7 +454,9 @@ class _FinOpsViewState extends State<FinOpsView>
                       backgroundColor: isPending
                           ? colors.accentAmber.withValues(alpha: 0.1)
                           : colors.accentGreen.withValues(alpha: 0.1),
-                      textColor: isPending ? colors.accentAmber : colors.accentGreen,
+                      textColor: isPending
+                          ? colors.accentAmber
+                          : colors.accentGreen,
                     ),
                   ],
                 ),
@@ -461,11 +473,11 @@ class _FinOpsViewState extends State<FinOpsView>
                       OutlinedButton(
                         onPressed: () {
                           context.read<FinOpsBloc>().add(
-                                UpdateTransferStatusRequested(
-                                  transferId: tr.id,
-                                  status: 'received',
-                                ),
-                              );
+                            UpdateTransferStatusRequested(
+                              transferId: tr.id,
+                              status: 'received',
+                            ),
+                          );
                         },
                         child: const Text('Подтвердить прием'),
                       ),
@@ -532,7 +544,9 @@ class _FinOpsViewState extends State<FinOpsView>
                       backgroundColor: isActive
                           ? colors.accentAmber.withValues(alpha: 0.1)
                           : colors.accentGreen.withValues(alpha: 0.1),
-                      textColor: isActive ? colors.accentAmber : colors.accentGreen,
+                      textColor: isActive
+                          ? colors.accentAmber
+                          : colors.accentGreen,
                     ),
                   ],
                 ),
@@ -557,11 +571,11 @@ class _FinOpsViewState extends State<FinOpsView>
                       ElevatedButton(
                         onPressed: () {
                           context.read<FinOpsBloc>().add(
-                                RepayFinancialAidRequested(
-                                  aidId: aid.id,
-                                  amount: aid.remainingAmount,
-                                ),
-                              );
+                            RepayFinancialAidRequested(
+                              aidId: aid.id,
+                              amount: aid.remainingAmount,
+                            ),
+                          );
                         },
                         child: const Text('Погасить полностью'),
                       ),

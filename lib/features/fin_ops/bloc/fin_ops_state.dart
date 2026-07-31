@@ -29,12 +29,12 @@ class FinOpsLoaded extends FinOpsState {
 
   @override
   List<Object?> get props => [
-        bankAccounts,
-        encashments,
-        storeTransfers,
-        financialAids,
-        message,
-      ];
+    bankAccounts,
+    encashments,
+    storeTransfers,
+    financialAids,
+    message,
+  ];
 }
 
 class FinOpsError extends FinOpsState {

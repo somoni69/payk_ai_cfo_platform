@@ -22,8 +22,9 @@ class BranchesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<BranchesBloc>(
-      create: (context) => BranchesBloc(context.read<BranchesRepository>())
-        ..add(const LoadBranches()),
+      create: (context) =>
+          BranchesBloc(context.read<BranchesRepository>())
+            ..add(const LoadBranches()),
       child: const BranchesView(),
     );
   }
@@ -43,9 +44,7 @@ class BranchesView extends StatelessWidget {
 
     LedgerBottomSheet.show(
       context: context,
-      title: editing == null
-          ? locale.translate('branches_new')
-          : editing.name,
+      title: editing == null ? locale.translate('branches_new') : editing.name,
       builder: (context, setSheetState) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -91,22 +90,22 @@ class BranchesView extends StatelessWidget {
               if (nameCtrl.text.trim().isEmpty) return;
               if (editing == null) {
                 context.read<BranchesBloc>().add(
-                      CreateBranchRequested(
-                        name: nameCtrl.text.trim(),
-                        address: addressCtrl.text.trim(),
-                        phone: phoneCtrl.text.trim(),
-                      ),
-                    );
+                  CreateBranchRequested(
+                    name: nameCtrl.text.trim(),
+                    address: addressCtrl.text.trim(),
+                    phone: phoneCtrl.text.trim(),
+                  ),
+                );
               } else {
                 context.read<BranchesBloc>().add(
-                      UpdateBranchRequested(
-                        id: editing.id,
-                        name: nameCtrl.text.trim(),
-                        address: addressCtrl.text.trim(),
-                        phone: phoneCtrl.text.trim(),
-                        isActive: isActive,
-                      ),
-                    );
+                  UpdateBranchRequested(
+                    id: editing.id,
+                    name: nameCtrl.text.trim(),
+                    address: addressCtrl.text.trim(),
+                    phone: phoneCtrl.text.trim(),
+                    isActive: isActive,
+                  ),
+                );
               }
               Navigator.pop(context);
             },
@@ -123,7 +122,8 @@ class BranchesView extends StatelessWidget {
     final textStyles = context.textStyles;
     final locale = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
-    final canManage = authState is AuthAuthenticated &&
+    final canManage =
+        authState is AuthAuthenticated &&
         authState.role.canManage(AppCapability.branches);
 
     return Scaffold(
@@ -156,9 +156,9 @@ class BranchesView extends StatelessWidget {
         body: BlocConsumer<BranchesBloc, BranchesState>(
           listener: (context, state) {
             if (state is BranchesLoaded && state.message != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message!)),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message!)));
             }
           },
           builder: (context, state) {
@@ -181,9 +181,9 @@ class BranchesView extends StatelessWidget {
               }
               return RefreshIndicator(
                 onRefresh: () async {
-                  context
-                      .read<BranchesBloc>()
-                      .add(const LoadBranches(forceRefresh: true));
+                  context.read<BranchesBloc>().add(
+                    const LoadBranches(forceRefresh: true),
+                  );
                 },
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
@@ -266,9 +266,9 @@ class BranchesView extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                locale.translate(
-                                  'branches_registers',
-                                ).replaceAll(
+                                locale
+                                    .translate('branches_registers')
+                                    .replaceAll(
                                       '{count}',
                                       branch.registersCount.toString(),
                                     ),
@@ -297,8 +297,8 @@ class BranchesView extends StatelessWidget {
                                       ),
                                       onPressed: () {
                                         context.read<BranchesBloc>().add(
-                                              DeleteBranchRequested(branch.id),
-                                            );
+                                          DeleteBranchRequested(branch.id),
+                                        );
                                       },
                                     ),
                                   ],
