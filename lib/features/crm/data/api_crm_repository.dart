@@ -7,7 +7,7 @@ import '../domain/crm_repository.dart';
 /// CRM API: `/crm/*` (OpenAPI + web Payk-Ecosystem parity).
 class ApiCrmRepository implements CrmRepository {
   final ApiClient _apiClient = ApiClient();
-  final _clientsCache = ExpiringRequestCache<ClientsPage>();
+  final _clientsByKey = <String, ExpiringRequestCache<ClientsPage>>{};
   final _dealsCache = ExpiringRequestCache<List<CrmDeal>>();
   final _statsCache = ExpiringRequestCache<CrmStatsData>();
   final _loyaltyCache = ExpiringRequestCache<List<LoyaltySummaryRow>>();
@@ -15,7 +15,6 @@ class ApiCrmRepository implements CrmRepository {
   final _churnCache = ExpiringRequestCache<List<CrmClient>>();
   final _birthdaysCache = ExpiringRequestCache<List<BirthdayRow>>();
 
-  String? _clientsCacheKey;
   String? _dealsCacheKey;
 
   int _requirePositiveId(String value, String fieldName) {
@@ -79,14 +78,16 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   void _invalidateMutations() {
-    _clientsCache.invalidate();
+    for (final cache in _clientsByKey.values) {
+      cache.invalidate();
+    }
+    _clientsByKey.clear();
     _dealsCache.invalidate();
     _statsCache.invalidate();
     _loyaltyCache.invalidate();
     _reactivationCache.invalidate();
     _churnCache.invalidate();
     _birthdaysCache.invalidate();
-    _clientsCacheKey = null;
     _dealsCacheKey = null;
   }
 
@@ -97,11 +98,11 @@ class ApiCrmRepository implements CrmRepository {
   }) {
     final key =
         '${filters.query ?? ''}|${filters.level ?? ''}|${filters.page}|${filters.size}';
-    if (forceRefresh || key != _clientsCacheKey) {
-      _clientsCache.invalidate();
-      _clientsCacheKey = key;
-    }
-    return _clientsCache.get(
+    final cache = _clientsByKey.putIfAbsent(
+      key,
+      ExpiringRequestCache<ClientsPage>.new,
+    );
+    return cache.get(
       () => _fetchClients(filters),
       forceRefresh: forceRefresh,
     );

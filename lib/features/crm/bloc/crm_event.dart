@@ -186,3 +186,24 @@ class ClearClientDetail extends CrmEvent {
 class ClearCrmFeedback extends CrmEvent {
   const ClearCrmFeedback();
 }
+
+/// Filter loyalty journal by client (`null` / empty = all).
+class LoyaltyHistoryFilterChanged extends CrmEvent {
+  final String? clientId;
+
+  const LoyaltyHistoryFilterChanged(this.clientId);
+
+  @override
+  List<Object?> get props => [clientId];
+}
+
+/// Quick funnel stage step: −1 previous, +1 next in [kDealStages].
+class MoveDealStageRequested extends CrmEvent {
+  final String dealId;
+  final int delta;
+
+  const MoveDealStageRequested({required this.dealId, required this.delta});
+
+  @override
+  List<Object?> get props => [dealId, delta];
+}

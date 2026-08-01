@@ -8,6 +8,8 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
   final CrmRepository _repository;
 
   ClientListFilters _filters = const ClientListFilters(size: 50);
+  static const _pickFilters = ClientListFilters(page: 1, size: 200);
+  String? _loyaltyFilterClientId;
   int _loadGeneration = 0;
 
   CrmBloc(this._repository) : super(CrmLoading()) {
@@ -26,6 +28,8 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
     on<LoadClientDetailRequested>(_onLoadClientDetail);
     on<ClearClientDetail>(_onClearClientDetail);
     on<ClearCrmFeedback>(_onClearFeedback);
+    on<LoyaltyHistoryFilterChanged>(_onLoyaltyHistoryFilter);
+    on<MoveDealStageRequested>(_onMoveDealStage);
   }
 
   Future<void> _onLoadCrmData(LoadCrmData event, Emitter<CrmState> emit) async {
@@ -56,11 +60,20 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         _repository.getReactivation(forceRefresh: event.forceRefresh),
         _repository.getChurn(forceRefresh: event.forceRefresh),
         _repository.getBirthdays(forceRefresh: event.forceRefresh),
+        _repository.getClients(
+          filters: _pickFilters,
+          forceRefresh: event.forceRefresh,
+        ),
+        _repository.getLoyaltyTxns(
+          clientId: _loyaltyFilterClientId,
+          size: 50,
+        ),
       ]);
 
       if (generation != _loadGeneration) return;
 
       final page = results[0] as ClientsPage;
+      final pickPage = results[7] as ClientsPage;
       emit(
         CrmLoaded(
           clients: page.items,
@@ -74,6 +87,9 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
           reactivation: results[4] as List<CrmClient>,
           churn: results[5] as List<CrmClient>,
           birthdays: results[6] as List<BirthdayRow>,
+          pickClients: pickPage.items,
+          loyaltyTxns: results[8] as List<LoyaltyTxn>,
+          loyaltyFilterClientId: _loyaltyFilterClientId,
           detailClient: previous?.detailClient,
           detailDeals: previous?.detailDeals ?? const [],
           detailLoyalty: previous?.detailLoyalty ?? const [],
@@ -174,8 +190,14 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         _repository.getReactivation(forceRefresh: true),
         _repository.getChurn(forceRefresh: true),
         _repository.getBirthdays(forceRefresh: true),
+        _repository.getClients(filters: _pickFilters, forceRefresh: true),
+        _repository.getLoyaltyTxns(
+          clientId: _loyaltyFilterClientId,
+          size: 50,
+        ),
       ]);
       final page = results[0] as ClientsPage;
+      final pickPage = results[7] as ClientsPage;
       emit(
         current.copyWith(
           clients: page.items,
@@ -189,6 +211,9 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
           reactivation: results[4] as List<CrmClient>,
           churn: results[5] as List<CrmClient>,
           birthdays: results[6] as List<BirthdayRow>,
+          pickClients: pickPage.items,
+          loyaltyTxns: results[8] as List<LoyaltyTxn>,
+          loyaltyFilterClientId: _loyaltyFilterClientId,
           detailClient: detailClient,
           clearDetail: clearDetail,
           isRefreshing: false,
@@ -527,5 +552,83 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
     emit(
       (state as CrmLoaded).copyWith(clearError: true, clearSuccess: true),
     );
+  }
+
+  Future<void> _onLoyaltyHistoryFilter(
+    LoyaltyHistoryFilterChanged event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    final id = event.clientId?.trim();
+    _loyaltyFilterClientId = (id == null || id.isEmpty) ? null : id;
+    emit(
+      current.copyWith(
+        loyaltyTxnsLoading: true,
+        loyaltyFilterClientId: _loyaltyFilterClientId,
+        clearLoyaltyFilter: _loyaltyFilterClientId == null,
+        clearError: true,
+      ),
+    );
+    try {
+      final txns = await _repository.getLoyaltyTxns(
+        clientId: _loyaltyFilterClientId,
+        size: 50,
+      );
+      emit(
+        current.copyWith(
+          loyaltyTxns: txns,
+          loyaltyTxnsLoading: false,
+          loyaltyFilterClientId: _loyaltyFilterClientId,
+          clearLoyaltyFilter: _loyaltyFilterClientId == null,
+        ),
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          loyaltyTxnsLoading: false,
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_load',
+          loyaltyFilterClientId: _loyaltyFilterClientId,
+          clearLoyaltyFilter: _loyaltyFilterClientId == null,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onMoveDealStage(
+    MoveDealStageRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    CrmDeal? deal;
+    for (final d in current.deals) {
+      if (d.id == event.dealId) {
+        deal = d;
+        break;
+      }
+    }
+    if (deal == null) return;
+    final idx = kDealStages.indexOf(deal.stage);
+    if (idx < 0) return;
+    final nextIdx = idx + event.delta;
+    if (nextIdx < 0 || nextIdx >= kDealStages.length) return;
+    final nextStage = kDealStages[nextIdx];
+    try {
+      await _repository.updateDeal(deal.id, stage: nextStage);
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_deal_updated',
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
   }
 }

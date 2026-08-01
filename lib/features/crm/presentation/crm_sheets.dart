@@ -389,22 +389,57 @@ Future<void> showCrmPurchaseSheet(BuildContext context, CrmClient client) {
   );
 }
 
-Future<void> showCrmBonusSheet(BuildContext context, CrmClient client) {
+Future<void> showCrmBonusSheet(
+  BuildContext context, {
+  CrmClient? client,
+  List<CrmClient> clients = const [],
+}) {
   final language = context.read<LanguageCubit>();
   final pointsCtrl = TextEditingController();
   final reasonCtrl = TextEditingController();
+  final pool = clients.isNotEmpty
+      ? clients
+      : (client != null ? [client] : const <CrmClient>[]);
+  String clientId = client?.id ?? (pool.isNotEmpty ? pool.first.id : '');
   var dirty = false;
   return LedgerBottomSheet.show(
     context: context,
     title: language.translate('crm_add_bonus'),
     isDirty: () => dirty,
-    builder: (ctx, _) {
+    builder: (ctx, setSheet) {
       final textStyles = ctx.textStyles;
       final lang = ctx.read<LanguageCubit>();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(client.fullName, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
+          if (pool.length > 1)
+            DropdownButtonFormField<String>(
+              key: ValueKey('crm-bonus-client-$clientId'),
+              initialValue: clientId.isEmpty ? null : clientId,
+              items: pool
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c.id,
+                      child: Text(c.fullName, style: textStyles.bodySans),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v == null) return;
+                setSheet(() {
+                  clientId = v;
+                  dirty = true;
+                });
+              },
+              decoration: InputDecoration(
+                labelText: lang.translate('crm_client_label'),
+              ),
+            )
+          else if (pool.isNotEmpty)
+            Text(
+              pool.first.fullName,
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
           const SizedBox(height: 12),
           TextField(
             controller: pointsCtrl,
@@ -432,9 +467,10 @@ Future<void> showCrmBonusSheet(BuildContext context, CrmClient client) {
             onPressed: () {
               final points = parseLocalizedNumber(ctx, pointsCtrl.text);
               if (points == null || points == 0) return;
+              if (clientId.isEmpty) return;
               ctx.read<CrmBloc>().add(
                     AddLoyaltyPointsRequested(
-                      clientId: client.id,
+                      clientId: clientId,
                       points: points,
                       reason: reasonCtrl.text.trim().isEmpty
                           ? null
@@ -618,7 +654,10 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                       label: Text(lang.translate('crm_register_purchase')),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => showCrmBonusSheet(context, detail),
+                      onPressed: () => showCrmBonusSheet(
+                        context,
+                        client: detail,
+                      ),
                       icon: const Icon(TablerIcons.gift, size: 18),
                       label: Text(lang.translate('crm_add_bonus')),
                     ),

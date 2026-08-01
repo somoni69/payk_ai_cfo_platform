@@ -96,7 +96,12 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                 if (_tabs.index == 0) {
                   showCrmClientForm(context);
                 } else {
-                  showCrmDealForm(context, clients: state.clients);
+                  showCrmDealForm(
+                    context,
+                    clients: state.pickClients.isNotEmpty
+                        ? state.pickClients
+                        : state.clients,
+                  );
                 }
               },
               backgroundColor: colors.brand,
@@ -249,7 +254,7 @@ class _StatsBar extends StatelessWidget {
     final language = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    Widget cell(String label, String value) {
+    Widget cell(String label, String value, {String? hint, Color? accent}) {
       return Expanded(
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -271,14 +276,28 @@ class _StatsBar extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 value,
-                style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
+                style: textStyles.bodyMono.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: accent,
+                ),
               ),
+              if (hint != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  hint,
+                  style: textStyles.smallSans.copyWith(
+                    color: colors.textTooltip,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       );
     }
 
+    // Web StatsBar: clients, LTV(+ROI), reactivation, churn.
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
       child: Column(
@@ -288,16 +307,19 @@ class _StatsBar extends StatelessWidget {
               cell(
                 language.translate('crm_stat_total_clients'),
                 '${stats.clientsTotal}',
+                hint: language.translate(
+                  'crm_stat_active_hint',
+                  params: {'n': stats.activeClients},
+                ),
               ),
               const SizedBox(width: 8),
               cell(
-                language.translate('crm_stat_active_clients'),
-                '${stats.activeClients}',
-              ),
-              const SizedBox(width: 8),
-              cell(
-                language.translate('crm_stats_bar_roi'),
-                stats.roi == null ? '—' : oCcy.format(stats.roi!),
+                language.translate('crm_stat_total_ltv'),
+                oCcy.format(stats.ltvTotal),
+                hint: stats.roi == null
+                    ? '${language.translate('crm_stat_total_cac')}: ${oCcy.format(stats.cacTotal)}'
+                    : '${language.translate('crm_stats_bar_roi')}: ${oCcy.format(stats.roi!)}',
+                accent: colors.accentGreen,
               ),
             ],
           ),
@@ -305,18 +327,17 @@ class _StatsBar extends StatelessWidget {
           Row(
             children: [
               cell(
-                language.translate('crm_stat_total_ltv'),
-                oCcy.format(stats.ltvTotal),
+                language.translate('crm_stat_reactivation'),
+                '${stats.reactivationCount}',
+                hint: language.translate('crm_stat_reactivation_hint'),
+                accent: colors.brand,
               ),
               const SizedBox(width: 8),
               cell(
-                language.translate('crm_stat_total_cac'),
-                oCcy.format(stats.cacTotal),
-              ),
-              const SizedBox(width: 8),
-              cell(
-                language.translate('crm_churn_risk'),
+                language.translate('crm_stat_churn'),
                 '${stats.churnCount}',
+                hint: language.translate('crm_stat_churn_hint'),
+                accent: colors.accentRed,
               ),
             ],
           ),
@@ -410,65 +431,89 @@ class _ClientsTab extends StatelessWidget {
                   onTap: () => showCrmClientDetail(context, client),
                   child: LedgerCard(
                     padding: const EdgeInsets.all(14),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      client.fullName,
-                                      style: textStyles.bodySans.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  LedgerPill(
-                                    text: crmLoyaltyLabel(
-                                      language,
-                                      client.loyaltyLevel,
-                                    ),
-                                    backgroundColor: lc.bg,
-                                    textColor: lc.fg,
-                                  ),
-                                ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                client.fullName,
+                                style: textStyles.bodySans.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                              if (client.phone != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  client.phone!,
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                              const SizedBox(height: 4),
-                              Text(
-                                language.translate(
-                                  'crm_ltv_orders',
-                                  params: {
-                                    'amount': oCcy.format(client.totalSpent),
-                                    'count': client.purchasesCount,
-                                  },
-                                ),
-                                style: textStyles.smallMono.copyWith(
-                                  color: colors.textTooltip,
-                                ),
+                            ),
+                            LedgerPill(
+                              text: crmLoyaltyLabel(
+                                language,
+                                client.loyaltyLevel,
+                              ),
+                              backgroundColor: lc.bg,
+                              textColor: lc.fg,
+                            ),
+                            if (client.churnRisk) ...[
+                              const SizedBox(width: 6),
+                              LedgerPill(
+                                text: language.translate('crm_churn_risk'),
+                                backgroundColor:
+                                    colors.accentRed.withValues(alpha: 0.08),
+                                textColor: colors.accentRed,
                               ),
                             ],
+                          ],
+                        ),
+                        if (client.phone != null || client.email != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            client.phone ?? client.email!,
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'LTV ${oCcy.format(client.totalSpent)}',
+                                style: textStyles.smallMono.copyWith(
+                                  color: colors.accentGreen,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
+                                style: textStyles.smallMono.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                client.roi == null
+                                    ? 'ROI —'
+                                    : 'ROI ${oCcy.format(client.roi!)}×',
+                                style: textStyles.smallMono.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                                textAlign: TextAlign.end,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${language.translate('crm_last_purchase')}: ${client.lastPurchaseAt == null ? '—' : formatLocalizedDateTime(context, client.lastPurchaseAt!, style: LocalizedDateTimeStyle.date)}',
+                          style: textStyles.smallSans.copyWith(
+                            color: colors.textTooltip,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
-                        if (client.churnRisk)
-                          LedgerPill(
-                            text: language.translate('crm_churn_risk'),
-                            backgroundColor:
-                                colors.accentRed.withValues(alpha: 0.08),
-                            textColor: colors.accentRed,
-                          ),
                       ],
                     ),
                   ),
@@ -568,8 +613,10 @@ class _FunnelTab extends StatelessWidget {
               builder: (context) {
                 final deals =
                     state.deals.where((d) => d.stage == stage).toList();
-                if (deals.isEmpty) return const SizedBox.shrink();
+                final stageSum =
+                    deals.fold<double>(0, (s, d) => s + d.amount);
                 final sc = crmStageColors(colors, stage);
+                final stageIdx = kDealStages.indexOf(stage);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -589,133 +636,194 @@ class _FunnelTab extends StatelessWidget {
                               color: colors.textSecondary,
                             ),
                           ),
+                          const Spacer(),
+                          Text(
+                            '${oCcy.format(stageSum)} TJS',
+                            style: textStyles.smallMono.copyWith(
+                              color: colors.textTooltip,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    ...deals.map((deal) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: LedgerCard(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      deal.title,
-                                      style: textStyles.bodySans.copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    '${oCcy.format(deal.amount)} TJS',
-                                    style: textStyles.bodyMono.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (deal.clientName != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  language.translate(
-                                    'crm_client_value',
-                                    params: {'client': deal.clientName!},
-                                  ),
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                              if (deal.expectedClose != null) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  formatLocalizedDateTime(
-                                    context,
-                                    deal.expectedClose!,
-                                    style: LocalizedDateTimeStyle.date,
-                                  ),
-                                  style: textStyles.smallMono.copyWith(
-                                    color: colors.textTooltip,
-                                  ),
-                                ),
-                              ],
-                              if (canManage) ...[
-                                const SizedBox(height: 8),
+                    if (deals.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          language.translate('crm_funnel_empty_stage'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textTooltip,
+                          ),
+                        ),
+                      )
+                    else
+                      ...deals.map((deal) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: LedgerCard(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
                                 Row(
                                   children: [
-                                    TextButton(
-                                      onPressed: () => showCrmDealForm(
-                                        context,
-                                        clients: state.clients,
-                                        existing: deal,
-                                      ),
+                                    Expanded(
                                       child: Text(
-                                        language.translate('crm_edit_deal'),
+                                        deal.title,
+                                        style: textStyles.bodySans.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: () async {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (dCtx) => AlertDialog(
-                                            title: Text(
-                                              language.translate(
-                                                'crm_delete_deal',
-                                              ),
-                                            ),
-                                            content: Text(
-                                              language.translate(
-                                                'crm_delete_deal_confirm',
-                                                params: {'name': deal.title},
-                                              ),
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(dCtx, false),
-                                                child: Text(
-                                                  language.translate(
-                                                    'crm_cancel',
-                                                  ),
-                                                ),
-                                              ),
-                                              TextButton(
-                                                onPressed: () =>
-                                                    Navigator.pop(dCtx, true),
-                                                child: Text(
-                                                  language.translate(
-                                                    'crm_confirm',
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (ok == true && context.mounted) {
-                                          context.read<CrmBloc>().add(
-                                                DeleteDealRequested(deal.id),
-                                              );
-                                        }
-                                      },
-                                      child: Text(
-                                        language.translate('crm_delete_deal'),
-                                        style: textStyles.bodySans.copyWith(
-                                          color: colors.accentRed,
-                                        ),
+                                    Text(
+                                      '${oCcy.format(deal.amount)} TJS',
+                                      style: textStyles.bodyMono.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                        color: colors.brand,
                                       ),
                                     ),
                                   ],
                                 ),
+                                if (deal.clientName != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    language.translate(
+                                      'crm_client_value',
+                                      params: {'client': deal.clientName!},
+                                    ),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                                if (deal.expectedClose != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    formatLocalizedDateTime(
+                                      context,
+                                      deal.expectedClose!,
+                                      style: LocalizedDateTimeStyle.date,
+                                    ),
+                                    style: textStyles.smallMono.copyWith(
+                                      color: colors.textTooltip,
+                                    ),
+                                  ),
+                                ],
+                                if (canManage) ...[
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      IconButton(
+                                        tooltip: language
+                                            .translate('crm_stage_prev'),
+                                        onPressed: stageIdx <= 0
+                                            ? null
+                                            : () => context.read<CrmBloc>().add(
+                                                  MoveDealStageRequested(
+                                                    dealId: deal.id,
+                                                    delta: -1,
+                                                  ),
+                                                ),
+                                        icon: const Icon(
+                                          TablerIcons.chevron_left,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: language
+                                            .translate('crm_stage_next'),
+                                        onPressed:
+                                            stageIdx >= kDealStages.length - 1
+                                                ? null
+                                                : () =>
+                                                    context.read<CrmBloc>().add(
+                                                          MoveDealStageRequested(
+                                                            dealId: deal.id,
+                                                            delta: 1,
+                                                          ),
+                                                        ),
+                                        icon: const Icon(
+                                          TablerIcons.chevron_right,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () => showCrmDealForm(
+                                          context,
+                                          clients: state.pickClients.isNotEmpty
+                                              ? state.pickClients
+                                              : state.clients,
+                                          existing: deal,
+                                        ),
+                                        child: Text(
+                                          language.translate('crm_edit_deal'),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () async {
+                                          final ok = await showDialog<bool>(
+                                            context: context,
+                                            builder: (dCtx) => AlertDialog(
+                                              title: Text(
+                                                language.translate(
+                                                  'crm_delete_deal',
+                                                ),
+                                              ),
+                                              content: Text(
+                                                language.translate(
+                                                  'crm_delete_deal_confirm',
+                                                  params: {'name': deal.title},
+                                                ),
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                    dCtx,
+                                                    false,
+                                                  ),
+                                                  child: Text(
+                                                    language.translate(
+                                                      'crm_cancel',
+                                                    ),
+                                                  ),
+                                                ),
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(
+                                                    dCtx,
+                                                    true,
+                                                  ),
+                                                  child: Text(
+                                                    language.translate(
+                                                      'crm_confirm',
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (ok == true && context.mounted) {
+                                            context.read<CrmBloc>().add(
+                                                  DeleteDealRequested(deal.id),
+                                                );
+                                          }
+                                        },
+                                        child: Text(
+                                          language.translate('crm_delete_deal'),
+                                          style: textStyles.bodySans.copyWith(
+                                            color: colors.accentRed,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    }),
+                        );
+                      }),
                   ],
                 );
               },
@@ -738,12 +846,25 @@ class _LoyaltyTab extends StatelessWidget {
   final bool canManage;
   final Future<void> Function() onRefresh;
 
+  String _clientName(String id) {
+    for (final c in state.pickClients) {
+      if (c.id == id) return c.fullName;
+    }
+    for (final c in state.clients) {
+      if (c.id == id) return c.fullName;
+    }
+    return '#$id';
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
+    final pick = state.pickClients.isNotEmpty
+        ? state.pickClients
+        : state.clients;
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -802,14 +923,112 @@ class _LoyaltyTab extends StatelessWidget {
                 ),
               );
             }),
-          if (canManage && state.clients.isNotEmpty) ...[
-            const SizedBox(height: 8),
+          const SizedBox(height: 16),
+          Text(
+            language.translate('crm_loyalty_history_title'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            key: ValueKey(
+              'crm-loyalty-filter-${state.loyaltyFilterClientId ?? ''}',
+            ),
+            initialValue: state.loyaltyFilterClientId ?? '',
+            items: [
+              DropdownMenuItem(
+                value: '',
+                child: Text(
+                  language.translate('crm_loyalty_all_clients'),
+                  style: textStyles.bodySans,
+                ),
+              ),
+              ...pick.map(
+                (c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(c.fullName, style: textStyles.bodySans),
+                ),
+              ),
+            ],
+            onChanged: (v) {
+              context.read<CrmBloc>().add(
+                    LoyaltyHistoryFilterChanged(v),
+                  );
+            },
+            decoration: InputDecoration(
+              labelText: language.translate('crm_loyalty_filter_client'),
+            ),
+          ),
+          if (canManage && pick.isNotEmpty) ...[
+            const SizedBox(height: 12),
             ElevatedButton.icon(
-              onPressed: () => showCrmBonusSheet(context, state.clients.first),
+              onPressed: () => showCrmBonusSheet(
+                context,
+                clients: pick,
+              ),
               icon: const Icon(TablerIcons.gift, size: 18),
               label: Text(language.translate('crm_add_bonus')),
             ),
           ],
+          const SizedBox(height: 12),
+          if (state.loyaltyTxnsLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (state.loyaltyTxns.isEmpty)
+            Text(
+              language.translate('crm_no_history'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textTooltip,
+              ),
+            )
+          else
+            ...state.loyaltyTxns.map((t) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _clientName(t.clientId),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              t.reason?.isNotEmpty == true
+                                  ? t.reason!
+                                  : formatLocalizedDateTime(
+                                      context,
+                                      t.createdAt,
+                                      style: LocalizedDateTimeStyle.dateTime,
+                                    ),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        oCcy.format(t.points),
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: t.points >= 0
+                              ? colors.accentGreen
+                              : colors.accentRed,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
         ],
       ),
     );

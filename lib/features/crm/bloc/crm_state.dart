@@ -23,6 +23,14 @@ class CrmLoaded extends CrmState {
   final List<CrmClient> churn;
   final List<BirthdayRow> birthdays;
 
+  /// Unfiltered pool for pickers (bonus / deal client), up to 200.
+  final List<CrmClient> pickClients;
+
+  /// Global loyalty journal on Loyalty tab.
+  final List<LoyaltyTxn> loyaltyTxns;
+  final String? loyaltyFilterClientId;
+  final bool loyaltyTxnsLoading;
+
   /// Open client card payload.
   final CrmClient? detailClient;
   final List<CrmDeal> detailDeals;
@@ -47,6 +55,10 @@ class CrmLoaded extends CrmState {
     required this.reactivation,
     required this.churn,
     required this.birthdays,
+    this.pickClients = const [],
+    this.loyaltyTxns = const [],
+    this.loyaltyFilterClientId,
+    this.loyaltyTxnsLoading = false,
     this.detailClient,
     this.detailDeals = const [],
     this.detailLoyalty = const [],
@@ -70,6 +82,10 @@ class CrmLoaded extends CrmState {
     List<CrmClient>? reactivation,
     List<CrmClient>? churn,
     List<BirthdayRow>? birthdays,
+    List<CrmClient>? pickClients,
+    List<LoyaltyTxn>? loyaltyTxns,
+    String? loyaltyFilterClientId,
+    bool? loyaltyTxnsLoading,
     CrmClient? detailClient,
     List<CrmDeal>? detailDeals,
     List<LoyaltyTxn>? detailLoyalty,
@@ -83,6 +99,7 @@ class CrmLoaded extends CrmState {
     bool clearSuccess = false,
     bool clearDetail = false,
     bool clearChurnAdvice = false,
+    bool clearLoyaltyFilter = false,
   }) {
     return CrmLoaded(
       clients: clients ?? this.clients,
@@ -96,6 +113,12 @@ class CrmLoaded extends CrmState {
       reactivation: reactivation ?? this.reactivation,
       churn: churn ?? this.churn,
       birthdays: birthdays ?? this.birthdays,
+      pickClients: pickClients ?? this.pickClients,
+      loyaltyTxns: loyaltyTxns ?? this.loyaltyTxns,
+      loyaltyFilterClientId: clearLoyaltyFilter
+          ? null
+          : (loyaltyFilterClientId ?? this.loyaltyFilterClientId),
+      loyaltyTxnsLoading: loyaltyTxnsLoading ?? this.loyaltyTxnsLoading,
       detailClient: clearDetail ? null : (detailClient ?? this.detailClient),
       detailDeals: clearDetail ? const [] : (detailDeals ?? this.detailDeals),
       detailLoyalty:
@@ -126,6 +149,10 @@ class CrmLoaded extends CrmState {
         reactivation,
         churn,
         birthdays,
+        pickClients,
+        loyaltyTxns,
+        loyaltyFilterClientId,
+        loyaltyTxnsLoading,
         detailClient,
         detailDeals,
         detailLoyalty,
