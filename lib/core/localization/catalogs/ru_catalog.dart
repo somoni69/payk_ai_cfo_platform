@@ -112,6 +112,11 @@ const Map<String, String> kRussianCatalog = {
   'kpi_fact': 'Факт',
   'crm_menu': 'Сделки и Лиды',
   'crm_title': 'Лиды и сделки (CRM)',
+  'crm_description': 'Клиенты, воронка, лояльность и удержание',
+  'crm_funnel_drag_hint': 'Удерживайте карточку, чтобы перетащить на этап',
+  'crm_purchase_date_optional': 'Дата покупки (необязательно)',
+  'crm_loyalty_load_more': 'Ещё транзакции',
+
   'crm_tab_clients': 'Клиенты',
   'crm_tab_deals': 'Сделки',
   'crm_tab_stats': 'Статистика',

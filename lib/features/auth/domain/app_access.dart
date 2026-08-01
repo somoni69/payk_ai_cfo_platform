@@ -94,6 +94,13 @@ extension UserRoleAccess on UserRole {
     };
   }
 
+  /// Create/update (web `can(module, "create"|"update")` until matrix is wired).
+  bool canWrite(AppCapability capability) => canManage(capability);
+
+  /// Destructive delete (web `can(module, "delete")`).
+  /// Same role set as [canManage] for now; director/manager for CRM.
+  bool canDelete(AppCapability capability) => canManage(capability);
+
   String get landingLocation => switch (this) {
     UserRole.cashier => '/cash',
     UserRole.hr => '/tasks',

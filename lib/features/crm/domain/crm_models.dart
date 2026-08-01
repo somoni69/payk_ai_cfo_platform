@@ -214,6 +214,23 @@ class ClientsPage {
   });
 }
 
+/// Пагинированный журнал бонусов.
+class LoyaltyTxnsPage {
+  final List<LoyaltyTxn> items;
+  final int total;
+  final int page;
+  final int size;
+
+  const LoyaltyTxnsPage({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.size,
+  });
+
+  bool get hasMore => page * size < total;
+}
+
 /// Результат AI-анализа оттока.
 class ChurnAdvice {
   final String clientId;

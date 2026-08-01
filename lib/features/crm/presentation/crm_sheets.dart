@@ -6,6 +6,9 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../features/auth/bloc/auth_bloc.dart';
+import '../../../features/auth/bloc/auth_state.dart';
+import '../../../features/auth/domain/app_access.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
@@ -345,18 +348,22 @@ Future<void> showCrmDealForm(
 Future<void> showCrmPurchaseSheet(BuildContext context, CrmClient client) {
   final language = context.read<LanguageCubit>();
   final amountCtrl = TextEditingController();
+  DateTime? occurredAt;
   var dirty = false;
   return LedgerBottomSheet.show(
     context: context,
     title: language.translate('crm_register_purchase'),
     isDirty: () => dirty,
-    builder: (ctx, _) {
+    builder: (ctx, setSheet) {
       final textStyles = ctx.textStyles;
       final lang = ctx.read<LanguageCubit>();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(client.fullName, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
+          Text(
+            client.fullName,
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: amountCtrl,
@@ -368,6 +375,34 @@ Future<void> showCrmPurchaseSheet(BuildContext context, CrmClient client) {
               labelText: lang.translate('crm_purchase_amount'),
             ),
           ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: ctx,
+                initialDate: occurredAt ?? DateTime.now(),
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now(),
+              );
+              if (picked != null) {
+                setSheet(() {
+                  occurredAt = picked;
+                  dirty = true;
+                });
+              }
+            },
+            icon: const Icon(TablerIcons.calendar, size: 18),
+            label: Text(
+              occurredAt == null
+                  ? lang.translate('crm_purchase_date_optional')
+                  : formatLocalizedDateTime(
+                      ctx,
+                      occurredAt!,
+                      style: LocalizedDateTimeStyle.date,
+                    ),
+              style: textStyles.bodySans,
+            ),
+          ),
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
@@ -377,6 +412,7 @@ Future<void> showCrmPurchaseSheet(BuildContext context, CrmClient client) {
                     RegisterPurchaseRequested(
                       clientId: client.id,
                       amount: amount,
+                      occurredAt: occurredAt,
                     ),
                   );
               Navigator.of(ctx).pop();
@@ -553,7 +589,11 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
       final textStyles = ctx.textStyles;
       final lang = ctx.watch<LanguageCubit>();
       final oCcy = localizedDecimalFormat(ctx);
-      final canManage = true; // gated by parent FAB / callers
+      final auth = ctx.watch<AuthBloc>().state;
+      final canWrite = auth is AuthAuthenticated &&
+          auth.role.canWrite(AppCapability.crm);
+      final canDelete = auth is AuthAuthenticated &&
+          auth.role.canDelete(AppCapability.crm);
 
       return BlocBuilder<CrmBloc, CrmState>(
         builder: (context, state) {
@@ -635,70 +675,73 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                 ),
               ),
               const SizedBox(height: 12),
-              if (canManage) ...[
+              if (canWrite || canDelete) ...[
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        showCrmClientForm(context, existing: detail);
-                      },
-                      icon: const Icon(TablerIcons.edit, size: 18),
-                      label: Text(lang.translate('crm_edit_client')),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => showCrmPurchaseSheet(context, detail),
-                      icon: const Icon(TablerIcons.shopping_cart, size: 18),
-                      label: Text(lang.translate('crm_register_purchase')),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => showCrmBonusSheet(
-                        context,
-                        client: detail,
-                      ),
-                      icon: const Icon(TablerIcons.gift, size: 18),
-                      label: Text(lang.translate('crm_add_bonus')),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        final ok = await showDialog<bool>(
-                          context: ctx,
-                          builder: (dCtx) => AlertDialog(
-                            title: Text(lang.translate('crm_delete_client')),
-                            content: Text(
-                              lang.translate(
-                                'crm_delete_confirm',
-                                params: {'name': detail.fullName},
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(dCtx, false),
-                                child: Text(lang.translate('crm_cancel')),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(dCtx, true),
-                                child: Text(lang.translate('crm_confirm')),
-                              ),
-                            ],
-                          ),
-                        );
-                        if (ok == true && context.mounted) {
-                          context
-                              .read<CrmBloc>()
-                              .add(DeleteClientRequested(detail.id));
+                    if (canWrite) ...[
+                      OutlinedButton.icon(
+                        onPressed: () {
                           Navigator.of(ctx).pop();
-                        }
-                      },
-                      child: Text(
-                        lang.translate('crm_delete_client'),
-                        style: textStyles.bodySans.copyWith(
-                          color: colors.accentRed,
+                          showCrmClientForm(context, existing: detail);
+                        },
+                        icon: const Icon(TablerIcons.edit, size: 18),
+                        label: Text(lang.translate('crm_edit_client')),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => showCrmPurchaseSheet(context, detail),
+                        icon: const Icon(TablerIcons.shopping_cart, size: 18),
+                        label: Text(lang.translate('crm_register_purchase')),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => showCrmBonusSheet(
+                          context,
+                          client: detail,
+                        ),
+                        icon: const Icon(TablerIcons.gift, size: 18),
+                        label: Text(lang.translate('crm_add_bonus')),
+                      ),
+                    ],
+                    if (canDelete)
+                      TextButton(
+                        onPressed: () async {
+                          final ok = await showDialog<bool>(
+                            context: ctx,
+                            builder: (dCtx) => AlertDialog(
+                              title: Text(lang.translate('crm_delete_client')),
+                              content: Text(
+                                lang.translate(
+                                  'crm_delete_confirm',
+                                  params: {'name': detail.fullName},
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx, false),
+                                  child: Text(lang.translate('crm_cancel')),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dCtx, true),
+                                  child: Text(lang.translate('crm_confirm')),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (ok == true && context.mounted) {
+                            context
+                                .read<CrmBloc>()
+                                .add(DeleteClientRequested(detail.id));
+                            Navigator.of(ctx).pop();
+                          }
+                        },
+                        child: Text(
+                          lang.translate('crm_delete_client'),
+                          style: textStyles.bodySans.copyWith(
+                            color: colors.accentRed,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
                 const SizedBox(height: 16),

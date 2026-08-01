@@ -114,13 +114,17 @@ class MockCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<CrmClient> registerPurchase(String clientId, double amount) async {
+  Future<CrmClient> registerPurchase(
+    String clientId,
+    double amount, {
+    DateTime? occurredAt,
+  }) async {
     final idx = clients.indexWhere((c) => c.id == clientId);
     final c = clients[idx];
     final updated = c.copyWith(
       totalSpent: c.totalSpent + amount,
       purchasesCount: c.purchasesCount + 1,
-      lastPurchaseAt: DateTime.now(),
+      lastPurchaseAt: occurredAt ?? DateTime.now(),
     );
     clients[idx] = updated;
     return updated;
@@ -182,13 +186,24 @@ class MockCrmRepository implements CrmRepository {
       List.from(loyalty);
 
   @override
-  Future<List<LoyaltyTxn>> getLoyaltyTxns({
+  Future<LoyaltyTxnsPage> getLoyaltyTxns({
     String? clientId,
     int page = 1,
-    int size = 50,
+    int size = 30,
   }) async {
-    if (clientId == null) return List.from(loyaltyTxns);
-    return loyaltyTxns.where((t) => t.clientId == clientId).toList();
+    final all = clientId == null
+        ? List<LoyaltyTxn>.from(loyaltyTxns)
+        : loyaltyTxns.where((t) => t.clientId == clientId).toList();
+    final start = (page - 1) * size;
+    final slice = start >= all.length
+        ? <LoyaltyTxn>[]
+        : all.sublist(start, (start + size).clamp(0, all.length));
+    return LoyaltyTxnsPage(
+      items: slice,
+      total: all.length,
+      page: page,
+      size: size,
+    );
   }
 
   @override

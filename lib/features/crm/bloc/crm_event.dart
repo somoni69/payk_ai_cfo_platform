@@ -76,14 +76,16 @@ class DeleteClientRequested extends CrmEvent {
 class RegisterPurchaseRequested extends CrmEvent {
   final String clientId;
   final double amount;
+  final DateTime? occurredAt;
 
   const RegisterPurchaseRequested({
     required this.clientId,
     required this.amount,
+    this.occurredAt,
   });
 
   @override
-  List<Object?> get props => [clientId, amount];
+  List<Object?> get props => [clientId, amount, occurredAt];
 }
 
 class CreateDealRequested extends CrmEvent {
@@ -206,4 +208,20 @@ class MoveDealStageRequested extends CrmEvent {
 
   @override
   List<Object?> get props => [dealId, delta];
+}
+
+/// Drop deal onto a funnel stage (kanban / drag).
+class SetDealStageRequested extends CrmEvent {
+  final String dealId;
+  final String stage;
+
+  const SetDealStageRequested({required this.dealId, required this.stage});
+
+  @override
+  List<Object?> get props => [dealId, stage];
+}
+
+/// Next page of loyalty journal.
+class LoadMoreLoyaltyTxns extends CrmEvent {
+  const LoadMoreLoyaltyTxns();
 }

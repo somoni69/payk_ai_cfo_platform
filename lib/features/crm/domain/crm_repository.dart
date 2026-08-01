@@ -31,7 +31,11 @@ abstract class CrmRepository {
 
   Future<void> deleteClient(String id);
 
-  Future<CrmClient> registerPurchase(String clientId, double amount);
+  Future<CrmClient> registerPurchase(
+    String clientId,
+    double amount, {
+    DateTime? occurredAt,
+  });
 
   Future<CrmDeal> createDeal({
     required String clientId,
@@ -56,10 +60,10 @@ abstract class CrmRepository {
     bool forceRefresh = false,
   });
 
-  Future<List<LoyaltyTxn>> getLoyaltyTxns({
+  Future<LoyaltyTxnsPage> getLoyaltyTxns({
     String? clientId,
     int page = 1,
-    int size = 50,
+    int size = 30,
   });
 
   Future<LoyaltyTxn> createLoyaltyTxn({

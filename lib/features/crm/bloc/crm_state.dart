@@ -30,6 +30,9 @@ class CrmLoaded extends CrmState {
   final List<LoyaltyTxn> loyaltyTxns;
   final String? loyaltyFilterClientId;
   final bool loyaltyTxnsLoading;
+  final int loyaltyTxnPage;
+  final int loyaltyTxnTotal;
+  final bool loyaltyTxnsLoadingMore;
 
   /// Open client card payload.
   final CrmClient? detailClient;
@@ -59,6 +62,9 @@ class CrmLoaded extends CrmState {
     this.loyaltyTxns = const [],
     this.loyaltyFilterClientId,
     this.loyaltyTxnsLoading = false,
+    this.loyaltyTxnPage = 1,
+    this.loyaltyTxnTotal = 0,
+    this.loyaltyTxnsLoadingMore = false,
     this.detailClient,
     this.detailDeals = const [],
     this.detailLoyalty = const [],
@@ -86,6 +92,9 @@ class CrmLoaded extends CrmState {
     List<LoyaltyTxn>? loyaltyTxns,
     String? loyaltyFilterClientId,
     bool? loyaltyTxnsLoading,
+    int? loyaltyTxnPage,
+    int? loyaltyTxnTotal,
+    bool? loyaltyTxnsLoadingMore,
     CrmClient? detailClient,
     List<CrmDeal>? detailDeals,
     List<LoyaltyTxn>? detailLoyalty,
@@ -119,6 +128,10 @@ class CrmLoaded extends CrmState {
           ? null
           : (loyaltyFilterClientId ?? this.loyaltyFilterClientId),
       loyaltyTxnsLoading: loyaltyTxnsLoading ?? this.loyaltyTxnsLoading,
+      loyaltyTxnPage: loyaltyTxnPage ?? this.loyaltyTxnPage,
+      loyaltyTxnTotal: loyaltyTxnTotal ?? this.loyaltyTxnTotal,
+      loyaltyTxnsLoadingMore:
+          loyaltyTxnsLoadingMore ?? this.loyaltyTxnsLoadingMore,
       detailClient: clearDetail ? null : (detailClient ?? this.detailClient),
       detailDeals: clearDetail ? const [] : (detailDeals ?? this.detailDeals),
       detailLoyalty:
@@ -153,6 +166,9 @@ class CrmLoaded extends CrmState {
         loyaltyTxns,
         loyaltyFilterClientId,
         loyaltyTxnsLoading,
+        loyaltyTxnPage,
+        loyaltyTxnTotal,
+        loyaltyTxnsLoadingMore,
         detailClient,
         detailDeals,
         detailLoyalty,

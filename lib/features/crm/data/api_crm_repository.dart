@@ -286,11 +286,19 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<CrmClient> registerPurchase(String clientId, double amount) async {
+  Future<CrmClient> registerPurchase(
+    String clientId,
+    double amount, {
+    DateTime? occurredAt,
+  }) async {
     try {
       final response = await _apiClient.dio.post(
         '/crm/clients/${_requirePositiveId(clientId, 'clientId')}/purchase',
-        data: {'amount': amount},
+        data: {
+          'amount': amount,
+          if (occurredAt != null)
+            'occurred_at': occurredAt.toUtc().toIso8601String(),
+        },
       );
       _invalidateMutations();
       return _mapClient(response.data as Map<String, dynamic>);
@@ -393,10 +401,10 @@ class ApiCrmRepository implements CrmRepository {
   }
 
   @override
-  Future<List<LoyaltyTxn>> getLoyaltyTxns({
+  Future<LoyaltyTxnsPage> getLoyaltyTxns({
     String? clientId,
     int page = 1,
-    int size = 50,
+    int size = 30,
   }) async {
     try {
       final params = <String, dynamic>{'page': page, 'size': size};
@@ -409,7 +417,7 @@ class ApiCrmRepository implements CrmRepository {
       );
       final dataMap = response.data as Map<String, dynamic>;
       final list = (dataMap['items'] ?? []) as List<dynamic>;
-      return list.map((item) {
+      final items = list.map((item) {
         final map = item as Map<String, dynamic>;
         return LoyaltyTxn(
           id: (map['id'] ?? '').toString(),
@@ -420,6 +428,14 @@ class ApiCrmRepository implements CrmRepository {
               _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
         );
       }).toList();
+      return LoyaltyTxnsPage(
+        items: items,
+        total: dataMap['total'] is int
+            ? dataMap['total'] as int
+            : int.tryParse('${dataMap['total']}') ?? items.length,
+        page: dataMap['page'] is int ? dataMap['page'] as int : page,
+        size: dataMap['size'] is int ? dataMap['size'] as int : size,
+      );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }

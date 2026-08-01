@@ -112,6 +112,11 @@ const Map<String, String> kTajikCatalog = {
   'kpi_fact': 'Далел',
   'crm_menu': 'Амалиётҳо ва Лидҳо',
   'crm_title': 'Лидҳо ва амалиётҳо (CRM)',
+  'crm_description': 'Мизоҷон, қиф, вафодорӣ ва нигоҳдорӣ',
+  'crm_funnel_drag_hint': 'Кортро нигоҳ доред, то ба марҳила кашед',
+  'crm_purchase_date_optional': 'Санаи харид (ихтиёрӣ)',
+  'crm_loyalty_load_more': 'Бештар транзаксия',
+
   'crm_tab_clients': 'Мизоҷон',
   'crm_tab_deals': 'Муомилаҳо',
   'crm_tab_stats': 'Таҳлил',
