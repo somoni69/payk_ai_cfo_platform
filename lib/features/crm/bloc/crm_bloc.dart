@@ -7,24 +7,25 @@ import 'crm_state.dart';
 class CrmBloc extends Bloc<CrmEvent, CrmState> {
   final CrmRepository _repository;
 
-  List<CrmClient> _cachedClients = [];
-  List<CrmDeal> _cachedDeals = [];
-  Future<List<Object>>? _loadRequest;
+  ClientListFilters _filters = const ClientListFilters(size: 50);
   int _loadGeneration = 0;
-
-  CrmStatsData _cachedStats = const CrmStatsData(
-    clientsTotal: 0,
-    activeClients: 0,
-    ltvTotal: 0,
-    cacTotal: 0,
-    churnCount: 0,
-    reactivationCount: 0,
-  );
 
   CrmBloc(this._repository) : super(CrmLoading()) {
     on<LoadCrmData>(_onLoadCrmData);
-    on<CreateClientRequested>(_onCreateClientRequested);
-    on<CreateDealRequested>(_onCreateDealRequested);
+    on<ClientFiltersChanged>(_onClientFiltersChanged);
+    on<CreateClientRequested>(_onCreateClient);
+    on<UpdateClientRequested>(_onUpdateClient);
+    on<DeleteClientRequested>(_onDeleteClient);
+    on<RegisterPurchaseRequested>(_onRegisterPurchase);
+    on<CreateDealRequested>(_onCreateDeal);
+    on<UpdateDealRequested>(_onUpdateDeal);
+    on<DeleteDealRequested>(_onDeleteDeal);
+    on<AddLoyaltyPointsRequested>(_onAddLoyalty);
+    on<SendReactivationRequested>(_onSendReactivation);
+    on<AnalyzeChurnRequested>(_onAnalyzeChurn);
+    on<LoadClientDetailRequested>(_onLoadClientDetail);
+    on<ClearClientDetail>(_onClearClientDetail);
+    on<ClearCrmFeedback>(_onClearFeedback);
   }
 
   Future<void> _onLoadCrmData(LoadCrmData event, Emitter<CrmState> emit) async {
@@ -43,171 +44,488 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
       emit(CrmLoading());
     }
 
-    var request = _loadRequest;
-    if (request == null) {
-      request = Future.wait<Object>([
-        _repository.getClients(forceRefresh: event.forceRefresh),
+    try {
+      final results = await Future.wait<Object>([
+        _repository.getClients(
+          filters: _filters,
+          forceRefresh: event.forceRefresh,
+        ),
         _repository.getDeals(forceRefresh: event.forceRefresh),
         _repository.getCrmStats(forceRefresh: event.forceRefresh),
+        _repository.getLoyaltySummary(forceRefresh: event.forceRefresh),
+        _repository.getReactivation(forceRefresh: event.forceRefresh),
+        _repository.getChurn(forceRefresh: event.forceRefresh),
+        _repository.getBirthdays(forceRefresh: event.forceRefresh),
       ]);
-      _loadRequest = request;
-    }
 
-    try {
-      final results = await request;
       if (generation != _loadGeneration) return;
 
-      _cachedClients = (results[0] as List).cast<CrmClient>();
-      _cachedDeals = (results[1] as List).cast<CrmDeal>();
-      _cachedStats = results[2] as CrmStatsData;
-
+      final page = results[0] as ClientsPage;
       emit(
         CrmLoaded(
-          clients: _cachedClients,
-          deals: _cachedDeals,
-          stats: _cachedStats,
+          clients: page.items,
+          clientsTotal: page.total,
+          clientsPage: page.page,
+          clientsSize: page.size,
+          clientFilters: _filters,
+          deals: results[1] as List<CrmDeal>,
+          stats: results[2] as CrmStatsData,
+          loyaltySummary: results[3] as List<LoyaltySummaryRow>,
+          reactivation: results[4] as List<CrmClient>,
+          churn: results[5] as List<CrmClient>,
+          birthdays: results[6] as List<BirthdayRow>,
+          detailClient: previous?.detailClient,
+          detailDeals: previous?.detailDeals ?? const [],
+          detailLoyalty: previous?.detailLoyalty ?? const [],
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (generation != _loadGeneration) return;
+      final key = e.toString().replaceAll('Exception: ', '');
       if (previous != null) {
         emit(
           previous.copyWith(
             isRefreshing: false,
-            errorMessage:
-                'Не удалось обновить CRM. Проверьте соединение и повторите.',
+            errorMessage: key.startsWith('error_') ? key : 'crm_error_refresh',
           ),
         );
       } else {
         emit(
-          const CrmError(
-            'Не удалось загрузить CRM. Проверьте соединение и повторите.',
-          ),
+          CrmError(key.startsWith('error_') ? key : 'crm_error_load'),
         );
       }
     } finally {
-      if (identical(_loadRequest, request)) _loadRequest = null;
       if (event.completion?.isCompleted == false) {
         event.completion!.complete();
       }
     }
   }
 
-  void _onCreateClientRequested(
-    CreateClientRequested event,
+  Future<void> _onClientFiltersChanged(
+    ClientFiltersChanged event,
     Emitter<CrmState> emit,
   ) async {
     if (state is! CrmLoaded) return;
-    final currentState = state as CrmLoaded;
+    final current = state as CrmLoaded;
 
+    final nextQuery = event.query != null
+        ? (event.query!.trim().isEmpty ? null : event.query!.trim())
+        : _filters.query;
+    final nextLevel = event.level != null
+        ? (event.level!.isEmpty ? null : event.level)
+        : _filters.level;
+    final nextPage = event.page ??
+        ((event.query != null || event.level != null) ? 1 : _filters.page);
+
+    _filters = ClientListFilters(
+      query: nextQuery,
+      level: nextLevel,
+      page: nextPage,
+      size: _filters.size,
+    );
+
+    emit(
+      current.copyWith(
+        isRefreshing: true,
+        clearError: true,
+        clientFilters: _filters,
+      ),
+    );
     try {
-      final created = await _repository.createClient(event.client);
-      _cachedClients = List<CrmClient>.from(_cachedClients)..add(created);
-
-      // Корректируем базовую статистику локально
-      _cachedStats = CrmStatsData(
-        clientsTotal: _cachedStats.clientsTotal + 1,
-        activeClients: _cachedStats.activeClients + 1,
-        ltvTotal: _cachedStats.ltvTotal,
-        cacTotal: _cachedStats.cacTotal + created.acquisitionCost,
-        roi: _cachedStats.roi,
-        churnCount: _cachedStats.churnCount,
-        reactivationCount: _cachedStats.reactivationCount,
+      final page = await _repository.getClients(
+        filters: _filters,
+        forceRefresh: true,
       );
-
       emit(
-        currentState.copyWith(
-          clients: _cachedClients,
-          stats: _cachedStats,
-          successMessage:
-              'Клиент "${created.fullName}" успешно зарегистрирован.',
+        current.copyWith(
+          clients: page.items,
+          clientsTotal: page.total,
+          clientsPage: page.page,
+          clientsSize: page.size,
+          clientFilters: _filters,
+          isRefreshing: false,
         ),
       );
-    } catch (_) {
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
       emit(
-        currentState.copyWith(
-          errorMessage:
-              'Не удалось добавить клиента. Проверьте данные и соединение.',
+        current.copyWith(
+          isRefreshing: false,
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_refresh',
+          clientFilters: _filters,
         ),
       );
     }
   }
 
-  void _onCreateDealRequested(
+  Future<void> _reloadCore(
+    Emitter<CrmState> emit,
+    CrmLoaded current, {
+    String? successMessage,
+    CrmClient? detailClient,
+    bool clearDetail = false,
+  }) async {
+    try {
+      final results = await Future.wait<Object>([
+        _repository.getClients(filters: _filters, forceRefresh: true),
+        _repository.getDeals(forceRefresh: true),
+        _repository.getCrmStats(forceRefresh: true),
+        _repository.getLoyaltySummary(forceRefresh: true),
+        _repository.getReactivation(forceRefresh: true),
+        _repository.getChurn(forceRefresh: true),
+        _repository.getBirthdays(forceRefresh: true),
+      ]);
+      final page = results[0] as ClientsPage;
+      emit(
+        current.copyWith(
+          clients: page.items,
+          clientsTotal: page.total,
+          clientsPage: page.page,
+          clientsSize: page.size,
+          clientFilters: _filters,
+          deals: results[1] as List<CrmDeal>,
+          stats: results[2] as CrmStatsData,
+          loyaltySummary: results[3] as List<LoyaltySummaryRow>,
+          reactivation: results[4] as List<CrmClient>,
+          churn: results[5] as List<CrmClient>,
+          birthdays: results[6] as List<BirthdayRow>,
+          detailClient: detailClient,
+          clearDetail: clearDetail,
+          isRefreshing: false,
+          successMessage: successMessage,
+          clearError: true,
+          clearSuccess: successMessage == null,
+        ),
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          isRefreshing: false,
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_refresh',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateClient(
+    CreateClientRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      await _repository.createClient(event.client);
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_client_created',
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onUpdateClient(
+    UpdateClientRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      final updated = await _repository.updateClient(
+        event.id,
+        fullName: event.fullName,
+        phone: event.phone,
+        email: event.email,
+        birthDate: event.birthDate,
+        acquisitionCost: event.acquisitionCost,
+        note: event.note,
+      );
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_client_updated',
+        detailClient: current.detailClient?.id == updated.id
+            ? updated
+            : current.detailClient,
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteClient(
+    DeleteClientRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      await _repository.deleteClient(event.id);
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_client_deleted',
+        clearDetail: current.detailClient?.id == event.id,
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRegisterPurchase(
+    RegisterPurchaseRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      final updated = await _repository.registerPurchase(
+        event.clientId,
+        event.amount,
+      );
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_purchase',
+        detailClient: current.detailClient?.id == updated.id
+            ? updated
+            : current.detailClient,
+      );
+      if (state is CrmLoaded &&
+          (state as CrmLoaded).detailClient?.id == event.clientId) {
+        add(LoadClientDetailRequested(event.clientId));
+      }
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateDeal(
     CreateDealRequested event,
     Emitter<CrmState> emit,
   ) async {
     if (state is! CrmLoaded) return;
-    final currentState = state as CrmLoaded;
-
-    // Ищем имя клиента для отображения
-    final client = _cachedClients.firstWhere(
-      (c) => c.id == event.clientId,
-      orElse: () => CrmClient(
-        id: '',
-        fullName: 'Новый клиент',
-        loyaltyLevel: 'bronze',
-        bonusPoints: 0,
-        totalSpent: 0,
-        acquisitionCost: 0,
-        purchasesCount: 0,
-        createdAt: DateTime(1970),
-        churnRisk: false,
-      ),
-    );
-
-    // Оптимистично добавляем сделку в локальный список
-    final tempDeal = CrmDeal(
-      id: 'temp-${DateTime.now().millisecondsSinceEpoch}',
-      clientId: event.clientId,
-      title: event.title,
-      amount: event.amount,
-      stage: event.stage,
-      createdAt: DateTime.now(),
-      clientName: client.fullName,
-    );
-
-    final optimisticDeals = List<CrmDeal>.from(_cachedDeals)
-      ..insert(0, tempDeal);
-
-    emit(
-      currentState.copyWith(
-        deals: optimisticDeals,
-        clearSuccess: true,
-        clearError: true,
-      ),
-    );
-
+    final current = state as CrmLoaded;
     try {
-      final createdDeal = await _repository.createDeal(
-        event.clientId,
-        event.title,
-        event.amount,
-        event.stage,
+      await _repository.createDeal(
+        clientId: event.clientId,
+        title: event.title,
+        amount: event.amount,
+        stage: event.stage,
+        expectedClose: event.expectedClose,
       );
-
-      // Заменяем временную сделку реальным объектом с сервера
-      _cachedDeals = List<CrmDeal>.from(_cachedDeals)..insert(0, createdDeal);
-
-      // Обновляем статистику
-      _cachedStats = await _repository.getCrmStats(forceRefresh: true);
-
-      emit(
-        currentState.copyWith(
-          deals: _cachedDeals,
-          stats: _cachedStats,
-          successMessage: 'Сделка "${createdDeal.title}" успешно открыта.',
-        ),
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_deal_created',
       );
-    } catch (_) {
-      // Откат оптимистичных сделок в случае ошибки
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
       emit(
-        currentState.copyWith(
-          deals: _cachedDeals,
-          errorMessage:
-              'Не удалось открыть сделку. Проверьте данные и соединение.',
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
         ),
       );
     }
+  }
+
+  Future<void> _onUpdateDeal(
+    UpdateDealRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      await _repository.updateDeal(
+        event.id,
+        title: event.title,
+        amount: event.amount,
+        stage: event.stage,
+        expectedClose: event.expectedClose,
+      );
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_deal_updated',
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteDeal(
+    DeleteDealRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      await _repository.deleteDeal(event.id);
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_deal_deleted',
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAddLoyalty(
+    AddLoyaltyPointsRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      await _repository.createLoyaltyTxn(
+        clientId: event.clientId,
+        points: event.points,
+        reason: event.reason,
+      );
+      await _reloadCore(
+        emit,
+        current,
+        successMessage: 'crm_success_bonus',
+      );
+      if (current.detailClient?.id == event.clientId) {
+        add(LoadClientDetailRequested(event.clientId));
+      }
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onSendReactivation(
+    SendReactivationRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    try {
+      final ok = await _repository.sendReactivation(event.clientId, event.text);
+      emit(
+        current.copyWith(
+          successMessage: ok ? 'crm_success_sms_sent' : 'crm_error_sms',
+          errorMessage: ok ? null : 'crm_error_sms',
+          clearError: ok,
+          clearSuccess: !ok,
+        ),
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_sms',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAnalyzeChurn(
+    AnalyzeChurnRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    emit(current.copyWith(churnAnalyzing: true, clearChurnAdvice: true, clearError: true));
+    try {
+      final advice = await _repository.analyzeChurn(event.clientId);
+      emit(
+        (state is CrmLoaded ? state as CrmLoaded : current).copyWith(
+          churnAdvice: advice,
+          churnAnalyzing: false,
+        ),
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          churnAnalyzing: false,
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_ai',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadClientDetail(
+    LoadClientDetailRequested event,
+    Emitter<CrmState> emit,
+  ) async {
+    if (state is! CrmLoaded) return;
+    final current = state as CrmLoaded;
+    emit(current.copyWith(detailLoading: true, clearError: true));
+    try {
+      final results = await Future.wait<Object>([
+        _repository.getClient(event.clientId),
+        _repository.getDeals(clientId: event.clientId, forceRefresh: true),
+        _repository.getLoyaltyTxns(clientId: event.clientId),
+      ]);
+      emit(
+        current.copyWith(
+          detailClient: results[0] as CrmClient,
+          detailDeals: results[1] as List<CrmDeal>,
+          detailLoyalty: results[2] as List<LoyaltyTxn>,
+          detailLoading: false,
+        ),
+      );
+    } catch (e) {
+      final key = e.toString().replaceAll('Exception: ', '');
+      emit(
+        current.copyWith(
+          detailLoading: false,
+          errorMessage: key.startsWith('error_') ? key : 'crm_error_load',
+        ),
+      );
+    }
+  }
+
+  void _onClearClientDetail(ClearClientDetail event, Emitter<CrmState> emit) {
+    if (state is! CrmLoaded) return;
+    emit((state as CrmLoaded).copyWith(clearDetail: true));
+  }
+
+  void _onClearFeedback(ClearCrmFeedback event, Emitter<CrmState> emit) {
+    if (state is! CrmLoaded) return;
+    emit(
+      (state as CrmLoaded).copyWith(clearError: true, clearSuccess: true),
+    );
   }
 }

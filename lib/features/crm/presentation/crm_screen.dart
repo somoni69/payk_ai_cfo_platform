@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+
+import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../../core/localization/language_cubit.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
@@ -15,10 +17,10 @@ import '../../../features/crm/bloc/crm_state.dart';
 import '../../../features/crm/domain/crm_models.dart';
 import '../../../features/crm/domain/crm_repository.dart';
 import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
-import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_pill.dart';
+import 'crm_labels.dart';
+import 'crm_sheets.dart';
 
 class CrmScreen extends StatelessWidget {
   const CrmScreen({super.key});
@@ -41,98 +43,89 @@ class CrmView extends StatefulWidget {
 }
 
 class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+  late final TabController _tabs;
+  final _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
+
+  static const _tabCount = 6;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(_handleTabSelection);
-  }
-
-  void _handleTabSelection() {
-    if (mounted) {
-      setState(() {});
-    }
+    _tabs = TabController(length: _tabCount, vsync: this);
+    _tabs.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabSelection);
-    _tabController.dispose();
+    _searchDebounce?.cancel();
+    _searchCtrl.dispose();
+    _tabs.dispose();
     super.dispose();
   }
 
-  Future<void> _refreshCrm(BuildContext context) {
-    final completion = Completer<void>();
+  Future<void> _refresh(BuildContext context) {
+    final done = Completer<void>();
     context.read<CrmBloc>().add(
-      LoadCrmData(forceRefresh: true, completion: completion),
-    );
-    return completion.future;
+          LoadCrmData(forceRefresh: true, completion: done),
+        );
+    return done.future;
   }
 
-  Widget? _buildFab(
-    BuildContext context,
-    LanguageCubit localeCubit,
-    dynamic colors,
-    dynamic textStyles,
-  ) {
-    if (_tabController.index == 0) {
-      return FloatingActionButton.extended(
-        onPressed: () => _showAddClientBottomSheet(context),
-        backgroundColor: colors.brand,
-        foregroundColor: Colors.white,
-        icon: const Icon(TablerIcons.user_plus),
-        label: Text(
-          localeCubit.translate('crm_new_client'),
-          style: textStyles.bodySans.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    } else if (_tabController.index == 1) {
-      return FloatingActionButton.extended(
-        onPressed: () => _showAddDealBottomSheet(context),
-        backgroundColor: colors.brand,
-        foregroundColor: Colors.white,
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          localeCubit.translate('crm_new_deal'),
-          style: textStyles.bodySans.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }
-    return null;
+  bool _canManage(BuildContext context) {
+    final auth = context.watch<AuthBloc>().state;
+    return auth is AuthAuthenticated &&
+        auth.role.canManage(AppCapability.crm);
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final localeCubit = context.watch<LanguageCubit>();
-    final authState = context.watch<AuthBloc>().state;
-    final canManage =
-        authState is AuthAuthenticated &&
-        authState.role.canManage(AppCapability.crm);
+    final language = context.watch<LanguageCubit>();
+    final canManage = _canManage(context);
 
     return Scaffold(
-      floatingActionButton: canManage
-          ? _buildFab(context, localeCubit, colors, textStyles)
+      floatingActionButton: canManage && (_tabs.index == 0 || _tabs.index == 1)
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                final state = context.read<CrmBloc>().state;
+                if (state is! CrmLoaded) return;
+                if (_tabs.index == 0) {
+                  showCrmClientForm(context);
+                } else {
+                  showCrmDealForm(context, clients: state.clients);
+                }
+              },
+              backgroundColor: colors.brand,
+              foregroundColor: Colors.white,
+              icon: Icon(
+                _tabs.index == 0 ? TablerIcons.user_plus : TablerIcons.plus,
+              ),
+              label: Text(
+                language.translate(
+                  _tabs.index == 0 ? 'crm_new_client' : 'crm_new_deal',
+                ),
+                style: textStyles.bodySans.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )
           : null,
       body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
+        headerSliverBuilder: (context, _) {
           return [
             LedgerCollapsingHeader(
-              title: localeCubit.translate('crm_title'),
+              title: language.translate('crm_title'),
               pinned: true,
               floating: true,
               snap: true,
               bottom: TabBar(
-                controller: _tabController,
+                controller: _tabs,
+                isScrollable: true,
                 indicatorColor: colors.brand,
                 labelColor: colors.brand,
                 unselectedLabelColor: colors.textSecondary,
@@ -140,777 +133,996 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                   fontWeight: FontWeight.w500,
                 ),
                 tabs: [
-                  Tab(text: localeCubit.translate('crm_tab_clients')),
-                  Tab(text: localeCubit.translate('crm_tab_deals')),
-                  Tab(text: localeCubit.translate('crm_tab_stats')),
+                  Tab(text: language.translate('crm_tab_clients')),
+                  Tab(text: language.translate('crm_tab_funnel')),
+                  Tab(text: language.translate('crm_tab_loyalty')),
+                  Tab(text: language.translate('crm_tab_reactivation')),
+                  Tab(text: language.translate('crm_tab_churn')),
+                  Tab(text: language.translate('crm_tab_birthdays')),
                 ],
               ),
             ),
           ];
         },
         body: BlocListener<CrmBloc, CrmState>(
+          listenWhen: (p, c) {
+            if (c is! CrmLoaded) return false;
+            return c.errorMessage != null || c.successMessage != null;
+          },
           listener: (context, state) {
-            if (state is CrmLoaded) {
-              if (state.errorMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      localeCubit.translateMessage(state.errorMessage!),
-                    ),
-                    backgroundColor: colors.accentRed,
-                  ),
-                );
-              } else if (state.successMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      localeCubit.translateMessage(state.successMessage!),
-                    ),
-                    backgroundColor: colors.accentGreen,
-                  ),
-                );
-              }
-            }
+            if (state is! CrmLoaded) return;
+            final msg = state.errorMessage ?? state.successMessage;
+            if (msg == null) return;
+            final isError = state.errorMessage != null;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(language.resolveMessage(msg)),
+                backgroundColor:
+                    isError ? colors.accentRed : colors.accentGreen,
+              ),
+            );
+            context.read<CrmBloc>().add(const ClearCrmFeedback());
           },
           child: BlocBuilder<CrmBloc, CrmState>(
             builder: (context, state) {
               if (state is CrmLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               if (state is CrmError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                return _ErrorBody(
+                  message: language.resolveMessage(state.message),
+                  onRetry: () =>
+                      context.read<CrmBloc>().add(const LoadCrmData()),
+                );
+              }
+              if (state is! CrmLoaded) return const SizedBox.shrink();
+
+              return Column(
+                children: [
+                  _StatsBar(stats: state.stats),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabs,
                       children: [
-                        Icon(
-                          TablerIcons.alert_circle,
-                          size: 48,
-                          color: colors.accentRed,
+                        _ClientsTab(
+                          state: state,
+                          canManage: canManage,
+                          searchCtrl: _searchCtrl,
+                          onSearch: (q) {
+                            _searchDebounce?.cancel();
+                            _searchDebounce = Timer(
+                              const Duration(milliseconds: 350),
+                              () {
+                                context.read<CrmBloc>().add(
+                                      ClientFiltersChanged(query: q),
+                                    );
+                              },
+                            );
+                          },
+                          onRefresh: () => _refresh(context),
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          localeCubit.translateMessage(state.message),
-                          style: textStyles.bodySans,
-                          textAlign: TextAlign.center,
+                        _FunnelTab(
+                          state: state,
+                          canManage: canManage,
+                          onRefresh: () => _refresh(context),
                         ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () =>
-                              context.read<CrmBloc>().add(LoadCrmData()),
-                          child: Text(localeCubit.translate('crm_retry')),
+                        _LoyaltyTab(
+                          state: state,
+                          canManage: canManage,
+                          onRefresh: () => _refresh(context),
+                        ),
+                        _ReactivationTab(
+                          state: state,
+                          canManage: canManage,
+                          onRefresh: () => _refresh(context),
+                        ),
+                        _ChurnTab(
+                          state: state,
+                          canManage: canManage,
+                          onRefresh: () => _refresh(context),
+                        ),
+                        _BirthdaysTab(
+                          state: state,
+                          onRefresh: () => _refresh(context),
                         ),
                       ],
                     ),
                   ),
-                );
-              }
-
-              if (state is CrmLoaded) {
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildClientsTab(context, state),
-                    _buildDealsTab(context, state),
-                    _buildStatsTab(context, state),
-                  ],
-                );
-              }
-
-              return const SizedBox();
+                ],
+              );
             },
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildClientsTab(BuildContext context, CrmLoaded state) {
+class _StatsBar extends StatelessWidget {
+  const _StatsBar({required this.stats});
+  final CrmStatsData stats;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
+    final language = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    if (state.clients.isEmpty) {
-      return Center(
-        child: Text(
-          localeCubit.translate('crm_no_clients'),
-          style: textStyles.bodySans.copyWith(color: colors.textTooltip),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _refreshCrm(context),
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: state.clients.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final client = state.clients[index];
-
-          Color loyaltyBg = colors.border;
-          Color loyaltyText = colors.textPrimary;
-          if (client.loyaltyLevel == 'gold') {
-            loyaltyBg = colors.accentAmber.withValues(alpha: 0.1);
-            loyaltyText = colors.accentAmber;
-          } else if (client.loyaltyLevel == 'silver') {
-            loyaltyBg = colors.brand.withValues(alpha: 0.08);
-            loyaltyText = colors.brand;
-          } else if (client.loyaltyLevel == 'platinum') {
-            loyaltyBg = colors.accentGreen.withValues(alpha: 0.1);
-            loyaltyText = colors.accentGreen;
-          }
-
-          return LedgerCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            client.fullName,
-                            style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          LedgerPill(
-                            text: _loyaltyLabel(
-                              localeCubit,
-                              client.loyaltyLevel,
-                            ),
-                            backgroundColor: loyaltyBg,
-                            textColor: loyaltyText,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      if (client.phone != null)
-                        Text(
-                          client.phone!,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      const SizedBox(height: 2),
-                      Text(
-                        localeCubit.translate(
-                          'crm_ltv_orders',
-                          params: {
-                            'amount': oCcy.format(client.totalSpent),
-                            'count': client.purchasesCount,
-                          },
-                        ),
-                        style: textStyles.smallMono.copyWith(
-                          color: colors.textTooltip,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (client.churnRisk)
-                      LedgerPill(
-                        text: localeCubit.translate('crm_churn_risk'),
-                        backgroundColor: colors.accentRed.withValues(
-                          alpha: 0.08,
-                        ),
-                        textColor: colors.accentRed,
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'CAC: ${oCcy.format(client.acquisitionCost)} TJS',
-                      style: textStyles.smallMono.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildDealsTab(BuildContext context, CrmLoaded state) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
-    final oCcy = localizedDecimalFormat(context);
-
-    if (state.deals.isEmpty) {
-      return Center(
-        child: Text(
-          localeCubit.translate('crm_no_deals'),
-          style: textStyles.bodySans.copyWith(color: colors.textTooltip),
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _refreshCrm(context),
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: state.deals.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final deal = state.deals[index];
-
-          Color stageBg = colors.border;
-          Color stageText = colors.textPrimary;
-          String stageLabel = _dealStatusLabel(localeCubit, deal.stage);
-
-          if (deal.stage == 'won') {
-            stageBg = colors.accentGreen.withValues(alpha: 0.1);
-            stageText = colors.accentGreen;
-            stageLabel = localeCubit.translate('crm_stage_won');
-          } else if (deal.stage == 'lost') {
-            stageBg = colors.accentRed.withValues(alpha: 0.1);
-            stageText = colors.accentRed;
-            stageLabel = localeCubit.translate('crm_stage_lost');
-          } else if (deal.stage == 'negotiation') {
-            stageBg = colors.accentAmber.withValues(alpha: 0.1);
-            stageText = colors.accentAmber;
-            stageLabel = localeCubit.translate('crm_stage_negotiation');
-          }
-
-          return LedgerCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        deal.title,
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        localeCubit.translate(
-                          'crm_client_value',
-                          params: {
-                            'client':
-                                deal.clientName ??
-                                localeCubit.translate('common_unknown'),
-                          },
-                        ),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    LedgerPill(
-                      text: stageLabel,
-                      backgroundColor: stageBg,
-                      textColor: stageText,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${oCcy.format(deal.amount)} TJS',
-                      style: textStyles.bodyMono.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildStatsTab(BuildContext context, CrmLoaded state) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
-    final oCcy = localizedDecimalFormat(context);
-
-    return RefreshIndicator(
-      onRefresh: () => _refreshCrm(context),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Row(
+    Widget cell(String label, String value) {
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            border: Border.all(color: colors.border),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localeCubit.translate('crm_stat_total_clients'),
-                        style: textStyles.smallSans.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${state.stats.clientsTotal}',
-                        style: textStyles.h1Mono.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+              Text(
+                label,
+                style: textStyles.smallSans.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localeCubit.translate('crm_stat_active_clients'),
-                        style: textStyles.smallSans.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${state.stats.activeClients}',
-                        style: textStyles.h1Mono.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: textStyles.bodyMono.copyWith(fontWeight: FontWeight.w500),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          LedgerCard(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localeCubit.translate('crm_stat_total_ltv'),
-                  style: textStyles.smallSans.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${oCcy.format(state.stats.ltvTotal)} TJS',
-                  style: textStyles.h1Mono.copyWith(
-                    color: colors.accentGreen,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              cell(
+                language.translate('crm_stat_total_clients'),
+                '${stats.clientsTotal}',
+              ),
+              const SizedBox(width: 8),
+              cell(
+                language.translate('crm_stat_active_clients'),
+                '${stats.activeClients}',
+              ),
+              const SizedBox(width: 8),
+              cell(
+                language.translate('crm_stats_bar_roi'),
+                stats.roi == null ? '—' : oCcy.format(stats.roi!),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          LedgerCard(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localeCubit.translate('crm_stat_total_cac'),
-                  style: textStyles.smallSans.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${oCcy.format(state.stats.cacTotal)} TJS',
-                  style: textStyles.h1Mono.copyWith(
-                    color: colors.accentRed,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  softWrap: false,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          LedgerCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  localeCubit.translate('crm_churn_title'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          localeCubit.translate('crm_churn_at_risk'),
-                          style: textStyles.bodySans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        Text(
-                          '${state.stats.churnCount}',
-                          style: textStyles.h1Mono.copyWith(
-                            color: colors.accentRed,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          localeCubit.translate('crm_reactivated'),
-                          style: textStyles.bodySans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        Text(
-                          '${state.stats.reactivationCount}',
-                          style: textStyles.h1Mono.copyWith(
-                            color: colors.accentGreen,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              cell(
+                language.translate('crm_stat_total_ltv'),
+                oCcy.format(stats.ltvTotal),
+              ),
+              const SizedBox(width: 8),
+              cell(
+                language.translate('crm_stat_total_cac'),
+                oCcy.format(stats.cacTotal),
+              ),
+              const SizedBox(width: 8),
+              cell(
+                language.translate('crm_churn_risk'),
+                '${stats.churnCount}',
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
 
-  String _loyaltyLabel(LanguageCubit language, String loyaltyLevel) {
-    final key = switch (loyaltyLevel) {
-      'gold' => 'crm_loyalty_gold',
-      'silver' => 'crm_loyalty_silver',
-      'platinum' => 'crm_loyalty_platinum',
-      'bronze' => 'crm_loyalty_bronze',
-      _ => null,
-    };
-    return key == null
-        ? loyaltyLevel.toUpperCase()
-        : language.translate(key).toUpperCase();
-  }
+class _ClientsTab extends StatelessWidget {
+  const _ClientsTab({
+    required this.state,
+    required this.canManage,
+    required this.searchCtrl,
+    required this.onSearch,
+    required this.onRefresh,
+  });
 
-  String _dealStatusLabel(LanguageCubit language, String stage) {
-    final key = switch (stage) {
-      'lead' => 'crm_stage_lead',
-      'proposal' => 'crm_stage_proposal_status',
-      'negotiation' => 'crm_stage_negotiation',
-      'won' => 'crm_stage_won',
-      'lost' => 'crm_stage_lost',
-      _ => null,
-    };
-    return key == null ? stage.toUpperCase() : language.translate(key);
-  }
+  final CrmLoaded state;
+  final bool canManage;
+  final TextEditingController searchCtrl;
+  final ValueChanged<String> onSearch;
+  final Future<void> Function() onRefresh;
 
-  String _dealStageTranslationKey(String stage) {
-    return switch (stage) {
-      'lead' => 'crm_stage_lead_label',
-      'proposal' => 'crm_stage_proposal',
-      'negotiation' => 'crm_stage_negotiation_label',
-      _ => 'crm_stage_won_label',
-    };
-  }
-
-  Future<void> _showAddClientBottomSheet(BuildContext context) async {
-    final language = context.read<LanguageCubit>();
-    final textStyles = context.textStyles;
-    final crmBloc = context.read<CrmBloc>();
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final emailController = TextEditingController();
-    final cacController = TextEditingController(text: '0');
-    final noteController = TextEditingController();
-
-    bool isDirty() {
-      return nameController.text.trim().isNotEmpty ||
-          phoneController.text.trim().isNotEmpty ||
-          emailController.text.trim().isNotEmpty ||
-          cacController.text.trim() != '0' ||
-          noteController.text.trim().isNotEmpty;
-    }
-
-    try {
-      await LedgerBottomSheet.show(
-        context: context,
-        title: language.translate('crm_new_client'),
-        isDirty: isDirty,
-        builder: (context, setSheetState) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_full_name_company'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_phone'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_email'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: cacController,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_acquisition_cost'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteController,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_note'),
-                ),
-              ),
-            ],
-          );
-        },
-        footerBuilder: (context, setSheetState) {
-          return ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final cac =
-                  parseLocalizedNumber(context, cacController.text) ?? 0.0;
-
-              if (name.isEmpty) return;
-
-              crmBloc.add(
-                CreateClientRequested(
-                  CrmClient(
-                    id: '',
-                    fullName: name,
-                    phone: phoneController.text.trim(),
-                    email: emailController.text.trim(),
-                    loyaltyLevel: 'bronze',
-                    bonusPoints: 0,
-                    totalSpent: 0,
-                    acquisitionCost: cac,
-                    purchasesCount: 0,
-                    note: noteController.text.trim(),
-                    createdAt: DateTime.now(),
-                    churnRisk: false,
-                  ),
-                ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text(language.translate('common_add')),
-          );
-        },
-      );
-    } finally {
-      nameController.dispose();
-      phoneController.dispose();
-      emailController.dispose();
-      cacController.dispose();
-      noteController.dispose();
-    }
-  }
-
-  Future<void> _showAddDealBottomSheet(BuildContext context) async {
-    final language = context.read<LanguageCubit>();
+  @override
+  Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final crmBloc = context.read<CrmBloc>();
-    final state = crmBloc.state;
-    if (state is! CrmLoaded) return;
+    final language = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+    final pages = state.clientsSize <= 0
+        ? 1
+        : ((state.clientsTotal + state.clientsSize - 1) ~/ state.clientsSize)
+            .clamp(1, 9999);
 
-    CrmClient? selectedClient = state.clients.isNotEmpty
-        ? state.clients.first
-        : null;
-    final titleController = TextEditingController();
-    final amountController = TextEditingController();
-    String stage = 'lead';
-
-    bool isDirty() {
-      return titleController.text.trim().isNotEmpty ||
-          amountController.text.trim().isNotEmpty ||
-          selectedClient !=
-              (state.clients.isNotEmpty ? state.clients.first : null);
-    }
-
-    try {
-      await LedgerBottomSheet.show(
-        context: context,
-        title: language.translate('crm_new_deal'),
-        isDirty: isDirty,
-        builder: (context, setSheetState) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                language.translate('crm_client_label'),
-                style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 6),
-              ExpansibleWidget<CrmClient?>.selection(
-                cardPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                title: Text(
-                  selectedClient?.fullName ??
-                      language.translate('crm_select_client'),
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: searchCtrl,
+            style: textStyles.bodySans,
+            onChanged: onSearch,
+            decoration: InputDecoration(
+              hintText: language.translate('crm_search_placeholder'),
+              prefixIcon: const Icon(TablerIcons.search, size: 20),
+            ),
+          ),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(
+            value: state.clientFilters.level ?? '',
+            items: crmLoyaltyOptions(language)
+                .map(
+                  (o) => DropdownMenuItem(
+                    value: o.value,
+                    child: Text(o.label, style: textStyles.bodySans),
+                  ),
+                )
+                .toList(),
+            onChanged: (v) {
+              context.read<CrmBloc>().add(
+                    ClientFiltersChanged(level: v ?? ''),
+                  );
+            },
+            decoration: InputDecoration(
+              labelText: language.translate('crm_filter_all_levels'),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (state.clients.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 48),
+              child: Center(
+                child: Text(
+                  language.translate('crm_no_clients'),
                   style: textStyles.bodySans.copyWith(
-                    color: selectedClient == null
-                        ? colors.textTooltip
-                        : colors.textPrimary,
+                    color: colors.textTooltip,
                   ),
                 ),
-                items: state.clients,
-                selectedValue: selectedClient,
-                itemLabelBuilder: (c) =>
-                    c?.fullName ?? language.translate('crm_no_client'),
-                onSelected: (c) {
-                  setSheetState(() {
-                    selectedClient = c;
-                  });
-                },
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleController,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_deal_title'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: amountController,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: language.translate('crm_deal_amount'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                language.translate('crm_funnel_stage'),
-                style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ExpansibleWidget<String>.selection(
-                cardPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                title: Text(
-                  language.translate(_dealStageTranslationKey(stage)),
-                  style: textStyles.bodySans,
-                ),
-                items: const ['lead', 'proposal', 'negotiation', 'won'],
-                selectedValue: stage,
-                itemLabelBuilder: (stageCode) =>
-                    language.translate(_dealStageTranslationKey(stageCode)),
-                onSelected: (val) {
-                  setSheetState(() {
-                    stage = val;
-                  });
-                },
-              ),
-            ],
-          );
-        },
-        footerBuilder: (context, setSheetState) {
-          return ElevatedButton(
-            onPressed: () {
-              final title = titleController.text.trim();
-              final amount =
-                  parseLocalizedNumber(context, amountController.text) ?? 0.0;
-              final cliId = selectedClient?.id;
-
-              if (title.isEmpty || cliId == null) return;
-
-              crmBloc.add(
-                CreateDealRequested(
-                  clientId: cliId,
-                  title: title,
-                  amount: amount,
-                  stage: stage,
+            )
+          else
+            ...state.clients.map((client) {
+              final lc = crmLoyaltyColors(colors, client.loyaltyLevel);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => showCrmClientDetail(context, client),
+                  child: LedgerCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      client.fullName,
+                                      style: textStyles.bodySans.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  LedgerPill(
+                                    text: crmLoyaltyLabel(
+                                      language,
+                                      client.loyaltyLevel,
+                                    ),
+                                    backgroundColor: lc.bg,
+                                    textColor: lc.fg,
+                                  ),
+                                ],
+                              ),
+                              if (client.phone != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  client.phone!,
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 4),
+                              Text(
+                                language.translate(
+                                  'crm_ltv_orders',
+                                  params: {
+                                    'amount': oCcy.format(client.totalSpent),
+                                    'count': client.purchasesCount,
+                                  },
+                                ),
+                                style: textStyles.smallMono.copyWith(
+                                  color: colors.textTooltip,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (client.churnRisk)
+                          LedgerPill(
+                            text: language.translate('crm_churn_risk'),
+                            backgroundColor:
+                                colors.accentRed.withValues(alpha: 0.08),
+                            textColor: colors.accentRed,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               );
-              Navigator.pop(context);
-            },
-            child: Text(language.translate('common_open')),
-          );
-        },
+            }),
+          if (pages > 1) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: state.clientsPage <= 1
+                      ? null
+                      : () => context.read<CrmBloc>().add(
+                            ClientFiltersChanged(
+                              page: state.clientsPage - 1,
+                            ),
+                          ),
+                  child: Text(language.translate('crm_prev_page')),
+                ),
+                Text(
+                  language.translate(
+                    'crm_page_of',
+                    params: {
+                      'page': state.clientsPage,
+                      'pages': pages,
+                    },
+                  ),
+                  style: textStyles.captionSans,
+                ),
+                TextButton(
+                  onPressed: state.clientsPage >= pages
+                      ? null
+                      : () => context.read<CrmBloc>().add(
+                            ClientFiltersChanged(
+                              page: state.clientsPage + 1,
+                            ),
+                          ),
+                  child: Text(language.translate('crm_next_page')),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _FunnelTab extends StatelessWidget {
+  const _FunnelTab({
+    required this.state,
+    required this.canManage,
+    required this.onRefresh,
+  });
+
+  final CrmLoaded state;
+  final bool canManage;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    if (state.deals.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: ListView(
+          children: [
+            SizedBox(
+              height: 240,
+              child: Center(
+                child: Text(
+                  language.translate('crm_no_deals'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textTooltip,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       );
-    } finally {
-      titleController.dispose();
-      amountController.dispose();
     }
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          for (final stage in kDealStages) ...[
+            Builder(
+              builder: (context) {
+                final deals =
+                    state.deals.where((d) => d.stage == stage).toList();
+                if (deals.isEmpty) return const SizedBox.shrink();
+                final sc = crmStageColors(colors, stage);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8, top: 4),
+                      child: Row(
+                        children: [
+                          LedgerPill(
+                            text: crmStagePill(language, stage),
+                            backgroundColor: sc.bg,
+                            textColor: sc.fg,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${deals.length}',
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ...deals.map((deal) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: LedgerCard(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      deal.title,
+                                      style: textStyles.bodySans.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    '${oCcy.format(deal.amount)} TJS',
+                                    style: textStyles.bodyMono.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (deal.clientName != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  language.translate(
+                                    'crm_client_value',
+                                    params: {'client': deal.clientName!},
+                                  ),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                              if (deal.expectedClose != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  formatLocalizedDateTime(
+                                    context,
+                                    deal.expectedClose!,
+                                    style: LocalizedDateTimeStyle.date,
+                                  ),
+                                  style: textStyles.smallMono.copyWith(
+                                    color: colors.textTooltip,
+                                  ),
+                                ),
+                              ],
+                              if (canManage) ...[
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    TextButton(
+                                      onPressed: () => showCrmDealForm(
+                                        context,
+                                        clients: state.clients,
+                                        existing: deal,
+                                      ),
+                                      child: Text(
+                                        language.translate('crm_edit_deal'),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        final ok = await showDialog<bool>(
+                                          context: context,
+                                          builder: (dCtx) => AlertDialog(
+                                            title: Text(
+                                              language.translate(
+                                                'crm_delete_deal',
+                                              ),
+                                            ),
+                                            content: Text(
+                                              language.translate(
+                                                'crm_delete_deal_confirm',
+                                                params: {'name': deal.title},
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(dCtx, false),
+                                                child: Text(
+                                                  language.translate(
+                                                    'crm_cancel',
+                                                  ),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(dCtx, true),
+                                                child: Text(
+                                                  language.translate(
+                                                    'crm_confirm',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                        if (ok == true && context.mounted) {
+                                          context.read<CrmBloc>().add(
+                                                DeleteDealRequested(deal.id),
+                                              );
+                                        }
+                                      },
+                                      child: Text(
+                                        language.translate('crm_delete_deal'),
+                                        style: textStyles.bodySans.copyWith(
+                                          color: colors.accentRed,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _LoyaltyTab extends StatelessWidget {
+  const _LoyaltyTab({
+    required this.state,
+    required this.canManage,
+    required this.onRefresh,
+  });
+
+  final CrmLoaded state;
+  final bool canManage;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            language.translate('crm_loyalty_summary'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 12),
+          if (state.loyaltySummary.isEmpty)
+            Text(
+              language.translate('crm_no_loyalty'),
+              style: textStyles.bodySans.copyWith(color: colors.textTooltip),
+            )
+          else
+            ...state.loyaltySummary.map((row) {
+              final lc = crmLoyaltyColors(colors, row.level);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      LedgerPill(
+                        text: crmLoyaltyLabel(language, row.level),
+                        backgroundColor: lc.bg,
+                        textColor: lc.fg,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        language.translate(
+                          'crm_loyalty_clients_count',
+                          params: {'count': row.clients},
+                        ),
+                        style: textStyles.captionSans,
+                      ),
+                      Text(
+                        language.translate(
+                          'crm_loyalty_spent',
+                          params: {'amount': oCcy.format(row.totalSpent)},
+                        ),
+                        style: textStyles.smallMono,
+                      ),
+                      Text(
+                        language.translate(
+                          'crm_loyalty_bonus_total',
+                          params: {'amount': oCcy.format(row.bonusPoints)},
+                        ),
+                        style: textStyles.smallMono,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          if (canManage && state.clients.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            ElevatedButton.icon(
+              onPressed: () => showCrmBonusSheet(context, state.clients.first),
+              icon: const Icon(TablerIcons.gift, size: 18),
+              label: Text(language.translate('crm_add_bonus')),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ReactivationTab extends StatelessWidget {
+  const _ReactivationTab({
+    required this.state,
+    required this.canManage,
+    required this.onRefresh,
+  });
+
+  final CrmLoaded state;
+  final bool canManage;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: state.reactivation.isEmpty
+          ? ListView(
+              children: [
+                SizedBox(
+                  height: 240,
+                  child: Center(
+                    child: Text(
+                      language.translate('crm_no_reactivation'),
+                      style: textStyles.bodySans.copyWith(
+                        color: colors.textTooltip,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: state.reactivation.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final c = state.reactivation[i];
+                return LedgerCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        c.fullName,
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (c.phone != null)
+                        Text(
+                          c.phone!,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      Text(
+                        'LTV ${oCcy.format(c.totalSpent)} TJS',
+                        style: textStyles.smallMono,
+                      ),
+                      if (canManage) ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => showCrmSmsSheet(context, c),
+                          icon: const Icon(TablerIcons.mail, size: 18),
+                          label: Text(language.translate('crm_send_sms')),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _ChurnTab extends StatelessWidget {
+  const _ChurnTab({
+    required this.state,
+    required this.canManage,
+    required this.onRefresh,
+  });
+
+  final CrmLoaded state;
+  final bool canManage;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (state.churnAdvice != null) ...[
+            LedgerCard(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    language.translate('crm_ai_advice'),
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
+                      color: colors.accentAmber,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(state.churnAdvice!.advice, style: textStyles.bodySans),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (state.churnAnalyzing)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(),
+            ),
+          if (state.churn.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 48),
+              child: Center(
+                child: Text(
+                  language.translate('crm_no_churn'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textTooltip,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...state.churn.map((c) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              c.fullName,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          LedgerPill(
+                            text: language.translate('crm_churn_risk'),
+                            backgroundColor:
+                                colors.accentRed.withValues(alpha: 0.08),
+                            textColor: colors.accentRed,
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'LTV ${oCcy.format(c.totalSpent)} TJS',
+                        style: textStyles.smallMono,
+                      ),
+                      if (canManage) ...[
+                        const SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => context.read<CrmBloc>().add(
+                                AnalyzeChurnRequested(c.id),
+                              ),
+                          icon: const Icon(TablerIcons.brain, size: 18),
+                          label: Text(language.translate('crm_ai_analyze')),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _BirthdaysTab extends StatelessWidget {
+  const _BirthdaysTab({required this.state, required this.onRefresh});
+
+  final CrmLoaded state;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: state.birthdays.isEmpty
+          ? ListView(
+              children: [
+                SizedBox(
+                  height: 240,
+                  child: Center(
+                    child: Text(
+                      language.translate('crm_no_birthdays'),
+                      style: textStyles.bodySans.copyWith(
+                        color: colors.textTooltip,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: state.birthdays.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final b = state.birthdays[i];
+                return LedgerCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Icon(TablerIcons.cake, color: colors.brand, size: 22),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              b.fullName,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              language.translate(
+                                'crm_birthday_in_days',
+                                params: {'days': b.daysUntil},
+                              ),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            if (b.turning != null)
+                              Text(
+                                language.translate(
+                                  'crm_turning',
+                                  params: {'age': b.turning},
+                                ),
+                                style: textStyles.smallMono,
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (b.phone != null)
+                        Text(
+                          b.phone!,
+                          style: textStyles.smallMono.copyWith(
+                            color: colors.textTooltip,
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _ErrorBody extends StatelessWidget {
+  const _ErrorBody({required this.message, required this.onRetry});
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(TablerIcons.alert_circle, size: 48, color: colors.accentRed),
+            const SizedBox(height: 16),
+            Text(message, style: textStyles.bodySans, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: onRetry,
+              child: Text(language.translate('crm_retry')),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
