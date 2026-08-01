@@ -368,7 +368,8 @@ class _ClientsTab extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: state.clientFilters.level ?? '',
+            key: ValueKey('crm-level-${state.clientFilters.level ?? ''}'),
+            initialValue: state.clientFilters.level ?? '',
             items: crmLoyaltyOptions(language)
                 .map(
                   (o) => DropdownMenuItem(
@@ -854,7 +855,7 @@ class _ReactivationTab extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: state.reactivation.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final c = state.reactivation[i];
                 return LedgerCard(
@@ -1041,7 +1042,7 @@ class _BirthdaysTab extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: state.birthdays.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final b = state.birthdays[i];
                 return LedgerCard(

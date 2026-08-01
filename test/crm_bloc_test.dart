@@ -331,7 +331,7 @@ void main() {
       );
 
       final loaded = await bloc.stream.firstWhere(
-        (s) => s is CrmLoaded && (s as CrmLoaded).clients.length == 2,
+        (s) => s is CrmLoaded && s.clients.length == 2,
       ) as CrmLoaded;
 
       expect(loaded.clients.last.fullName, 'Зоир Тошев');
@@ -355,7 +355,7 @@ void main() {
       final loaded = await bloc.stream.firstWhere(
         (s) =>
             s is CrmLoaded &&
-            (s as CrmLoaded).deals.any((d) => d.title == 'Укладка плитки'),
+            s.deals.any((d) => d.title == 'Укладка плитки'),
       ) as CrmLoaded;
 
       expect(

@@ -212,7 +212,8 @@ Future<void> showCrmDealForm(
         children: [
           if (existing == null) ...[
             DropdownButtonFormField<String>(
-              value: clientId.isEmpty ? null : clientId,
+              key: ValueKey('crm-deal-client-$clientId'),
+              initialValue: clientId.isEmpty ? null : clientId,
               items: clients
                   .map(
                     (c) => DropdownMenuItem(
@@ -254,7 +255,8 @@ Future<void> showCrmDealForm(
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: stage,
+            key: ValueKey('crm-deal-stage-$stage'),
+            initialValue: stage,
             items: stages
                 .map(
                   (s) => DropdownMenuItem(
