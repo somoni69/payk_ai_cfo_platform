@@ -57,7 +57,12 @@ This document serves as the complete technical design system and widget referenc
 ## 🌍 Language & Localization (`LanguageCubit`)
 
 - **Supported Languages**: Russian (`ru`) and Tajik (`tg`).
-- **Translations**: All UI strings must be localized via `LanguageCubit` (`translate` or `translateMessage`).
+- **Catalog files** (keep keys symmetric):
+  - `lib/core/localization/catalogs/ru_catalog.dart`
+  - `lib/core/localization/catalogs/tg_catalog.dart`
+  - `lib/core/localization/catalogs/tajik_runtime_messages.dart` (RU→TG runtime message map)
+- **Translations**: All UI strings must be localized via `LanguageCubit` (`translate`, `translateMessage`, or `resolveMessage`).
+- **Error keys**: Prefer stable keys (`error_timeout`, `error_session_expired`, …) from `ErrorKeys` — never show raw Dio/stack traces.
 - **Key Pattern**: `feature_key` (e.g., `cash_new_operation_btn`, `warehouse_tab_products`).
 - **Dynamic Messages**: Server errors and formatted messages are localized using `translateMessage(msg)` with `{param}` substitution.
 
@@ -94,7 +99,7 @@ This document serves as the complete technical design system and widget referenc
 
 ### 5. `LedgerOperationRow` (`ledger_operation_row.dart`)
 - **Purpose**: Transaction and activity list row item.
-- **Styling**: Left title in `bodySans` `w500`, category in `captionSans`, optional status pill, right amount in `bodyMono` `w600` (`accentGreen` for income, `accentRed` for expense).
+- **Styling**: Left title in `bodySans` `w500`, category in `captionSans`, optional status pill, right amount in `bodyMono` `w500` (`accentGreen` for income, `accentRed` for expense).
 - **Parameters**: `required title`, `required category`, `required amount`, `required isIncome`, `pillText`, `pillColor`, `pillTextColor`, `onTap`.
 
 ### 6. `LedgerCollapsingHeader` (`ledger_collapsing_header.dart`)

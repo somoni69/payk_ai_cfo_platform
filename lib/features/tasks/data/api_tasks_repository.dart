@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/task_model.dart';
 import '../domain/tasks_repository.dart';
 
@@ -39,7 +40,7 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить задачи: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -72,7 +73,7 @@ class ApiTasksRepository implements TasksRepository {
         position: map['position'] as int?,
       );
     } catch (e) {
-      throw Exception('Не удалось обновить статус задачи: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -116,7 +117,7 @@ class ApiTasksRepository implements TasksRepository {
         position: map['position'] as int?,
       );
     } catch (e) {
-      throw Exception('Не удалось создать задачу: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -166,7 +167,7 @@ class ApiTasksRepository implements TasksRepository {
         position: map['position'] as int?,
       );
     } catch (e) {
-      throw Exception('Не удалось обновить задачу: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -185,7 +186,7 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить проекты: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -302,9 +303,7 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить перегрузку сотрудников: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -327,7 +326,7 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить критический путь: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

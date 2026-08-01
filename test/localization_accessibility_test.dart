@@ -8,7 +8,7 @@ import 'package:payk_ai_cfo_platform/core/localization/tajik_cupertino_localizat
 import 'package:payk_ai_cfo_platform/core/localization/tajik_material_localizations.dart';
 import 'package:payk_ai_cfo_platform/core/theme/app_colors.dart';
 import 'package:payk_ai_cfo_platform/core/theme/app_theme.dart';
-import 'package:payk_ai_cfo_platform/presentation/screens/tasks_screen.dart';
+import 'package:payk_ai_cfo_platform/features/tasks/presentation/tasks_screen.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

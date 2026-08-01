@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/user_facing_error.dart';
 import '../domain/finance_model.dart';
 import '../domain/finance_repository.dart';
 import 'dashboard_event.dart';
@@ -60,17 +62,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     } catch (_) {
       if (emit.isDone) return;
       if (_cachedBaseMetrics != null && _cachedBaseHistory != null) {
-        _emitCurrentState(
-          emit,
-          overviewError:
-              'Не удалось загрузить финансовые данные. Проверьте соединение.',
-        );
+        _emitCurrentState(emit, overviewError: ErrorKeys.loadFailed);
       } else {
-        emit(
-          const DashboardError(
-            'Не удалось загрузить финансовые данные. Проверьте соединение.',
-          ),
-        );
+        emit(const DashboardError(ErrorKeys.loadFailed));
       }
     } finally {
       if (identical(_overviewRequest, request)) {
@@ -167,8 +161,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (error) {
       if (abcRevision == null || abcRevision == _abcRevision) {
-        _sectionErrors[section] =
-            'Не удалось загрузить раздел. Повторите попытку.';
+        _sectionErrors[section] = ErrorKeys.loadFailed;
       }
     } finally {
       if (abcRevision == null || abcRevision == _abcRevision) {
@@ -237,7 +230,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         (row) => row.code.toUpperCase() == currency && row.rate > 0,
       );
       if (!hasRate) {
-        const message = 'Курс выбранной валюты недоступен. Повторите попытку.';
+        const message = ErrorKeys.loadFailed;
         _sectionErrors[DashboardSection.accountsRates] = message;
         _emitCurrentState(emit, overviewError: message);
         return;
@@ -248,7 +241,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _emitCurrentState(emit);
     } catch (_) {
       if (revision != _currencyRevision || emit.isDone) return;
-      const message = 'Курс выбранной валюты недоступен. Повторите попытку.';
+      const message = ErrorKeys.loadFailed;
       _sectionErrors[DashboardSection.accountsRates] = message;
       _emitCurrentState(emit, overviewError: message);
     }
@@ -270,8 +263,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedAbc = abc;
     } catch (error) {
       if (revision == _abcRevision && !emit.isDone) {
-        _sectionErrors[DashboardSection.abc] =
-            'Не удалось загрузить ABC-анализ. Повторите попытку.';
+        _sectionErrors[DashboardSection.abc] = ErrorKeys.loadFailed;
       }
     } finally {
       if (revision == _abcRevision) {

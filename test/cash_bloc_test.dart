@@ -231,7 +231,7 @@ void main() {
           (state) =>
               state is CashLoaded &&
               state.transactions.any((item) => item.id == '2') &&
-              state.errorMessage?.contains('сохранена') == true,
+              state.errorMessage == 'cash_tx_saved_summary_failed',
         );
         bloc.add(AddTransactionRequested(transaction));
         final state = await saved as CashLoaded;
@@ -272,7 +272,7 @@ void main() {
 
         expect(emitted, isNotEmpty);
         final loaded = emitted.first as CashLoaded;
-        expect(loaded.errorMessage, contains('кассовая смена закрыта'));
+        expect(loaded.errorMessage, 'cash_err_need_open_shift');
       },
     );
     test(

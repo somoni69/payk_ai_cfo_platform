@@ -1,4 +1,4 @@
-import '../bloc/auth_state.dart';
+import 'user_role.dart';
 
 /// Application modules that can be protected at navigation boundaries.
 enum AppCapability {

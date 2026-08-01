@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/user_models.dart';
 import '../domain/users_repository.dart';
 
@@ -39,7 +40,7 @@ class ApiUsersRepository implements UsersRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить пользователей: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -83,7 +84,7 @@ class ApiUsersRepository implements UsersRepository {
         ),
       );
     } catch (e) {
-      throw Exception('Не удалось создать пользователя: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -127,7 +128,7 @@ class ApiUsersRepository implements UsersRepository {
         ),
       );
     } catch (e) {
-      throw Exception('Не удалось обновить пользователя: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -136,7 +137,7 @@ class ApiUsersRepository implements UsersRepository {
     try {
       await _apiClient.dio.delete('/users/$id');
     } catch (e) {
-      throw Exception('Не удалось удалить пользователя: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

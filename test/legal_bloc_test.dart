@@ -4,7 +4,7 @@ import 'package:payk_ai_cfo_platform/features/legal/bloc/legal_event.dart';
 import 'package:payk_ai_cfo_platform/features/legal/bloc/legal_state.dart';
 import 'package:payk_ai_cfo_platform/features/legal/domain/legal_models.dart';
 import 'package:payk_ai_cfo_platform/features/legal/domain/legal_repository.dart';
-import 'package:payk_ai_cfo_platform/presentation/screens/legal_screen.dart';
+import 'package:payk_ai_cfo_platform/features/legal/presentation/legal_screen.dart';
 
 class MockLegalTestRepository implements LegalRepository {
   @override

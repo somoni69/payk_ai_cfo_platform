@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
@@ -27,7 +28,7 @@ class ApiCashRepository implements CashRepository {
     if (normalized != null && normalized.isNotEmpty) {
       final parsed = int.tryParse(normalized);
       if (parsed == null || parsed <= 0) {
-        throw StateError('Некорректный идентификатор кассы.');
+        throw StateError(ErrorKeys.invalidId);
       }
       return parsed;
     }
@@ -35,7 +36,7 @@ class ApiCashRepository implements CashRepository {
     final response = await _dio.get('/cash/registers');
     final registers = response.data;
     if (registers is! List) {
-      throw const FormatException('Некорректный ответ списка касс.');
+      throw const FormatException(ErrorKeys.invalidResponse);
     }
 
     for (final item in registers) {
@@ -47,7 +48,7 @@ class ApiCashRepository implements CashRepository {
       if (parsed != null && parsed > 0) return parsed;
     }
 
-    throw StateError('Нет доступной кассы для выполнения операции.');
+    throw StateError(ErrorKeys.noResource);
   }
 
   String _newIdempotencyKey() {
@@ -82,7 +83,7 @@ class ApiCashRepository implements CashRepository {
         final String counterparty = map['counterparty'] ?? '';
         final String title = counterparty.isNotEmpty
             ? counterparty
-            : (description.isNotEmpty ? description : 'Операция');
+            : (description.isNotEmpty ? description : 'cash_operation_default');
 
         return Transaction(
           id: (map['id'] ?? '').toString(),
@@ -91,7 +92,7 @@ class ApiCashRepository implements CashRepository {
           amount: _toDouble(map['amount']),
           isIncome: (map['type'] ?? map['is_income'] ?? 'income') == 'income',
           paymentMethod: PaymentMethod.fromLabel(
-            map['payment_method'] ?? map['paymentMethod'] ?? 'Наличные',
+            map['payment_method'] ?? map['paymentMethod'] ?? 'payment_cash',
           ),
           dateTime: DateTime.parse(
             map['occurred_at'] ??
@@ -100,7 +101,7 @@ class ApiCashRepository implements CashRepository {
           ),
           cashierName: map['created_by'] != null
               ? 'Кассир #${map['created_by']}'
-              : 'Система',
+              : 'cash_system_user',
         );
       }).toList();
     } catch (e) {
@@ -108,32 +109,32 @@ class ApiCashRepository implements CashRepository {
         Transaction(
           id: 'tx-1',
           title: 'Daler',
-          category: 'Зарплата',
+          category: 'cash_category_salary',
           amount: 1110.0,
           isIncome: false,
           paymentMethod: PaymentMethod.cash,
           dateTime: DateTime(2026, 7, 31, 17, 0),
-          cashierName: 'Директор',
+          cashierName: 'role_director',
         ),
         Transaction(
           id: 'tx-2',
           title: 'Администратор',
-          category: 'Зарплата',
+          category: 'cash_category_salary',
           amount: 1550.0,
           isIncome: false,
           paymentMethod: PaymentMethod.cash,
           dateTime: DateTime(2026, 7, 31, 17, 0),
-          cashierName: 'Директор',
+          cashierName: 'role_director',
         ),
         Transaction(
           id: 'tx-3',
           title: 'Башорат',
-          category: 'Зарплата',
+          category: 'cash_category_salary',
           amount: 2350.0,
           isIncome: false,
           paymentMethod: PaymentMethod.cash,
           dateTime: DateTime(2026, 7, 31, 17, 0),
-          cashierName: 'Директор',
+          cashierName: 'role_director',
         ),
       ];
     }
@@ -168,7 +169,7 @@ class ApiCashRepository implements CashRepository {
       final String counterparty = map['counterparty'] ?? '';
       final String title = counterparty.isNotEmpty
           ? counterparty
-          : (description.isNotEmpty ? description : 'Операция');
+          : (description.isNotEmpty ? description : 'cash_operation_default');
 
       return Transaction(
         id: (map['id'] ?? '').toString(),
@@ -177,7 +178,7 @@ class ApiCashRepository implements CashRepository {
         amount: _toDouble(map['amount']),
         isIncome: (map['type'] ?? 'income') == 'income',
         paymentMethod: PaymentMethod.fromLabel(
-          map['payment_method'] ?? 'Наличные',
+          map['payment_method'] ?? 'payment_cash',
         ),
         dateTime: DateTime.parse(
           map['occurred_at'] ??
@@ -186,10 +187,10 @@ class ApiCashRepository implements CashRepository {
         ),
         cashierName: map['created_by'] != null
             ? 'Кассир #${map['created_by']}'
-            : 'Система',
+            : 'cash_system_user',
       );
     } catch (e) {
-      throw Exception('Не удалось добавить транзакцию: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -234,9 +235,9 @@ class ApiCashRepository implements CashRepository {
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
-      throw Exception('Не удалось проверить статус смены: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     } catch (e) {
-      throw Exception('Не удалось проверить статус смены: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -289,8 +290,8 @@ class ApiCashRepository implements CashRepository {
         openedAt: DateTime.now(),
         startingBalance: startingBalance,
         isOpen: true,
-        cashierName: 'Директор',
-        registerName: 'Главная касса',
+        cashierName: 'role_director',
+        registerName: 'cash_default_register',
         status: 'open',
       );
     }
@@ -359,8 +360,8 @@ class ApiCashRepository implements CashRepository {
         startingBalance: 5000.0,
         endingBalance: endingBalance,
         isOpen: false,
-        cashierName: 'Директор',
-        registerName: 'Главная касса',
+        cashierName: 'role_director',
+        registerName: 'cash_default_register',
         status: 'closed',
       );
     }
@@ -387,7 +388,7 @@ class ApiCashRepository implements CashRepository {
       return const [
         CashSummary(
           registerId: 'reg-1',
-          registerName: 'Главная касса',
+          registerName: 'cash_default_register',
           hasOpenShift: false,
           income: 279359.0,
           expense: 20000.0,
@@ -457,8 +458,8 @@ class ApiCashRepository implements CashRepository {
       return [
         CashShift(
           id: 'sh-1',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 27, 18, 55),
           closedAt: DateTime(2026, 7, 27, 18, 55),
           startingBalance: 5000.0,
@@ -468,8 +469,8 @@ class ApiCashRepository implements CashRepository {
         ),
         CashShift(
           id: 'sh-2',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 25, 12, 36),
           closedAt: DateTime(2026, 7, 25, 12, 36),
           startingBalance: 5000.0,
@@ -479,8 +480,8 @@ class ApiCashRepository implements CashRepository {
         ),
         CashShift(
           id: 'sh-3',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 20, 15, 29),
           closedAt: DateTime(2026, 7, 25, 9, 18),
           startingBalance: 5000.0,
@@ -490,8 +491,8 @@ class ApiCashRepository implements CashRepository {
         ),
         CashShift(
           id: 'sh-4',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 20, 15, 0),
           closedAt: DateTime(2026, 7, 20, 15, 20),
           startingBalance: 5000.0,
@@ -501,8 +502,8 @@ class ApiCashRepository implements CashRepository {
         ),
         CashShift(
           id: 'sh-5',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 18, 14, 59),
           closedAt: DateTime(2026, 7, 18, 15, 1),
           startingBalance: 5000.0,
@@ -512,8 +513,8 @@ class ApiCashRepository implements CashRepository {
         ),
         CashShift(
           id: 'sh-6',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 13, 9, 11),
           closedAt: DateTime(2026, 7, 18, 14, 53),
           startingBalance: 5000.0,
@@ -523,8 +524,8 @@ class ApiCashRepository implements CashRepository {
         ),
         CashShift(
           id: 'sh-7',
-          registerName: 'Главная касса',
-          cashierName: 'Директор',
+          registerName: 'cash_default_register',
+          cashierName: 'role_director',
           openedAt: DateTime(2026, 7, 2, 11, 49),
           closedAt: DateTime(2026, 7, 8, 10, 7),
           startingBalance: 5000.0,

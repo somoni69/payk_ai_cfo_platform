@@ -3,26 +3,26 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_state.dart';
 import '../../features/auth/domain/app_access.dart';
-import '../../presentation/screens/dashboard_screen.dart';
-import '../../presentation/screens/cash_screen.dart';
-import '../../presentation/screens/tasks_screen.dart';
-import '../../presentation/screens/notifications_screen.dart';
-import '../../presentation/screens/more_screen.dart';
-import '../../presentation/screens/shell_screen.dart';
-import '../../presentation/screens/login_screen.dart';
-import '../../presentation/screens/warehouse_screen.dart';
-import '../../presentation/screens/hr_screen.dart';
-import '../../presentation/screens/crm_screen.dart';
-import '../../presentation/screens/strategy_screen.dart';
-import '../../presentation/screens/legal_screen.dart';
-import '../../presentation/screens/marketing_screen.dart';
-import '../../presentation/screens/integrations_screen.dart';
-import '../../presentation/screens/users_screen.dart';
-import '../../presentation/screens/branches_screen.dart';
-import '../../presentation/screens/checklists_screen.dart';
-import '../../presentation/screens/fin_ops_screen.dart';
-import '../../presentation/screens/reports_screen.dart';
-import '../../presentation/screens/audit_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/audit/presentation/audit_screen.dart';
+import '../../features/branches/presentation/branches_screen.dart';
+import '../../features/cash/presentation/cash_screen.dart';
+import '../../features/checklists/presentation/checklists_screen.dart';
+import '../../features/crm/presentation/crm_screen.dart';
+import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/fin_ops/presentation/fin_ops_screen.dart';
+import '../../features/hr/presentation/hr_screen.dart';
+import '../../features/integrations/presentation/integrations_screen.dart';
+import '../../features/legal/presentation/legal_screen.dart';
+import '../../features/marketing/presentation/marketing_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/reports/presentation/reports_screen.dart';
+import '../../features/shell/presentation/more_screen.dart';
+import '../../features/shell/presentation/shell_screen.dart';
+import '../../features/strategy/presentation/strategy_screen.dart';
+import '../../features/tasks/presentation/tasks_screen.dart';
+import '../../features/users/presentation/users_screen.dart';
+import '../../features/warehouse/presentation/warehouse_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -65,6 +65,11 @@ GoRouter createRouter(
       // Keep the current page while login/logout is actively being processed.
       if (authState is AuthLoading) {
         return null;
+      }
+
+      // Password ok, waiting for SMS code — stay on the login route.
+      if (authState is AuthTwoFactorRequired) {
+        return isLoggingIn ? null : '/login';
       }
 
       if (authState is AuthUnauthenticated || authState is AuthError) {

@@ -118,7 +118,7 @@ void main() {
 
         final state = bloc.state as NotificationsLoaded;
         expect(state.notifications, hasLength(1));
-        expect(state.errorMessage, contains('Проверьте соединение'));
+        expect(state.errorMessage, 'error_load_failed');
         expect(state.errorMessage, isNot(contains('private backend detail')));
       },
     );

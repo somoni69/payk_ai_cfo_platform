@@ -83,12 +83,23 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
       return;
     }
 
+    // Collapse after animation; never touch setState if the sheet/route is gone.
     Future<void>.delayed(kThemeAnimationDuration, () {
       if (!mounted || generation != _expansionGeneration || !_showChildren) {
         return;
       }
+      if (!context.mounted) return;
       setState(() => _showChildren = false);
     });
+  }
+
+  @override
+  void dispose() {
+    _expansionGeneration++; // cancel pending collapse callbacks
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
+    super.dispose();
   }
 
   void _handleOptionSelected(T item) {
@@ -172,7 +183,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
           tilePadding: widget.tilePadding,
           title: DefaultTextStyle.merge(
             style: textStyles.bodySans.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               color: colors.textPrimary,
             ),
             child: widget.title,
@@ -284,7 +295,7 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
         widget.itemLabelBuilder(item),
         style: textStyles.bodySans.copyWith(
           color: isSelected ? colors.brand : colors.textPrimary,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
         ),
       ),
       trailing: isSelected

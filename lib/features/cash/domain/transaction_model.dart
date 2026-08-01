@@ -1,40 +1,36 @@
 /// Способы оплаты согласно ТЗ (CASH-04).
 enum PaymentMethod {
-  cash, // Наличные
-  card, // Карта
-  alif, // Алиф
-  dushanbeCity, // Душанбе Сити
-  ocms; // ОСМС (ОСМС Сити)
+  cash,
+  card,
+  alif,
+  dushanbeCity,
+  ocms;
 
-  String get label {
-    switch (this) {
-      case PaymentMethod.cash:
-        return 'Наличные';
-      case PaymentMethod.card:
-        return 'Карта';
-      case PaymentMethod.alif:
-        return 'Алиф';
-      case PaymentMethod.dushanbeCity:
-        return 'Душанбе Сити';
-      case PaymentMethod.ocms:
-        return 'ОСМС';
-    }
-  }
+  /// Localization key for UI (`payment_cash`, …).
+  String get labelKey => switch (this) {
+    PaymentMethod.cash => 'payment_cash',
+    PaymentMethod.card => 'payment_card',
+    PaymentMethod.alif => 'payment_alif',
+    PaymentMethod.dushanbeCity => 'payment_dushanbe_city',
+    PaymentMethod.ocms => 'payment_ocms',
+  };
+
+  /// Stable storage / API token (also a localization key).
+  String get label => labelKey;
 
   static PaymentMethod fromLabel(String label) {
-    switch (label.toLowerCase()) {
-      case 'карта':
-        return PaymentMethod.card;
-      case 'алиф':
-        return PaymentMethod.alif;
-      case 'душанбе сити':
-        return PaymentMethod.dushanbeCity;
-      case 'осмс':
-        return PaymentMethod.ocms;
-      case 'наличные':
-      default:
-        return PaymentMethod.cash;
-    }
+    final normalized = label.trim().toLowerCase();
+    return switch (normalized) {
+      'payment_card' || 'карта' || 'card' || 'кор' => PaymentMethod.card,
+      'payment_alif' || 'алиф' || 'alif' => PaymentMethod.alif,
+      'payment_dushanbe_city' ||
+      'душанбе сити' ||
+      'dushanbe city' ||
+      'dushanbecity' => PaymentMethod.dushanbeCity,
+      'payment_ocms' || 'осмс' || 'ocms' => PaymentMethod.ocms,
+      'payment_cash' || 'наличные' || 'cash' || 'пул' => PaymentMethod.cash,
+      _ => PaymentMethod.cash,
+    };
   }
 }
 
@@ -72,7 +68,6 @@ class CashShift {
   final double? endingBalance;
   final bool isOpen;
 
-  // Дополнительные поля для истории смен
   final String? cashierName;
   final String? registerName;
   final double? difference;

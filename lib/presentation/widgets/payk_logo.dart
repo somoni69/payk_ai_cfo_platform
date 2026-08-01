@@ -31,7 +31,7 @@ class PaykLogo extends StatelessWidget {
                 'P',
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   fontSize: 14,
                 ),
               ),
@@ -40,7 +40,7 @@ class PaykLogo extends StatelessWidget {
             Text(
               'PAYK',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w500,
                 fontSize: height * 0.65,
                 color: colors.brand,
                 letterSpacing: 1.0,

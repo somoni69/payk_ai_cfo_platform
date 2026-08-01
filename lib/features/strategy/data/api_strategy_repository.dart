@@ -1,3 +1,4 @@
+import '../../../core/network/user_facing_error.dart';
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
@@ -33,7 +34,7 @@ class ApiStrategyRepository
       return WhatIfResponseData(answer: map['answer'] ?? 'Нет ответа от AI');
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось выполнить What-if симуляцию');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_whatIfCancelToken, cancelToken)) {
         _whatIfCancelToken = null;
@@ -59,7 +60,7 @@ class ApiStrategyRepository
       return AiIdeasResponseData(ideas: list.map((e) => e.toString()).toList());
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось сгенерировать идеи');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_ideasCancelToken, cancelToken)) {
         _ideasCancelToken = null;
@@ -100,7 +101,7 @@ class ApiStrategyRepository
         );
       }).toList();
     } catch (_) {
-      throw Exception('Не удалось загрузить стратегические матрицы');
+      throw Exception(ErrorKeys.loadFailed);
     }
   }
 
@@ -132,7 +133,7 @@ class ApiStrategyRepository
       );
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось сгенерировать стратегический анализ');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_generationCancelToken, cancelToken)) {
         _generationCancelToken = null;

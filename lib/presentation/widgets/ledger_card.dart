@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/theme_extensions.dart';
 
 /// Карточка в дизайн-системе Ledger.
-/// Применяет скругление 10px, границу 1px и отключает тени.
+/// Скругление 16px, граница 1px (`border`), без теней.
 class LedgerCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;

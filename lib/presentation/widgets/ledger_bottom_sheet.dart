@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -6,8 +8,6 @@ import '../../core/theme/theme_extensions.dart';
 import 'bottom_action_wrapper.dart';
 
 /// Единый переиспользуемый компонент для плавающего модального окна (Bottom Sheet).
-/// Отображает контент в виде парящей карточки со скругленными углами,
-/// границами и отступами со всех сторон (left, right, bottom) согласно ТЗ.
 class LedgerBottomSheet extends StatelessWidget {
   final String title;
   final Widget child;
@@ -22,7 +22,11 @@ class LedgerBottomSheet extends StatelessWidget {
     this.footer,
   });
 
-  /// Статический метод для удобного открытия модального окна
+  /// Opens a modal bottom sheet.
+  ///
+  /// [isDirty]: when provided, Android-back / blocked pops ask for discard.
+  /// Swipe-to-dismiss is handled by first dropping the [PopScope] guard, then
+  /// popping on the next frame — avoids `_dependents.isEmpty` crashes.
   static Future<T?> show<T>({
     required BuildContext context,
     required String title,
@@ -30,6 +34,7 @@ class LedgerBottomSheet extends StatelessWidget {
     builder,
     Widget Function(BuildContext context, StateSetter setSheetState)?
     footerBuilder,
+    bool Function()? isDirty,
     bool isDismissible = true,
     bool enableDrag = true,
   }) {
@@ -41,37 +46,12 @@ class LedgerBottomSheet extends StatelessWidget {
       enableDrag: enableDrag,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final mediaQuery = MediaQuery.of(context);
-            final screenHeight = mediaQuery.size.height;
-            final keyboardHeight = mediaQuery.viewInsets.bottom;
-            final topSafeArea = mediaQuery.padding.top;
-
-            // Вычисляем доступную высоту над клавиатурой с запасом под челку
-            final availableHeight =
-                screenHeight -
-                keyboardHeight -
-                (topSafeArea > 0 ? topSafeArea : 24) -
-                48;
-            final maxAvailableHeight = availableHeight * 0.92;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: keyboardHeight + 16,
-                left: 16,
-                right: 16,
-                top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
-              ),
-              child: LedgerBottomSheet(
-                title: title,
-                maxHeight: maxAvailableHeight,
-                footer: footerBuilder?.call(context, setSheetState),
-                child: builder(context, setSheetState),
-              ),
-            );
-          },
+      builder: (sheetContext) {
+        return _LedgerSheetHost<T>(
+          title: title,
+          builder: builder,
+          footerBuilder: footerBuilder,
+          isDirty: isDirty,
         );
       },
     );
@@ -103,7 +83,6 @@ class LedgerBottomSheet extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 12),
-            // Индикатор перетаскивания (Handle)
             Center(
               child: Container(
                 width: 32,
@@ -119,7 +98,7 @@ class LedgerBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 title,
-                style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold),
+                style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -149,7 +128,6 @@ class LedgerBottomSheet extends StatelessWidget {
     );
   }
 
-  /// Диалог подтверждения выхода без сохранения изменений (согласно дизайну)
   static Future<bool?> confirmDiscard(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -186,7 +164,7 @@ class LedgerBottomSheet extends StatelessWidget {
               Text(
                 language.translate('discard_title'),
                 style: textStyles.h2Sans.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   fontSize: 20,
                 ),
                 textAlign: TextAlign.center,
@@ -219,7 +197,7 @@ class LedgerBottomSheet extends StatelessWidget {
                     language.translate('discard_continue'),
                     style: textStyles.bodySans.copyWith(
                       color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -245,6 +223,111 @@ class LedgerBottomSheet extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Host that owns sheet state + safe pop pipeline.
+class _LedgerSheetHost<T> extends StatefulWidget {
+  const _LedgerSheetHost({
+    required this.title,
+    required this.builder,
+    this.footerBuilder,
+    this.isDirty,
+  });
+
+  final String title;
+  final Widget Function(BuildContext context, StateSetter setSheetState) builder;
+  final Widget Function(BuildContext context, StateSetter setSheetState)?
+  footerBuilder;
+  final bool Function()? isDirty;
+
+  @override
+  State<_LedgerSheetHost<T>> createState() => _LedgerSheetHostState<T>();
+}
+
+class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
+  /// When true, PopScope is removed so a normal [Navigator.pop] is safe.
+  bool _releaseGuard = false;
+  bool _busy = false;
+
+  bool get _dirty => widget.isDirty?.call() ?? false;
+
+  Future<void> _requestClose() async {
+    if (_busy || !mounted) return;
+    _busy = true;
+    try {
+      if (_dirty) {
+        final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+        if (shouldClose != true || !mounted) return;
+      }
+      await _popSafely();
+    } finally {
+      _busy = false;
+    }
+  }
+
+  Future<void> _popSafely() async {
+    if (!mounted) return;
+    // 1) Drop PopScope so the route is no longer guarded mid-animation.
+    setState(() => _releaseGuard = true);
+    // 2) Wait until the unguarded tree is committed.
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    // 3) Standard pop — no removeRoute, no dependents assertion.
+    Navigator.of(context).pop();
+  }
+
+  void _onPopInvoked(bool didPop, Object? result) {
+    if (didPop || _releaseGuard || _busy) return;
+    unawaited(_requestClose());
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+    final topSafeArea = mediaQuery.padding.top;
+
+    final availableHeight =
+        screenHeight -
+        keyboardHeight -
+        (topSafeArea > 0 ? topSafeArea : 24) -
+        48;
+    final maxAvailableHeight = availableHeight * 0.92;
+
+    return StatefulBuilder(
+      builder: (context, setSheetState) {
+        final sheet = Padding(
+          padding: EdgeInsets.only(
+            bottom: keyboardHeight + 16,
+            left: 16,
+            right: 16,
+            top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
+          ),
+          child: LedgerBottomSheet(
+            title: widget.title,
+            maxHeight: maxAvailableHeight,
+            footer: widget.footerBuilder?.call(context, setSheetState),
+            child: widget.builder(context, setSheetState),
+          ),
+        );
+
+        // No dirty callback → free dismiss, no PopScope.
+        if (widget.isDirty == null || _releaseGuard) {
+          return sheet;
+        }
+
+        // Guard only while form may have unsaved data.
+        // canPop is true when clean so swipe/back animate normally.
+        return PopScope(
+          canPop: !_dirty,
+          onPopInvokedWithResult: _onPopInvoked,
+          child: sheet,
+        );
+      },
     );
   }
 }

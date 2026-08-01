@@ -39,7 +39,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
         phone: event.phone,
       );
       final branches = await _repository.getBranches();
-      emit(BranchesLoaded(branches: branches, message: 'Филиал создан'));
+      emit(BranchesLoaded(branches: branches, message: 'branches_created'));
     } catch (e) {
       emit(BranchesError(e.toString()));
     }
@@ -58,7 +58,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
         isActive: event.isActive,
       );
       final branches = await _repository.getBranches();
-      emit(BranchesLoaded(branches: branches, message: 'Филиал обновлен'));
+      emit(BranchesLoaded(branches: branches, message: 'branches_updated'));
     } catch (e) {
       emit(BranchesError(e.toString()));
     }
@@ -71,7 +71,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
     try {
       await _repository.deleteBranch(event.id);
       final branches = await _repository.getBranches();
-      emit(BranchesLoaded(branches: branches, message: 'Филиал удален'));
+      emit(BranchesLoaded(branches: branches, message: 'branches_deleted'));
     } catch (e) {
       emit(BranchesError(e.toString()));
     }

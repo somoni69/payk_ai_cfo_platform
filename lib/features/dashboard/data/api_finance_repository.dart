@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
@@ -137,9 +138,7 @@ class ApiFinanceRepository implements FinanceRepository {
         cashForecastDelta: cashForecastDelta,
       );
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить финансовые показатели: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -187,9 +186,7 @@ class ApiFinanceRepository implements FinanceRepository {
 
       return points;
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить историю движения денег: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -238,7 +235,7 @@ class ApiFinanceRepository implements FinanceRepository {
         profit: _toDouble(data['profit']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить P&L отчет: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -257,9 +254,7 @@ class ApiFinanceRepository implements FinanceRepository {
         marginOfSafety: _toDouble(data['margin_of_safety']),
       );
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить анализ безубыточности: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -289,7 +284,7 @@ class ApiFinanceRepository implements FinanceRepository {
         total: _toDouble(data['total']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить ABC-анализ: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -316,7 +311,7 @@ class ApiFinanceRepository implements FinanceRepository {
         totalTjs: _toDouble(data['total_tjs']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить список счетов: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -339,7 +334,7 @@ class ApiFinanceRepository implements FinanceRepository {
 
       return ExchangeRatesReport(rates: list);
     } catch (e) {
-      throw Exception('Не удалось загрузить курсы валют: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -364,7 +359,7 @@ class ApiFinanceRepository implements FinanceRepository {
         recommendations: data['recommendations'] ?? 'Рекомендаций нет.',
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить ИИ инсайты: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -393,7 +388,7 @@ class ApiFinanceRepository implements FinanceRepository {
         totalFact: _toDouble(data['total_fact']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить план-факт отчет: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

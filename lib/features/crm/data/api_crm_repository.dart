@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/crm_models.dart';
 import '../domain/crm_repository.dart';
@@ -13,7 +14,7 @@ class ApiCrmRepository implements CrmRepository {
   int _requirePositiveId(String value, String fieldName) {
     final id = int.tryParse(value);
     if (id == null || id <= 0) {
-      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+      throw ArgumentError.value(value, fieldName, ErrorKeys.invalidId);
     }
     return id;
   }
@@ -58,7 +59,7 @@ class ApiCrmRepository implements CrmRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить клиентов: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -86,7 +87,7 @@ class ApiCrmRepository implements CrmRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить сделки: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -109,7 +110,7 @@ class ApiCrmRepository implements CrmRepository {
         reactivationCount: map['reactivation_count'] ?? 0,
       );
     } catch (e) {
-      throw Exception('Не удалось получить статистику CRM: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -147,7 +148,7 @@ class ApiCrmRepository implements CrmRepository {
         churnRisk: map['churn_risk'] ?? false,
       );
     } catch (e) {
-      throw Exception('Не удалось добавить клиента: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -183,7 +184,7 @@ class ApiCrmRepository implements CrmRepository {
         clientName: map['client_name']?.toString(),
       );
     } catch (e) {
-      throw Exception('Не удалось создать сделку: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

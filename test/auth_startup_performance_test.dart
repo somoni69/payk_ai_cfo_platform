@@ -15,30 +15,45 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('JWT session parsing', () {
-    test('accepts valid claims and maps known roles', () {
-      final token = _jwt({'sub': 'farzod', 'role': 'admin', 'exp': 2000000000});
-
-      final user = ApiAuthRepository.decodeUserFromToken(
-        token,
-        now: DateTime.utc(2026),
-      );
-
-      expect(user.username, 'farzod');
-      expect(user.role, UserRole.director);
-    });
-
-    test('uses viewer instead of director for an unknown role', () {
+    test('reads sub as id, role and name locally without /auth/me', () {
       final token = _jwt({
-        'sub': 'external-user',
-        'role': 'custom-role',
+        'sub': 42,
+        'role': 'director',
+        'name': 'Фарзод Каримов',
         'exp': 2000000000,
       });
 
       final user = ApiAuthRepository.decodeUserFromToken(
         token,
+        fallbackUsername: 'farzod',
         now: DateTime.utc(2026),
       );
-      expect(user.role, UserRole.viewer);
+
+      expect(user.id, 42);
+      expect(user.name, 'Фарзод Каримов');
+      expect(user.username, 'farzod');
+      expect(user.displayName, 'Фарзод Каримов');
+      expect(user.role, UserRole.director);
+    });
+
+    test('maps backend Role enum values and treats unknown as viewer', () {
+      final director = ApiAuthRepository.decodeUserFromToken(
+        _jwt({'sub': '7', 'role': 'admin', 'name': 'A', 'exp': 2000000000}),
+        now: DateTime.utc(2026),
+      );
+      expect(director.id, 7);
+      expect(director.role, UserRole.director);
+
+      final unknown = ApiAuthRepository.decodeUserFromToken(
+        _jwt({
+          'sub': '8',
+          'role': 'custom-role',
+          'name': 'B',
+          'exp': 2000000000,
+        }),
+        now: DateTime.utc(2026),
+      );
+      expect(unknown.role, UserRole.viewer);
     });
 
     test('rejects malformed, identity-less, expired, and timeless tokens', () {
@@ -181,6 +196,7 @@ void main() {
     FlutterSecureStorage.setMockInitialValues({});
     final client = ApiClient();
     await client.clearAccessToken();
+    await client.clearRefreshToken();
     final adapter = _ControlledLoginAdapter();
     client.dio.httpClientAdapter = adapter;
     final bloc = AuthBloc(
@@ -218,7 +234,219 @@ void main() {
       }
       await bloc.close();
       await client.clearAccessToken();
+      await client.clearRefreshToken();
     }
+  });
+
+  test('login persists both tokens without requiring rotation fields', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final client = ApiClient();
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+    final access = _jwt({
+      'sub': 11,
+      'role': 'cashier',
+      'name': 'Кассир Тест',
+      'exp': 2000000000,
+    });
+    client.dio.httpClientAdapter = _JsonAdapter((options) {
+      expect(options.path, contains('auth/login'));
+      return {
+        'two_factor_required': false,
+        'challenge_id': null,
+        'access_token': access,
+        'refresh_token': 'refresh-stable',
+        'token_type': 'bearer',
+      };
+    });
+
+    final repo = ApiAuthRepository(apiClient: client);
+    final result = await repo.login('cashier-1', 'secret');
+    expect(result, isA<LoginSuccess>());
+    final user = (result as LoginSuccess).user;
+    expect(user.id, 11);
+    expect(user.name, 'Кассир Тест');
+    expect(user.username, 'cashier-1');
+    expect(await client.getAccessToken(), access);
+    expect(await client.getRefreshToken(), 'refresh-stable');
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+  });
+
+  test('login returns 2FA challenge without storing tokens', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final client = ApiClient();
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+    client.dio.httpClientAdapter = _JsonAdapter((options) {
+      expect(options.path, '/auth/login');
+      return {
+        'two_factor_required': true,
+        'challenge_id': 'chal-42',
+        'access_token': null,
+        'refresh_token': null,
+        'token_type': 'bearer',
+      };
+    });
+
+    final repo = ApiAuthRepository(apiClient: client);
+    final result = await repo.login('user-2fa', 'secret');
+    expect(result, isA<LoginTwoFactorRequired>());
+    final challenge = result as LoginTwoFactorRequired;
+    expect(challenge.challengeId, 'chal-42');
+    expect(challenge.username, 'user-2fa');
+    expect(await client.getAccessToken(), isNull);
+    expect(await client.getRefreshToken(), isNull);
+  });
+
+  test('verify-2fa completes session and bloc authenticates', () async {
+    FlutterSecureStorage.setMockInitialValues({});
+    final client = ApiClient();
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+    final access = _jwt({
+      'sub': 99,
+      'role': 'manager',
+      'name': 'Менеджер 2FA',
+      'exp': 2000000000,
+    });
+    client.dio.httpClientAdapter = _JsonAdapter((options) {
+      if (options.path.contains('auth/login')) {
+        return {
+          'two_factor_required': true,
+          'challenge_id': 'chal-99',
+          'access_token': null,
+          'refresh_token': null,
+        };
+      }
+      expect(options.path, contains('auth/verify-2fa'));
+      // OpenAPI TokenPair: both tokens required after SMS verify.
+      return {
+        'access_token': access,
+        'refresh_token': 'refresh-after-2fa',
+        'token_type': 'bearer',
+      };
+    });
+
+    final bloc = AuthBloc(
+      authRepository: ApiAuthRepository(apiClient: client),
+      biometricAuthenticator: _FakeBiometricAuthenticator(),
+      storage: const FlutterSecureStorage(),
+    );
+
+    final twoFactor = bloc.stream.firstWhere(
+      (state) => state is AuthTwoFactorRequired,
+    );
+    bloc.add(const LoginSubmitted(username: 'user-2fa', password: 'secret'));
+    await twoFactor;
+    expect(bloc.state, isA<AuthTwoFactorRequired>());
+
+    final authenticated = bloc.stream.firstWhere(
+      (state) => state is AuthAuthenticated,
+    );
+    bloc.add(const TwoFactorSubmitted(code: '123456'));
+    await authenticated;
+
+    expect(bloc.state, isA<AuthAuthenticated>());
+    final authed = bloc.state as AuthAuthenticated;
+    expect(authed.username, 'user-2fa');
+    expect(authed.id, 99);
+    expect(authed.displayName, 'Менеджер 2FA');
+    expect(await client.getAccessToken(), access);
+    expect(await client.getRefreshToken(), 'refresh-after-2fa');
+    await bloc.close();
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+  });
+
+  test('refresh updates only access token (no rotation)', () async {
+    final client = ApiClient();
+    await client.bootstrap();
+    final oldAccess = _jwt({
+      'sub': 3,
+      'role': 'viewer',
+      'name': 'Old User',
+      'exp': 2000000000,
+    });
+    final newAccess = _jwt({
+      'sub': 3,
+      'role': 'viewer',
+      'name': 'Old User',
+      'exp': 2100000000,
+    });
+    // Seed via API (singleton already bootstrapped earlier in this suite).
+    await client.saveAccessToken(oldAccess);
+    await client.saveRefreshToken('refresh-keep-me');
+    client.dio.httpClientAdapter = _JsonAdapter((options) {
+      expect(options.path, contains('auth/refresh'));
+      // Backend may omit refresh_token entirely; even if present, client must ignore.
+      return {
+        'access_token': newAccess,
+        'token_type': 'bearer',
+        'refresh_token': 'should-not-be-stored',
+      };
+    });
+
+    final repo = ApiAuthRepository(apiClient: client);
+    final user = await repo.tryRefreshSession();
+    expect(user, isNotNull);
+    expect(user!.id, 3);
+    expect(user.name, 'Old User');
+    expect(await client.getAccessToken(), newAccess);
+    expect(await client.getRefreshToken(), 'refresh-keep-me');
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+  });
+
+  test('fetchCurrentUser maps GET /auth/me UserRead fields', () async {
+    final client = ApiClient();
+    await client.bootstrap();
+    await client.saveAccessToken(
+      _jwt({
+        'sub': 5,
+        'role': 'hr',
+        'name': 'JWT Name',
+        'exp': 2000000000,
+      }),
+    );
+    client.dio.httpClientAdapter = _JsonAdapter((options) {
+      expect(options.path, contains('auth/me'));
+      expect(options.method, 'GET');
+      return {
+        'id': 5,
+        'username': 'hr.user',
+        'full_name': 'HR Profile',
+        'role': 'hr',
+        'is_active': true,
+        'two_factor_enabled': true,
+        'created_at': '2026-01-01T00:00:00Z',
+      };
+    });
+
+    final repo = ApiAuthRepository(apiClient: client);
+    final profile = await repo.fetchCurrentUser();
+    expect(profile.id, 5);
+    expect(profile.username, 'hr.user');
+    expect(profile.name, 'HR Profile');
+    expect(profile.role, UserRole.hr);
+    await client.clearAccessToken();
+    await client.clearRefreshToken();
+  });
+
+  test('refresh 401 clears both tokens', () async {
+    final client = ApiClient();
+    await client.bootstrap();
+    await client.saveAccessToken('stale-access');
+    await client.saveRefreshToken('dead-refresh');
+    client.dio.httpClientAdapter = _StatusAdapter(401, {
+      'detail': 'Недействительный refresh-токен',
+    });
+
+    final repo = ApiAuthRepository(apiClient: client);
+    final user = await repo.tryRefreshSession();
+    expect(user, isNull);
+    expect(await client.getAccessToken(), isNull);
+    expect(await client.getRefreshToken(), isNull);
   });
 }
 
@@ -245,12 +473,18 @@ class _ControlledLoginAdapter implements HttpClientAdapter {
     await releaseResponse.future;
 
     final token = _jwt({
-      'sub': 'queued-user',
+      'sub': 1,
       'role': 'accountant',
+      'name': 'Queued User',
       'exp': 2000000000,
     });
     return ResponseBody.fromString(
-      jsonEncode({'access_token': token}),
+      jsonEncode({
+        'two_factor_required': false,
+        'access_token': token,
+        'refresh_token': 'queued-refresh',
+        'token_type': 'bearer',
+      }),
       200,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
@@ -282,10 +516,64 @@ class _RecordingAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+class _JsonAdapter implements HttpClientAdapter {
+  _JsonAdapter(this._build);
+
+  final Map<String, dynamic> Function(RequestOptions options) _build;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode(_build(options)),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _StatusAdapter implements HttpClientAdapter {
+  _StatusAdapter(this.statusCode, this.body);
+
+  final int statusCode;
+  final Map<String, dynamic> body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 class _SessionRepository extends ApiAuthRepository {
   @override
   Future<AuthUser?> tryAutoLogin() async {
-    return const AuthUser(username: 'user', role: UserRole.viewer);
+    return const AuthUser(
+      id: 1,
+      username: 'user',
+      name: 'Test User',
+      role: UserRole.viewer,
+    );
   }
 }
 

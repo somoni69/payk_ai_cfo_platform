@@ -2,6 +2,7 @@ import '../../../core/network/api_client.dart';
 import '../domain/branch_models.dart';
 import '../domain/branches_repository.dart';
 
+/// Branches repository. Offline fallbacks use localization keys for names/addresses.
 class ApiBranchesRepository implements BranchesRepository {
   final ApiClient _client;
 
@@ -10,8 +11,8 @@ class ApiBranchesRepository implements BranchesRepository {
   final List<Branch> _mockBranches = [
     const Branch(
       id: 'br-1',
-      name: 'Филиал «Центральный»',
-      address: 'г. Душанбе, пр. Рудаки 45',
+      name: 'mock_branch_central',
+      address: 'mock_address_central',
       phone: '+992 900 11 2233',
       isActive: true,
       registersCount: 3,
@@ -19,8 +20,8 @@ class ApiBranchesRepository implements BranchesRepository {
     ),
     const Branch(
       id: 'br-2',
-      name: 'Филиал «Сомони»',
-      address: 'г. Душанбе, ул. И. Сомони 12',
+      name: 'mock_branch_somoni',
+      address: 'mock_address_somoni',
       phone: '+992 918 44 5566',
       isActive: true,
       registersCount: 2,
@@ -28,8 +29,8 @@ class ApiBranchesRepository implements BranchesRepository {
     ),
     const Branch(
       id: 'br-3',
-      name: 'Точка «Худжанд»',
-      address: 'г. Худжанд, ул. Ленина 88',
+      name: 'mock_branch_khujand',
+      address: 'mock_address_khujand',
       phone: '+992 927 77 8899',
       isActive: true,
       registersCount: 1,
@@ -86,12 +87,18 @@ class ApiBranchesRepository implements BranchesRepository {
     required String phone,
     required bool isActive,
   }) async {
+    final existing = _mockBranches.cast<Branch?>().firstWhere(
+      (b) => b?.id == id,
+      orElse: () => null,
+    );
     final updated = Branch(
       id: id,
       name: name,
       address: address,
       phone: phone,
       isActive: isActive,
+      registersCount: existing?.registersCount ?? 1,
+      employeesCount: existing?.employeesCount ?? 1,
     );
     try {
       final response = await _client.dio.put(

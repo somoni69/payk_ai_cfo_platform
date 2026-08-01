@@ -362,7 +362,7 @@ void main() {
 
       expect(state.currency, 'TJS');
       expect(state.metrics.cashBalance, 1000);
-      expect(state.overviewError, contains('недоступен'));
+      expect(state.overviewError, 'error_load_failed');
     });
 
     test('failed overview refresh keeps the last confirmed data', () async {
@@ -379,7 +379,7 @@ void main() {
 
       final state = bloc.state as DashboardLoaded;
       expect(state.metrics.cashBalance, 1000);
-      expect(state.overviewError, contains('Проверьте соединение'));
+      expect(state.overviewError, 'error_load_failed');
     });
   });
 }

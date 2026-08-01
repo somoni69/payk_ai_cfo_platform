@@ -10,19 +10,19 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<BankAccount> _mockBanks = [
     const BankAccount(
       id: 'bnk-1',
-      bankName: 'Ориёнбанк',
+      bankName: 'mock_bank_oriyon',
       accountNumber: '20202810400000123456',
       balance: 145000.0,
     ),
     const BankAccount(
       id: 'bnk-2',
-      bankName: 'Алиф Банк',
+      bankName: 'mock_bank_alif',
       accountNumber: '20202810900000789012',
       balance: 89000.0,
     ),
     const BankAccount(
       id: 'bnk-3',
-      bankName: 'Банк Эсхата',
+      bankName: 'mock_bank_eskhata',
       accountNumber: '20202810100000345678',
       balance: 62000.0,
     ),
@@ -31,16 +31,16 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<Encashment> _mockEncashments = [
     Encashment(
       id: 'enc-1',
-      bankName: 'Ориёнбанк',
+      bankName: 'mock_bank_oriyon',
       amount: 25000.0,
-      responsiblePerson: 'Сайфиддинов Б.',
+      responsiblePerson: 'mock_person_sayfiddinov',
       date: DateTime.now().subtract(const Duration(hours: 4)),
     ),
     Encashment(
       id: 'enc-2',
-      bankName: 'Алиф Банк',
+      bankName: 'mock_bank_alif',
       amount: 15000.0,
-      responsiblePerson: 'Алишер Рахимов',
+      responsiblePerson: 'mock_user_alisher',
       date: DateTime.now().subtract(const Duration(days: 1)),
     ),
   ];
@@ -48,16 +48,16 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<StoreTransfer> _mockTransfers = [
     StoreTransfer(
       id: 'tr-1',
-      fromBranch: 'Филиал «Центральный»',
-      toBranch: 'Филиал «Сомони»',
+      fromBranch: 'mock_branch_central',
+      toBranch: 'mock_branch_somoni',
       amount: 5000.0,
       status: 'pending',
       date: DateTime.now().subtract(const Duration(hours: 2)),
     ),
     StoreTransfer(
       id: 'tr-2',
-      fromBranch: 'Точка «Худжанд»',
-      toBranch: 'Филиал «Центральный»',
+      fromBranch: 'mock_branch_khujand',
+      toBranch: 'mock_branch_central',
       amount: 12000.0,
       status: 'received',
       date: DateTime.now().subtract(const Duration(days: 2)),
@@ -67,7 +67,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<FinancialAid> _mockAids = [
     FinancialAid(
       id: 'aid-1',
-      employeeName: 'Парвиз Назаров',
+      employeeName: 'mock_user_parviz',
       amount: 4000.0,
       repaidAmount: 2000.0,
       status: 'active',
@@ -75,7 +75,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
     ),
     FinancialAid(
       id: 'aid-2',
-      employeeName: 'Муножот К.',
+      employeeName: 'mock_person_munojot',
       amount: 1500.0,
       repaidAmount: 1500.0,
       status: 'repaid',

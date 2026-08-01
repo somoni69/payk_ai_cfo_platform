@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
@@ -21,7 +22,7 @@ class ApiLegalRepository
   int _requirePositiveId(String value, String fieldName) {
     final id = int.tryParse(value);
     if (id == null || id <= 0) {
-      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+      throw ArgumentError.value(value, fieldName, ErrorKeys.invalidId);
     }
     return id;
   }
@@ -54,9 +55,7 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить шаблоны договоров: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -91,7 +90,7 @@ class ApiLegalRepository
       );
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось сгенерировать договор');
+      throw Exception(ErrorKeys.saveFailed);
     } finally {
       if (identical(_contractCancelToken, cancelToken)) {
         _contractCancelToken = null;
@@ -126,7 +125,7 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить законы: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -155,7 +154,7 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить календарь сроков: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -185,7 +184,7 @@ class ApiLegalRepository
         daysLeft: map['days_left'],
       );
     } catch (e) {
-      throw Exception('Не удалось обновить статус срока: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -206,7 +205,7 @@ class ApiLegalRepository
       return map['answer'] ?? 'Ответ от ИИ пуст.';
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось получить ответ ИИ');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_lawyerCancelToken, cancelToken)) {
         _lawyerCancelToken = null;

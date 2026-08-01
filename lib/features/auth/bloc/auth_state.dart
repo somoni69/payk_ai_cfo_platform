@@ -1,31 +1,8 @@
 import 'package:equatable/equatable.dart';
 
-/// Роли пользователей в системе PAYK согласно ТЗ (SYS-02 - SYS-07).
-enum UserRole {
-  director, // Директор: видит все, управляет всем (SYS-02)
-  manager, // Менеджер: видит все, кроме системных настроек (SYS-03)
-  accountant, // Бухгалтер: доступ только к кассе и финансам (SYS-04)
-  cashier, // Кассир: только операции своей смены (SYS-05)
-  hr, // HR: только кадры и задачи (SYS-06)
-  viewer; // Только просмотр: ничего не может изменять (SYS-07)
+import '../domain/user_role.dart';
 
-  String get label {
-    switch (this) {
-      case UserRole.director:
-        return 'Директор';
-      case UserRole.manager:
-        return 'Менеджер';
-      case UserRole.accountant:
-        return 'Бухгалтер';
-      case UserRole.cashier:
-        return 'Кассир';
-      case UserRole.hr:
-        return 'HR-специалист';
-      case UserRole.viewer:
-        return 'Наблюдатель';
-    }
-  }
-}
+export '../domain/user_role.dart';
 
 abstract class AuthState extends Equatable {
   const AuthState();
@@ -39,18 +16,60 @@ class AuthInitial extends AuthState {}
 class AuthLoading extends AuthState {}
 
 class AuthAuthenticated extends AuthState {
+  /// Backend user id when known from JWT `sub` or `/auth/me`.
+  final int? id;
+
+  /// Login name when known.
   final String username;
+
+  /// Display name from JWT `name` (preferred in UI).
+  final String name;
+
   final UserRole role;
 
-  const AuthAuthenticated({required this.username, required this.role});
+  /// UTC expiry of the access JWT when available.
+  final DateTime? accessTokenExpiresAt;
+
+  const AuthAuthenticated({
+    this.id,
+    required this.username,
+    this.name = '',
+    required this.role,
+    this.accessTokenExpiresAt,
+  });
+
+  /// Profile label: full name → login → `#id`.
+  String get displayName {
+    final trimmedName = name.trim();
+    if (trimmedName.isNotEmpty) return trimmedName;
+    final trimmedUser = username.trim();
+    if (trimmedUser.isNotEmpty) return trimmedUser;
+    if (id != null) return '#$id';
+    return username;
+  }
 
   @override
-  List<Object?> get props => [username, role];
+  List<Object?> get props => [id, username, name, role, accessTokenExpiresAt];
+}
+
+/// Password accepted; waiting for SMS 2FA code.
+class AuthTwoFactorRequired extends AuthState {
+  final String challengeId;
+  final String username;
+
+  const AuthTwoFactorRequired({
+    required this.challengeId,
+    required this.username,
+  });
+
+  @override
+  List<Object?> get props => [challengeId, username];
 }
 
 class AuthUnauthenticated extends AuthState {}
 
 class AuthError extends AuthState {
+  /// Localization key or legacy Russian message (resolved via translate / translateMessage).
   final String message;
 
   const AuthError(this.message);

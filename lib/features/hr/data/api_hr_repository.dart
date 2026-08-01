@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/hr_models.dart';
 import '../domain/hr_repository.dart';
@@ -17,7 +18,7 @@ class ApiHrRepository implements HrRepository {
   int _requirePositiveId(String value, String fieldName) {
     final id = int.tryParse(value);
     if (id == null || id <= 0) {
-      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+      throw ArgumentError.value(value, fieldName, ErrorKeys.invalidId);
     }
     return id;
   }
@@ -60,7 +61,7 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить сотрудников: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -98,9 +99,7 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить предупреждения по KPI: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -137,9 +136,7 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить расчетную ведомость: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -179,7 +176,7 @@ class ApiHrRepository implements HrRepository {
         bonusFormula: map['bonus_formula']?.toString(),
       );
     } catch (e) {
-      throw Exception('Не удалось пересчитать зарплату: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -218,9 +215,7 @@ class ApiHrRepository implements HrRepository {
         ),
       );
     } catch (e) {
-      throw Exception(
-        'Не удалось зарегистрировать сотрудника: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
@@ -46,9 +47,7 @@ class ApiMarketingRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить рекламные кампании: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -98,7 +97,7 @@ class ApiMarketingRepository
         cac: map['cac'] != null ? double.tryParse(map['cac'].toString()) : null,
       );
     } catch (e) {
-      throw Exception('Не удалось создать рекламную кампанию: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -134,7 +133,7 @@ class ApiMarketingRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить публикации: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -169,7 +168,7 @@ class ApiMarketingRepository
         ),
       );
     } catch (e) {
-      throw Exception('Не удалось создать публикацию: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -199,7 +198,7 @@ class ApiMarketingRepository
         ),
       );
     } catch (e) {
-      throw Exception('Не удалось опубликовать пост: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -221,7 +220,7 @@ class ApiMarketingRepository
       return list.map((e) => e.toString()).toList();
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось сгенерировать идеи');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_ideasCancelToken, cancelToken)) {
         _ideasCancelToken = null;
@@ -246,7 +245,7 @@ class ApiMarketingRepository
       return map['text'] ?? 'Нет сгенерированного текста';
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось сгенерировать текст публикации');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_textCancelToken, cancelToken)) {
         _textCancelToken = null;
