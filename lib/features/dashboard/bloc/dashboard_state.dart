@@ -22,9 +22,11 @@ class DashboardLoaded extends DashboardState {
   final ExchangeRatesReport? rates;
   final AiInsightsReport? aiInsights;
   final PlanFactReport? planFact;
+  final ClientAnalysisReport? clients;
   final Set<DashboardSection> loadingSections;
   final Map<DashboardSection, String> sectionErrors;
   final String? overviewError;
+  final String? actionMessage;
 
   const DashboardLoaded({
     required this.metrics,
@@ -37,9 +39,11 @@ class DashboardLoaded extends DashboardState {
     this.rates,
     this.aiInsights,
     this.planFact,
+    this.clients,
     this.loadingSections = const {},
     this.sectionErrors = const {},
     this.overviewError,
+    this.actionMessage,
   });
 
   DashboardLoaded copyWith({
@@ -53,10 +57,13 @@ class DashboardLoaded extends DashboardState {
     ExchangeRatesReport? rates,
     AiInsightsReport? aiInsights,
     PlanFactReport? planFact,
+    ClientAnalysisReport? clients,
     Set<DashboardSection>? loadingSections,
     Map<DashboardSection, String>? sectionErrors,
     String? overviewError,
     bool clearOverviewError = false,
+    String? actionMessage,
+    bool clearActionMessage = false,
   }) {
     return DashboardLoaded(
       metrics: metrics ?? this.metrics,
@@ -69,30 +76,36 @@ class DashboardLoaded extends DashboardState {
       rates: rates ?? this.rates,
       aiInsights: aiInsights ?? this.aiInsights,
       planFact: planFact ?? this.planFact,
+      clients: clients ?? this.clients,
       loadingSections: loadingSections ?? this.loadingSections,
       sectionErrors: sectionErrors ?? this.sectionErrors,
       overviewError: clearOverviewError
           ? null
           : (overviewError ?? this.overviewError),
+      actionMessage: clearActionMessage
+          ? null
+          : (actionMessage ?? this.actionMessage),
     );
   }
 
   @override
   List<Object?> get props => [
-    metrics,
-    history,
-    currency,
-    pnl,
-    breakEven,
-    abc,
-    bankAccounts,
-    rates,
-    aiInsights,
-    planFact,
-    loadingSections,
-    sectionErrors,
-    overviewError,
-  ];
+        metrics,
+        history,
+        currency,
+        pnl,
+        breakEven,
+        abc,
+        bankAccounts,
+        rates,
+        aiInsights,
+        planFact,
+        clients,
+        loadingSections,
+        sectionErrors,
+        overviewError,
+        actionMessage,
+      ];
 }
 
 class DashboardError extends DashboardState {

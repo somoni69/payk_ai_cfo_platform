@@ -29,3 +29,71 @@ class StrategicAnalysis {
     required this.createdAt,
   });
 }
+
+class MacroIndicator {
+  final String id;
+  final String name;
+  final double value;
+  final String? unit;
+  final DateTime indicatorDate;
+
+  const MacroIndicator({
+    required this.id,
+    required this.name,
+    required this.value,
+    this.unit,
+    required this.indicatorDate,
+  });
+}
+
+class StrategyScenario {
+  final String id;
+  final String quarter;
+  final String title;
+  final String content;
+
+  const StrategyScenario({
+    required this.id,
+    required this.quarter,
+    required this.title,
+    required this.content,
+  });
+}
+
+class DailySummary {
+  final String date;
+  final String summary;
+  final bool generatedByAi;
+
+  const DailySummary({
+    required this.date,
+    required this.summary,
+    required this.generatedByAi,
+  });
+}
+
+class NewsItem {
+  final String title;
+  final String url;
+  final String source;
+  final String? published;
+
+  const NewsItem({
+    required this.title,
+    required this.url,
+    required this.source,
+    this.published,
+  });
+}
+
+class NewsSource {
+  final String code;
+  final String name;
+  final List<NewsItem> items;
+
+  const NewsSource({
+    required this.code,
+    required this.name,
+    this.items = const [],
+  });
+}

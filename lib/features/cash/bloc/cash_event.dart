@@ -49,9 +49,27 @@ class CloseShiftRequested extends CashEvent {
 class SearchFilterChanged extends CashEvent {
   final String query;
   final String filterType; // 'all', 'income', 'expense'
+  final String paymentMethod; // 'all' | PaymentMethod.name
+  final String registerId; // 'all' | register id
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
 
-  const SearchFilterChanged({required this.query, required this.filterType});
+  const SearchFilterChanged({
+    required this.query,
+    required this.filterType,
+    this.paymentMethod = 'all',
+    this.registerId = 'all',
+    this.dateFrom,
+    this.dateTo,
+  });
 
   @override
-  List<Object?> get props => [query, filterType];
+  List<Object?> get props => [
+    query,
+    filterType,
+    paymentMethod,
+    registerId,
+    dateFrom,
+    dateTo,
+  ];
 }

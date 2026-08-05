@@ -39,10 +39,10 @@ extension _CashSheetBuilders on _CashViewState {
               const SizedBox(height: 6),
               ExpansibleWidget<String>.selection(
                 cardPadding: const EdgeInsets.symmetric(
-                  horizontal: 4,
-                  vertical: 0,
+                  horizontal: 12,
+                  vertical: 2,
                 ),
-                tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                tilePadding: EdgeInsets.zero,
                 title: Text(
                   registers
                       .firstWhere(
@@ -108,7 +108,7 @@ extension _CashSheetBuilders on _CashViewState {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.brand,
-                  foregroundColor: Colors.white,
+                  foregroundColor: colors.surface,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -116,7 +116,7 @@ extension _CashSheetBuilders on _CashViewState {
                 child: Text(
                   language.translate('cash_open_shift_action'),
                   style: textStyles.bodySans.copyWith(
-                    color: Colors.white,
+                    color: colors.surface,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -253,10 +253,10 @@ extension _CashSheetBuilders on _CashViewState {
                 const SizedBox(height: 6),
                 ExpansibleWidget<String>.selection(
                   cardPadding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 0,
+                    horizontal: 12,
+                    vertical: 2,
                   ),
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                  tilePadding: EdgeInsets.zero,
                   title: Text(
                     registers
                         .firstWhere(
@@ -352,10 +352,10 @@ extension _CashSheetBuilders on _CashViewState {
               const SizedBox(height: 6),
               ExpansibleWidget<String>.selection(
                 cardPadding: const EdgeInsets.symmetric(
-                  horizontal: 4,
-                  vertical: 0,
+                  horizontal: 12,
+                  vertical: 2,
                 ),
-                tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                tilePadding: EdgeInsets.zero,
                 title: Text(
                   selectedCategory ??
                       language.translate('cash_select_category'),
@@ -440,7 +440,7 @@ extension _CashSheetBuilders on _CashViewState {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -448,7 +448,7 @@ extension _CashSheetBuilders on _CashViewState {
                   child: Text(
                     language.translate('save_to_ledger'),
                     style: textStyles.bodySans.copyWith(
-                      color: Colors.white,
+                      color: colors.surface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

@@ -13,6 +13,7 @@ import '../../../features/notifications/domain/notifications_repository.dart';
 import '../../../features/notifications/domain/notification_model.dart';
 import '../../../presentation/widgets/ledger_ai_card.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
 /// Входная точка экрана уведомлений с внедрением NotificationsBloc.
 class NotificationsScreen extends StatelessWidget {
@@ -105,21 +106,17 @@ class _NotificationsViewState extends State<NotificationsView> {
         if (state is NotificationsLoading) {
           return Scaffold(
             backgroundColor: colors.background,
-            appBar: AppBar(
-              backgroundColor: colors.surface,
-              title: Text(
-                languageCubit.translate('notifications_title'),
-                style: textStyles.h1Sans.copyWith(
-                  fontSize: MediaQuery.of(context).size.width >= 600
-                      ? 22.0
-                      : 20.0,
-                  fontWeight: FontWeight.w500,
+            body: NestedScrollView(
+              headerSliverBuilder: (context, _) => [
+                LedgerCollapsingHeader(
+                  title: languageCubit.translate('notifications_title'),
+                  pinned: true,
+                  floating: true,
+                  snap: true,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              ],
+              body: const Center(child: CircularProgressIndicator()),
             ),
-            body: const Center(child: CircularProgressIndicator()),
           );
         }
 
@@ -180,33 +177,25 @@ class _NotificationsViewState extends State<NotificationsView> {
               .toList(growable: false);
 
           return Scaffold(
-            appBar: AppBar(
-              backgroundColor: colors.surface,
-              scrolledUnderElevation: 0,
-              title: Text(
-                languageCubit.translate('notifications_title'),
-                style: textStyles.h1Sans.copyWith(
-                  fontSize: MediaQuery.of(context).size.width >= 600
-                      ? 22.0
-                      : 20.0,
-                  fontWeight: FontWeight.w500,
+            backgroundColor: colors.background,
+            body: NestedScrollView(
+              headerSliverBuilder: (context, _) => [
+                LedgerCollapsingHeader(
+                  title: languageCubit.translate('notifications_title'),
+                  pinned: true,
+                  floating: true,
+                  snap: true,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1.0),
-                child: Container(color: colors.border, height: 1.0),
-              ),
-            ),
-            body: RefreshIndicator(
-              onRefresh: _refreshNotifications,
-              child: _buildNotificationsList(
-                context,
-                unreadNotifications: unreadNotifications,
-                criticalAlerts: criticalAlerts,
-                importantAlerts: importantAlerts,
-                infoAlerts: infoAlerts,
+              ],
+              body: RefreshIndicator(
+                onRefresh: _refreshNotifications,
+                child: _buildNotificationsList(
+                  context,
+                  unreadNotifications: unreadNotifications,
+                  criticalAlerts: criticalAlerts,
+                  importantAlerts: importantAlerts,
+                  infoAlerts: infoAlerts,
+                ),
               ),
             ),
           );

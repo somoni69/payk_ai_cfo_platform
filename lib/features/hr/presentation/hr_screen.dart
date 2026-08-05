@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -14,9 +17,13 @@ import '../../../features/hr/bloc/hr_event.dart';
 import '../../../features/hr/bloc/hr_state.dart';
 import '../../../features/hr/domain/hr_models.dart';
 import '../../../features/hr/domain/hr_repository.dart';
+import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_collapsing_header.dart';
+
+part 'hr_extra_tabs.dart';
 
 String _currentHrPeriod() {
   final now = DateTime.now();
@@ -86,12 +93,30 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 9, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _pickerYear = int.parse(_selectedPeriod.split('-')[0]);
+  }
+
+  void _handleTabChange() {
+    if (!mounted || _tabController.indexIsChanging) return;
+    final section = switch (_tabController.index) {
+      1 => HrSection.org,
+      2 => HrSection.attendance,
+      5 => HrSection.recruitment,
+      6 => HrSection.nineBox,
+      7 => HrSection.contracts,
+      8 => HrSection.movement,
+      _ => null,
+    };
+    if (section != null) {
+      context.read<HrBloc>().add(LoadHrSection(section));
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -130,74 +155,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
     final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        title: Text(
-          localeCubit.translate('hr_title'),
-          style: textStyles.h1Sans.copyWith(
-            fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        actions: [
-          // Выбор периода (Inline Toggle)
-          InkWell(
-            onTap: () {
-              setState(() {
-                _isMonthPickerExpanded = !_isMonthPickerExpanded;
-                if (_isMonthPickerExpanded) {
-                  _pickerYear = int.parse(_selectedPeriod.split('-')[0]);
-                }
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                children: [
-                  Text(
-                    _formatPeriod(_selectedPeriod, localeCubit),
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: colors.brand,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    _isMonthPickerExpanded
-                        ? TablerIcons.chevron_up
-                        : TablerIcons.chevron_down,
-                    size: 18,
-                    color: colors.brand,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          if (_canManageHr(context))
-            IconButton(
-              icon: const Icon(TablerIcons.user_plus),
-              tooltip: localeCubit.translate('hr_hire_title'),
-              color: colors.brand,
-              onPressed: () => _showAddEmployeeBottomSheet(context),
-            ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: colors.brand,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textSecondary,
-          labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          tabs: [
-            Tab(text: localeCubit.translate('hr_tab_staff')),
-            Tab(text: localeCubit.translate('hr_tab_kpi')),
-            Tab(text: localeCubit.translate('hr_tab_salary')),
-          ],
-        ),
-      ),
+      backgroundColor: colors.background,
       body: BlocListener<HrBloc, HrState>(
         listener: (context, state) {
           if (state is HrLoaded) {
@@ -222,19 +180,102 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
             }
           }
         },
-        child: Column(
-          children: [
-            ClipRect(
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                alignment: Alignment.topCenter,
-                heightFactor: _isMonthPickerExpanded ? 1.0 : 0.0,
-                child: _buildInlineMonthPicker(localeCubit),
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              LedgerCollapsingHeader(
+                title: localeCubit.translate('hr_title'),
+                pinned: true,
+                floating: true,
+                snap: true,
+                actions: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isMonthPickerExpanded = !_isMonthPickerExpanded;
+                        if (_isMonthPickerExpanded) {
+                          _pickerYear =
+                              int.parse(_selectedPeriod.split('-')[0]);
+                        }
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            _formatPeriod(_selectedPeriod, localeCubit),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: colors.brand,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            _isMonthPickerExpanded
+                                ? TablerIcons.chevron_up
+                                : TablerIcons.chevron_down,
+                            size: 18,
+                            color: colors.brand,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_canManageHr(context))
+                    IconButton(
+                      icon: const Icon(TablerIcons.user_plus),
+                      tooltip: localeCubit.translate('hr_hire_title'),
+                      color: colors.brand,
+                      onPressed: () => _showAddEmployeeBottomSheet(context),
+                    ),
+                ],
+                bottom: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  indicatorColor: colors.brand,
+                  labelColor: colors.brand,
+                  unselectedLabelColor: colors.textSecondary,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: colors.border,
+                  labelStyle: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  unselectedLabelStyle: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  tabs: [
+                    Tab(text: localeCubit.translate('hr_tab_staff')),
+                    Tab(text: localeCubit.translate('hr_tab_org')),
+                    Tab(text: localeCubit.translate('hr_tab_attendance')),
+                    Tab(text: localeCubit.translate('hr_tab_kpi')),
+                    Tab(text: localeCubit.translate('hr_tab_salary')),
+                    Tab(text: localeCubit.translate('hr_tab_recruitment')),
+                    Tab(text: localeCubit.translate('hr_tab_ninebox')),
+                    Tab(text: localeCubit.translate('hr_tab_contracts')),
+                    Tab(text: localeCubit.translate('hr_tab_movement')),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: BlocBuilder<HrBloc, HrState>(
+            ];
+          },
+          body: Column(
+            children: [
+              ClipRect(
+                child: AnimatedAlign(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  alignment: Alignment.topCenter,
+                  heightFactor: _isMonthPickerExpanded ? 1.0 : 0.0,
+                  child: _buildInlineMonthPicker(localeCubit),
+                ),
+              ),
+              Expanded(
+                child: BlocBuilder<HrBloc, HrState>(
                 builder: (context, state) {
                   if (state is HrLoading) {
                     return const Center(child: CircularProgressIndicator());
@@ -278,8 +319,14 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                       controller: _tabController,
                       children: [
                         _buildStaffTab(context, state),
+                        _buildOrgTab(context, state),
+                        _buildAttendanceTab(context, state),
                         _buildKpiTab(context, state),
                         _buildSalaryTab(context, state),
+                        _buildRecruitmentTab(context, state),
+                        _buildNineBoxTab(context, state),
+                        _buildContractsTab(context, state),
+                        _buildMovementTab(context, state),
                       ],
                     );
                   }
@@ -289,6 +336,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
               ),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -384,7 +432,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                   child: Text(
                     language.translate(_shortMonthKeys[index]),
                     style: textStyles.captionSans.copyWith(
-                      color: isSelected ? Colors.white : colors.textPrimary,
+                      color: isSelected ? colors.surface : colors.textPrimary,
                       fontWeight: isSelected
                           ? FontWeight.w500
                           : FontWeight.normal,

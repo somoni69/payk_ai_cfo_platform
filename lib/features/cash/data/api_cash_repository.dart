@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import '../../../core/network/user_facing_error.dart';
@@ -150,7 +151,7 @@ class ApiCashRepository implements CashRepository {
         'type': transaction.isIncome ? 'income' : 'expense',
         'amount': transaction.amount.toStringAsFixed(2),
         'currency': 'TJS',
-        'payment_method': transaction.paymentMethod.name,
+        'payment_method': transaction.paymentMethod.apiValue,
         'category': transaction.category,
         'counterparty': transaction.title,
         'description': 'Создано с мобильного устройства',
@@ -557,6 +558,65 @@ class ApiCashRepository implements CashRepository {
         CashRegister(id: 'reg-2', name: 'Касса №2'),
         CashRegister(id: 'reg-3', name: 'iiko'),
       ];
+    }
+  }
+
+  @override
+  Future<Uint8List> exportOperations({
+    required String format,
+    CashOperationFilters filters = const CashOperationFilters(),
+  }) async {
+    final fmt = switch (format) {
+      'csv' => 'csv',
+      'pdf' => 'pdf',
+      _ => 'xlsx',
+    };
+    try {
+      final params = <String, dynamic>{'fmt': fmt, ...filters.toQuery()};
+      final response = await _dio.get<List<int>>(
+        '/cash/export',
+        queryParameters: params,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final bytes = response.data;
+      if (bytes == null || bytes.isEmpty) {
+        throw const FormatException(ErrorKeys.invalidResponse);
+      }
+      return Uint8List.fromList(bytes);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<int> importOperations({
+    required int registerId,
+    required String filename,
+    required Uint8List bytes,
+  }) async {
+    if (registerId <= 0) throw StateError(ErrorKeys.invalidId);
+    try {
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await _dio.post(
+        '/cash/import',
+        queryParameters: {'register_id': registerId},
+        data: form,
+        options: Options(
+          contentType: 'multipart/form-data',
+          headers: <String, dynamic>{'Idempotency-Key': _newIdempotencyKey()},
+        ),
+      );
+      final data = response.data;
+      if (data is Map && data['imported'] != null) {
+        final n = data['imported'];
+        if (n is int) return n;
+        return int.tryParse(n.toString()) ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 }

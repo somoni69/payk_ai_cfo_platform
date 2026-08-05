@@ -18,6 +18,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ExchangeRatesReport? _cachedRates;
   AiInsightsReport? _cachedAiInsights;
   PlanFactReport? _cachedPlanFact;
+  ClientAnalysisReport? _cachedClients;
   String _currentCurrency = 'TJS';
 
   final Set<DashboardSection> _loadingSections = {};
@@ -33,6 +34,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<LoadDashboardSection>(_onLoadDashboardSection);
     on<ChangeCurrency>(_onChangeCurrency);
     on<ChangeAbcDimension>(_onChangeAbcDimension);
+    on<CreatePlanRequested>(_onCreatePlan);
+    on<CreateAccountRequested>(_onCreateAccount);
+    on<DeleteAccountRequested>(_onDeleteAccount);
+    on<ZeroOutAccountRequested>(_onZeroOutAccount);
+    on<RefreshRatesRequested>(_onRefreshRates);
   }
 
   Future<void> _onLoadDashboardData(
@@ -152,6 +158,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           _cachedBankAccounts = values[0] as BankAccountsReport;
           _cachedRates = values[1] as ExchangeRatesReport;
           break;
+        case DashboardSection.clients:
+          _cachedClients = await _repository.getClientAnalysis();
+          break;
         case DashboardSection.aiInsights:
           _cachedAiInsights = await _repository.getAiInsights();
           break;
@@ -200,6 +209,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       DashboardSection.abc => _cachedAbc != null,
       DashboardSection.accountsRates =>
         _cachedBankAccounts != null && _cachedRates != null,
+      DashboardSection.clients => _cachedClients != null,
       DashboardSection.aiInsights => _cachedAiInsights != null,
     };
   }
@@ -294,11 +304,153 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         rates: _cachedRates,
         aiInsights: _cachedAiInsights,
         planFact: _convertPlanFact(_cachedPlanFact, currency),
+        clients: _cachedClients,
         loadingSections: Set.unmodifiable(_loadingSections),
         sectionErrors: Map.unmodifiable(_sectionErrors),
         overviewError: overviewError,
       ),
     );
+  }
+
+  Future<void> _onCreatePlan(
+    CreatePlanRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.createPlan(
+        period: event.period,
+        category: event.category,
+        type: event.type,
+        plannedAmount: event.plannedAmount,
+      );
+      _cachedPlanFact = await _repository.getPlanFactReport();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            planFact: _convertPlanFact(_cachedPlanFact, _currentCurrency),
+            actionMessage: 'dashboard_toast_plan_created',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onCreateAccount(
+    CreateAccountRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.createAccount(
+        name: event.name,
+        bank: event.bank,
+        number: event.number,
+        currency: event.currency,
+        balance: event.balance,
+      );
+      _cachedBankAccounts = await _repository.getBankAccounts();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            bankAccounts: _cachedBankAccounts,
+            actionMessage: 'dashboard_toast_account_created',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onDeleteAccount(
+    DeleteAccountRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.deleteAccount(event.id);
+      _cachedBankAccounts = await _repository.getBankAccounts();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            bankAccounts: _cachedBankAccounts,
+            actionMessage: 'dashboard_toast_account_deleted',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onZeroOutAccount(
+    ZeroOutAccountRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.zeroOutAccount(event.id);
+      _cachedBankAccounts = await _repository.getBankAccounts();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            bankAccounts: _cachedBankAccounts,
+            actionMessage: 'dashboard_toast_account_zeroed',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onRefreshRates(
+    RefreshRatesRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.refreshRates();
+      _cachedRates = await _repository.getExchangeRates();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            rates: _cachedRates,
+            actionMessage: 'dashboard_toast_rates_refreshed',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
   }
 
   double _convert(double amount, String targetCurrency) {

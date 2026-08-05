@@ -55,6 +55,7 @@ extension UserRoleAccess on UserRole {
     UserRole.cashier => const <AppCapability>{
       AppCapability.cash,
       AppCapability.checklists,
+      AppCapability.reports,
     },
     UserRole.hr => const <AppCapability>{AppCapability.tasks, AppCapability.hr},
     UserRole.viewer => const <AppCapability>{
@@ -87,7 +88,10 @@ extension UserRoleAccess on UserRole {
         capability == AppCapability.cash ||
             capability == AppCapability.finOps ||
             capability == AppCapability.reports,
-      UserRole.cashier => capability == AppCapability.cash,
+      UserRole.cashier =>
+        capability == AppCapability.cash ||
+            capability == AppCapability.reports ||
+            capability == AppCapability.checklists,
       UserRole.hr =>
         capability == AppCapability.tasks || capability == AppCapability.hr,
       UserRole.viewer => false,

@@ -15,6 +15,10 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
     on<ClearLawyerHistory>(_onClearLawyerHistory);
     on<ClearGeneratedContract>(_onClearGeneratedContract);
     on<GenerateContractFromTemplate>(_onGenerateContractFromTemplate);
+    on<CreateLawRequested>(_onCreateLaw);
+    on<DeleteLawRequested>(_onDeleteLaw);
+    on<CreateDeadlineRequested>(_onCreateDeadline);
+    on<CreateTemplateRequested>(_onCreateTemplate);
   }
 
   static const List<Map<String, String>> _welcomeHistory = [
@@ -176,7 +180,12 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
     if (state is! LegalLoaded) return;
     final currentState = state as LegalLoaded;
     emit(
-      currentState.copyWith(isGenerating: true, clearGeneratedContract: true),
+      currentState.copyWith(
+        isGenerating: true,
+        clearGeneratedContract: true,
+        clearError: true,
+        clearSuccess: true,
+      ),
     );
 
     try {
@@ -199,6 +208,146 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
           errorMessage: userFacingError(
             error,
             fallback: 'Не удалось сгенерировать договор. Повторите попытку.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateLaw(
+    CreateLawRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    try {
+      final law = await _repository.createLaw(
+        title: event.title,
+        body: event.body,
+        category: event.category,
+      );
+      if (emit.isDone || state is! LegalLoaded) return;
+      final latest = state as LegalLoaded;
+      emit(
+        latest.copyWith(
+          isMutating: false,
+          laws: [law, ...latest.laws],
+          successMessage: 'legal_toast_law_created',
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: ErrorKeys.saveFailed,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteLaw(
+    DeleteLawRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    try {
+      await _repository.deleteLaw(event.id);
+      if (emit.isDone || state is! LegalLoaded) return;
+      final latest = state as LegalLoaded;
+      emit(
+        latest.copyWith(
+          isMutating: false,
+          laws: latest.laws.where((law) => law.id != event.id).toList(),
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: ErrorKeys.saveFailed,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateDeadline(
+    CreateDeadlineRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    try {
+      final deadline = await _repository.createDeadline(
+        title: event.title,
+        type: event.type,
+        dueDate: event.dueDate,
+        amount: event.amount,
+        note: event.note,
+      );
+      if (emit.isDone || state is! LegalLoaded) return;
+      final latest = state as LegalLoaded;
+      emit(
+        latest.copyWith(
+          isMutating: false,
+          deadlines: [deadline, ...latest.deadlines],
+          successMessage: 'legal_toast_deadline_created',
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: ErrorKeys.saveFailed,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateTemplate(
+    CreateTemplateRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    try {
+      final template = await _repository.createTemplate(
+        name: event.name,
+        body: event.body,
+        category: event.category,
+      );
+      if (emit.isDone || state is! LegalLoaded) return;
+      final latest = state as LegalLoaded;
+      emit(
+        latest.copyWith(
+          isMutating: false,
+          templates: [template, ...latest.templates],
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: ErrorKeys.saveFailed,
           ),
         ),
       );

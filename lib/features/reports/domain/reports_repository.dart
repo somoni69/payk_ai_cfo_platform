@@ -1,14 +1,19 @@
+import 'dart:typed_data';
+
 import 'report_models.dart';
 
 abstract class ReportsRepository {
-  Future<List<DailyReport>> getDailyReports();
-  Future<DailyReport> createDailyReport({
-    required String branchName,
-    required double revenue,
-    required double expenses,
-    required double cashEndBalance,
-    required double bankEndBalance,
-    String? comments,
+  Future<List<DailyReport>> getDailyReports({
+    DailyReportFilters filters = const DailyReportFilters(),
+    bool forceRefresh = false,
   });
-  Future<void> deleteDailyReport(String id);
+
+  Future<DailyReport> createDailyReport(DailyReportInput input);
+
+  Future<DailyReport> updateDailyReport(int id, DailyReportInput input);
+
+  Future<void> deleteDailyReport(int id);
+
+  /// Download export bytes (pdf | docx).
+  Future<Uint8List> exportDailyReport(int id, {required String format});
 }

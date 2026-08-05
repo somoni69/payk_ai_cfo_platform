@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../domain/report_models.dart';
+
 abstract class ReportsEvent extends Equatable {
   const ReportsEvent();
 
@@ -8,43 +10,40 @@ abstract class ReportsEvent extends Equatable {
 }
 
 class LoadReportsData extends ReportsEvent {
+  final DailyReportFilters filters;
   final bool forceRefresh;
-  const LoadReportsData({this.forceRefresh = false});
 
-  @override
-  List<Object?> get props => [forceRefresh];
-}
-
-class CreateDailyReportRequested extends ReportsEvent {
-  final String branchName;
-  final double revenue;
-  final double expenses;
-  final double cashEndBalance;
-  final double bankEndBalance;
-  final String? comments;
-
-  const CreateDailyReportRequested({
-    required this.branchName,
-    required this.revenue,
-    required this.expenses,
-    required this.cashEndBalance,
-    required this.bankEndBalance,
-    this.comments,
+  const LoadReportsData({
+    this.filters = const DailyReportFilters(),
+    this.forceRefresh = false,
   });
 
   @override
-  List<Object?> get props => [
-    branchName,
-    revenue,
-    expenses,
-    cashEndBalance,
-    bankEndBalance,
-    comments,
-  ];
+  List<Object?> get props => [filters, forceRefresh];
+}
+
+class CreateDailyReportRequested extends ReportsEvent {
+  final DailyReportInput input;
+
+  const CreateDailyReportRequested(this.input);
+
+  @override
+  List<Object?> get props => [input];
+}
+
+class UpdateDailyReportRequested extends ReportsEvent {
+  final int id;
+  final DailyReportInput input;
+
+  const UpdateDailyReportRequested({required this.id, required this.input});
+
+  @override
+  List<Object?> get props => [id, input];
 }
 
 class DeleteDailyReportRequested extends ReportsEvent {
-  final String id;
+  final int id;
+
   const DeleteDailyReportRequested(this.id);
 
   @override

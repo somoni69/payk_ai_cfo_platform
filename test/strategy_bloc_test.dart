@@ -59,6 +59,74 @@ class MockStrategyRepository implements StrategyRepository {
       createdAt: DateTime.now(),
     );
   }
+
+  @override
+  Future<List<MacroIndicator>> getMacroIndicators() async {
+    if (shouldFail) throw Exception('Macro request failed');
+    return [
+      MacroIndicator(
+        id: '1',
+        name: 'Inflation',
+        value: 3.2,
+        unit: '%',
+        indicatorDate: DateTime.now(),
+      ),
+    ];
+  }
+
+  @override
+  Future<List<StrategyScenario>> getScenarios({String? quarter}) async {
+    if (shouldFail) throw Exception('Scenarios request failed');
+    return [
+      StrategyScenario(
+        id: '1',
+        quarter: quarter ?? '2026-Q2',
+        title: 'Base scenario',
+        content: 'Stable growth',
+      ),
+    ];
+  }
+
+  @override
+  Future<List<StrategyScenario>> generateScenarios(String quarter) async {
+    if (shouldFail) throw Exception('Generate scenarios failed');
+    return [
+      StrategyScenario(
+        id: '2',
+        quarter: quarter,
+        title: 'AI scenario',
+        content: 'Generated outlook',
+      ),
+    ];
+  }
+
+  @override
+  Future<DailySummary> getDailySummary() async {
+    if (shouldFail) throw Exception('Daily summary failed');
+    return const DailySummary(
+      date: '2026-08-04',
+      summary: 'Markets stable',
+      generatedByAi: true,
+    );
+  }
+
+  @override
+  Future<List<NewsSource>> getNews() async {
+    if (shouldFail) throw Exception('News request failed');
+    return const [
+      NewsSource(
+        code: 'nbt',
+        name: 'NBT',
+        items: [
+          NewsItem(
+            title: 'Rate update',
+            url: 'https://example.com',
+            source: 'NBT',
+          ),
+        ],
+      ),
+    ];
+  }
 }
 
 void main() {

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
@@ -14,6 +15,7 @@ import '../../../features/strategy/bloc/strategy_state.dart';
 import '../../../features/strategy/domain/strategy_repository.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
 class StrategyScreen extends StatelessWidget {
   const StrategyScreen({super.key});
@@ -59,7 +61,7 @@ class _StrategyViewState extends State<StrategyView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 7, vsync: this);
     _tabController.addListener(_handleTabChange);
   }
 
@@ -77,10 +79,60 @@ class _StrategyViewState extends State<StrategyView>
   }
 
   void _handleTabChange() {
-    if (!mounted || _tabController.index != 2 || _analysisRequested) return;
-    _analysisRequested = true;
-    context.read<StrategyBloc>().add(
-      LoadStrategicAnalyses(_selectedAnalysisType),
+    if (!mounted || _tabController.indexIsChanging) return;
+    // Rebuild tab-aware FAB (design_language).
+    setState(() {});
+    final bloc = context.read<StrategyBloc>();
+    switch (_tabController.index) {
+      case 2:
+        if (!_analysisRequested) {
+          _analysisRequested = true;
+          bloc.add(LoadStrategicAnalyses(_selectedAnalysisType));
+        }
+        break;
+      case 3:
+        bloc.add(const LoadMacroIndicators());
+        break;
+      case 4:
+        bloc.add(const LoadNews());
+        break;
+      case 5:
+        bloc.add(LoadScenarios(quarter: _currentQuarter));
+        break;
+      case 6:
+        bloc.add(const LoadDailySummary());
+        break;
+    }
+  }
+
+  Widget? _buildStrategyFab(BuildContext context) {
+    // Scenarios tab only — generate AI scenarios.
+    if (_tabController.index != 5 || !_canManageStrategy(context)) return null;
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
+    return FloatingActionButton.extended(
+      onPressed: () => context.read<StrategyBloc>().add(
+            GenerateScenariosRequested(_currentQuarter),
+          ),
+      backgroundColor: colors.brand,
+      foregroundColor: colors.surface,
+      elevation: 0,
+      highlightElevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.brand),
+        ),
+      icon: const Icon(TablerIcons.sparkles),
+      label: Text(
+        locale.translate('strategy_scenarios_generate'),
+        style: textStyles.bodySans.copyWith(
+          color: colors.surface,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -112,31 +164,8 @@ class _StrategyViewState extends State<StrategyView>
     final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        title: Text(
-          localeCubit.translate('strategy_title'),
-          style: textStyles.h1Sans.copyWith(
-            fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: colors.brand,
-          labelColor: colors.brand,
-          unselectedLabelColor: colors.textSecondary,
-          labelStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          tabs: [
-            Tab(text: localeCubit.translate('strategy_tab_whatif')),
-            Tab(text: localeCubit.translate('strategy_tab_marketing')),
-            Tab(text: localeCubit.translate('strategy_tab_matrices')),
-          ],
-        ),
-      ),
+      backgroundColor: colors.background,
+      floatingActionButton: _buildStrategyFab(context),
       body: BlocListener<StrategyBloc, StrategyState>(
         listener: (context, state) {
           if (state.errorMessage != null) {
@@ -150,13 +179,54 @@ class _StrategyViewState extends State<StrategyView>
             );
           }
         },
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            _buildWhatIfTab(context),
-            _buildMarketingTab(context),
-            _buildAnalysisTab(context),
-          ],
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              LedgerCollapsingHeader(
+                title: localeCubit.translate('strategy_title'),
+                pinned: true,
+                floating: true,
+                snap: true,
+                bottom: TabBar(
+                  controller: _tabController,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  indicatorColor: colors.brand,
+                  labelColor: colors.brand,
+                  unselectedLabelColor: colors.textSecondary,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  dividerColor: colors.border,
+                  labelStyle: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  unselectedLabelStyle: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w400,
+                  ),
+                  tabs: [
+                    Tab(text: localeCubit.translate('strategy_tab_whatif')),
+                    Tab(text: localeCubit.translate('strategy_tab_marketing')),
+                    Tab(text: localeCubit.translate('strategy_tab_matrices')),
+                    Tab(text: localeCubit.translate('strategy_tab_macro')),
+                    Tab(text: localeCubit.translate('strategy_tab_news')),
+                    Tab(text: localeCubit.translate('strategy_tab_scenarios')),
+                    Tab(text: localeCubit.translate('strategy_tab_summary')),
+                  ],
+                ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildWhatIfTab(context),
+              _buildMarketingTab(context),
+              _buildAnalysisTab(context),
+              _buildMacroTab(context),
+              _buildNewsTab(context),
+              _buildScenariosTab(context),
+              _buildSummaryTab(context),
+            ],
+          ),
         ),
       ),
     );
@@ -228,7 +298,8 @@ class _StrategyViewState extends State<StrategyView>
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -356,7 +427,8 @@ class _StrategyViewState extends State<StrategyView>
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -621,7 +693,7 @@ class _StrategyViewState extends State<StrategyView>
                     children: [
                       Text(
                         '• ',
-                        style: TextStyle(
+                        style: textStyles.bodySans.copyWith(
                           color: color,
                           fontWeight: FontWeight.w500,
                         ),
@@ -629,7 +701,7 @@ class _StrategyViewState extends State<StrategyView>
                       Expanded(
                         child: Text(
                           localeCubit.translateMessage(it.toString()),
-                          style: textStyles.bodySans.copyWith(fontSize: 14),
+                          style: textStyles.captionSans,
                         ),
                       ),
                     ],
@@ -719,7 +791,7 @@ class _StrategyViewState extends State<StrategyView>
                       children: [
                         Text(
                           '• ',
-                          style: TextStyle(
+                          style: textStyles.bodySans.copyWith(
                             color: colors.brand,
                             fontWeight: FontWeight.w500,
                           ),
@@ -853,6 +925,264 @@ class _StrategyViewState extends State<StrategyView>
             );
           }),
       ],
+    );
+  }
+
+  Widget _buildMacroTab(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+
+    return BlocBuilder<StrategyBloc, StrategyState>(
+      builder: (context, state) {
+        if (state.isMacroLoading && !state.macroLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.macro.isEmpty) {
+          return Center(
+            child: Text(
+              locale.translate('strategy_macro_empty'),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<StrategyBloc>().add(
+                  const LoadMacroIndicators(forceRefresh: true),
+                );
+          },
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: state.macro.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final m = state.macro[index];
+              return LedgerCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            m.name,
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            formatLocalizedDateTime(
+                              context,
+                              m.indicatorDate,
+                              style: LocalizedDateTimeStyle.date,
+                            ),
+                            style: textStyles.smallMono.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      '${m.value}${m.unit != null ? ' ${m.unit}' : ''}',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: colors.brand,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNewsTab(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+
+    return BlocBuilder<StrategyBloc, StrategyState>(
+      builder: (context, state) {
+        if (state.isNewsLoading && !state.newsLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state.news.isEmpty) {
+          return Center(
+            child: Text(
+              locale.translate('strategy_news_empty'),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            ),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<StrategyBloc>().add(const LoadNews(forceRefresh: true));
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: state.news.length,
+            itemBuilder: (context, index) {
+              final source = state.news[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      source.name,
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (source.items.isEmpty)
+                      Text(
+                        locale.translate('strategy_news_empty'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      )
+                    else
+                      ...source.items.take(5).map(
+                            (item) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: LedgerCard(
+                                child: Text(
+                                  item.title,
+                                  style: textStyles.captionSans,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildScenariosTab(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+
+    return BlocBuilder<StrategyBloc, StrategyState>(
+      builder: (context, state) {
+        if (state.isScenariosLoading && !state.scenariosLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<StrategyBloc>().add(
+                  LoadScenarios(
+                    quarter: _currentQuarter,
+                    forceRefresh: true,
+                  ),
+                );
+          },
+          child: state.scenarios.isEmpty
+              ? ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                  children: [
+                    const SizedBox(height: 80),
+                    Center(
+                      child: Text(
+                        locale.translate('strategy_scenarios_empty'),
+                        style: textStyles.bodySans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                  itemCount: state.scenarios.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final s = state.scenarios[index];
+                    return LedgerCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.title,
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            s.quarter,
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(s.content, style: textStyles.captionSans),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryTab(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+
+    return BlocBuilder<StrategyBloc, StrategyState>(
+      builder: (context, state) {
+        if (state.isSummaryLoading && !state.summaryLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final summary = state.dailySummary;
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<StrategyBloc>().add(
+                  const LoadDailySummary(forceRefresh: true),
+                );
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (summary == null)
+                LedgerCard(
+                  child: Text(
+                    locale.translate('strategy_summary_empty'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                )
+              else ...[
+                Text(
+                  summary.date,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                LedgerCard(
+                  child: Text(summary.summary, style: textStyles.bodySans),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

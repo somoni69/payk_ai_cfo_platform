@@ -27,6 +27,14 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     on<UpdateTaskStatusRequested>(_onUpdateTaskStatusRequested);
     on<CreateTaskRequested>(_onCreateTaskRequested);
     on<UpdateTaskRequested>(_onUpdateTaskRequested);
+    on<LoadMyTasks>(_onLoadMyTasks);
+    on<CreatePersonalTaskRequested>(_onCreatePersonalTask);
+    on<UpdatePersonalTaskRequested>(_onUpdatePersonalTask);
+    on<DeletePersonalTaskRequested>(_onDeletePersonalTask);
+    on<AcknowledgeTaskRequested>(_onAcknowledgeTask);
+    on<SubmitTaskRequested>(_onSubmitTask);
+    on<AcceptTaskRequested>(_onAcceptTask);
+    on<RejectTaskRequested>(_onRejectTask);
   }
 
   Future<void> _onLoadTasks(LoadTasks event, Emitter<TasksState> emit) async {
@@ -315,6 +323,227 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
           return t.id == event.task.id ? originalTask : t;
         }).toList();
         emit(latestState.copyWith(tasks: revertedTasks));
+      }
+    }
+  }
+
+  Future<void> _onLoadMyTasks(
+    LoadMyTasks event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) {
+      // Ensure base board is loaded first so we have a shell state.
+      await _onLoadTasks(const LoadTasks(), emit);
+    }
+    if (state is! TasksLoaded) {
+      if (event.completion?.isCompleted == false) event.completion!.complete();
+      return;
+    }
+
+    final current = state as TasksLoaded;
+    if (current.myTasksLoaded && !event.forceRefresh) {
+      if (event.completion?.isCompleted == false) event.completion!.complete();
+      return;
+    }
+
+    emit(current.copyWith(isMyTasksLoading: true, clearActionMessage: true));
+
+    try {
+      final results = await Future.wait([
+        _repository.getMyTasks(),
+        _repository.getAssignedToMe(),
+      ]);
+      if (state is! TasksLoaded) return;
+      emit(
+        (state as TasksLoaded).copyWith(
+          myTasks: results[0],
+          assignedToMe: results[1],
+          myTasksLoaded: true,
+          isMyTasksLoading: false,
+        ),
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit(
+          (state as TasksLoaded).copyWith(
+            isMyTasksLoading: false,
+            actionMessage: e.toString(),
+          ),
+        );
+      }
+    } finally {
+      if (event.completion?.isCompleted == false) event.completion!.complete();
+    }
+  }
+
+  Future<void> _onCreatePersonalTask(
+    CreatePersonalTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) return;
+    try {
+      final created = await _repository.createPersonalTask(event.input);
+      if (state is! TasksLoaded) return;
+      final latest = state as TasksLoaded;
+      emit(
+        latest.copyWith(
+          myTasks: [
+            created,
+            ...latest.myTasks.where((t) => t.id != created.id),
+          ],
+          actionMessage: 'tasks_my_toast_created',
+        ),
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onUpdatePersonalTask(
+    UpdatePersonalTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) return;
+    try {
+      final updated = await _repository.updatePersonalTask(
+        event.taskId,
+        event.input,
+      );
+      if (state is! TasksLoaded) return;
+      final latest = state as TasksLoaded;
+      emit(
+        latest.copyWith(
+          myTasks: latest.myTasks
+              .map((t) => t.id == event.taskId ? updated : t)
+              .toList(),
+          actionMessage: 'tasks_my_toast_updated',
+        ),
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onDeletePersonalTask(
+    DeletePersonalTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) return;
+    try {
+      await _repository.deletePersonalTask(event.taskId);
+      if (state is! TasksLoaded) return;
+      final latest = state as TasksLoaded;
+      emit(
+        latest.copyWith(
+          myTasks: latest.myTasks.where((t) => t.id != event.taskId).toList(),
+          actionMessage: 'tasks_my_toast_deleted',
+        ),
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  List<Task> _upsertInList(List<Task> list, Task task) {
+    final exists = list.any((t) => t.id == task.id);
+    if (!exists) return [...list, task];
+    return list.map((t) => t.id == task.id ? task : t).toList();
+  }
+
+  Future<void> _applyAcceptanceResult(
+    Emitter<TasksState> emit,
+    Task updated, {
+    String? messageKey,
+  }) async {
+    if (state is! TasksLoaded) return;
+    final latest = state as TasksLoaded;
+    emit(
+      latest.copyWith(
+        assignedToMe: _upsertInList(latest.assignedToMe, updated),
+        myTasks: _upsertInList(latest.myTasks, updated),
+        tasks: _upsertInList(latest.tasks, updated),
+        actionMessage: messageKey,
+      ),
+    );
+  }
+
+  Future<void> _onAcknowledgeTask(
+    AcknowledgeTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      final updated = await _repository.acknowledgeTask(event.taskId);
+      await _applyAcceptanceResult(
+        emit,
+        updated,
+        messageKey: 'tasks_review_toast_acknowledged',
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onSubmitTask(
+    SubmitTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      final updated = await _repository.submitTask(event.taskId);
+      await _applyAcceptanceResult(
+        emit,
+        updated,
+        messageKey: 'tasks_review_toast_submitted',
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onAcceptTask(
+    AcceptTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      final updated = await _repository.acceptTask(event.taskId);
+      await _applyAcceptanceResult(
+        emit,
+        updated,
+        messageKey: 'tasks_review_toast_accepted',
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onRejectTask(
+    RejectTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      final updated = await _repository.rejectTask(
+        event.taskId,
+        reason: event.reason,
+      );
+      await _applyAcceptanceResult(
+        emit,
+        updated,
+        messageKey: 'tasks_review_toast_rejected',
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }

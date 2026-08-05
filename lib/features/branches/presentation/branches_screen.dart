@@ -34,6 +34,7 @@ class BranchesView extends StatelessWidget {
   const BranchesView({super.key});
 
   void _showBranchModal(BuildContext context, {Branch? editing}) {
+    final branchesBloc = context.read<BranchesBloc>();
     final colors = context.colors;
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
@@ -85,32 +86,60 @@ class BranchesView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isEmpty) return;
-              if (editing == null) {
-                context.read<BranchesBloc>().add(
-                  CreateBranchRequested(
-                    name: nameCtrl.text.trim(),
-                    address: addressCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                  ),
-                );
-              } else {
-                context.read<BranchesBloc>().add(
-                  UpdateBranchRequested(
-                    id: editing.id,
-                    name: nameCtrl.text.trim(),
-                    address: addressCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    isActive: isActive,
-                  ),
-                );
-              }
-              Navigator.pop(context);
-            },
-            child: Text(locale.translate('save_to_ledger')),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.trim().isEmpty) return;
+                if (editing == null) {
+                  branchesBloc.add(
+                    CreateBranchRequested(
+                      name: nameCtrl.text.trim(),
+                      address: addressCtrl.text.trim(),
+                      phone: phoneCtrl.text.trim(),
+                    ),
+                  );
+                } else {
+                  branchesBloc.add(
+                    UpdateBranchRequested(
+                      id: editing.id,
+                      name: nameCtrl.text.trim(),
+                      address: addressCtrl.text.trim(),
+                      phone: phoneCtrl.text.trim(),
+                      isActive: isActive,
+                    ),
+                  );
+                }
+                Navigator.pop(context);
+              },
+              child: Text(locale.translate('save_to_ledger')),
+            ),
           ),
+          if (editing != null) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  branchesBloc.add(DeleteBranchRequested(editing.id));
+                  Navigator.pop(context);
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.accentRed,
+                  side: BorderSide(
+                    color: colors.accentRed.withValues(alpha: 0.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(TablerIcons.trash, size: 18),
+                label: Text(locale.translate('common_delete')),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -131,12 +160,20 @@ class BranchesView extends StatelessWidget {
           ? FloatingActionButton.extended(
               onPressed: () => _showBranchModal(context),
               backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              highlightElevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: colors.brand),
+              ),
               icon: const Icon(TablerIcons.plus),
               label: Text(
                 locale.translate('branches_new'),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -195,6 +232,9 @@ class BranchesView extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final branch = state.branches[index];
                     return LedgerCard(
+                      onTap: canManage
+                          ? () => _showBranchModal(context, editing: branch)
+                          : null,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -278,33 +318,6 @@ class BranchesView extends StatelessWidget {
                                   color: colors.textSecondary,
                                 ),
                               ),
-                              if (canManage)
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(
-                                        TablerIcons.edit,
-                                        size: 18,
-                                      ),
-                                      onPressed: () => _showBranchModal(
-                                        context,
-                                        editing: branch,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: Icon(
-                                        TablerIcons.trash,
-                                        size: 18,
-                                        color: colors.accentRed,
-                                      ),
-                                      onPressed: () {
-                                        context.read<BranchesBloc>().add(
-                                          DeleteBranchRequested(branch.id),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
                             ],
                           ),
                         ],

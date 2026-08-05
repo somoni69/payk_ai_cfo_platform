@@ -45,42 +45,7 @@ class _UsersViewState extends State<UsersView>
 
   int _visibleUsers = _pageSize;
   List<UserProfile>? _lastUsers;
-  String _selectedAccessRole = 'manager';
-
-  static const _allModules = [
-    'Дашборд',
-    'Касса',
-    'Отчёты',
-    'Фин-операции',
-    'Финансы',
-    'Склад',
-    'Клиенты',
-    'Кадры',
-    'Задачи',
-    'Мои задачи',
-    'Чек-листы',
-    'Аудит',
-    'Юр. блок',
-    'Маркетинг',
-    'Стратегия',
-    'Интеграции',
-    'Филиалы',
-  ];
-
-  // Матрица прав для вкладки "Доступ" для всех 17 разделов по всем ролям
-  late final Map<String, Map<String, Map<String, bool>>> _permissionsMatrix = {
-    for (final role in ['manager', 'accountant', 'cashier', 'hr', 'observer'])
-      role: {
-        for (final module in _allModules)
-          module: {
-            'view': true,
-            'add': role != 'observer',
-            'edit': role != 'observer',
-            'del': role == 'manager' || role == 'accountant',
-            'act': role != 'observer',
-          },
-      },
-  };
+  String? _selectedAccessRole;
 
   @override
   void initState() {
@@ -91,8 +56,10 @@ class _UsersViewState extends State<UsersView>
   }
 
   void _handleTabChange() {
-    if (mounted) {
-      setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (_tabController.index == 1) {
+      context.read<UsersBloc>().add(const LoadPermissionsMatrix());
     }
   }
 
@@ -129,12 +96,20 @@ class _UsersViewState extends State<UsersView>
           ? FloatingActionButton.extended(
               onPressed: () => _showUserDialog(context),
               backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              highlightElevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: colors.brand),
+              ),
               icon: const Icon(TablerIcons.user_plus),
               label: Text(
                 language.translate('users_new_user_btn'),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -278,6 +253,7 @@ class _UsersViewState extends State<UsersView>
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8.0),
                             child: LedgerCard(
+                              onTap: () => _showUserDialog(context, user: user),
                               padding: const EdgeInsets.all(14),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,48 +332,15 @@ class _UsersViewState extends State<UsersView>
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            user.active
-                                                ? language.translate(
-                                                    'users_active',
-                                                  )
-                                                : language.translate(
-                                                    'users_blocked',
-                                                  ),
+                                            language.translate(
+                                              user.active
+                                                  ? 'users_status_active'
+                                                  : 'users_status_inactive',
+                                            ),
                                             style: textStyles.captionSans
                                                 .copyWith(
                                                   color: colors.textSecondary,
                                                 ),
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              TablerIcons.pencil,
-                                              color: colors.brand,
-                                              size: 18,
-                                            ),
-                                            tooltip: language.translate(
-                                              'common_edit',
-                                            ),
-                                            onPressed: () => _showUserDialog(
-                                              context,
-                                              user: user,
-                                            ),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              TablerIcons.trash,
-                                              color: colors.accentRed,
-                                              size: 18,
-                                            ),
-                                            tooltip: language.translate(
-                                              'common_delete',
-                                            ),
-                                            onPressed: () {
-                                              _confirmDelete(context, user.id);
-                                            },
                                           ),
                                         ],
                                       ),
@@ -417,205 +360,299 @@ class _UsersViewState extends State<UsersView>
     );
   }
 
-  /// Вкладка "Доступ" — Адаптированная матрица прав для мобильных устройств
+  String _moduleLabel(LanguageCubit language, String module) {
+    final key = 'perm_module_${module.replaceAll('-', '_')}';
+    final translated = language.translate(key);
+    return translated == key ? module : translated;
+  }
+
+  String _roleLabel(LanguageCubit language, String role) {
+    final key = switch (role) {
+      'manager' => 'role_manager',
+      'accountant' => 'role_accountant',
+      'cashier' => 'role_cashier',
+      'hr' => 'role_hr',
+      'viewer' || 'observer' => 'role_viewer',
+      'marketer' => 'role_marketer',
+      _ => 'role_viewer',
+    };
+    return language.translate(key);
+  }
+
+  /// Вкладка «Доступ» — live матрица `/permissions` (авто-сохранение как на вебе).
   Widget _buildAccessTab(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
 
-    final roles = [
-      {'code': 'manager', 'label': language.translate('role_manager')},
-      {'code': 'accountant', 'label': language.translate('role_accountant')},
-      {'code': 'cashier', 'label': language.translate('role_cashier')},
-      {'code': 'hr', 'label': language.translate('role_hr')},
-      {'code': 'observer', 'label': language.translate('role_observer')},
-    ];
+    return BlocBuilder<UsersBloc, UsersState>(
+      buildWhen: (p, c) =>
+          p.permissionMatrix != c.permissionMatrix ||
+          p.isPermissionsLoading != c.isPermissionsLoading ||
+          p.isPermissionSaving != c.isPermissionSaving ||
+          p.permissionsError != c.permissionsError,
+      builder: (context, state) {
+        if (state.isPermissionsLoading && state.permissionMatrix == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    final currentRolePerms = _permissionsMatrix[_selectedAccessRole] ?? {};
-
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        // Информационный баннер
-        LedgerCard(
-          backgroundColor: colors.surfaceNested,
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Icon(TablerIcons.info_circle, color: colors.brand, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  language.translate('users_matrix_hint'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
-                    height: 1.3,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Выбор роли для фильтрации матрицы прав на мобильном экране
-        Text(
-          language.translate('users_matrix_legend_title'),
-          style: textStyles.captionSans.copyWith(
-            fontWeight: FontWeight.w500,
-            color: colors.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: roles.map((r) {
-              final isSelected = _selectedAccessRole == r['code'];
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: ChoiceChip(
-                  label: Text(r['label']!),
-                  selected: isSelected,
-                  selectedColor: colors.brand.withValues(alpha: 0.15),
-                  labelStyle: textStyles.captionSans.copyWith(
-                    color: isSelected ? colors.brand : colors.textPrimary,
-                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                  ),
-                  side: BorderSide(
-                    color: isSelected ? colors.brand : colors.border,
-                  ),
-                  onSelected: (val) {
-                    if (val) setState(() => _selectedAccessRole = r['code']!);
-                  },
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // Обозначение действий: Пр (Просмотр), Доб (Добавление), Изм (Изменение), Уд (Удаление), Дей (Действия)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                language.translate('users_module'),
-                style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Row(
+        if (state.permissionMatrix == null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: 34,
-                    child: Center(
-                      child: _buildActionLegend(
-                        'R',
-                        language.translate('users_matrix_read'),
-                      ),
+                  Text(
+                    language.translateMessage(
+                      state.permissionsError ?? 'error_load_failed',
                     ),
+                    textAlign: TextAlign.center,
+                    style: textStyles.bodySans,
                   ),
-                  SizedBox(
-                    width: 34,
-                    child: Center(
-                      child: _buildActionLegend(
-                        'C',
-                        language.translate('users_matrix_create'),
-                      ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () => context.read<UsersBloc>().add(
+                      const LoadPermissionsMatrix(forceRefresh: true),
                     ),
-                  ),
-                  SizedBox(
-                    width: 34,
-                    child: Center(
-                      child: _buildActionLegend(
-                        'U',
-                        language.translate('users_matrix_update'),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 34,
-                    child: Center(
-                      child: _buildActionLegend(
-                        'D',
-                        language.translate('users_matrix_delete'),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    width: 34,
-                    child: Center(
-                      child: _buildActionLegend(
-                        'A',
-                        language.translate('users_matrix_export'),
-                      ),
-                    ),
+                    child: Text(language.translate('common_retry')),
                   ),
                 ],
               ),
+            ),
+          );
+        }
+
+        final matrix = state.permissionMatrix!;
+        final selectedRole =
+            _selectedAccessRole ??
+            (matrix.roles.isNotEmpty ? matrix.roles.first : null);
+        if (selectedRole == null) {
+          return Center(
+            child: Text(
+              language.translate('users_matrix_empty'),
+              style: textStyles.bodySans,
+            ),
+          );
+        }
+
+        final cellMap = matrix.cellMap;
+
+        return ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            LedgerCard(
+              backgroundColor: colors.surfaceNested,
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(TablerIcons.info_circle, color: colors.brand, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      language.translate('users_matrix_hint'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                  if (state.isPermissionSaving)
+                    SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.brand,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            if (state.permissionsError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                language.translateMessage(state.permissionsError!),
+                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              ),
             ],
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Список модулей с чекбоксами для выбранной роли
-        ...currentRolePerms.entries.map((entry) {
-          final moduleName = entry.key;
-          final perms = entry.value;
-
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 6.0),
-            child: LedgerCard(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            const SizedBox(height: 12),
+            Text(
+              language.translate('users_matrix_legend_title'),
+              style: textStyles.captionSans.copyWith(
+                fontWeight: FontWeight.w500,
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: matrix.roles.map((role) {
+                  final isSelected = selectedRole == role;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: ChoiceChip(
+                      label: Text(_roleLabel(language, role)),
+                      selected: isSelected,
+                      selectedColor: colors.brand.withValues(alpha: 0.15),
+                      labelStyle: textStyles.captionSans.copyWith(
+                        color: isSelected ? colors.brand : colors.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
+                      side: BorderSide(
+                        color: isSelected ? colors.brand : colors.border,
+                      ),
+                      onSelected: (val) {
+                        if (val) {
+                          setState(() => _selectedAccessRole = role);
+                        }
+                      },
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: Text(
-                      moduleName,
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Text(
+                    language.translate('users_module'),
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Row(
                     children: [
-                      _buildPermCheckbox(
-                        'view',
-                        perms['view'] ?? false,
-                        moduleName,
+                      SizedBox(
+                        width: 34,
+                        child: Center(
+                          child: _buildActionLegend(
+                            'R',
+                            language.translate('users_matrix_read'),
+                          ),
+                        ),
                       ),
-                      _buildPermCheckbox(
-                        'add',
-                        perms['add'] ?? false,
-                        moduleName,
+                      SizedBox(
+                        width: 34,
+                        child: Center(
+                          child: _buildActionLegend(
+                            'C',
+                            language.translate('users_matrix_create'),
+                          ),
+                        ),
                       ),
-                      _buildPermCheckbox(
-                        'edit',
-                        perms['edit'] ?? false,
-                        moduleName,
+                      SizedBox(
+                        width: 34,
+                        child: Center(
+                          child: _buildActionLegend(
+                            'U',
+                            language.translate('users_matrix_update'),
+                          ),
+                        ),
                       ),
-                      _buildPermCheckbox(
-                        'del',
-                        perms['del'] ?? false,
-                        moduleName,
+                      SizedBox(
+                        width: 34,
+                        child: Center(
+                          child: _buildActionLegend(
+                            'D',
+                            language.translate('users_matrix_delete'),
+                          ),
+                        ),
                       ),
-                      _buildPermCheckbox(
-                        'act',
-                        perms['act'] ?? false,
-                        moduleName,
+                      SizedBox(
+                        width: 34,
+                        child: Center(
+                          child: _buildActionLegend(
+                            'A',
+                            language.translate('users_matrix_action'),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-          );
-        }),
-      ],
+            const SizedBox(height: 8),
+            ...matrix.modules.map((module) {
+              final cell =
+                  cellMap[PermissionCell.keyOf(selectedRole, module)] ??
+                  PermissionCell(
+                    role: selectedRole,
+                    module: module,
+                    canView: false,
+                    canCreate: false,
+                    canEdit: false,
+                    canDelete: false,
+                    canAction: false,
+                  );
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6.0),
+                child: LedgerCard(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _moduleLabel(language, module),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          _buildPermCheckbox(
+                            field: 'view',
+                            value: cell.canView,
+                            role: selectedRole,
+                            module: module,
+                          ),
+                          _buildPermCheckbox(
+                            field: 'create',
+                            value: cell.canCreate,
+                            role: selectedRole,
+                            module: module,
+                          ),
+                          _buildPermCheckbox(
+                            field: 'edit',
+                            value: cell.canEdit,
+                            role: selectedRole,
+                            module: module,
+                          ),
+                          _buildPermCheckbox(
+                            field: 'delete',
+                            value: cell.canDelete,
+                            role: selectedRole,
+                            module: module,
+                          ),
+                          _buildPermCheckbox(
+                            field: 'action',
+                            value: cell.canAction,
+                            role: selectedRole,
+                            module: module,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 
@@ -643,7 +680,12 @@ class _UsersViewState extends State<UsersView>
     );
   }
 
-  Widget _buildPermCheckbox(String actionKey, bool value, String moduleName) {
+  Widget _buildPermCheckbox({
+    required String field,
+    required bool value,
+    required String role,
+    required String module,
+  }) {
     final colors = context.colors;
 
     return SizedBox(
@@ -656,10 +698,14 @@ class _UsersViewState extends State<UsersView>
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           onChanged: (val) {
             if (val == null) return;
-            setState(() {
-              _permissionsMatrix[_selectedAccessRole]?[moduleName]?[actionKey] =
-                  val;
-            });
+            context.read<UsersBloc>().add(
+              TogglePermissionRequested(
+                role: role,
+                module: module,
+                field: field,
+                value: val,
+              ),
+            );
           },
         ),
       ),
@@ -717,6 +763,7 @@ class _UsersViewState extends State<UsersView>
 
   void _confirmDelete(BuildContext context, String id) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
     showDialog(
       context: context,
@@ -728,7 +775,9 @@ class _UsersViewState extends State<UsersView>
             onPressed: () => Navigator.pop(dCtx),
             child: Text(
               language.translate('common_cancel'),
-              style: TextStyle(color: colors.textSecondary),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ),
           TextButton(
@@ -738,7 +787,7 @@ class _UsersViewState extends State<UsersView>
             },
             child: Text(
               language.translate('common_delete'),
-              style: TextStyle(color: colors.accentRed),
+              style: textStyles.captionSans.copyWith(color: colors.accentRed),
             ),
           ),
         ],
@@ -955,8 +1004,7 @@ class _UsersViewState extends State<UsersView>
                           ),
                           items: branches,
                           selectedValue: branch,
-                          itemLabelBuilder: (b) =>
-                              language.translateMessage(b),
+                          itemLabelBuilder: (b) => language.translateMessage(b),
                           onSelected: (val) {
                             setModalState(() => branch = val);
                           },
@@ -1048,6 +1096,30 @@ class _UsersViewState extends State<UsersView>
                   ],
                 ),
               ),
+              if (isEdit) ...[
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _confirmDelete(context, user.id);
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.accentRed,
+                      side: BorderSide(
+                        color: colors.accentRed.withValues(alpha: 0.5),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(TablerIcons.trash, size: 18),
+                    label: Text(language.translate('common_delete')),
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -1098,7 +1170,7 @@ class _UsersViewState extends State<UsersView>
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.brand,
-                foregroundColor: Colors.white,
+                foregroundColor: colors.surface,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1109,7 +1181,7 @@ class _UsersViewState extends State<UsersView>
                     ? language.translate('common_save')
                     : language.translate('common_create'),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                   fontSize: 16,
                 ),

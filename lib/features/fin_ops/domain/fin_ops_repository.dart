@@ -6,6 +6,14 @@ abstract class FinOpsRepository {
   Future<List<StoreTransfer>> getStoreTransfers();
   Future<List<FinancialAid>> getFinancialAids();
 
+  Future<BankAccount> createBank({required String name});
+  Future<BankAccount> updateBank({
+    required String id,
+    String? name,
+    bool? isActive,
+  });
+  Future<void> deleteBank(String id);
+
   Future<Encashment> createEncashment({
     required String bankName,
     required double amount,
@@ -22,6 +30,8 @@ abstract class FinOpsRepository {
     required String transferId,
     required String status,
   });
+
+  Future<void> cancelStoreTransfer(String transferId);
 
   Future<FinancialAid> createFinancialAid({
     required String employeeName,

@@ -53,3 +53,44 @@ class GenerateStrategicAnalysis extends StrategyEvent {
   @override
   List<Object?> get props => [type, period];
 }
+
+class LoadMacroIndicators extends StrategyEvent {
+  final bool forceRefresh;
+  const LoadMacroIndicators({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
+
+class LoadScenarios extends StrategyEvent {
+  final String? quarter;
+  final bool forceRefresh;
+  const LoadScenarios({this.quarter, this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [quarter, forceRefresh];
+}
+
+class GenerateScenariosRequested extends StrategyEvent {
+  final String quarter;
+  const GenerateScenariosRequested(this.quarter);
+
+  @override
+  List<Object?> get props => [quarter];
+}
+
+class LoadDailySummary extends StrategyEvent {
+  final bool forceRefresh;
+  const LoadDailySummary({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
+
+class LoadNews extends StrategyEvent {
+  final bool forceRefresh;
+  const LoadNews({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}

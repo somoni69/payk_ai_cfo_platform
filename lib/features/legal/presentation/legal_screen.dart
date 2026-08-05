@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -14,6 +15,7 @@ import '../../../features/legal/domain/legal_models.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
 bool shouldAutoScrollLegalChat(LegalState previous, LegalState current) {
   return current is LegalLoaded &&
@@ -40,6 +42,11 @@ class _LegalScreenState extends State<LegalScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    // Rebuild tab-aware FAB on swipe/tap (design_language).
+    _tabController.addListener(() {
+      if (!mounted || _tabController.indexIsChanging) return;
+      setState(() {});
+    });
   }
 
   @override
@@ -67,6 +74,50 @@ class _LegalScreenState extends State<LegalScreen>
     });
   }
 
+  /// Tab-aware FAB per design_language (no elevation/shadows, 12px radius).
+  Widget? _buildLegalFab(BuildContext context, LegalLoaded state) {
+    if (!_canManageLegal(context) || state.isMutating) return null;
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
+    final index = _tabController.index;
+
+    final String? labelKey = switch (index) {
+      1 => 'legal_fab_law',
+      3 => 'legal_fab_deadline',
+      _ => null,
+    };
+    if (labelKey == null) return null;
+
+    return FloatingActionButton.extended(
+      onPressed: () {
+        if (index == 1) {
+          _showCreateLawSheet(context);
+        } else {
+          _showCreateDeadlineSheet(context);
+        }
+      },
+      backgroundColor: colors.brand,
+      foregroundColor: colors.surface,
+      elevation: 0,
+      highlightElevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.brand),
+        ),
+      icon: const Icon(TablerIcons.plus),
+      label: Text(
+        locale.translate(labelKey),
+        style: textStyles.bodySans.copyWith(
+          color: colors.surface,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -76,22 +127,47 @@ class _LegalScreenState extends State<LegalScreen>
     return BlocProvider(
       create: (context) =>
           LegalBloc(context.read())..add(const LoadLegalData()),
-      child: BlocListener<LegalBloc, LegalState>(
-        listenWhen: (previous, current) {
-          return current is LegalLoaded &&
-              current.errorMessage != null &&
-              (previous is! LegalLoaded ||
-                  previous.errorMessage != current.errorMessage);
-        },
-        listener: (context, state) {
-          final loaded = state as LegalLoaded;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(localeCubit.translateMessage(loaded.errorMessage!)),
-              backgroundColor: colors.accentRed,
-            ),
-          );
-        },
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<LegalBloc, LegalState>(
+            listenWhen: (previous, current) {
+              return current is LegalLoaded &&
+                  current.errorMessage != null &&
+                  (previous is! LegalLoaded ||
+                      previous.errorMessage != current.errorMessage);
+            },
+            listener: (context, state) {
+              final loaded = state as LegalLoaded;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    localeCubit.translateMessage(loaded.errorMessage!),
+                  ),
+                  backgroundColor: colors.accentRed,
+                ),
+              );
+            },
+          ),
+          BlocListener<LegalBloc, LegalState>(
+            listenWhen: (previous, current) {
+              return current is LegalLoaded &&
+                  current.successMessage != null &&
+                  (previous is! LegalLoaded ||
+                      previous.successMessage != current.successMessage);
+            },
+            listener: (context, state) {
+              final loaded = state as LegalLoaded;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    localeCubit.translateMessage(loaded.successMessage!),
+                  ),
+                  backgroundColor: colors.accentGreen,
+                ),
+              );
+            },
+          ),
+        ],
         child: BlocConsumer<LegalBloc, LegalState>(
           listenWhen: shouldAutoScrollLegalChat,
           listener: (context, state) => _scrollToBottom(),
@@ -99,68 +175,60 @@ class _LegalScreenState extends State<LegalScreen>
             if (state is LegalLoading) {
               return Scaffold(
                 backgroundColor: colors.background,
-                appBar: AppBar(
-                  backgroundColor: colors.surface,
-                  title: Text(
-                    localeCubit.translate('legal_loading_title'),
-                    style: textStyles.h1Sans.copyWith(
-                      fontSize: MediaQuery.of(context).size.width >= 600
-                          ? 22.0
-                          : 20.0,
-                      fontWeight: FontWeight.w500,
+                body: NestedScrollView(
+                  headerSliverBuilder: (context, _) => [
+                    LedgerCollapsingHeader(
+                      title: localeCubit.translate('legal_loading_title'),
+                      pinned: true,
+                      floating: true,
+                      snap: true,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
+                  body: const Center(child: CircularProgressIndicator()),
                 ),
-                body: const Center(child: CircularProgressIndicator()),
               );
             }
 
             if (state is LegalError) {
               return Scaffold(
                 backgroundColor: colors.background,
-                appBar: AppBar(
-                  backgroundColor: colors.surface,
-                  title: Text(
-                    localeCubit.translate('legal_error_title'),
-                    style: textStyles.h1Sans.copyWith(
-                      fontSize: MediaQuery.of(context).size.width >= 600
-                          ? 22.0
-                          : 20.0,
-                      fontWeight: FontWeight.w500,
+                body: NestedScrollView(
+                  headerSliverBuilder: (context, _) => [
+                    LedgerCollapsingHeader(
+                      title: localeCubit.translate('legal_error_title'),
+                      pinned: true,
+                      floating: true,
+                      snap: true,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                body: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          TablerIcons.alert_triangle,
-                          color: colors.accentRed,
-                          size: 40,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          localeCubit.translateMessage(state.message),
-                          style: textStyles.bodySans,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () {
-                            context.read<LegalBloc>().add(
-                              const LoadLegalData(forceRefresh: true),
-                            );
-                          },
-                          child: Text(localeCubit.translate('legal_retry')),
-                        ),
-                      ],
+                  ],
+                  body: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            TablerIcons.alert_triangle,
+                            color: colors.accentRed,
+                            size: 40,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            localeCubit.translateMessage(state.message),
+                            style: textStyles.bodySans,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () {
+                              context.read<LegalBloc>().add(
+                                const LoadLegalData(forceRefresh: true),
+                              );
+                            },
+                            child: Text(localeCubit.translate('legal_retry')),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -170,50 +238,63 @@ class _LegalScreenState extends State<LegalScreen>
             if (state is LegalLoaded) {
               return Scaffold(
                 backgroundColor: colors.background,
-                appBar: AppBar(
-                  backgroundColor: colors.surface,
-                  scrolledUnderElevation: 0,
-                  title: Text(
-                    localeCubit.translate('legal_title'),
-                    style: textStyles.h1Sans.copyWith(
-                      fontSize: MediaQuery.of(context).size.width >= 600
-                          ? 22.0
-                          : 20.0,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  bottom: TabBar(
+                floatingActionButton: _buildLegalFab(context, state),
+                body: NestedScrollView(
+                  headerSliverBuilder: (context, innerBoxIsScrolled) {
+                    return [
+                      LedgerCollapsingHeader(
+                        title: localeCubit.translate('legal_title'),
+                        pinned: true,
+                        floating: true,
+                        snap: true,
+                        bottom: TabBar(
+                          controller: _tabController,
+                          isScrollable: true,
+                          tabAlignment: TabAlignment.start,
+                          labelColor: colors.brand,
+                          unselectedLabelColor: colors.textSecondary,
+                          indicatorColor: colors.brand,
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          dividerColor: colors.border,
+                          labelStyle: textStyles.captionSans.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                          unselectedLabelStyle: textStyles.captionSans.copyWith(
+                            fontWeight: FontWeight.w400,
+                          ),
+                          tabs: [
+                            Tab(
+                              text: localeCubit.translate(
+                                'legal_tab_ai_lawyer',
+                              ),
+                            ),
+                            Tab(
+                              text: localeCubit.translate('legal_tab_laws'),
+                            ),
+                            Tab(
+                              text: localeCubit.translate(
+                                'legal_tab_constructor',
+                              ),
+                            ),
+                            Tab(
+                              text: localeCubit.translate(
+                                'legal_tab_deadlines',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ];
+                  },
+                  body: TabBarView(
                     controller: _tabController,
-                    isScrollable: true,
-                    labelColor: colors.brand,
-                    unselectedLabelColor: colors.textSecondary,
-                    indicatorColor: colors.brand,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: colors.border,
-                    labelStyle: textStyles.captionSans.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                    unselectedLabelStyle: textStyles.captionSans.copyWith(
-                      fontWeight: FontWeight.w400,
-                    ),
-                    tabs: [
-                      Tab(text: localeCubit.translate('legal_tab_ai_lawyer')),
-                      Tab(text: localeCubit.translate('legal_tab_laws')),
-                      Tab(text: localeCubit.translate('legal_tab_constructor')),
-                      Tab(text: localeCubit.translate('legal_tab_deadlines')),
+                    children: [
+                      _buildAiLawyerTab(context, state),
+                      _buildLawsTab(context, state),
+                      _buildConstructorTab(context, state),
+                      _buildDeadlinesTab(context, state),
                     ],
                   ),
-                ),
-                body: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildAiLawyerTab(context, state),
-                    _buildLawsTab(context, state),
-                    _buildConstructorTab(context, state),
-                    _buildDeadlinesTab(context, state),
-                  ],
                 ),
               );
             }
@@ -310,7 +391,7 @@ class _LegalScreenState extends State<LegalScreen>
                         ? msg['text'] ?? ''
                         : localeCubit.translateMessage(msg['text'] ?? ''),
                     style: textStyles.bodySans.copyWith(
-                      color: isUser ? Colors.white : colors.textPrimary,
+                      color: isUser ? colors.surface : colors.textPrimary,
                     ),
                   ),
                 ),
@@ -491,7 +572,7 @@ class _LegalScreenState extends State<LegalScreen>
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
                   itemCount: filteredLaws.length,
                   itemBuilder: (context, index) {
                     final law = filteredLaws[index];
@@ -620,10 +701,11 @@ class _LegalScreenState extends State<LegalScreen>
                         localeCubit.translate(
                           'legal_date',
                           params: {
-                            'date': state.generatedContract!.createdAt
-                                .toIso8601String()
-                                .split('T')
-                                .first,
+                            'date': formatLocalizedDateTime(
+                              context,
+                              state.generatedContract!.createdAt,
+                              style: LocalizedDateTimeStyle.date,
+                            ),
                           },
                         ),
                         style: textStyles.captionSans.copyWith(
@@ -815,8 +897,17 @@ class _LegalScreenState extends State<LegalScreen>
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
 
+    if (state.deadlines.isEmpty) {
+      return Center(
+        child: Text(
+          localeCubit.translate('legal_nothing_found'),
+          style: textStyles.captionSans,
+        ),
+      );
+    }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
       itemCount: state.deadlines.length,
       itemBuilder: (context, index) {
         final dl = state.deadlines[index];
@@ -862,10 +953,11 @@ class _LegalScreenState extends State<LegalScreen>
                         localeCubit.translate(
                           'legal_deadline_summary',
                           params: {
-                            'date': dl.dueDate
-                                .toIso8601String()
-                                .split('T')
-                                .first,
+                            'date': formatLocalizedDateTime(
+                              context,
+                              dl.dueDate,
+                              style: LocalizedDateTimeStyle.date,
+                            ),
                             'days': '${dl.daysLeft ?? 0}',
                           },
                         ),
@@ -900,6 +992,254 @@ class _LegalScreenState extends State<LegalScreen>
                 ],
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _deadlineTypeLabel(LanguageCubit locale, String type) {
+    return switch (type) {
+      'TAX' => locale.translate('legal_deadline_type_tax'),
+      'CONTRACT' => locale.translate('legal_deadline_type_contract'),
+      'OTHER' => locale.translate('legal_deadline_type_other'),
+      _ => type,
+    };
+  }
+
+  void _showCreateLawSheet(BuildContext context) {
+    if (!_canManageLegal(context)) return;
+    final localeCubit = context.read<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final colors = context.colors;
+    final bloc = context.read<LegalBloc>();
+    final titleController = TextEditingController();
+    final bodyController = TextEditingController();
+    String? category;
+
+    final categories = <({String? value, String labelKey})>[
+      (value: null, labelKey: 'legal_category_all'),
+      (value: 'Налоги', labelKey: 'legal_category_taxes'),
+      (value: 'Трудовое право', labelKey: 'legal_category_labor_law'),
+      (value: 'Корпоративное право', labelKey: 'legal_category_corporate_law'),
+    ];
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: localeCubit.translate('legal_law_add'),
+      builder: (context, setSheetState) {
+        final selected = categories.firstWhere(
+          (c) => c.value == category,
+          orElse: () => categories.first,
+        );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: titleController,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_law_title'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bodyController,
+              style: textStyles.bodySans,
+              minLines: 4,
+              maxLines: 8,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_law_body'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              localeCubit.translate('legal_law_category'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            ExpansibleWidget<({String? value, String labelKey})>.selection(
+              title: Text(
+                localeCubit.translate(selected.labelKey),
+                style: textStyles.bodySans.copyWith(
+                  color: category == null
+                      ? colors.textTooltip
+                      : colors.textPrimary,
+                ),
+              ),
+              items: categories,
+              selectedValue: selected,
+              itemLabelBuilder: (c) => localeCubit.translate(c.labelKey),
+              onSelected: (c) {
+                setSheetState(() => category = c.value);
+              },
+            ),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              final body = bodyController.text.trim();
+              if (title.isEmpty || body.isEmpty) return;
+              bloc.add(
+                CreateLawRequested(
+                  title: title,
+                  body: body,
+                  category: category,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(localeCubit.translate('common_save')),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCreateDeadlineSheet(BuildContext context) {
+    if (!_canManageLegal(context)) return;
+    final localeCubit = context.read<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final colors = context.colors;
+    final bloc = context.read<LegalBloc>();
+    final titleController = TextEditingController();
+    final amountController = TextEditingController();
+    final noteController = TextEditingController();
+    var type = 'TAX';
+    var dueDate = DateTime.now().add(const Duration(days: 7));
+
+    const types = <String>['TAX', 'CONTRACT', 'OTHER'];
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: localeCubit.translate('legal_deadline_add'),
+      builder: (context, setSheetState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: titleController,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_deadline_title'),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              localeCubit.translate('legal_deadline_type'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            ExpansibleWidget<String>.selection(
+              title: Text(
+                _deadlineTypeLabel(localeCubit, type),
+                style: textStyles.bodySans,
+              ),
+              items: types,
+              selectedValue: type,
+              itemLabelBuilder: (t) => _deadlineTypeLabel(localeCubit, t),
+              onSelected: (t) => setSheetState(() => type = t),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              localeCubit.translate('legal_deadline_due_date'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: dueDate,
+                  firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                  lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+                );
+                if (picked != null) {
+                  setSheetState(() => dueDate = picked);
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: colors.border),
+                  borderRadius: BorderRadius.circular(8),
+                  color: colors.surface,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      formatLocalizedDateTime(
+                        context,
+                        dueDate,
+                        style: LocalizedDateTimeStyle.date,
+                      ),
+                      style: textStyles.smallMono.copyWith(
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    Icon(
+                      TablerIcons.calendar,
+                      size: 16,
+                      color: colors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: amountController,
+              style: textStyles.bodyMono,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_deadline_amount'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteController,
+              style: textStyles.bodySans,
+              minLines: 2,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_deadline_note'),
+              ),
+            ),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              final title = titleController.text.trim();
+              if (title.isEmpty) return;
+              bloc.add(
+                CreateDeadlineRequested(
+                  title: title,
+                  type: type,
+                  dueDate: dueDate,
+                  amount: amountController.text.trim().isEmpty
+                      ? null
+                      : amountController.text.trim(),
+                  note: noteController.text.trim().isEmpty
+                      ? null
+                      : noteController.text.trim(),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(localeCubit.translate('common_save')),
           ),
         );
       },

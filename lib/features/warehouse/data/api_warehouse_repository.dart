@@ -122,6 +122,60 @@ class ApiWarehouseRepository implements WarehouseRepository {
   }
 
   @override
+  Future<WarehouseProduct> updateProduct(WarehouseProduct product) async {
+    try {
+      final response = await _apiClient.dio.patch(
+        '/warehouse/products/${_requirePositiveId(product.id, 'id')}',
+        data: {
+          'name': product.name,
+          'sku': product.sku,
+          'unit': product.unit,
+          'price': product.price,
+          'stock_qty': product.stockQty,
+        },
+      );
+      final map = response.data as Map<String, dynamic>;
+      return WarehouseProduct(
+        id: (map['id'] ?? product.id).toString(),
+        name: map['name'] ?? product.name,
+        sku: map['sku']?.toString(),
+        unit: map['unit'] ?? product.unit,
+        price: _toDouble(map['price']),
+        stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+        externalId: map['external_id']?.toString(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    try {
+      await _apiClient.dio.delete(
+        '/warehouse/products/${_requirePositiveId(id, 'id')}',
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> zeroOutProduct(String id) async {
+    try {
+      await _apiClient.dio.post(
+        '/finance-ops/zero-out',
+        data: {
+          'target': 'product',
+          'id': _requirePositiveId(id, 'id'),
+        },
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
   Future<WarehouseMovement> createMovement(
     String productId,
     String direction,

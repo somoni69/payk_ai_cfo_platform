@@ -127,7 +127,10 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
             height: 1,
             thickness: 1,
           ),
-        children[index],
+        Padding(
+          padding: widget.tilePadding,
+          child: children[index],
+        ),
       ],
     ];
   }
@@ -154,6 +157,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
         itemLabelBuilder: itemLabelBuilder,
         onSelected: _handleOptionSelected,
         searchable: items.length > _selectionSearchThreshold,
+        tilePadding: widget.tilePadding,
       ),
     ];
   }
@@ -204,6 +208,7 @@ class _SelectionOptions<T> extends StatefulWidget {
   final String Function(T) itemLabelBuilder;
   final ValueChanged<T> onSelected;
   final bool searchable;
+  final EdgeInsetsGeometry tilePadding;
 
   const _SelectionOptions({
     required this.items,
@@ -211,6 +216,7 @@ class _SelectionOptions<T> extends StatefulWidget {
     required this.itemLabelBuilder,
     required this.onSelected,
     required this.searchable,
+    required this.tilePadding,
   });
 
   @override
@@ -254,10 +260,14 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
 
     if (!widget.searchable) return list;
 
+    final padding = widget.tilePadding is EdgeInsets
+        ? (widget.tilePadding as EdgeInsets)
+        : EdgeInsets.zero;
+
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
+          padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 6),
           child: TextField(
             style: context.textStyles.bodySans,
             decoration: InputDecoration(
@@ -285,7 +295,7 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
 
     return ListTile(
       dense: true,
-      contentPadding: EdgeInsets.zero,
+      contentPadding: widget.tilePadding,
       splashColor: Colors.transparent,
       focusColor: Colors.transparent,
       hoverColor: Colors.transparent,

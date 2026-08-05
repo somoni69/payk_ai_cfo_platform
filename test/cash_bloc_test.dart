@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/cash/bloc/cash_bloc.dart';
@@ -98,6 +99,25 @@ class MockCashTestRepository implements CashRepository {
     registerReads++;
     if (shouldFail) throw Exception('Get registers error');
     return [];
+  }
+
+  @override
+  Future<Uint8List> exportOperations({
+    required String format,
+    CashOperationFilters filters = const CashOperationFilters(),
+  }) async {
+    if (shouldFail) throw Exception('Export error');
+    return Uint8List.fromList([1, 2, 3]);
+  }
+
+  @override
+  Future<int> importOperations({
+    required int registerId,
+    required String filename,
+    required Uint8List bytes,
+  }) async {
+    if (shouldFail) throw Exception('Import error');
+    return 0;
   }
 }
 

@@ -81,6 +81,94 @@ class MockTasksRepository implements TasksRepository {
   Future<List<TaskCriticalPath>> getCriticalPath() async {
     return [];
   }
+
+  @override
+  Future<List<Task>> getMyTasks() async =>
+      tasks.where((t) => t.isPersonal).toList();
+
+  @override
+  Future<List<Task>> getAssignedToMe() async =>
+      tasks.where((t) => !t.isPersonal).toList();
+
+  @override
+  Future<Task> createPersonalTask(PersonalTaskInput input) async {
+    final task = Task(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: input.title,
+      description: input.description ?? '',
+      status: input.status ?? TaskStatus.todo,
+      dueDate: input.dueDate ?? DateTime.now(),
+      priority: input.priority ?? TaskPriority.medium,
+      isPersonal: true,
+    );
+    tasks.add(task);
+    return task;
+  }
+
+  @override
+  Future<Task> updatePersonalTask(
+    String taskId,
+    PersonalTaskInput input,
+  ) async {
+    final index = tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw Exception('not found');
+    final updated = tasks[index].copyWith(
+      title: input.title,
+      description: input.description ?? tasks[index].description,
+      status: input.status ?? tasks[index].status,
+      priority: input.priority ?? tasks[index].priority,
+      dueDate: input.dueDate ?? tasks[index].dueDate,
+    );
+    tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deletePersonalTask(String taskId) async {
+    tasks.removeWhere((t) => t.id == taskId);
+  }
+
+  @override
+  Future<Task> acknowledgeTask(String taskId) async {
+    final index = tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw Exception('not found');
+    final updated = tasks[index].copyWith(acknowledgedAt: DateTime.now());
+    tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Task> submitTask(String taskId) async {
+    final index = tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw Exception('not found');
+    final updated = tasks[index].copyWith(status: TaskStatus.review);
+    tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Task> acceptTask(String taskId) async {
+    final index = tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw Exception('not found');
+    final updated = tasks[index].copyWith(
+      status: TaskStatus.done,
+      acceptedAt: DateTime.now(),
+    );
+    tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Task> rejectTask(String taskId, {String? reason}) async {
+    final index = tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw Exception('not found');
+    final updated = tasks[index].copyWith(
+      status: TaskStatus.inProgress,
+      rejectReason: reason,
+    );
+    tasks[index] = updated;
+    return updated;
+  }
 }
 
 void main() {

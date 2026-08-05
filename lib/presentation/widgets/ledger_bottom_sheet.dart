@@ -42,6 +42,7 @@ class LedgerBottomSheet extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: Colors.transparent,
@@ -69,14 +70,8 @@ class LedgerBottomSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(24),
+          // Ledger: borders over shadows (design_language.md)
           border: Border.all(color: colors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -186,7 +181,7 @@ class LedgerBottomSheet extends StatelessWidget {
                   onPressed: () => Navigator.pop(context, false),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -196,7 +191,7 @@ class LedgerBottomSheet extends StatelessWidget {
                   child: Text(
                     language.translate('discard_continue'),
                     style: textStyles.bodySans.copyWith(
-                      color: Colors.white,
+                      color: colors.surface,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -239,7 +234,7 @@ class _LedgerSheetHost<T> extends StatefulWidget {
   final String title;
   final Widget Function(BuildContext context, StateSetter setSheetState) builder;
   final Widget Function(BuildContext context, StateSetter setSheetState)?
-  footerBuilder;
+      footerBuilder;
   final bool Function()? isDirty;
 
   @override
@@ -247,87 +242,95 @@ class _LedgerSheetHost<T> extends StatefulWidget {
 }
 
 class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
-  /// When true, PopScope is removed so a normal [Navigator.pop] is safe.
-  bool _releaseGuard = false;
+  bool _isDiscarding = false;
   bool _busy = false;
 
   bool get _dirty => widget.isDirty?.call() ?? false;
 
-  Future<void> _requestClose() async {
-    if (_busy || !mounted) return;
-    _busy = true;
-    try {
-      if (_dirty) {
+  Future<void> _handlePopInvoked(bool didPop, Object? result) async {
+    // If route already popped cleanly, do nothing.
+    if (didPop || _isDiscarding || _busy || !mounted) return;
+
+    // Only intercept if there are unsaved changes.
+    if (_dirty) {
+      _busy = true;
+      try {
         final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
-        if (shouldClose != true || !mounted) return;
+        if (shouldClose == true && mounted) {
+          _isDiscarding = true;
+          Navigator.of(context).pop();
+        }
+      } finally {
+        _busy = false;
       }
-      await _popSafely();
-    } finally {
-      _busy = false;
     }
   }
 
-  Future<void> _popSafely() async {
-    if (!mounted) return;
-    // 1) Drop PopScope so the route is no longer guarded mid-animation.
-    setState(() => _releaseGuard = true);
-    // 2) Wait until the unguarded tree is committed.
-    await WidgetsBinding.instance.endOfFrame;
-    if (!mounted) return;
-    // 3) Standard pop — no removeRoute, no dependents assertion.
-    Navigator.of(context).pop();
-  }
-
-  void _onPopInvoked(bool didPop, Object? result) {
-    if (didPop || _releaseGuard || _busy) return;
-    unawaited(_requestClose());
-  }
-
-
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final screenHeight = mediaQuery.size.height;
-    final keyboardHeight = mediaQuery.viewInsets.bottom;
-    final topSafeArea = mediaQuery.padding.top;
+    final screenSize = MediaQuery.sizeOf(context);
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final padding = MediaQuery.paddingOf(context);
 
-    final availableHeight =
-        screenHeight -
+    final keyboardHeight = viewInsets.bottom;
+    final topSafeArea = padding.top;
+
+    final availableHeight = screenSize.height -
         keyboardHeight -
         (topSafeArea > 0 ? topSafeArea : 24) -
         48;
     final maxAvailableHeight = availableHeight * 0.92;
 
-    return StatefulBuilder(
-      builder: (context, setSheetState) {
-        final sheet = Padding(
-          padding: EdgeInsets.only(
-            bottom: keyboardHeight + 16,
-            left: 16,
-            right: 16,
-            top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
-          ),
-          child: LedgerBottomSheet(
-            title: widget.title,
-            maxHeight: maxAvailableHeight,
-            footer: widget.footerBuilder?.call(context, setSheetState),
-            child: widget.builder(context, setSheetState),
-          ),
-        );
+    final childWidget = Padding(
+      padding: EdgeInsets.only(
+        bottom: keyboardHeight + 16,
+        left: 16,
+        right: 16,
+        top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
+      ),
+      child: _LedgerSheetContentHost(
+        title: widget.title,
+        maxHeight: maxAvailableHeight,
+        builder: widget.builder,
+        footerBuilder: widget.footerBuilder,
+      ),
+    );
 
-        // No dirty callback → free dismiss, no PopScope.
-        if (widget.isDirty == null || _releaseGuard) {
-          return sheet;
-        }
+    return PopScope(
+      canPop: !_dirty || _isDiscarding,
+      onPopInvokedWithResult: _handlePopInvoked,
+      child: childWidget,
+    );
+  }
+}
 
-        // Guard only while form may have unsaved data.
-        // canPop is true when clean so swipe/back animate normally.
-        return PopScope(
-          canPop: !_dirty,
-          onPopInvokedWithResult: _onPopInvoked,
-          child: sheet,
-        );
-      },
+class _LedgerSheetContentHost extends StatefulWidget {
+  final String title;
+  final double maxHeight;
+  final Widget Function(BuildContext context, StateSetter setSheetState) builder;
+  final Widget Function(BuildContext context, StateSetter setSheetState)?
+      footerBuilder;
+
+  const _LedgerSheetContentHost({
+    required this.title,
+    required this.maxHeight,
+    required this.builder,
+    this.footerBuilder,
+  });
+
+  @override
+  State<_LedgerSheetContentHost> createState() =>
+      _LedgerSheetContentHostState();
+}
+
+class _LedgerSheetContentHostState extends State<_LedgerSheetContentHost> {
+  @override
+  Widget build(BuildContext context) {
+    return LedgerBottomSheet(
+      title: widget.title,
+      maxHeight: widget.maxHeight,
+      footer: widget.footerBuilder?.call(context, setState),
+      child: widget.builder(context, setState),
     );
   }
 }

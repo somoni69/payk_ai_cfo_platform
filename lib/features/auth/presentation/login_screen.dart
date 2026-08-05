@@ -174,13 +174,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               onPressed: isLoading ? null : () => _submitPassword(context),
               child: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white,
+                          context.colors.surface,
                         ),
                       ),
                     )
@@ -240,13 +240,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               onPressed: isLoading ? null : () => _submitTwoFactor(context),
               child: isLoading
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          Colors.white,
+                          context.colors.surface,
                         ),
                       ),
                     )

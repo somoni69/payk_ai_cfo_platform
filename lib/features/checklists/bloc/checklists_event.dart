@@ -15,23 +15,6 @@ class LoadChecklists extends ChecklistsEvent {
   List<Object?> get props => [forceRefresh];
 }
 
-class CreateChecklistRunRequested extends ChecklistsEvent {
-  final String title;
-  final String branchName;
-  final String responsiblePerson;
-  final List<String> items;
-
-  const CreateChecklistRunRequested({
-    required this.title,
-    required this.branchName,
-    required this.responsiblePerson,
-    required this.items,
-  });
-
-  @override
-  List<Object?> get props => [title, branchName, responsiblePerson, items];
-}
-
 class ToggleEntryRequested extends ChecklistsEvent {
   final String runId;
   final String entryId;
@@ -65,4 +48,30 @@ class DeleteEntryRequested extends ChecklistsEvent {
 
   @override
   List<Object?> get props => [runId, entryId];
+}
+
+class CreateTemplateRequested extends ChecklistsEvent {
+  final String name;
+  final String? description;
+  final String? regulationText;
+  final List<String> items;
+
+  const CreateTemplateRequested({
+    required this.name,
+    this.description,
+    this.regulationText,
+    this.items = const [],
+  });
+
+  @override
+  List<Object?> get props => [name, description, regulationText, items];
+}
+
+class DeleteTemplateRequested extends ChecklistsEvent {
+  final String id;
+
+  const DeleteTemplateRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
 }

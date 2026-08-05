@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/task_model.dart';
@@ -8,37 +9,75 @@ import '../domain/tasks_repository.dart';
 class ApiTasksRepository implements TasksRepository {
   final ApiClient _apiClient = ApiClient();
 
+  Task _mapTask(Map<String, dynamic> map) {
+    final dueRaw = map['due_date'] ?? map['dueDate'];
+    DateTime dueDate;
+    if (dueRaw is String && dueRaw.isNotEmpty) {
+      dueDate = DateTime.tryParse(dueRaw) ?? DateTime.now();
+    } else {
+      dueDate = DateTime.now();
+    }
+
+    DateTime? parseDt(dynamic v) {
+      if (v == null) return null;
+      if (v is DateTime) return v;
+      if (v is String && v.isNotEmpty) return DateTime.tryParse(v);
+      return null;
+    }
+
+    int? parseInt(dynamic v) {
+      if (v == null) return null;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v.toString());
+    }
+
+    return Task(
+      id: (map['id'] ?? '').toString(),
+      title: map['title']?.toString() ?? '',
+      description: map['description']?.toString() ?? '',
+      status: _parseStatus(map['status']?.toString()),
+      dueDate: dueDate,
+      priority: _parsePriority(map['priority']?.toString()),
+      projectId: map['project_id']?.toString(),
+      projectName: map['project_name']?.toString(),
+      assigneeId: map['assignee_id']?.toString(),
+      assigneeName: map['assignee_name']?.toString(),
+      startDate: parseDt(map['start_date']),
+      dependsOnId: map['depends_on_id']?.toString(),
+      position: parseInt(map['position']),
+      isPersonal: map['is_personal'] == true,
+      createdBy: parseInt(map['created_by']),
+      acknowledgedAt: parseDt(map['acknowledged_at']),
+      acceptedAt: parseDt(map['accepted_at']),
+      rejectReason: map['reject_reason']?.toString(),
+    );
+  }
+
+  List<Task> _mapTaskList(dynamic data) {
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((e) => _mapTask(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    if (data is Map) {
+      final items = data['items'];
+      if (items is List) {
+        return items
+            .whereType<Map>()
+            .map((e) => _mapTask(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+    }
+    return const [];
+  }
+
   @override
   Future<List<Task>> getTasks() async {
     try {
       final response = await _apiClient.dio.get('/tasks');
-      final body = response.data as Map<String, dynamic>;
-      final list = body['items'] as List<dynamic>? ?? [];
-
-      return list.map((item) {
-        final map = item as Map<String, dynamic>;
-        return Task(
-          id: (map['id'] ?? '').toString(),
-          title: map['title'] ?? '',
-          description: map['description'] ?? '',
-          status: _parseStatus(map['status']),
-          dueDate: DateTime.parse(
-            map['due_date'] ??
-                map['dueDate'] ??
-                DateTime.now().toIso8601String(),
-          ),
-          priority: _parsePriority(map['priority']),
-          projectId: map['project_id']?.toString(),
-          projectName: map['project_name'],
-          assigneeId: map['assignee_id']?.toString(),
-          assigneeName: map['assignee_name'],
-          startDate: map['start_date'] != null
-              ? DateTime.parse(map['start_date'])
-              : null,
-          dependsOnId: map['depends_on_id']?.toString(),
-          position: map['position'] as int?,
-        );
-      }).toList();
+      return _mapTaskList(response.data);
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -51,27 +90,7 @@ class ApiTasksRepository implements TasksRepository {
         '/tasks/$taskId',
         data: {'status': _statusToName(status)},
       );
-      final map = response.data as Map<String, dynamic>;
-
-      return Task(
-        id: (map['id'] ?? '').toString(),
-        title: map['title'] ?? '',
-        description: map['description'] ?? '',
-        status: _parseStatus(map['status']),
-        dueDate: DateTime.parse(
-          map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String(),
-        ),
-        priority: _parsePriority(map['priority']),
-        projectId: map['project_id']?.toString(),
-        projectName: map['project_name'],
-        assigneeId: map['assignee_id']?.toString(),
-        assigneeName: map['assignee_name'],
-        startDate: map['start_date'] != null
-            ? DateTime.parse(map['start_date'])
-            : null,
-        dependsOnId: map['depends_on_id']?.toString(),
-        position: map['position'] as int?,
-      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -95,27 +114,7 @@ class ApiTasksRepository implements TasksRepository {
       };
 
       final response = await _apiClient.dio.post('/tasks', data: payload);
-      final map = response.data as Map<String, dynamic>;
-
-      return Task(
-        id: (map['id'] ?? '').toString(),
-        title: map['title'] ?? '',
-        description: map['description'] ?? '',
-        status: _parseStatus(map['status']),
-        dueDate: DateTime.parse(
-          map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String(),
-        ),
-        priority: _parsePriority(map['priority']),
-        projectId: map['project_id']?.toString(),
-        projectName: map['project_name'],
-        assigneeId: map['assignee_id']?.toString(),
-        assigneeName: map['assignee_name'],
-        startDate: map['start_date'] != null
-            ? DateTime.parse(map['start_date'])
-            : null,
-        dependsOnId: map['depends_on_id']?.toString(),
-        position: map['position'] as int?,
-      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -145,27 +144,7 @@ class ApiTasksRepository implements TasksRepository {
         '/tasks/${task.id}',
         data: payload,
       );
-      final map = response.data as Map<String, dynamic>;
-
-      return Task(
-        id: (map['id'] ?? '').toString(),
-        title: map['title'] ?? '',
-        description: map['description'] ?? '',
-        status: _parseStatus(map['status']),
-        dueDate: DateTime.parse(
-          map['due_date'] ?? map['dueDate'] ?? DateTime.now().toIso8601String(),
-        ),
-        priority: _parsePriority(map['priority']),
-        projectId: map['project_id']?.toString(),
-        projectName: map['project_name'],
-        assigneeId: map['assignee_id']?.toString(),
-        assigneeName: map['assignee_name'],
-        startDate: map['start_date'] != null
-            ? DateTime.parse(map['start_date'])
-            : null,
-        dependsOnId: map['depends_on_id']?.toString(),
-        position: map['position'] as int?,
-      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -214,76 +193,7 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      // Возвращаем пустой список вместо ошибки, чтобы не ломать весь экран задач
       return [];
-    }
-  }
-
-  String _statusToName(TaskStatus status) {
-    switch (status) {
-      case TaskStatus.inProgress:
-        return 'in_progress';
-      case TaskStatus.review:
-        return 'review';
-      case TaskStatus.done:
-        return 'done';
-      case TaskStatus.todo:
-        return 'new';
-    }
-  }
-
-  String _priorityToName(TaskPriority priority) {
-    switch (priority) {
-      case TaskPriority.low:
-        return 'low';
-      case TaskPriority.medium:
-        return 'medium';
-      case TaskPriority.high:
-        return 'high';
-      case TaskPriority.urgent:
-        return 'critical';
-    }
-  }
-
-  TaskStatus _parseStatus(String? statusStr) {
-    switch (statusStr?.toLowerCase()) {
-      case 'inprogress':
-      case 'in_progress':
-      case 'in work':
-      case 'в работе':
-        return TaskStatus.inProgress;
-      case 'review':
-      case 'на проверке':
-        return TaskStatus.review;
-      case 'done':
-      case 'готово':
-        return TaskStatus.done;
-      case 'todo':
-      case 'new':
-      case 'новая':
-      default:
-        return TaskStatus.todo;
-    }
-  }
-
-  TaskPriority _parsePriority(String? priorityStr) {
-    switch (priorityStr?.toLowerCase()) {
-      case 'low':
-      case 'низкий':
-        return TaskPriority.low;
-      case 'high':
-      case 'высокий':
-        return TaskPriority.high;
-      case 'urgent':
-      case 'срочно':
-      case 'критично':
-      case 'критический':
-      case 'critical':
-        return TaskPriority.urgent;
-      case 'medium':
-      case 'средний':
-      default:
-        return TaskPriority.medium;
     }
   }
 
@@ -327,6 +237,200 @@ class ApiTasksRepository implements TasksRepository {
       }).toList();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<Task>> getMyTasks() async {
+    try {
+      final response = await _apiClient.dio.get('/tasks/my');
+      return _mapTaskList(response.data);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<Task>> getAssignedToMe() async {
+    try {
+      final response = await _apiClient.dio.get('/tasks/my/assigned');
+      return _mapTaskList(response.data);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<Task> createPersonalTask(PersonalTaskInput input) async {
+    try {
+      final payload = <String, dynamic>{
+        'title': input.title,
+        if (input.description != null) 'description': input.description,
+        if (input.status != null) 'status': _statusToName(input.status!),
+        if (input.priority != null)
+          'priority': _priorityToName(input.priority!),
+        if (input.dueDate != null)
+          'due_date': DateFormat('yyyy-MM-dd').format(input.dueDate!),
+        if (input.startDate != null)
+          'start_date': DateFormat('yyyy-MM-dd').format(input.startDate!),
+      };
+      final response = await _apiClient.dio.post(
+        '/tasks/personal',
+        data: payload,
+      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<Task> updatePersonalTask(
+    String taskId,
+    PersonalTaskInput input,
+  ) async {
+    try {
+      final payload = <String, dynamic>{
+        'title': input.title,
+        if (input.description != null) 'description': input.description,
+        if (input.status != null) 'status': _statusToName(input.status!),
+        if (input.priority != null)
+          'priority': _priorityToName(input.priority!),
+        if (input.dueDate != null)
+          'due_date': DateFormat('yyyy-MM-dd').format(input.dueDate!),
+        if (input.startDate != null)
+          'start_date': DateFormat('yyyy-MM-dd').format(input.startDate!),
+      };
+      final response = await _apiClient.dio.patch(
+        '/tasks/personal/$taskId',
+        data: payload,
+      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deletePersonalTask(String taskId) async {
+    try {
+      await _apiClient.dio.delete('/tasks/personal/$taskId');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<Task> acknowledgeTask(String taskId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/tasks/my/$taskId/acknowledge',
+      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<Task> submitTask(String taskId) async {
+    try {
+      final response = await _apiClient.dio.post('/tasks/my/$taskId/submit');
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<Task> acceptTask(String taskId) async {
+    try {
+      final response = await _apiClient.dio.post('/tasks/$taskId/accept');
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<Task> rejectTask(String taskId, {String? reason}) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/tasks/$taskId/reject',
+        data: {'reason': reason},
+      );
+      return _mapTask(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  String _statusToName(TaskStatus status) {
+    switch (status) {
+      case TaskStatus.inProgress:
+        return 'in_progress';
+      case TaskStatus.review:
+        return 'review';
+      case TaskStatus.done:
+        return 'done';
+      case TaskStatus.todo:
+        return 'new';
+    }
+  }
+
+  String _priorityToName(TaskPriority priority) {
+    switch (priority) {
+      case TaskPriority.low:
+        return 'low';
+      case TaskPriority.medium:
+        return 'medium';
+      case TaskPriority.high:
+        return 'high';
+      case TaskPriority.urgent:
+        return 'critical';
+    }
+  }
+
+  TaskStatus _parseStatus(String? statusStr) {
+    switch (statusStr?.toLowerCase()) {
+      case 'inprogress':
+      case 'in_progress':
+      case 'in work':
+      case 'в работе':
+        return TaskStatus.inProgress;
+      case 'review':
+      case 'на проверке':
+        return TaskStatus.review;
+      case 'done':
+      case 'готово':
+        return TaskStatus.done;
+      case 'acknowledged':
+      case 'todo':
+      case 'new':
+      case 'новая':
+      default:
+        return TaskStatus.todo;
+    }
+  }
+
+  TaskPriority _parsePriority(String? priorityStr) {
+    switch (priorityStr?.toLowerCase()) {
+      case 'low':
+      case 'низкий':
+        return TaskPriority.low;
+      case 'high':
+      case 'высокий':
+        return TaskPriority.high;
+      case 'urgent':
+      case 'срочно':
+      case 'критично':
+      case 'критический':
+      case 'critical':
+        return TaskPriority.urgent;
+      case 'medium':
+      case 'средний':
+      default:
+        return TaskPriority.medium;
     }
   }
 }

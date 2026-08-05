@@ -399,11 +399,27 @@ class _MarketingViewState extends State<MarketingView>
             : state.campaigns.length;
         return Scaffold(
           floatingActionButton: _canManageMarketing(context)
-              ? FloatingActionButton(
+              ? FloatingActionButton.extended(
                   tooltip: localeCubit.translate('marketing_new_campaign'),
                   backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.brand),
+                  ),
                   onPressed: () => _showCreateCampaignDialog(context),
-                  child: const Icon(TablerIcons.plus, color: Colors.white),
+                  icon: const Icon(TablerIcons.plus),
+                  label: Text(
+                    localeCubit.translate('marketing_new_campaign'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 )
               : null,
           body: RefreshIndicator(
@@ -491,11 +507,27 @@ class _MarketingViewState extends State<MarketingView>
             : state.posts.length;
         return Scaffold(
           floatingActionButton: _canManageMarketing(context)
-              ? FloatingActionButton(
+              ? FloatingActionButton.extended(
                   tooltip: localeCubit.translate('marketing_new_publication'),
                   backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.brand),
+                  ),
                   onPressed: () => _showCreatePostDialog(context),
-                  child: const Icon(TablerIcons.plus, color: Colors.white),
+                  icon: const Icon(TablerIcons.plus),
+                  label: Text(
+                    localeCubit.translate('marketing_new_publication'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 )
               : null,
           body: RefreshIndicator(
@@ -582,7 +614,7 @@ class _MarketingViewState extends State<MarketingView>
                                   localeCubit.translate(
                                     'marketing_publish_telegram',
                                   ),
-                                  style: const TextStyle(fontSize: 13),
+                                  style: textStyles.smallSans,
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(

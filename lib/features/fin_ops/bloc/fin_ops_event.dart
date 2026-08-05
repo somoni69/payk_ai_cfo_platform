@@ -80,3 +80,30 @@ class RepayFinancialAidRequested extends FinOpsEvent {
   @override
   List<Object?> get props => [aidId, amount];
 }
+
+class CreateBankRequested extends FinOpsEvent {
+  final String name;
+
+  const CreateBankRequested(this.name);
+
+  @override
+  List<Object?> get props => [name];
+}
+
+class DeleteBankRequested extends FinOpsEvent {
+  final String id;
+
+  const DeleteBankRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class CancelStoreTransferRequested extends FinOpsEvent {
+  final String transferId;
+
+  const CancelStoreTransferRequested(this.transferId);
+
+  @override
+  List<Object?> get props => [transferId];
+}

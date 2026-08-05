@@ -186,9 +186,11 @@ extension _TasksFormBuilders on _TasksViewState {
                     children: [
                       Text(
                         selectedStartDate != null
-                            ? DateFormat(
-                                'dd.MM.yyyy',
-                              ).format(selectedStartDate!)
+                            ? formatLocalizedDateTime(
+                                context,
+                                selectedStartDate!,
+                                style: LocalizedDateTimeStyle.date,
+                              )
                             : language.translate('tasks_not_set'),
                         style: textStyles.captionSans,
                       ),
@@ -240,7 +242,11 @@ extension _TasksFormBuilders on _TasksViewState {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('dd.MM.yyyy').format(selectedDueDate),
+                        formatLocalizedDateTime(
+                          context,
+                          selectedDueDate,
+                          style: LocalizedDateTimeStyle.date,
+                        ),
                         style: textStyles.captionSans,
                       ),
                       Icon(
@@ -537,9 +543,11 @@ extension _TasksFormBuilders on _TasksViewState {
                     children: [
                       Text(
                         selectedStartDate != null
-                            ? DateFormat(
-                                'dd.MM.yyyy',
-                              ).format(selectedStartDate!)
+                            ? formatLocalizedDateTime(
+                                context,
+                                selectedStartDate!,
+                                style: LocalizedDateTimeStyle.date,
+                              )
                             : language.translate('tasks_not_set'),
                         style: textStyles.captionSans,
                       ),
@@ -591,7 +599,11 @@ extension _TasksFormBuilders on _TasksViewState {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        DateFormat('dd.MM.yyyy').format(selectedDueDate),
+                        formatLocalizedDateTime(
+                          context,
+                          selectedDueDate,
+                          style: LocalizedDateTimeStyle.date,
+                        ),
                         style: textStyles.captionSans,
                       ),
                       Icon(
@@ -600,6 +612,30 @@ extension _TasksFormBuilders on _TasksViewState {
                         color: colors.textSecondary,
                       ),
                     ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    tasksBloc.add(DeletePersonalTaskRequested(task.id));
+                    Navigator.pop(context);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.accentRed,
+                    side: BorderSide(
+                      color: colors.accentRed.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(TablerIcons.trash, size: 18),
+                  label: Text(
+                    context.read<LanguageCubit>().translate('common_delete'),
                   ),
                 ),
               ),

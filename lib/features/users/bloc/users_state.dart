@@ -10,6 +10,11 @@ class UsersState extends Equatable {
   final String? errorMessage;
   final String? successMessage;
 
+  final PermissionMatrix? permissionMatrix;
+  final bool isPermissionsLoading;
+  final bool isPermissionSaving;
+  final String? permissionsError;
+
   const UsersState({
     this.users = const [],
     this.isLoading = false,
@@ -18,6 +23,10 @@ class UsersState extends Equatable {
     this.isSubmitting = false,
     this.errorMessage,
     this.successMessage,
+    this.permissionMatrix,
+    this.isPermissionsLoading = false,
+    this.isPermissionSaving = false,
+    this.permissionsError,
   });
 
   UsersState copyWith({
@@ -30,6 +39,11 @@ class UsersState extends Equatable {
     String? successMessage,
     bool clearError = false,
     bool clearSuccess = false,
+    PermissionMatrix? permissionMatrix,
+    bool? isPermissionsLoading,
+    bool? isPermissionSaving,
+    String? permissionsError,
+    bool clearPermissionsError = false,
   }) {
     return UsersState(
       users: users ?? this.users,
@@ -41,6 +55,12 @@ class UsersState extends Equatable {
       successMessage: clearSuccess
           ? null
           : (successMessage ?? this.successMessage),
+      permissionMatrix: permissionMatrix ?? this.permissionMatrix,
+      isPermissionsLoading: isPermissionsLoading ?? this.isPermissionsLoading,
+      isPermissionSaving: isPermissionSaving ?? this.isPermissionSaving,
+      permissionsError: clearPermissionsError
+          ? null
+          : (permissionsError ?? this.permissionsError),
     );
   }
 
@@ -53,5 +73,9 @@ class UsersState extends Equatable {
     isSubmitting,
     errorMessage,
     successMessage,
+    permissionMatrix,
+    isPermissionsLoading,
+    isPermissionSaving,
+    permissionsError,
   ];
 }

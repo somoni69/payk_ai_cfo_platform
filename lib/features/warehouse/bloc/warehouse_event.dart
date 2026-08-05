@@ -40,3 +40,30 @@ class CreateMovementRequested extends WarehouseEvent {
   @override
   List<Object?> get props => [productId, direction, qty, amount, note];
 }
+
+class UpdateProductRequested extends WarehouseEvent {
+  final WarehouseProduct product;
+
+  const UpdateProductRequested(this.product);
+
+  @override
+  List<Object?> get props => [product];
+}
+
+class DeleteProductRequested extends WarehouseEvent {
+  final String id;
+
+  const DeleteProductRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class ZeroOutProductRequested extends WarehouseEvent {
+  final String id;
+
+  const ZeroOutProductRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}

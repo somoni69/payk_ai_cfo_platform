@@ -156,6 +156,63 @@ class MockFinanceTestRepository implements FinanceRepository {
       totalFact: 1800.0,
     );
   }
+
+  @override
+  Future<ClientAnalysisReport> getClientAnalysis() async {
+    if (shouldFail) throw Exception('Clients fail');
+    return const ClientAnalysisReport();
+  }
+
+  @override
+  Future<PlanItem> createPlan({
+    required String period,
+    required String category,
+    required String type,
+    required double plannedAmount,
+  }) async {
+    return PlanItem(
+      id: 1,
+      period: period,
+      category: category,
+      type: type,
+      plannedAmount: plannedAmount,
+    );
+  }
+
+  @override
+  Future<void> deletePlan(int planId) async {}
+
+  @override
+  Future<BankAccountInfo> createAccount({
+    required String name,
+    String? bank,
+    String? number,
+    String currency = 'TJS',
+    double balance = 0,
+  }) async {
+    return BankAccountInfo(
+      id: '9',
+      name: name,
+      bank: bank,
+      number: number,
+      currency: currency,
+      balance: balance,
+    );
+  }
+
+  @override
+  Future<void> deleteAccount(String accountId) async {}
+
+  @override
+  Future<void> zeroOutAccount(String accountId) async {}
+
+  @override
+  Future<ConvertResult> convertAmount(double amount, String base) async {
+    return ConvertResult(base: base, amount: amount, values: {'TJS': amount});
+  }
+
+  @override
+  Future<void> refreshRates() async {}
 }
 
 void main() {

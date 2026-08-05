@@ -16,6 +16,7 @@ import '../../../features/crm/bloc/crm_event.dart';
 import '../../../features/crm/bloc/crm_state.dart';
 import '../../../features/crm/domain/crm_models.dart';
 import '../../../features/crm/domain/crm_repository.dart';
+import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
@@ -107,7 +108,15 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                 }
               },
               backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              highlightElevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: colors.brand),
+              ),
               icon: Icon(
                 _tabs.index == 0 ? TablerIcons.user_plus : TablerIcons.plus,
               ),
@@ -116,7 +125,7 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                   _tabs.index == 0 ? 'crm_new_client' : 'crm_new_deal',
                 ),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -127,28 +136,14 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
           return [
             LedgerCollapsingHeader(
               title: language.translate('crm_title'),
-              titleWidget: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    language.translate('crm_title'),
-                    style: textStyles.h1Sans.copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    language.translate('crm_description'),
-                    style: textStyles.captionSans.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+              titleWidget: Text(
+                language.translate('crm_title'),
+                style: textStyles.h1Sans.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
               pinned: true,
               floating: true,
@@ -210,7 +205,6 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
               return Column(
                 children: [
                   if (state.isRefreshing) const LinearProgressIndicator(),
-                  _StatsBar(stats: state.stats),
                   Expanded(
                     child: TabBarView(
                       controller: _tabs,
@@ -451,242 +445,220 @@ class _ClientsTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         children: [
-          TextField(
-            controller: searchCtrl,
-            style: textStyles.bodySans,
-            onChanged: onSearch,
-            decoration: InputDecoration(
-              hintText: language.translate('crm_search_placeholder'),
-              prefixIcon: const Icon(TablerIcons.search, size: 20),
+          _StatsBar(stats: state.stats),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: searchCtrl,
+              style: textStyles.bodySans,
+              onChanged: onSearch,
+              decoration: InputDecoration(
+                hintText: language.translate('crm_search_placeholder'),
+                prefixIcon: const Icon(TablerIcons.search, size: 20),
+              ),
             ),
           ),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
-            key: ValueKey('crm-level-${state.clientFilters.level ?? ''}'),
-            initialValue: state.clientFilters.level ?? '',
-            items: crmLoyaltyOptions(language)
-                .map(
-                  (o) => DropdownMenuItem(
-                    value: o.value,
-                    child: Text(o.label, style: textStyles.bodySans),
-                  ),
-                )
-                .toList(),
-            onChanged: (v) {
-              context.read<CrmBloc>().add(
-                    ClientFiltersChanged(level: v ?? ''),
-                  );
-            },
-            decoration: InputDecoration(
-              labelText: language.translate('crm_filter_all_levels'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Builder(
+              builder: (context) {
+                final options = crmLoyaltyOptions(language);
+                final selectedValue = state.clientFilters.level ?? '';
+                final selected = options.firstWhere(
+                  (o) => o.value == selectedValue,
+                  orElse: () => options.first,
+                );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      language.translate('crm_filter_all_levels'),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ExpansibleWidget<({String value, String label})>.selection(
+                      key: ValueKey('crm-level-$selectedValue'),
+                      title: Text(
+                        selected.label,
+                        style: textStyles.bodySans.copyWith(
+                          color: selectedValue.isEmpty
+                              ? colors.textTooltip
+                              : colors.textPrimary,
+                        ),
+                      ),
+                      items: options,
+                      selectedValue: selected,
+                      itemLabelBuilder: (o) => o.label,
+                      onSelected: (o) {
+                        context.read<CrmBloc>().add(
+                              ClientFiltersChanged(level: o.value),
+                            );
+                      },
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),
-          if (state.clients.isEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 48),
-              child: Center(
-                child: Text(
-                  language.translate('crm_no_clients'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.textTooltip,
-                  ),
-                ),
-              ),
-            )
-          else
-            ...state.clients.map((client) {
-              final lc = crmLoyaltyColors(colors, client.loyaltyLevel);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => showCrmClientDetail(context, client),
-                  child: LedgerCard(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                client.fullName,
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            LedgerPill(
-                              text: crmLoyaltyLabel(
-                                language,
-                                client.loyaltyLevel,
-                              ),
-                              backgroundColor: lc.bg,
-                              textColor: lc.fg,
-                            ),
-                            if (client.churnRisk) ...[
-                              const SizedBox(width: 6),
-                              LedgerPill(
-                                text: language.translate('crm_churn_risk'),
-                                backgroundColor:
-                                    colors.accentRed.withValues(alpha: 0.08),
-                                textColor: colors.accentRed,
-                              ),
-                            ],
-                          ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                if (state.clients.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 48),
+                    child: Center(
+                      child: Text(
+                        language.translate('crm_no_clients'),
+                        style: textStyles.bodySans.copyWith(
+                          color: colors.textTooltip,
                         ),
-                        if (client.phone != null || client.email != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            client.phone ?? client.email!,
-                            style: textStyles.captionSans.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'LTV ${oCcy.format(client.totalSpent)}',
-                                style: textStyles.smallMono.copyWith(
-                                  color: colors.accentGreen,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                      ),
+                    ),
+                  )
+                else
+                  ...state.clients.map((client) {
+                    final lc = crmLoyaltyColors(colors, client.loyaltyLevel);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => showCrmClientDetail(context, client),
+                        child: LedgerCard(
+                          padding: const EdgeInsets.all(14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      client.fullName,
+                                      style: textStyles.bodySans.copyWith(
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  LedgerPill(
+                                    text: crmLoyaltyLabel(
+                                      language,
+                                      client.loyaltyLevel,
+                                    ),
+                                    backgroundColor: lc.bg,
+                                    textColor: lc.fg,
+                                  ),
+                                  if (client.churnRisk) ...[
+                                    const SizedBox(width: 6),
+                                    LedgerPill(
+                                      text: language.translate('crm_churn_risk'),
+                                      backgroundColor:
+                                          colors.accentRed.withValues(alpha: 0.08),
+                                      textColor: colors.accentRed,
+                                    ),
+                                  ],
+                                ],
                               ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
-                                style: textStyles.smallMono.copyWith(
-                                  color: colors.textSecondary,
+                              if (client.phone != null || client.email != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  client.phone ?? client.email!,
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
                                 ),
-                                textAlign: TextAlign.center,
+                              ],
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'LTV ${oCcy.format(client.totalSpent)}',
+                                      style: textStyles.smallMono.copyWith(
+                                        color: colors.accentGreen,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
+                                      style: textStyles.smallMono.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      client.roi == null
+                                          ? 'ROI —'
+                                          : 'ROI ${oCcy.format(client.roi!)}×',
+                                      style: textStyles.smallMono.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
+                                      textAlign: TextAlign.end,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            Expanded(
-                              child: Text(
-                                client.roi == null
-                                    ? 'ROI —'
-                                    : 'ROI ${oCcy.format(client.roi!)}×',
-                                style: textStyles.smallMono.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                                textAlign: TextAlign.end,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
+                              const SizedBox(height: 4),
+                              Text(
                                 '${language.translate('crm_last_purchase')}: ${client.lastPurchaseAt == null ? '—' : formatLocalizedDateTime(context, client.lastPurchaseAt!, style: LocalizedDateTimeStyle.date)}',
                                 style: textStyles.smallSans.copyWith(
                                   color: colors.textTooltip,
                                   fontWeight: FontWeight.w400,
                                 ),
                               ),
-                            ),
-                            if (canDelete)
-                              IconButton(
-                                visualDensity: VisualDensity.compact,
-                                tooltip:
-                                    language.translate('crm_delete_client'),
-                                onPressed: () async {
-                                  final ok = await showDialog<bool>(
-                                    context: context,
-                                    builder: (dCtx) => AlertDialog(
-                                      title: Text(
-                                        language.translate('crm_delete_client'),
-                                      ),
-                                      content: Text(
-                                        language.translate(
-                                          'crm_delete_confirm',
-                                          params: {'name': client.fullName},
-                                        ),
-                                      ),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(dCtx, false),
-                                          child: Text(
-                                            language.translate('crm_cancel'),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(dCtx, true),
-                                          child: Text(
-                                            language.translate('crm_confirm'),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (ok == true && context.mounted) {
-                                    context.read<CrmBloc>().add(
-                                          DeleteClientRequested(client.id),
-                                        );
-                                  }
-                                },
-                                icon: Icon(
-                                  TablerIcons.trash,
-                                  size: 18,
-                                  color: colors.accentRed,
-                                ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    );
+                  }),
+                if (pages > 1) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: state.clientsPage <= 1
+                            ? null
+                            : () => context.read<CrmBloc>().add(
+                                  ClientFiltersChanged(
+                                    page: state.clientsPage - 1,
+                                  ),
+                                ),
+                        child: Text(language.translate('crm_prev_page')),
+                      ),
+                      Text(
+                        '${state.clientsPage} / $pages',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: state.clientsPage >= pages
+                            ? null
+                            : () => context.read<CrmBloc>().add(
+                                  ClientFiltersChanged(
+                                    page: state.clientsPage + 1,
+                                  ),
+                                ),
+                        child: Text(language.translate('crm_next_page')),
+                      ),
+                    ],
                   ),
-                ),
-              );
-            }),
-          if (pages > 1) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: state.clientsPage <= 1
-                      ? null
-                      : () => context.read<CrmBloc>().add(
-                            ClientFiltersChanged(
-                              page: state.clientsPage - 1,
-                            ),
-                          ),
-                  child: Text(language.translate('crm_prev_page')),
-                ),
-                Text(
-                  language.translate(
-                    'crm_page_of',
-                    params: {
-                      'page': state.clientsPage,
-                      'pages': pages,
-                    },
-                  ),
-                  style: textStyles.captionSans,
-                ),
-                TextButton(
-                  onPressed: state.clientsPage >= pages
-                      ? null
-                      : () => context.read<CrmBloc>().add(
-                            ClientFiltersChanged(
-                              page: state.clientsPage + 1,
-                            ),
-                          ),
-                  child: Text(language.translate('crm_next_page')),
-                ),
+                ],
               ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -787,34 +759,54 @@ class _LoyaltyTab extends StatelessWidget {
             style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            key: ValueKey(
-              'crm-loyalty-filter-${state.loyaltyFilterClientId ?? ''}',
-            ),
-            initialValue: state.loyaltyFilterClientId ?? '',
-            items: [
-              DropdownMenuItem(
-                value: '',
-                child: Text(
-                  language.translate('crm_loyalty_all_clients'),
-                  style: textStyles.bodySans,
+          Builder(
+            builder: (context) {
+              final options = <({String value, String label})>[
+                (
+                  value: '',
+                  label: language.translate('crm_loyalty_all_clients'),
                 ),
-              ),
-              ...pick.map(
-                (c) => DropdownMenuItem(
-                  value: c.id,
-                  child: Text(c.fullName, style: textStyles.bodySans),
-                ),
-              ),
-            ],
-            onChanged: (v) {
-              context.read<CrmBloc>().add(
-                    LoyaltyHistoryFilterChanged(v),
-                  );
+                ...pick.map((c) => (value: c.id, label: c.fullName)),
+              ];
+              final selectedId = state.loyaltyFilterClientId ?? '';
+              final selected = options.firstWhere(
+                (o) => o.value == selectedId,
+                orElse: () => options.first,
+              );
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    language.translate('crm_loyalty_filter_client'),
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  ExpansibleWidget<({String value, String label})>.selection(
+                    key: ValueKey('crm-loyalty-filter-$selectedId'),
+                    title: Text(
+                      selected.label,
+                      style: textStyles.bodySans.copyWith(
+                        color: selectedId.isEmpty
+                            ? colors.textTooltip
+                            : colors.textPrimary,
+                      ),
+                    ),
+                    items: options,
+                    selectedValue: selected,
+                    itemLabelBuilder: (o) => o.label,
+                    onSelected: (o) {
+                      context.read<CrmBloc>().add(
+                            LoyaltyHistoryFilterChanged(
+                              o.value.isEmpty ? null : o.value,
+                            ),
+                          );
+                    },
+                  ),
+                ],
+              );
             },
-            decoration: InputDecoration(
-              labelText: language.translate('crm_loyalty_filter_client'),
-            ),
           ),
           if (canWrite && pick.isNotEmpty) ...[
             const SizedBox(height: 12),

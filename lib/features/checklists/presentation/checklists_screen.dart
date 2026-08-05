@@ -53,17 +53,23 @@ class _ChecklistsViewState extends State<ChecklistsView>
     super.dispose();
   }
 
-  void _showNewRunModal(BuildContext context) {
+  void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
+    final checklistsBloc = context.read<ChecklistsBloc>();
     final colors = context.colors;
     final locale = context.read<LanguageCubit>();
-    final titleCtrl = TextEditingController();
-    final branchCtrl = TextEditingController();
+    final titleCtrl = TextEditingController(text: template?.name ?? '');
+    final regCtrl =
+        TextEditingController(text: template?.regulationText ?? '');
     final itemCtrl = TextEditingController();
-    final List<String> items = [];
+    final List<String> items = List<String>.from(
+      template?.items.map((i) => i.text) ?? [],
+    );
 
     LedgerBottomSheet.show(
       context: context,
-      title: locale.translate('checklists_new'),
+      title: template == null
+          ? locale.translate('checklists_new_template')
+          : template.name,
       builder: (context, setSheetState) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,9 +82,10 @@ class _ChecklistsViewState extends State<ChecklistsView>
           ),
           const SizedBox(height: 12),
           TextField(
-            controller: branchCtrl,
+            controller: regCtrl,
+            maxLines: 2,
             decoration: InputDecoration(
-              labelText: locale.translate('checklists_branch_point'),
+              labelText: locale.translate('checklists_regulation'),
             ),
           ),
           const SizedBox(height: 16),
@@ -125,28 +132,54 @@ class _ChecklistsViewState extends State<ChecklistsView>
                   .toList(),
             ),
           const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              if (titleCtrl.text.trim().isEmpty) return;
-              context.read<ChecklistsBloc>().add(
-                CreateChecklistRunRequested(
-                  title: titleCtrl.text.trim(),
-                  branchName: branchCtrl.text.trim().isEmpty
-                      ? 'checklists_office_main'
-                      : branchCtrl.text.trim(),
-                  responsiblePerson: 'checklists_auto_responsible',
-                  items: items.isEmpty
-                      ? [
-                          'checklists_default_item_equipment',
-                          'checklists_default_item_cash',
-                        ]
-                      : items,
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                if (titleCtrl.text.trim().isEmpty) return;
+                checklistsBloc.add(
+                  CreateTemplateRequested(
+                    name: titleCtrl.text.trim(),
+                    regulationText: regCtrl.text.trim().isEmpty
+                        ? null
+                        : regCtrl.text.trim(),
+                    items: items,
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              child: Text(
+                locale.translate(
+                  template == null ? 'common_create' : 'common_save',
                 ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text(locale.translate('save_to_ledger')),
+              ),
+            ),
           ),
+          if (template != null) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  checklistsBloc.add(DeleteTemplateRequested(template.id));
+                  Navigator.pop(context);
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: colors.accentRed,
+                  side: BorderSide(
+                    color: colors.accentRed.withValues(alpha: 0.5),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(TablerIcons.trash, size: 18),
+                label: Text(locale.translate('common_delete')),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -165,14 +198,22 @@ class _ChecklistsViewState extends State<ChecklistsView>
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
-              onPressed: () => _showNewRunModal(context),
+              onPressed: () => _showTemplateModal(context),
               backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              highlightElevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: colors.brand),
+              ),
               icon: const Icon(TablerIcons.plus),
               label: Text(
-                locale.translate('checklists_new'),
+                locale.translate('checklists_new_template'),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -213,8 +254,8 @@ class _ChecklistsViewState extends State<ChecklistsView>
                 controller: _tabController,
                 children: [
                   _buildRunsTab(context, state.todayRuns),
-                  _buildTemplatesTab(context),
-                  _buildSummaryTab(context, state.todayRuns),
+                  _buildTemplatesTab(context, state.templates, canManage),
+                  _buildSummaryTab(context, state.summary),
                 ],
               );
             }
@@ -338,28 +379,23 @@ class _ChecklistsViewState extends State<ChecklistsView>
     );
   }
 
-  Widget _buildTemplatesTab(BuildContext context) {
+  Widget _buildTemplatesTab(
+    BuildContext context,
+    List<ChecklistTemplate> templates,
+    bool canManage,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-
     final locale = context.read<LanguageCubit>();
-    final templates = [
-      {
-        'name': locale.translate('checklists_tpl_open_shift'),
-        'count': 5,
-        'branch': locale.translate('users_branch_main'),
-      },
-      {
-        'name': locale.translate('checklists_tpl_close_shift'),
-        'count': 6,
-        'branch': locale.translate('users_branch_main'),
-      },
-      {
-        'name': locale.translate('checklists_tpl_cleanliness'),
-        'count': 4,
-        'branch': locale.translate('checklists_retail'),
-      },
-    ];
+
+    if (templates.isEmpty) {
+      return Center(
+        child: Text(
+          locale.translate('checklists_templates_empty'),
+          style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+        ),
+      );
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -368,33 +404,55 @@ class _ChecklistsViewState extends State<ChecklistsView>
       itemBuilder: (context, index) {
         final t = templates[index];
         return LedgerCard(
-          child: Row(
+          onTap: canManage
+              ? () => _showTemplateModal(context, template: t)
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(TablerIcons.file_text, size: 28, color: colors.brand),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      t['name'] as String,
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+              Row(
+                children: [
+                  Icon(TablerIcons.file_text, size: 28, color: colors.brand),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          t.name,
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          locale.translate(
+                            'checklists_tasks_count',
+                            params: {
+                              'count': t.items.length,
+                              'branch': t.branchName ?? '—',
+                            },
+                          ),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      locale.translate(
-                        'checklists_tasks_count',
-                        params: {'count': t['count'], 'branch': t['branch']},
-                      ),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(TablerIcons.chevron_right, color: colors.textSecondary),
+              if (t.regulationText != null &&
+                  t.regulationText!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  t.regulationText!,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
           ),
         );
@@ -402,66 +460,113 @@ class _ChecklistsViewState extends State<ChecklistsView>
     );
   }
 
-  Widget _buildSummaryTab(BuildContext context, List<ChecklistRun> runs) {
+  Widget _buildSummaryTab(
+    BuildContext context,
+    List<ChecklistSummaryRow> summary,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
 
-    final totalRuns = runs.length;
-    final completedRuns = runs.where((r) => r.progressPercentage == 1.0).length;
+    final totalRuns = summary.length;
+    final completedRuns = summary.where((r) => r.percent >= 100).length;
 
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
+      children: [
+        LedgerCard(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              Column(
+                children: [
+                  Text(
+                    '$totalRuns',
+                    style: textStyles.h1Sans.copyWith(
+                      color: colors.brand,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    locale.translate('checklists_total_shifts'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                children: [
+                  Text(
+                    '$completedRuns',
+                    style: textStyles.h1Sans.copyWith(
+                      color: colors.accentGreen,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    locale.translate('checklists_fully_done'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (summary.isEmpty)
           LedgerCard(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
+            child: Text(
+              locale.translate('checklists_summary_empty'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          )
+        else
+          ...summary.map(
+            (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: LedgerCard(
+                child: Row(
                   children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            row.checklistName,
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (row.branchName != null)
+                            Text(
+                              row.branchName!,
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                     Text(
-                      '$totalRuns',
-                      style: textStyles.h1Sans.copyWith(
+                      '${row.doneCount}/${row.totalCount} · ${row.percent.toStringAsFixed(0)}%',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w500,
                         color: colors.brand,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.read<LanguageCubit>().translate(
-                        'checklists_total_shifts',
-                      ),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
                       ),
                     ),
                   ],
                 ),
-                Column(
-                  children: [
-                    Text(
-                      '$completedRuns',
-                      style: textStyles.h1Sans.copyWith(
-                        color: colors.accentGreen,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.read<LanguageCubit>().translate(
-                        'checklists_fully_done',
-                      ),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }

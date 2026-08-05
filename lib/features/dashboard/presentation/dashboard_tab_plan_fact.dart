@@ -1,6 +1,13 @@
 part of 'dashboard_screen.dart';
 
 extension _DashboardPlanFactTab on _DashboardViewState {
+  /// API period key `yyyy-MM` (not a display string).
+  String _defaultPlanPeriod() {
+    final now = DateTime.now();
+    final m = now.month.toString().padLeft(2, '0');
+    return '${now.year}-$m';
+  }
+
   Widget _buildPlanFactTab(
     BuildContext context,
     PlanFactReport? report,
@@ -73,7 +80,9 @@ extension _DashboardPlanFactTab on _DashboardViewState {
           ),
           const SizedBox(height: 8),
           ...report.rows.map((row) {
-            final isIncome = row.type == 'INFLOW' || row.type == 'income';
+            final isIncome = row.type == 'INFLOW' ||
+                row.type == 'income' ||
+                row.type.toLowerCase() == 'income';
             final compVal = row.completion;
 
             Color statusColor;
@@ -195,5 +204,103 @@ extension _DashboardPlanFactTab on _DashboardViewState {
         ],
       ),
     );
+  }
+
+  Future<void> _showCreatePlanSheet(
+    BuildContext context,
+    String period,
+  ) async {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final categoryCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    String type = 'expense';
+
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: language.translate('dashboard_plan_add'),
+        builder: (context, setSheetState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: categoryCtrl,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('dashboard_plan_category'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ExpansibleWidget<String>.selection(
+                cardPadding: EdgeInsets.zero,
+                tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                title: Text(
+                  type == 'income'
+                      ? language.translate('cash_income')
+                      : language.translate('cash_expense'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                items: const ['income', 'expense'],
+                selectedValue: type,
+                itemLabelBuilder: (v) => v == 'income'
+                    ? language.translate('cash_income')
+                    : language.translate('cash_expense'),
+                onSelected: (v) => setSheetState(() => type = v),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('dashboard_plan_amount'),
+                ),
+              ),
+            ],
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          return SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                final category = categoryCtrl.text.trim();
+                final amount =
+                    parseLocalizedNumber(context, amountCtrl.text.trim()) ?? 0;
+                if (category.isEmpty || amount <= 0) return;
+                this.context.read<DashboardBloc>().add(
+                      CreatePlanRequested(
+                        period: period.isEmpty
+                            ? _defaultPlanPeriod()
+                            : period,
+                        category: category,
+                        type: type,
+                        plannedAmount: amount,
+                      ),
+                    );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+              ),
+              child: Text(language.translate('common_create')),
+            ),
+          );
+        },
+      );
+    } finally {
+      categoryCtrl.dispose();
+      amountCtrl.dispose();
+    }
   }
 }

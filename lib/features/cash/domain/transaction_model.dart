@@ -4,7 +4,8 @@ enum PaymentMethod {
   card,
   alif,
   dushanbeCity,
-  ocms;
+  ocms,
+  mixed;
 
   /// Localization key for UI (`payment_cash`, …).
   String get labelKey => switch (this) {
@@ -13,10 +14,21 @@ enum PaymentMethod {
     PaymentMethod.alif => 'payment_alif',
     PaymentMethod.dushanbeCity => 'payment_dushanbe_city',
     PaymentMethod.ocms => 'payment_ocms',
+    PaymentMethod.mixed => 'payment_mixed',
   };
 
   /// Stable storage / API token (also a localization key).
   String get label => labelKey;
+
+  /// Backend enum value (`dushanbe_city`, `osms`, …).
+  String get apiValue => switch (this) {
+    PaymentMethod.cash => 'cash',
+    PaymentMethod.card => 'card',
+    PaymentMethod.alif => 'alif',
+    PaymentMethod.dushanbeCity => 'dushanbe_city',
+    PaymentMethod.ocms => 'osms',
+    PaymentMethod.mixed => 'mixed',
+  };
 
   static PaymentMethod fromLabel(String label) {
     final normalized = label.trim().toLowerCase();
@@ -26,8 +38,13 @@ enum PaymentMethod {
       'payment_dushanbe_city' ||
       'душанбе сити' ||
       'dushanbe city' ||
+      'dushanbe_city' ||
       'dushanbecity' => PaymentMethod.dushanbeCity,
-      'payment_ocms' || 'осмс' || 'ocms' => PaymentMethod.ocms,
+      'payment_ocms' || 'осмс' || 'ocms' || 'osms' => PaymentMethod.ocms,
+      'payment_mixed' ||
+      'mixed' ||
+      'смешанная' ||
+      'смешанный' => PaymentMethod.mixed,
       'payment_cash' || 'наличные' || 'cash' || 'пул' => PaymentMethod.cash,
       _ => PaymentMethod.cash,
     };

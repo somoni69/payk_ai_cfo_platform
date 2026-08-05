@@ -16,6 +16,16 @@ abstract class StrategyRepository {
 
   /// Запустить AI-генерацию анализа
   Future<StrategicAnalysis> generateAnalysis(String type, String period);
+
+  Future<List<MacroIndicator>> getMacroIndicators();
+
+  Future<List<StrategyScenario>> getScenarios({String? quarter});
+
+  Future<List<StrategyScenario>> generateScenarios(String quarter);
+
+  Future<DailySummary> getDailySummary();
+
+  Future<List<NewsSource>> getNews();
 }
 
 /// Optional lifecycle contract for repositories with long-running requests.

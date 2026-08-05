@@ -9,6 +9,7 @@ class LedgerCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final double borderRadius;
+  final VoidCallback? onTap;
 
   const LedgerCard({
     super.key,
@@ -17,10 +18,13 @@ class LedgerCard extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.borderRadius = 16,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final cardChild = Padding(padding: padding, child: child);
+
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor ?? context.colors.surface,
@@ -30,8 +34,16 @@ class LedgerCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
-      padding: padding,
-      child: child,
+      child: onTap != null
+          ? Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(borderRadius),
+                onTap: onTap,
+                child: cardChild,
+              ),
+            )
+          : cardChild,
     );
   }
 }

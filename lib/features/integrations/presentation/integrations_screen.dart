@@ -9,6 +9,7 @@ import '../../../features/integrations/bloc/integrations_event.dart';
 import '../../../features/integrations/bloc/integrations_state.dart';
 import '../../../features/integrations/domain/integrations_repository.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 
 class IntegrationsScreen extends StatelessWidget {
@@ -71,19 +72,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
     final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        elevation: 0,
-        title: Text(
-          localeCubit.translate('integrations_title'),
-          style: textStyles.h1Sans.copyWith(
-            fontSize: MediaQuery.of(context).size.width >= 600 ? 22.0 : 20.0,
-            fontWeight: FontWeight.w500,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+      backgroundColor: colors.background,
       body: BlocListener<IntegrationsBloc, IntegrationsState>(
         listener: (context, state) {
           if (state.errorMessage != null) {
@@ -105,7 +94,16 @@ class _IntegrationsViewState extends State<IntegrationsView> {
             );
           }
         },
-        child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
+        child: NestedScrollView(
+          headerSliverBuilder: (context, _) => [
+            LedgerCollapsingHeader(
+              title: localeCubit.translate('integrations_title'),
+              pinned: true,
+              floating: true,
+              snap: true,
+            ),
+          ],
+          body: BlocBuilder<IntegrationsBloc, IntegrationsState>(
           buildWhen: (previous, current) =>
               previous.integrations != current.integrations ||
               previous.logs != current.logs ||
@@ -204,7 +202,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                 icon: const Icon(TablerIcons.refresh, size: 16),
                                 label: Text(
                                   localeCubit.translate('integrations_sync'),
-                                  style: const TextStyle(fontSize: 13),
+                                  style: textStyles.smallSans,
                                 ),
                                 style: ElevatedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
@@ -315,6 +313,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
               ),
             );
           },
+        ),
         ),
       ),
     );

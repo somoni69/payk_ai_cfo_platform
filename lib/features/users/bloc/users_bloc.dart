@@ -24,6 +24,8 @@ class UsersBloc extends Bloc<UsersEvent, UsersState> {
     on<CreateUserRequested>(_onCreateUserRequested);
     on<UpdateUserRequested>(_onUpdateUserRequested);
     on<DeleteUserRequested>(_onDeleteUserRequested);
+    on<LoadPermissionsMatrix>(_onLoadPermissionsMatrix);
+    on<TogglePermissionRequested>(_onTogglePermission);
   }
 
   Future<void> refresh({String? search}) {
@@ -223,6 +225,133 @@ class UsersBloc extends Bloc<UsersEvent, UsersState> {
           errorMessage: 'Не удалось удалить пользователя. Повторите попытку.',
         ),
       );
+    }
+  }
+
+  Future<void> _onLoadPermissionsMatrix(
+    LoadPermissionsMatrix event,
+    Emitter<UsersState> emit,
+  ) async {
+    if (state.permissionMatrix != null && !event.forceRefresh) return;
+    emit(
+      state.copyWith(isPermissionsLoading: true, clearPermissionsError: true),
+    );
+    try {
+      final matrix = await _repository.getPermissionMatrix();
+      emit(
+        state.copyWith(permissionMatrix: matrix, isPermissionsLoading: false),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isPermissionsLoading: false,
+          permissionsError: e.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onTogglePermission(
+    TogglePermissionRequested event,
+    Emitter<UsersState> emit,
+  ) async {
+    final matrix = state.permissionMatrix;
+    if (matrix == null) return;
+
+    final key = PermissionCell.keyOf(event.role, event.module);
+    final currentMap = Map<String, PermissionCell>.from(matrix.cellMap);
+    final existing =
+        currentMap[key] ??
+        PermissionCell(
+          role: event.role,
+          module: event.module,
+          canView: false,
+          canCreate: false,
+          canEdit: false,
+          canDelete: false,
+          canAction: false,
+        );
+
+    late PermissionCell next;
+    switch (event.field) {
+      case 'view':
+        next = existing.copyWith(canView: event.value);
+        if (!event.value) {
+          next = next.copyWith(
+            canCreate: false,
+            canEdit: false,
+            canDelete: false,
+            canAction: false,
+          );
+        }
+        break;
+      case 'create':
+        next = existing.copyWith(
+          canCreate: event.value,
+          canView: event.value ? true : existing.canView,
+        );
+        break;
+      case 'edit':
+        next = existing.copyWith(
+          canEdit: event.value,
+          canView: event.value ? true : existing.canView,
+        );
+        break;
+      case 'delete':
+        next = existing.copyWith(
+          canDelete: event.value,
+          canView: event.value ? true : existing.canView,
+        );
+        break;
+      case 'action':
+        next = existing.copyWith(
+          canAction: event.value,
+          canView: event.value ? true : existing.canView,
+        );
+        break;
+      default:
+        return;
+    }
+
+    // Optimistic UI
+    currentMap[key] = next;
+    final optimistic = PermissionMatrix(
+      modules: matrix.modules,
+      roles: matrix.roles,
+      perms: matrix.perms,
+      cells: currentMap.values.toList(),
+    );
+    emit(
+      state.copyWith(
+        permissionMatrix: optimistic,
+        isPermissionSaving: true,
+        clearPermissionsError: true,
+      ),
+    );
+
+    try {
+      final saved = await _repository.updatePermissions([next]);
+      emit(state.copyWith(permissionMatrix: saved, isPermissionSaving: false));
+    } catch (e) {
+      // Revert by reloading from server
+      try {
+        final reloaded = await _repository.getPermissionMatrix();
+        emit(
+          state.copyWith(
+            permissionMatrix: reloaded,
+            isPermissionSaving: false,
+            permissionsError: e.toString(),
+          ),
+        );
+      } catch (_) {
+        emit(
+          state.copyWith(
+            permissionMatrix: matrix,
+            isPermissionSaving: false,
+            permissionsError: e.toString(),
+          ),
+        );
+      }
     }
   }
 

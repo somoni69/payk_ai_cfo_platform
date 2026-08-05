@@ -73,6 +73,16 @@ class Task {
   final String? dependsOnId;
   final int? position;
 
+  /// Personal task (`/tasks/personal`) — outside team acceptance cycle.
+  final bool isPersonal;
+
+  /// Author user id (for reviewer accept/reject).
+  final int? createdBy;
+
+  final DateTime? acknowledgedAt;
+  final DateTime? acceptedAt;
+  final String? rejectReason;
+
   const Task({
     required this.id,
     required this.title,
@@ -87,6 +97,11 @@ class Task {
     this.startDate,
     this.dependsOnId,
     this.position,
+    this.isPersonal = false,
+    this.createdBy,
+    this.acknowledgedAt,
+    this.acceptedAt,
+    this.rejectReason,
   });
 
   Task copyWith({
@@ -103,6 +118,11 @@ class Task {
     DateTime? startDate,
     String? dependsOnId,
     int? position,
+    bool? isPersonal,
+    int? createdBy,
+    DateTime? acknowledgedAt,
+    DateTime? acceptedAt,
+    String? rejectReason,
   }) {
     return Task(
       id: id ?? this.id,
@@ -118,8 +138,32 @@ class Task {
       startDate: startDate ?? this.startDate,
       dependsOnId: dependsOnId ?? this.dependsOnId,
       position: position ?? this.position,
+      isPersonal: isPersonal ?? this.isPersonal,
+      createdBy: createdBy ?? this.createdBy,
+      acknowledgedAt: acknowledgedAt ?? this.acknowledgedAt,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      rejectReason: rejectReason ?? this.rejectReason,
     );
   }
+}
+
+/// Input for personal task create/update (`/tasks/personal`).
+class PersonalTaskInput {
+  final String title;
+  final String? description;
+  final TaskStatus? status;
+  final TaskPriority? priority;
+  final DateTime? dueDate;
+  final DateTime? startDate;
+
+  const PersonalTaskInput({
+    required this.title,
+    this.description,
+    this.status,
+    this.priority,
+    this.dueDate,
+    this.startDate,
+  });
 }
 
 /// Модель сотрудника с перегрузкой по задачам (TASK-05).

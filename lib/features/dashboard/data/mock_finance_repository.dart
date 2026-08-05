@@ -324,4 +324,89 @@ class MockFinanceRepository implements FinanceRepository {
       totalFact: 320800.0,
     );
   }
+
+  @override
+  Future<ClientAnalysisReport> getClientAnalysis() async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    return ClientAnalysisReport(
+      frequent: [
+        ClientAnalysisRow(
+          name: 'ООО «СтройМаркет»',
+          purchases: 18,
+          total: 42000,
+          lastPurchase: DateTime.now().subtract(const Duration(days: 2)),
+          daysSince: 2,
+        ),
+      ],
+      dormant: [
+        ClientAnalysisRow(
+          name: 'ИП Каримов',
+          purchases: 3,
+          total: 5100,
+          lastPurchase: DateTime.now().subtract(const Duration(days: 95)),
+          daysSince: 95,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<PlanItem> createPlan({
+    required String period,
+    required String category,
+    required String type,
+    required double plannedAmount,
+  }) async {
+    return PlanItem(
+      id: DateTime.now().millisecondsSinceEpoch,
+      period: period,
+      category: category,
+      type: type,
+      plannedAmount: plannedAmount,
+    );
+  }
+
+  @override
+  Future<void> deletePlan(int planId) async {}
+
+  @override
+  Future<BankAccountInfo> createAccount({
+    required String name,
+    String? bank,
+    String? number,
+    String currency = 'TJS',
+    double balance = 0,
+  }) async {
+    return BankAccountInfo(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      bank: bank,
+      number: number,
+      currency: currency,
+      balance: balance,
+    );
+  }
+
+  @override
+  Future<void> deleteAccount(String accountId) async {}
+
+  @override
+  Future<void> zeroOutAccount(String accountId) async {}
+
+  @override
+  Future<ConvertResult> convertAmount(double amount, String base) async {
+    return ConvertResult(
+      base: base,
+      amount: amount,
+      values: {
+        'TJS': amount * 11,
+        'USD': amount,
+        'EUR': amount * 0.92,
+        'RUB': amount * 90,
+      },
+    );
+  }
+
+  @override
+  Future<void> refreshRates() async {}
 }

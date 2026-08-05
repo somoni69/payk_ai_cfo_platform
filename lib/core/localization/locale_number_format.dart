@@ -23,9 +23,13 @@ String resolveNumberFormatLocale(Locale locale) {
   return 'ru';
 }
 
+Locale _safeLocaleOf(BuildContext context) {
+  return Localizations.maybeLocaleOf(context) ?? const Locale('ru');
+}
+
 /// Creates the application's two-decimal formatter for the active UI locale.
 NumberFormat localizedDecimalFormat(BuildContext context) {
-  return localizedDecimalFormatForLocale(Localizations.localeOf(context));
+  return localizedDecimalFormatForLocale(_safeLocaleOf(context));
 }
 
 @visibleForTesting
@@ -45,7 +49,7 @@ NumberFormat localizedNumberFormat(
   bool useGrouping = true,
 }) {
   return localizedNumberFormatForLocale(
-    Localizations.localeOf(context),
+    _safeLocaleOf(context),
     minimumFractionDigits: minimumFractionDigits,
     maximumFractionDigits: maximumFractionDigits,
     useGrouping: useGrouping,
@@ -79,7 +83,7 @@ String formatLocalizedNumber(
 }) {
   return formatLocalizedNumberForLocale(
     value,
-    Localizations.localeOf(context),
+    _safeLocaleOf(context),
     minimumFractionDigits: minimumFractionDigits,
     maximumFractionDigits: maximumFractionDigits,
     useGrouping: useGrouping,

@@ -5,8 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:intl/intl.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -27,6 +27,7 @@ part 'tasks_forms.dart';
 part 'tasks_calendar.dart';
 part 'tasks_analysis.dart';
 part 'tasks_widgets.dart';
+part 'tasks_my.dart';
 
 /// Входная точка планировщика задач с внедрением TasksBloc.
 class TasksScreen extends StatelessWidget {
@@ -67,17 +68,84 @@ class _TasksViewState extends State<TasksView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(_handleTabChange);
+    // Prefetch personal / assigned queues for the default «Мои» tab.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TasksBloc>().add(const LoadMyTasks());
+    });
   }
 
   void _handleTabChange() {
+    // Wait until the swipe/animation settles — unmounting lazy tabs mid-transition
+    // can trigger InheritedWidget `_dependents.isEmpty` crashes.
+    if (!mounted || _tabController.indexIsChanging) return;
     final nextIndex = _tabController.index;
-    if (nextIndex == _activeTabIndex || !mounted) return;
+    if (nextIndex == _activeTabIndex) return;
     setState(() => _activeTabIndex = nextIndex);
-    if (nextIndex == 6) {
+    if (nextIndex == 0) {
+      context.read<TasksBloc>().add(const LoadMyTasks());
+    } else if (nextIndex == 7) {
       context.read<TasksBloc>().add(const LoadTaskAnalytics());
     }
+  }
+
+  bool _showCreateFab(BuildContext context) {
+    // Tab-aware FAB (design_language): personal on «Мои», team on list tabs.
+    final index = _tabController.index;
+    if (index == 0) return true;
+    if (index >= 1 && index <= 4) return _canManageTasks(context);
+    return false;
+  }
+
+  void _onCreateFabPressed(
+    BuildContext context, {
+    required List<TaskProject> projects,
+    required List<TaskAssignee> assignees,
+  }) {
+    if (_tabController.index == 0) {
+      _showPersonalTaskSheet(context);
+      return;
+    }
+    _showAddTaskBottomSheet(context, projects, assignees);
+  }
+
+  Widget? _buildTasksFab(
+    BuildContext context, {
+    required List<TaskProject> projects,
+    required List<TaskAssignee> assignees,
+  }) {
+    if (!_showCreateFab(context)) return null;
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final isPersonal = _tabController.index == 0;
+    return FloatingActionButton.extended(
+      onPressed: () => _onCreateFabPressed(
+        context,
+        projects: projects,
+        assignees: assignees,
+      ),
+      backgroundColor: colors.brand,
+      foregroundColor: colors.surface,
+      elevation: 0,
+      highlightElevation: 0,
+      focusElevation: 0,
+      hoverElevation: 0,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.brand),
+        ),
+      icon: const Icon(TablerIcons.plus),
+      label: Text(
+        language.translate(isPersonal ? 'tasks_fab_personal' : 'tasks_fab_team'),
+        style: textStyles.bodySans.copyWith(
+          color: colors.surface,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 
   @override
@@ -90,7 +158,11 @@ class _TasksViewState extends State<TasksView>
 
   Future<void> _refreshTasks(BuildContext context) {
     final completion = Completer<void>();
-    if (_activeTabIndex == 6) {
+    if (_activeTabIndex == 0) {
+      context.read<TasksBloc>().add(
+        LoadMyTasks(forceRefresh: true, completion: completion),
+      );
+    } else if (_activeTabIndex == 7) {
       context.read<TasksBloc>().add(
         LoadTaskAnalytics(forceRefresh: true, completion: completion),
       );
@@ -195,6 +267,24 @@ class _TasksViewState extends State<TasksView>
 
     return Scaffold(
       backgroundColor: colors.background,
+      floatingActionButton: BlocBuilder<TasksBloc, TasksState>(
+        buildWhen: (previous, current) {
+          if (previous is TasksLoaded && current is TasksLoaded) {
+            return !identical(previous.projects, current.projects) ||
+                !identical(previous.assignees, current.assignees);
+          }
+          return previous.runtimeType != current.runtimeType;
+        },
+        builder: (context, state) {
+          if (state is! TasksLoaded) return const SizedBox.shrink();
+          return _buildTasksFab(
+                context,
+                projects: state.projects,
+                assignees: state.assignees,
+              ) ??
+              const SizedBox.shrink();
+        },
+      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -203,39 +293,6 @@ class _TasksViewState extends State<TasksView>
               pinned: true,
               floating: true,
               snap: true,
-              actions: [
-                if (_canManageTasks(context))
-                  BlocBuilder<TasksBloc, TasksState>(
-                    buildWhen: (previous, current) {
-                      if (previous is TasksLoaded && current is TasksLoaded) {
-                        return !identical(
-                              previous.projects,
-                              current.projects,
-                            ) ||
-                            !identical(previous.assignees, current.assignees);
-                      }
-                      return previous.runtimeType != current.runtimeType;
-                    },
-                    builder: (context, state) {
-                      final projects = state is TasksLoaded
-                          ? state.projects
-                          : const <TaskProject>[];
-                      final assignees = state is TasksLoaded
-                          ? state.assignees
-                          : const <TaskAssignee>[];
-                      return IconButton(
-                        icon: const Icon(TablerIcons.plus),
-                        tooltip: language.translate('tasks_add_title'),
-                        color: colors.brand,
-                        onPressed: () => _showAddTaskBottomSheet(
-                          context,
-                          projects,
-                          assignees,
-                        ),
-                      );
-                    },
-                  ),
-              ],
               bottom: TabBar(
                 controller: _tabController,
                 isScrollable: true,
@@ -252,6 +309,7 @@ class _TasksViewState extends State<TasksView>
                   fontWeight: FontWeight.w400,
                 ),
                 tabs: [
+                  Tab(text: language.translate('tasks_tab_my')),
                   Tab(text: language.translate('tasks_tab_new')),
                   Tab(text: language.translate('tasks_tab_in_progress')),
                   Tab(text: language.translate('tasks_tab_review')),
@@ -264,7 +322,21 @@ class _TasksViewState extends State<TasksView>
             ),
           ];
         },
-        body: BlocBuilder<TasksBloc, TasksState>(
+        body: BlocConsumer<TasksBloc, TasksState>(
+          listenWhen: (previous, current) {
+            if (current is! TasksLoaded) return false;
+            return current.actionMessage != null;
+          },
+          listener: (context, state) {
+            if (state is! TasksLoaded || state.actionMessage == null) return;
+            final msg = state.actionMessage!;
+            final text = msg.startsWith('tasks_') || msg.startsWith('error_')
+                ? language.translate(msg)
+                : language.translateMessage(msg);
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(text)));
+          },
           buildWhen: (previous, current) {
             if (previous is TasksLoaded && current is TasksLoaded) {
               return !identical(previous.tasks, current.tasks) ||
@@ -272,10 +344,15 @@ class _TasksViewState extends State<TasksView>
                   !identical(previous.assignees, current.assignees) ||
                   !identical(previous.overloaded, current.overloaded) ||
                   !identical(previous.criticalPath, current.criticalPath) ||
+                  !identical(previous.myTasks, current.myTasks) ||
+                  !identical(previous.assignedToMe, current.assignedToMe) ||
+                  previous.isMyTasksLoading != current.isMyTasksLoading ||
                   previous.isAnalyticsLoading != current.isAnalyticsLoading ||
                   previous.analyticsLoaded != current.analyticsLoaded ||
                   previous.analyticsError != current.analyticsError ||
-                  previous.pendingStatusTaskIds != current.pendingStatusTaskIds;
+                  previous.pendingStatusTaskIds !=
+                      current.pendingStatusTaskIds ||
+                  previous.actionMessage != current.actionMessage;
             }
             return previous.runtimeType != current.runtimeType;
           },
@@ -402,7 +479,9 @@ class _TasksViewState extends State<TasksView>
                       ],
                     ),
                   ),
-                  if (state.projects.isNotEmpty)
+                  if (_activeTabIndex > 0 &&
+                      _activeTabIndex < 5 &&
+                      state.projects.isNotEmpty)
                     _buildProjectFilterBar(context, state.projects),
 
                   Expanded(
@@ -411,6 +490,11 @@ class _TasksViewState extends State<TasksView>
                       children: [
                         _LazyTaskTab(
                           isActive: _activeTabIndex == 0,
+                          builder: (context) =>
+                              _buildMyTasksTab(context, state),
+                        ),
+                        _LazyTaskTab(
+                          isActive: _activeTabIndex == 1,
                           builder: (context) => _buildTaskList(
                             context,
                             filteredTasks,
@@ -421,7 +505,7 @@ class _TasksViewState extends State<TasksView>
                           ),
                         ),
                         _LazyTaskTab(
-                          isActive: _activeTabIndex == 1,
+                          isActive: _activeTabIndex == 2,
                           builder: (context) => _buildTaskList(
                             context,
                             filteredTasks,
@@ -432,7 +516,7 @@ class _TasksViewState extends State<TasksView>
                           ),
                         ),
                         _LazyTaskTab(
-                          isActive: _activeTabIndex == 2,
+                          isActive: _activeTabIndex == 3,
                           builder: (context) => _buildTaskList(
                             context,
                             filteredTasks,
@@ -443,7 +527,7 @@ class _TasksViewState extends State<TasksView>
                           ),
                         ),
                         _LazyTaskTab(
-                          isActive: _activeTabIndex == 3,
+                          isActive: _activeTabIndex == 4,
                           builder: (context) => _buildTaskList(
                             context,
                             filteredTasks,
@@ -454,7 +538,7 @@ class _TasksViewState extends State<TasksView>
                           ),
                         ),
                         _LazyTaskTab(
-                          isActive: _activeTabIndex == 4,
+                          isActive: _activeTabIndex == 5,
                           builder: (context) => _buildCalendarTab(
                             context,
                             filteredTasks,
@@ -463,14 +547,14 @@ class _TasksViewState extends State<TasksView>
                           ),
                         ),
                         _LazyTaskTab(
-                          isActive: _activeTabIndex == 5,
+                          isActive: _activeTabIndex == 6,
                           builder: (context) => _GanttTaskTab(
                             tasks: filteredTasks,
                             onRefresh: () => _refreshTasks(context),
                           ),
                         ),
                         _LazyTaskTab(
-                          isActive: _activeTabIndex == 6,
+                          isActive: _activeTabIndex == 7,
                           builder: (context) => _buildAnalysisTab(
                             context,
                             state.overloaded,

@@ -140,4 +140,35 @@ class ApiUsersRepository implements UsersRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
+
+  @override
+  Future<PermissionMatrix> getPermissionMatrix() async {
+    try {
+      final response = await _apiClient.dio.get('/permissions');
+      final data = response.data;
+      if (data is! Map) {
+        throw const FormatException(ErrorKeys.invalidResponse);
+      }
+      return PermissionMatrix.fromJson(Map<String, dynamic>.from(data));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<PermissionMatrix> updatePermissions(List<PermissionCell> cells) async {
+    try {
+      final response = await _apiClient.dio.put(
+        '/permissions',
+        data: cells.map((c) => c.toJson()).toList(),
+      );
+      final data = response.data;
+      if (data is! Map) {
+        throw const FormatException(ErrorKeys.invalidResponse);
+      }
+      return PermissionMatrix.fromJson(Map<String, dynamic>.from(data));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
 }

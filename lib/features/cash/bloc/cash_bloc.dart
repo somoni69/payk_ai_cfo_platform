@@ -18,6 +18,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   List<CashRegister> _cachedRegisters = [];
   String _currentQuery = '';
   String _currentFilterType = 'all';
+  String _currentPaymentMethod = 'all';
+  String _currentRegisterId = 'all';
+  DateTime? _currentDateFrom;
+  DateTime? _currentDateTo;
   Future<List<Object>>? _loadRequest;
   int _searchRevision = 0;
 
@@ -91,12 +95,23 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     Emitter<CashState> emit,
   ) async {
     final revision = ++_searchRevision;
-    if (event.filterType == _currentFilterType) {
+    final onlyQueryChanged =
+        event.filterType == _currentFilterType &&
+        event.paymentMethod == _currentPaymentMethod &&
+        event.registerId == _currentRegisterId &&
+        event.dateFrom == _currentDateFrom &&
+        event.dateTo == _currentDateTo &&
+        event.query != _currentQuery;
+    if (onlyQueryChanged) {
       await Future<void>.delayed(const Duration(milliseconds: 300));
       if (revision != _searchRevision) return;
     }
     _currentQuery = event.query;
     _currentFilterType = event.filterType;
+    _currentPaymentMethod = event.paymentMethod;
+    _currentRegisterId = event.registerId;
+    _currentDateFrom = event.dateFrom;
+    _currentDateTo = event.dateTo;
     _emitCurrentState(emit);
   }
 
@@ -227,7 +242,44 @@ class CashBloc extends Bloc<CashEvent, CashState> {
           (_currentFilterType == 'income' && tx.isIncome) ||
           (_currentFilterType == 'expense' && !tx.isIncome);
 
-      return matchesSearch && matchesFilter;
+      final matchesPayment =
+          _currentPaymentMethod == 'all' ||
+          tx.paymentMethod.name == _currentPaymentMethod ||
+          tx.paymentMethod.apiValue == _currentPaymentMethod;
+
+      final matchesRegister =
+          _currentRegisterId == 'all' || tx.registerId == _currentRegisterId;
+
+      final txDay = DateTime(
+        tx.dateTime.year,
+        tx.dateTime.month,
+        tx.dateTime.day,
+      );
+      final matchesFrom =
+          _currentDateFrom == null ||
+          !txDay.isBefore(
+            DateTime(
+              _currentDateFrom!.year,
+              _currentDateFrom!.month,
+              _currentDateFrom!.day,
+            ),
+          );
+      final matchesTo =
+          _currentDateTo == null ||
+          !txDay.isAfter(
+            DateTime(
+              _currentDateTo!.year,
+              _currentDateTo!.month,
+              _currentDateTo!.day,
+            ),
+          );
+
+      return matchesSearch &&
+          matchesFilter &&
+          matchesPayment &&
+          matchesRegister &&
+          matchesFrom &&
+          matchesTo;
     }).toList();
 
     emit(
@@ -240,6 +292,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         registers: _cachedRegisters,
         query: _currentQuery,
         filterType: _currentFilterType,
+        paymentMethod: _currentPaymentMethod,
+        registerId: _currentRegisterId,
+        dateFrom: _currentDateFrom,
+        dateTo: _currentDateTo,
         errorMessage: errorMessage,
       ),
     );

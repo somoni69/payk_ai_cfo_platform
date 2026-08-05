@@ -61,12 +61,20 @@ class _AuditViewState extends State<AuditView>
           context.read<AuditBloc>().add(const RunAnomalyDetectorsRequested());
         },
         backgroundColor: colors.brand,
-        foregroundColor: Colors.white,
+        foregroundColor: colors.surface,
+        elevation: 0,
+        highlightElevation: 0,
+        focusElevation: 0,
+        hoverElevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: colors.brand),
+        ),
         icon: const Icon(TablerIcons.shield_check),
         label: Text(
           locale.translate('audit_run_check'),
           style: textStyles.bodySans.copyWith(
-            color: Colors.white,
+            color: colors.surface,
             fontWeight: FontWeight.w500,
           ),
         ),

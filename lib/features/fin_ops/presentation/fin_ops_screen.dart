@@ -89,8 +89,8 @@ class _FinOpsViewState extends State<FinOpsView>
             onSelected: (val) {
               setSheetState(() => selectedBank = val);
             },
-            cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-            tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            tilePadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 12),
           TextField(
@@ -110,7 +110,7 @@ class _FinOpsViewState extends State<FinOpsView>
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
-              final amt = double.tryParse(amountCtrl.text.trim());
+              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
               if (amt == null || amt <= 0) return;
               context.read<FinOpsBloc>().add(
                 CreateEncashmentRequested(
@@ -125,6 +125,45 @@ class _FinOpsViewState extends State<FinOpsView>
           ),
         ],
       ),
+    );
+  }
+
+  void _showCreateBankSheet(BuildContext context) {
+    final locale = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final nameCtrl = TextEditingController();
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: locale.translate('fin_ops_new_bank'),
+      builder: (context, setSheetState) => TextField(
+        controller: nameCtrl,
+        style: textStyles.bodySans,
+        decoration: InputDecoration(
+          labelText: locale.translate('fin_ops_bank_name'),
+        ),
+      ),
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              this.context.read<FinOpsBloc>().add(CreateBankRequested(name));
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              elevation: 0,
+            ),
+            child: Text(locale.translate('common_create')),
+          ),
+        );
+      },
     );
   }
 
@@ -169,7 +208,7 @@ class _FinOpsViewState extends State<FinOpsView>
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
-              final amt = double.tryParse(amountCtrl.text.trim());
+              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
               if (amt == null || amt <= 0) return;
               context.read<FinOpsBloc>().add(
                 CreateStoreTransferRequested(
@@ -216,7 +255,7 @@ class _FinOpsViewState extends State<FinOpsView>
           const SizedBox(height: 20),
           ElevatedButton(
             onPressed: () {
-              final amt = double.tryParse(amountCtrl.text.trim());
+              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
               if (amt == null || amt <= 0 || empCtrl.text.trim().isEmpty) {
                 return;
               }
@@ -304,19 +343,57 @@ class _FinOpsViewState extends State<FinOpsView>
 
     return Scaffold(
       floatingActionButton: canManage
-          ? FloatingActionButton.extended(
-              onPressed: () =>
-                  _showEncashmentModal(context, state.bankAccounts),
-              backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
-              icon: const Icon(TablerIcons.cash_banknote),
-              label: Text(
-                locale.translate('fin_ops_new_encashment'),
-                style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'fin_ops_add_bank',
+                  onPressed: () => _showCreateBankSheet(context),
+                  backgroundColor: colors.surface,
+                  foregroundColor: colors.brand,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.border),
+                  ),
+                  icon: const Icon(TablerIcons.building_bank),
+                  label: Text(
+                    locale.translate('fin_ops_new_bank'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.brand,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 10),
+                FloatingActionButton.extended(
+                  heroTag: 'fin_ops_encashment',
+                  onPressed: () =>
+                      _showEncashmentModal(context, state.bankAccounts),
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.brand),
+                  ),
+                  icon: const Icon(TablerIcons.cash_banknote),
+                  label: Text(
+                    locale.translate('fin_ops_new_encashment'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             )
           : null,
       body: ListView(
@@ -332,35 +409,45 @@ class _FinOpsViewState extends State<FinOpsView>
               padding: const EdgeInsets.only(bottom: 12),
               child: LedgerCard(
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.read<LanguageCubit>().translateMessage(
-                            bank.bankName,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.read<LanguageCubit>().translateMessage(
+                              bank.bankName,
+                            ),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w500,
+                          const SizedBox(height: 4),
+                          LedgerPill(
+                            text: bank.isActive
+                                ? locale.translate('status_active')
+                                : locale.translate('hr_status_inactive'),
+                            backgroundColor: bank.isActive
+                                ? colors.accentGreen.withValues(alpha: 0.1)
+                                : colors.surfaceNested,
+                            textColor: bank.isActive
+                                ? colors.accentGreen
+                                : colors.textSecondary,
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          bank.accountNumber,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Text(
-                      '${oCcy.format(bank.balance)} ${bank.currency}',
-                      style: textStyles.h2Sans.copyWith(
-                        color: colors.brand,
-                        fontWeight: FontWeight.w500,
+                        ],
                       ),
                     ),
+                    if (canManage && bank.isActive)
+                      IconButton(
+                        onPressed: () => context.read<FinOpsBloc>().add(
+                              DeleteBankRequested(bank.id),
+                            ),
+                        icon: Icon(
+                          TablerIcons.power,
+                          size: 18,
+                          color: colors.accentRed,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -437,12 +524,20 @@ class _FinOpsViewState extends State<FinOpsView>
           ? FloatingActionButton.extended(
               onPressed: () => _showTransferModal(context),
               backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              highlightElevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: colors.brand),
+              ),
               icon: const Icon(TablerIcons.arrows_transfer_up),
               label: Text(
                 locale.translate('fin_ops_new_transfer'),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -497,6 +592,20 @@ class _FinOpsViewState extends State<FinOpsView>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
+                      TextButton(
+                        onPressed: () {
+                          context.read<FinOpsBloc>().add(
+                                CancelStoreTransferRequested(tr.id),
+                              );
+                        },
+                        style: TextButton.styleFrom(
+                          foregroundColor: colors.accentRed,
+                        ),
+                        child: Text(
+                          locale.translate('fin_ops_cancel_transfer'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       OutlinedButton(
                         onPressed: () {
                           context.read<FinOpsBloc>().add(
@@ -538,12 +647,20 @@ class _FinOpsViewState extends State<FinOpsView>
           ? FloatingActionButton.extended(
               onPressed: () => _showAidModal(context),
               backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              highlightElevation: 0,
+              focusElevation: 0,
+              hoverElevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: colors.brand),
+              ),
               icon: const Icon(TablerIcons.heart_handshake),
               label: Text(
                 locale.translate('fin_ops_new_aid'),
                 style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
+                  color: colors.surface,
                   fontWeight: FontWeight.w500,
                 ),
               ),

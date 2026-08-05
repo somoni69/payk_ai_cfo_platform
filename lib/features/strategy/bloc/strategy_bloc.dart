@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/network/user_facing_error.dart';
 import '../domain/strategy_models.dart';
 import '../domain/strategy_repository.dart';
 import 'strategy_event.dart';
@@ -12,6 +13,11 @@ class StrategyBloc extends Bloc<StrategyEvent, StrategyState> {
     on<GenerateMarketingIdeasRequested>(_onGenerateMarketingIdeasRequested);
     on<LoadStrategicAnalyses>(_onLoadStrategicAnalyses);
     on<GenerateStrategicAnalysis>(_onGenerateStrategicAnalysis);
+    on<LoadMacroIndicators>(_onLoadMacro);
+    on<LoadScenarios>(_onLoadScenarios);
+    on<GenerateScenariosRequested>(_onGenerateScenarios);
+    on<LoadDailySummary>(_onLoadSummary);
+    on<LoadNews>(_onLoadNews);
   }
 
   final StrategyRepository _repository;
@@ -135,6 +141,130 @@ class StrategyBloc extends Bloc<StrategyEvent, StrategyState> {
           isGeneratingAnalysis: false,
           errorMessage:
               'Не удалось сгенерировать анализ. Проверьте соединение.',
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadMacro(
+    LoadMacroIndicators event,
+    Emitter<StrategyState> emit,
+  ) async {
+    if (state.macroLoaded && !event.forceRefresh) return;
+    emit(state.copyWith(isMacroLoading: true, clearError: true));
+    try {
+      final rows = await _repository.getMacroIndicators();
+      emit(
+        state.copyWith(
+          macro: rows,
+          macroLoaded: true,
+          isMacroLoading: false,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isMacroLoading: false,
+          errorMessage: ErrorKeys.loadFailed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadScenarios(
+    LoadScenarios event,
+    Emitter<StrategyState> emit,
+  ) async {
+    if (state.scenariosLoaded && !event.forceRefresh) return;
+    emit(state.copyWith(isScenariosLoading: true, clearError: true));
+    try {
+      final rows = await _repository.getScenarios(quarter: event.quarter);
+      emit(
+        state.copyWith(
+          scenarios: rows,
+          scenariosLoaded: true,
+          isScenariosLoading: false,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isScenariosLoading: false,
+          errorMessage: ErrorKeys.loadFailed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateScenarios(
+    GenerateScenariosRequested event,
+    Emitter<StrategyState> emit,
+  ) async {
+    emit(state.copyWith(isScenariosLoading: true, clearError: true));
+    try {
+      final rows = await _repository.generateScenarios(event.quarter);
+      emit(
+        state.copyWith(
+          scenarios: rows,
+          scenariosLoaded: true,
+          isScenariosLoading: false,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isScenariosLoading: false,
+          errorMessage: ErrorKeys.loadFailed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadSummary(
+    LoadDailySummary event,
+    Emitter<StrategyState> emit,
+  ) async {
+    if (state.summaryLoaded && !event.forceRefresh) return;
+    emit(state.copyWith(isSummaryLoading: true, clearError: true));
+    try {
+      final summary = await _repository.getDailySummary();
+      emit(
+        state.copyWith(
+          dailySummary: summary,
+          summaryLoaded: true,
+          isSummaryLoading: false,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isSummaryLoading: false,
+          errorMessage: ErrorKeys.loadFailed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadNews(
+    LoadNews event,
+    Emitter<StrategyState> emit,
+  ) async {
+    if (state.newsLoaded && !event.forceRefresh) return;
+    emit(state.copyWith(isNewsLoading: true, clearError: true));
+    try {
+      final news = await _repository.getNews();
+      emit(
+        state.copyWith(
+          news: news,
+          newsLoaded: true,
+          isNewsLoading: false,
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isNewsLoading: false,
+          errorMessage: ErrorKeys.loadFailed,
         ),
       );
     }

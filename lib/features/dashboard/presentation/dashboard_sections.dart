@@ -82,7 +82,7 @@ extension _DashboardSectionBuilders on _DashboardViewState {
       ),
       color: colors.surface,
       surfaceTintColor: colors.surface,
-      elevation: 6,
+      elevation: 0,
       itemBuilder: (BuildContext context) {
         return currencies.map((String c) {
           final isCurrent = c == currentCurrency;
@@ -95,7 +95,10 @@ extension _DashboardSectionBuilders on _DashboardViewState {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(flag, style: const TextStyle(fontSize: 18)),
+                Text(
+                  flag,
+                  style: textStyles.bodySans.copyWith(fontSize: 18),
+                ),
                 const SizedBox(width: 10),
                 Text(
                   c,
@@ -298,8 +301,16 @@ extension _DashboardSectionBuilders on _DashboardViewState {
 
     String periodText = '';
     if (points.isNotEmpty) {
-      final startStr = DateFormat('dd.MM').format(points.first.date);
-      final endStr = DateFormat('dd.MM').format(points.last.date);
+      final startStr = formatLocalizedDateTime(
+        context,
+        points.first.date,
+        style: LocalizedDateTimeStyle.date,
+      );
+      final endStr = formatLocalizedDateTime(
+        context,
+        points.last.date,
+        style: LocalizedDateTimeStyle.date,
+      );
       periodText = '$startStr — $endStr';
     }
 
@@ -345,6 +356,7 @@ extension _DashboardSectionBuilders on _DashboardViewState {
                   greenColor: colors.accentGreen,
                   redColor: colors.accentRed,
                   gridColor: colors.border,
+                  surfaceColor: colors.surface,
                   textStyle: textStyles.smallMono.copyWith(
                     color: colors.textTooltip,
                     fontSize: 10,

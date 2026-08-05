@@ -142,6 +142,122 @@ class ApiStrategyRepository
   }
 
   @override
+  Future<List<MacroIndicator>> getMacroIndicators() async {
+    try {
+      final response = await _apiClient.dio.get('/strategy/macro');
+      final list = response.data as List<dynamic>? ?? [];
+      return list.whereType<Map>().map((item) {
+        final map = Map<String, dynamic>.from(item);
+        return MacroIndicator(
+          id: (map['id'] ?? '').toString(),
+          name: map['name']?.toString() ?? '',
+          value: (map['value'] as num?)?.toDouble() ??
+              double.tryParse('${map['value']}') ??
+              0,
+          unit: map['unit']?.toString(),
+          indicatorDate: DateTime.tryParse(
+                map['indicator_date']?.toString() ?? '',
+              ) ??
+              DateTime.now(),
+        );
+      }).toList();
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<List<StrategyScenario>> getScenarios({String? quarter}) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/strategy/scenarios',
+        queryParameters: quarter != null ? {'quarter': quarter} : null,
+      );
+      final list = response.data as List<dynamic>? ?? [];
+      return list.whereType<Map>().map((item) {
+        final map = Map<String, dynamic>.from(item);
+        return StrategyScenario(
+          id: (map['id'] ?? '').toString(),
+          quarter: map['quarter']?.toString() ?? '',
+          title: map['title']?.toString() ?? '',
+          content: map['content']?.toString() ?? '',
+        );
+      }).toList();
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<List<StrategyScenario>> generateScenarios(String quarter) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/strategy/scenarios/generate',
+        data: {'quarter': quarter},
+        options: ApiClient.longRunningOptions(),
+      );
+      final list = response.data as List<dynamic>? ?? [];
+      return list.whereType<Map>().map((item) {
+        final map = Map<String, dynamic>.from(item);
+        return StrategyScenario(
+          id: (map['id'] ?? '').toString(),
+          quarter: map['quarter']?.toString() ?? quarter,
+          title: map['title']?.toString() ?? '',
+          content: map['content']?.toString() ?? '',
+        );
+      }).toList();
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<DailySummary> getDailySummary() async {
+    try {
+      final response = await _apiClient.dio.get('/strategy/daily-summary');
+      final map = response.data as Map<String, dynamic>;
+      return DailySummary(
+        date: map['date']?.toString() ?? '',
+        summary: map['summary']?.toString() ?? '',
+        generatedByAi: map['generated_by_ai'] == true,
+      );
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<List<NewsSource>> getNews() async {
+    try {
+      final response = await _apiClient.dio.get('/strategy/news');
+      final map = response.data as Map<String, dynamic>;
+      final sources = map['sources'] as List<dynamic>? ?? [];
+      return sources.whereType<Map>().map((item) {
+        final s = Map<String, dynamic>.from(item);
+        final items = (s['items'] as List<dynamic>? ?? [])
+            .whereType<Map>()
+            .map((n) {
+              final nm = Map<String, dynamic>.from(n);
+              return NewsItem(
+                title: nm['title']?.toString() ?? '',
+                url: nm['url']?.toString() ?? '',
+                source: nm['source']?.toString() ?? s['name']?.toString() ?? '',
+                published: nm['published']?.toString(),
+              );
+            })
+            .toList();
+        return NewsSource(
+          code: s['code']?.toString() ?? '',
+          name: s['name']?.toString() ?? '',
+          items: items,
+        );
+      }).toList();
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
   void cancelPendingRequests() {
     _whatIfCancelToken?.cancel('Экран закрыт');
     _ideasCancelToken?.cancel('Экран закрыт');

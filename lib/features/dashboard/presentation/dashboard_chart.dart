@@ -6,6 +6,7 @@ class CashFlowChartPainter extends CustomPainter {
   final Color greenColor;
   final Color redColor;
   final Color gridColor;
+  final Color surfaceColor;
   final TextStyle textStyle;
   final String thousandSuffix;
   final Locale locale;
@@ -15,6 +16,7 @@ class CashFlowChartPainter extends CustomPainter {
     required this.greenColor,
     required this.redColor,
     required this.gridColor,
+    required this.surfaceColor,
     required this.textStyle,
     required this.thousandSuffix,
     required this.locale,
@@ -172,7 +174,7 @@ class CashFlowChartPainter extends CustomPainter {
 
     final dotPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.white;
+      ..color = surfaceColor;
 
     // Зеленая точка на пике прихода
     final double maxIncomeX = chartLeft + maxIncomeIndex * stepX;
@@ -203,7 +205,11 @@ class CashFlowChartPainter extends CustomPainter {
       if (i % 5 == 0 || i == len - 1) {
         final p = points[i];
         final x = chartLeft + i * stepX;
-        final dateStr = DateFormat('dd.MM').format(p.date);
+        final dateStr = formatLocalizedDateTimeForLocale(
+          p.date,
+          locale,
+          style: LocalizedDateTimeStyle.date,
+        );
 
         final textPainter = TextPainter(
           text: TextSpan(text: dateStr, style: textStyle),

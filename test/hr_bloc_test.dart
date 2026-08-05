@@ -65,6 +65,132 @@ class MockHrRepository implements HrRepository {
     employees.add(newEmp);
     return newEmp;
   }
+
+  @override
+  Future<List<OrgNode>> getOrgChart({bool forceRefresh = false}) async =>
+      const [];
+
+  @override
+  Future<List<AttendanceRecord>> getAttendance({
+    String? employeeId,
+    String? dateFrom,
+    String? dateTo,
+    bool forceRefresh = false,
+  }) async =>
+      const [];
+
+  @override
+  Future<AttendanceRecord> createAttendance({
+    required String employeeId,
+    required DateTime workDate,
+    required double hours,
+  }) async {
+    return AttendanceRecord(
+      id: '1',
+      employeeId: employeeId,
+      workDate: workDate,
+      hours: hours,
+    );
+  }
+
+  @override
+  Future<void> deleteAttendance(String id) async {}
+
+  @override
+  Future<List<Candidate>> getCandidates({bool forceRefresh = false}) async =>
+      const [];
+
+  @override
+  Future<Candidate> createCandidate({
+    required String fullName,
+    required String vacancy,
+    String? phone,
+    String? email,
+    String stage = 'new',
+    String? note,
+  }) async {
+    return Candidate(
+      id: '1',
+      fullName: fullName,
+      vacancy: vacancy,
+      phone: phone,
+      email: email,
+      stage: stage,
+      note: note,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<Candidate> updateCandidateStage(String id, String stage) async {
+    return Candidate(
+      id: id,
+      fullName: 'Test',
+      vacancy: 'V',
+      stage: stage,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> deleteCandidate(String id) async {}
+
+  @override
+  Future<List<HrEvaluation>> getEvaluations({
+    String? period,
+    bool forceRefresh = false,
+  }) async =>
+      const [];
+
+  @override
+  Future<HrEvaluation> createEvaluation({
+    required String employeeId,
+    required String period,
+    required int performance,
+    required int potential,
+    String? note,
+  }) async {
+    return HrEvaluation(
+      id: '1',
+      employeeId: employeeId,
+      period: period,
+      performance: performance,
+      potential: potential,
+      note: note,
+    );
+  }
+
+  @override
+  Future<List<LaborContract>> getContracts({bool forceRefresh = false}) async =>
+      const [];
+
+  @override
+  Future<LaborContract> createContract({
+    required String employeeId,
+    required String number,
+    required DateTime startDate,
+    DateTime? endDate,
+  }) async {
+    return LaborContract(
+      id: '1',
+      employeeId: employeeId,
+      number: number,
+      startDate: startDate,
+      endDate: endDate,
+      status: 'active',
+    );
+  }
+
+  @override
+  Future<void> deleteContract(String id) async {}
+
+  @override
+  Future<MovementReport> getMovementReport({
+    required String dateFrom,
+    required String dateTo,
+    bool forceRefresh = false,
+  }) async =>
+      const MovementReport();
 }
 
 void main() {

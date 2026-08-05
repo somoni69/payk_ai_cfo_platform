@@ -19,6 +19,10 @@ class CashLoaded extends CashState {
   final List<CashRegister> registers;
   final String query;
   final String filterType;
+  final String paymentMethod;
+  final String registerId;
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
   final String?
   errorMessage; // Для показа временных ошибок на UI (например, при валидации сумм)
 
@@ -31,6 +35,10 @@ class CashLoaded extends CashState {
     this.registers = const [],
     required this.query,
     required this.filterType,
+    this.paymentMethod = 'all',
+    this.registerId = 'all',
+    this.dateFrom,
+    this.dateTo,
     this.errorMessage,
   });
 
@@ -44,6 +52,12 @@ class CashLoaded extends CashState {
     List<CashRegister>? registers,
     String? query,
     String? filterType,
+    String? paymentMethod,
+    String? registerId,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    bool clearDateFrom = false,
+    bool clearDateTo = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -56,6 +70,10 @@ class CashLoaded extends CashState {
       registers: registers ?? this.registers,
       query: query ?? this.query,
       filterType: filterType ?? this.filterType,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      registerId: registerId ?? this.registerId,
+      dateFrom: clearDateFrom ? null : (dateFrom ?? this.dateFrom),
+      dateTo: clearDateTo ? null : (dateTo ?? this.dateTo),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -70,6 +88,10 @@ class CashLoaded extends CashState {
     registers,
     query,
     filterType,
+    paymentMethod,
+    registerId,
+    dateFrom,
+    dateTo,
     errorMessage,
   ];
 }

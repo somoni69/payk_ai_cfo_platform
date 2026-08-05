@@ -78,6 +78,29 @@ class MockWarehouseRepository implements WarehouseRepository {
     movements.add(movement);
     return movement;
   }
+
+  @override
+  Future<WarehouseProduct> updateProduct(WarehouseProduct product) async {
+    if (shouldFail) throw Exception('Update product error');
+    final index = products.indexWhere((p) => p.id == product.id);
+    if (index >= 0) products[index] = product;
+    return product;
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    if (shouldFail) throw Exception('Delete product error');
+    products.removeWhere((p) => p.id == id);
+  }
+
+  @override
+  Future<void> zeroOutProduct(String id) async {
+    if (shouldFail) throw Exception('Zero out error');
+    final index = products.indexWhere((p) => p.id == id);
+    if (index >= 0) {
+      products[index] = products[index].copyWith(stockQty: 0);
+    }
+  }
 }
 
 void main() {

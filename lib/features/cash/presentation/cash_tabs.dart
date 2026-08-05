@@ -24,6 +24,10 @@ extension _CashTabBuilders on _CashViewState {
                     SearchFilterChanged(
                       query: val,
                       filterType: state.filterType,
+                      paymentMethod: _selectedPaymentMethod,
+                      registerId: _selectedRegister,
+                      dateFrom: _dateFrom,
+                      dateTo: _dateTo,
                     ),
                   );
                 },
@@ -46,10 +50,10 @@ extension _CashTabBuilders on _CashViewState {
                       width: 145,
                       child: ExpansibleWidget<String>.selection(
                         cardPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 0,
+                          horizontal: 10,
+                          vertical: 2,
                         ),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                        tilePadding: EdgeInsets.zero,
                         title: Text(
                           _selectedType == 'all'
                               ? language.translate('cash_filter_all_types')
@@ -79,6 +83,10 @@ extension _CashTabBuilders on _CashViewState {
                             SearchFilterChanged(
                               query: state.query,
                               filterType: val,
+                              paymentMethod: _selectedPaymentMethod,
+                              registerId: _selectedRegister,
+                              dateFrom: _dateFrom,
+                              dateTo: _dateTo,
                             ),
                           );
                         },
@@ -91,39 +99,49 @@ extension _CashTabBuilders on _CashViewState {
                       width: 180,
                       child: ExpansibleWidget<String>.selection(
                         cardPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 0,
+                          horizontal: 10,
+                          vertical: 2,
                         ),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                        tilePadding: EdgeInsets.zero,
                         title: Text(
                           _selectedPaymentMethod == 'all'
                               ? language.translate(
                                   'cash_filter_all_payment_methods',
                                 )
-                              : (_selectedPaymentMethod == 'cash'
-                                    ? language.translate('payment_cash')
-                                    : language.translate('payment_card')),
+                              : language.translate(
+                                  'cash_pm_$_selectedPaymentMethod',
+                                ),
                           style: textStyles.captionSans.copyWith(
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        items: const ['all', 'cash', 'card'],
+                        items: [
+                          'all',
+                          ...PaymentMethod.values.map((pm) => pm.name),
+                        ],
                         selectedValue: _selectedPaymentMethod,
                         itemLabelBuilder: (item) {
-                          if (item == 'cash') {
-                            return language.translate('payment_cash');
+                          if (item == 'all') {
+                            return language.translate(
+                              'cash_filter_all_payment_methods',
+                            );
                           }
-                          if (item == 'card') {
-                            return language.translate('payment_card');
-                          }
-                          return language.translate(
-                            'cash_filter_all_payment_methods',
-                          );
+                          return language.translate('cash_pm_$item');
                         },
                         onSelected: (val) {
                           _rebuild(() => _selectedPaymentMethod = val);
+                          context.read<CashBloc>().add(
+                            SearchFilterChanged(
+                              query: state.query,
+                              filterType: _selectedType,
+                              paymentMethod: val,
+                              registerId: _selectedRegister,
+                              dateFrom: _dateFrom,
+                              dateTo: _dateTo,
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -134,10 +152,10 @@ extension _CashTabBuilders on _CashViewState {
                       width: 155,
                       child: ExpansibleWidget<String>.selection(
                         cardPadding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 0,
+                          horizontal: 10,
+                          vertical: 2,
                         ),
-                        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+                        tilePadding: EdgeInsets.zero,
                         title: Text(
                           _selectedRegister == 'all'
                               ? language.translate('cash_filter_all_registers')
@@ -172,9 +190,103 @@ extension _CashTabBuilders on _CashViewState {
                         },
                         onSelected: (val) {
                           _rebuild(() => _selectedRegister = val);
+                          context.read<CashBloc>().add(
+                            SearchFilterChanged(
+                              query: state.query,
+                              filterType: _selectedType,
+                              paymentMethod: _selectedPaymentMethod,
+                              registerId: val,
+                              dateFrom: _dateFrom,
+                              dateTo: _dateTo,
+                            ),
+                          );
                         },
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _dateFrom ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 1)),
+                        );
+                        if (picked == null || !context.mounted) return;
+                        _rebuild(() => _dateFrom = picked);
+                        context.read<CashBloc>().add(
+                          SearchFilterChanged(
+                            query: state.query,
+                            filterType: _selectedType,
+                            paymentMethod: _selectedPaymentMethod,
+                            registerId: _selectedRegister,
+                            dateFrom: _dateFrom,
+                            dateTo: _dateTo,
+                          ),
+                        );
+                      },
+                      icon: const Icon(TablerIcons.calendar, size: 14),
+                      label: Text(
+                        _dateFrom == null
+                            ? language.translate('cash_filter_date_from')
+                            : '${_dateFrom!.day}.${_dateFrom!.month}.${_dateFrom!.year}',
+                        style: textStyles.captionSans,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _dateTo ?? DateTime.now(),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 1)),
+                        );
+                        if (picked == null || !context.mounted) return;
+                        _rebuild(() => _dateTo = picked);
+                        context.read<CashBloc>().add(
+                          SearchFilterChanged(
+                            query: state.query,
+                            filterType: _selectedType,
+                            paymentMethod: _selectedPaymentMethod,
+                            registerId: _selectedRegister,
+                            dateFrom: _dateFrom,
+                            dateTo: _dateTo,
+                          ),
+                        );
+                      },
+                      icon: const Icon(TablerIcons.calendar, size: 14),
+                      label: Text(
+                        _dateTo == null
+                            ? language.translate('cash_filter_date_to')
+                            : '${_dateTo!.day}.${_dateTo!.month}.${_dateTo!.year}',
+                        style: textStyles.captionSans,
+                      ),
+                    ),
+                    if (_dateFrom != null || _dateTo != null) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        onPressed: () {
+                          _rebuild(() {
+                            _dateFrom = null;
+                            _dateTo = null;
+                          });
+                          context.read<CashBloc>().add(
+                            SearchFilterChanged(
+                              query: state.query,
+                              filterType: _selectedType,
+                              paymentMethod: _selectedPaymentMethod,
+                              registerId: _selectedRegister,
+                            ),
+                          );
+                        },
+                        icon: Icon(
+                          TablerIcons.x,
+                          size: 16,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -237,6 +237,11 @@ class _DraggableDealCard extends StatelessWidget {
     final oCcy = localizedDecimalFormat(context);
 
     final card = LedgerCard(
+      onTap: () => showCrmDealForm(
+        context,
+        clients: pickClients,
+        existing: deal,
+      ),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,87 +282,37 @@ class _DraggableDealCard extends StatelessWidget {
               style: textStyles.smallMono.copyWith(color: colors.textTooltip),
             ),
           ],
-          if (canWrite || canDelete) ...[
+          if (canWrite) ...[
             const SizedBox(height: 6),
             Row(
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                if (canWrite) ...[
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: language.translate('crm_stage_prev'),
-                    onPressed: stageIdx <= 0
-                        ? null
-                        : () => context.read<CrmBloc>().add(
-                              MoveDealStageRequested(
-                                dealId: deal.id,
-                                delta: -1,
-                              ),
-                            ),
-                    icon: const Icon(TablerIcons.chevron_left, size: 18),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: language.translate('crm_stage_next'),
-                    onPressed: stageIdx >= kDealStages.length - 1
-                        ? null
-                        : () => context.read<CrmBloc>().add(
-                              MoveDealStageRequested(
-                                dealId: deal.id,
-                                delta: 1,
-                              ),
-                            ),
-                    icon: const Icon(TablerIcons.chevron_right, size: 18),
-                  ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: language.translate('crm_edit_deal'),
-                    onPressed: () => showCrmDealForm(
-                      context,
-                      clients: pickClients,
-                      existing: deal,
-                    ),
-                    icon: const Icon(TablerIcons.edit, size: 18),
-                  ),
-                ],
-                if (canDelete)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    tooltip: language.translate('crm_delete_deal'),
-                    onPressed: () async {
-                      final ok = await showDialog<bool>(
-                        context: context,
-                        builder: (dCtx) => AlertDialog(
-                          title: Text(language.translate('crm_delete_deal')),
-                          content: Text(
-                            language.translate(
-                              'crm_delete_deal_confirm',
-                              params: {'name': deal.title},
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: language.translate('crm_stage_prev'),
+                  onPressed: stageIdx <= 0
+                      ? null
+                      : () => context.read<CrmBloc>().add(
+                            MoveDealStageRequested(
+                              dealId: deal.id,
+                              delta: -1,
                             ),
                           ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(dCtx, false),
-                              child: Text(language.translate('crm_cancel')),
+                  icon: const Icon(TablerIcons.chevron_left, size: 18),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: language.translate('crm_stage_next'),
+                  onPressed: stageIdx >= kDealStages.length - 1
+                      ? null
+                      : () => context.read<CrmBloc>().add(
+                            MoveDealStageRequested(
+                              dealId: deal.id,
+                              delta: 1,
                             ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(dCtx, true),
-                              child: Text(language.translate('crm_confirm')),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (ok == true && context.mounted) {
-                        context
-                            .read<CrmBloc>()
-                            .add(DeleteDealRequested(deal.id));
-                      }
-                    },
-                    icon: Icon(
-                      TablerIcons.trash,
-                      size: 18,
-                      color: colors.accentRed,
-                    ),
-                  ),
+                          ),
+                  icon: const Icon(TablerIcons.chevron_right, size: 18),
+                ),
               ],
             ),
           ],

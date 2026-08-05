@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:intl/intl.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -82,12 +82,20 @@ class _WarehouseViewState extends State<WarehouseView>
                 ? FloatingActionButton.extended(
                     onPressed: () => _showAddProductDialog(context),
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
                     icon: const Icon(TablerIcons.plus),
                     label: Text(
                       localeCubit.translate('warehouse_add_product_btn'),
                       style: textStyles.bodySans.copyWith(
-                        color: Colors.white,
+                        color: colors.surface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -95,12 +103,20 @@ class _WarehouseViewState extends State<WarehouseView>
                 : FloatingActionButton.extended(
                     onPressed: () => _showAddMovementDialog(context),
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
                     icon: const Icon(TablerIcons.arrow_left_right),
                     label: Text(
                       localeCubit.translate('warehouse_movement_btn'),
                       style: textStyles.bodySans.copyWith(
-                        color: Colors.white,
+                        color: colors.surface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -321,42 +337,48 @@ class _WarehouseViewState extends State<WarehouseView>
           }
 
           final product = state.products[index - 1];
+          final auth = context.watch<AuthBloc>().state;
+          final canWrite = auth is AuthAuthenticated &&
+              auth.role.canWrite(AppCapability.warehouse);
           return LedgerCard(
+            onTap: canWrite ? () => _showEditProductSheet(context, product) : null,
             padding: const EdgeInsets.all(14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      localeCubit.translateMessage(product.name),
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        localeCubit.translateMessage(product.name),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (product.sku != null && product.sku!.isNotEmpty)
+                      const SizedBox(height: 4),
+                      if (product.sku != null && product.sku!.isNotEmpty)
+                        Text(
+                          localeCubit.translate(
+                            'warehouse_product_sku',
+                            params: {'sku': product.sku},
+                          ),
+                          style: textStyles.smallSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      const SizedBox(height: 2),
                       Text(
                         localeCubit.translate(
-                          'warehouse_product_sku',
-                          params: {'sku': product.sku},
+                          'warehouse_product_price',
+                          params: {'price': oCcy.format(product.price)},
                         ),
-                        style: textStyles.smallSans.copyWith(
+                        style: textStyles.smallMono.copyWith(
                           color: colors.textSecondary,
                         ),
                       ),
-                    const SizedBox(height: 2),
-                    Text(
-                      localeCubit.translate(
-                        'warehouse_product_price',
-                        params: {'price': oCcy.format(product.price)},
-                      ),
-                      style: textStyles.smallMono.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -369,7 +391,8 @@ class _WarehouseViewState extends State<WarehouseView>
                             context,
                             product.stockQty,
                           ),
-                          'unit': localeCubit.translateMessage(product.unit),
+                          'unit':
+                              localeCubit.translateMessage(product.unit),
                         },
                       ),
                       backgroundColor: product.stockQty > 0
@@ -408,7 +431,6 @@ class _WarehouseViewState extends State<WarehouseView>
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
-    final dtFmt = DateFormat("dd.MM.yyyy HH:mm");
 
     return RefreshIndicator(
       onRefresh: context.read<WarehouseBloc>().reload,
@@ -450,7 +472,11 @@ class _WarehouseViewState extends State<WarehouseView>
                       ),
                     ),
                     Text(
-                      dtFmt.format(m.occurredAt.toLocal()),
+                      formatLocalizedDateTime(
+                        context,
+                        m.occurredAt,
+                        style: LocalizedDateTimeStyle.dateTime,
+                      ),
                       style: textStyles.smallSans.copyWith(
                         color: colors.textTooltip,
                       ),
@@ -644,6 +670,317 @@ class _WarehouseViewState extends State<WarehouseView>
       priceController.dispose();
       stockController.dispose();
     }
+  }
+
+  Future<void> _showEditProductSheet(
+    BuildContext context,
+    WarehouseProduct product,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final authState = context.read<AuthBloc>().state;
+    final canManage = authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.warehouse);
+
+    final nameController = TextEditingController(text: product.name);
+    final skuController = TextEditingController(text: product.sku ?? '');
+    final unitController = TextEditingController(text: product.unit);
+    final priceController = TextEditingController(
+      text: formatLocalizedNumber(context, product.price),
+    );
+
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: language.translate('warehouse_edit_product_title'),
+        builder: (context, setSheetState) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: nameController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_product_name'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: skuController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_sku'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: unitController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_unit'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_price'),
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (canManage) ...[
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final didZeroOut =
+                          await _confirmZeroOut(this.context, product);
+                      if (didZeroOut == true && context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.accentAmber,
+                      side: BorderSide(
+                        color: colors.accentAmber.withValues(alpha: 0.5),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(TablerIcons.circle_off, size: 18),
+                    label: Text(language.translate('warehouse_zero_out')),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final didDelete =
+                          await _confirmDeleteProduct(this.context, product);
+                      if (didDelete == true && context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.accentRed,
+                      side: BorderSide(
+                        color: colors.accentRed.withValues(alpha: 0.5),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(TablerIcons.trash, size: 18),
+                    label: Text(language.translate('common_delete')),
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          return SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                if (name.isEmpty) return;
+                final price =
+                    parseLocalizedNumber(context, priceController.text.trim()) ??
+                        product.price;
+                this.context.read<WarehouseBloc>().add(
+                      UpdateProductRequested(
+                        product.copyWith(
+                          name: name,
+                          sku: skuController.text.trim().isEmpty
+                              ? null
+                              : skuController.text.trim(),
+                          unit: unitController.text.trim().isEmpty
+                              ? product.unit
+                              : unitController.text.trim(),
+                          price: price,
+                        ),
+                      ),
+                    );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(language.translate('common_save')),
+            ),
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+      skuController.dispose();
+      unitController.dispose();
+      priceController.dispose();
+    }
+  }
+
+  Future<bool?> _confirmDeleteProduct(
+    BuildContext context,
+    WarehouseProduct product,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final bloc = context.read<WarehouseBloc>();
+
+    return LedgerBottomSheet.show<bool>(
+      context: context,
+      title: language.translate('warehouse_delete_title'),
+      builder: (ctx, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              language.translate(
+                'warehouse_delete_msg',
+                params: {'name': product.name},
+              ),
+              style: textStyles.bodySans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {
+                  bloc.add(DeleteProductRequested(product.id));
+                  Navigator.pop(ctx, true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accentRed,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  language.translate('common_delete'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: colors.surface,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  language.translate('common_cancel'),
+                  style: textStyles.bodySans,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _confirmZeroOut(
+    BuildContext context,
+    WarehouseProduct product,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final bloc = context.read<WarehouseBloc>();
+
+    return LedgerBottomSheet.show<bool>(
+      context: context,
+      title: language.translate('warehouse_zero_out_title'),
+      builder: (ctx, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              language.translate(
+                'warehouse_zero_out_msg',
+                params: {'name': product.name},
+              ),
+              style: textStyles.bodySans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {
+                  bloc.add(ZeroOutProductRequested(product.id));
+                  Navigator.pop(ctx, true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accentAmber,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  language.translate('warehouse_zero_out'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: colors.surface,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  language.translate('common_cancel'),
+                  style: textStyles.bodySans,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildMovementTypeButton(

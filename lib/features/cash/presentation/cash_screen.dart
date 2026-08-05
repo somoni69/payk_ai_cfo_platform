@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/localization/language_cubit.dart';
@@ -56,6 +60,9 @@ class _CashViewState extends State<CashView>
   String _selectedType = 'all';
   String _selectedPaymentMethod = 'all';
   String _selectedRegister = 'all';
+  DateTime? _dateFrom;
+  DateTime? _dateTo;
+  bool _exporting = false;
 
   @override
   void initState() {
@@ -86,6 +93,114 @@ class _CashViewState extends State<CashView>
 
   void _rebuild([VoidCallback? fn]) => setState(fn ?? () {});
 
+  CashOperationFilters _exportFilters() {
+    final registerId = int.tryParse(_selectedRegister);
+    return CashOperationFilters(
+      registerId: _selectedRegister == 'all' ? null : registerId,
+      type: _selectedType == 'all' ? null : _selectedType,
+      dateFrom: _dateFrom,
+      dateTo: _dateTo,
+    );
+  }
+
+  Future<void> _exportCash(String format) async {
+    if (_exporting) return;
+    final language = context.read<LanguageCubit>();
+    final repo = context.read<CashRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _exporting = true);
+    try {
+      final bytes = await repo.exportOperations(
+        format: format,
+        filters: _exportFilters(),
+      );
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/cash_operations.$format');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            language.translate(
+              format == 'pdf' ? 'cash_export_pdf_ok' : 'cash_export_excel_ok',
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translateMessage(e.toString()))),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Future<void> _importCash() async {
+    final language = context.read<LanguageCubit>();
+    final repo = context.read<CashRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    final cashBloc = context.read<CashBloc>();
+    final registers = cashBloc.state is CashLoaded
+        ? (cashBloc.state as CashLoaded).registers
+        : const <CashRegister>[];
+    final registerId =
+        int.tryParse(
+          _selectedRegister == 'all'
+              ? (registers.isNotEmpty ? registers.first.id : '')
+              : _selectedRegister,
+        ) ??
+        0;
+    if (registerId <= 0) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(language.translate('cash_import_need_register')),
+        ),
+      );
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx', 'xls', 'csv'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translate('cash_import_empty_file'))),
+      );
+      return;
+    }
+
+    try {
+      final imported = await repo.importOperations(
+        registerId: registerId,
+        filename: file.name,
+        bytes: bytes,
+      );
+      if (!mounted) return;
+      cashBloc.add(LoadCashData());
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            language.translate('cash_import_ok', params: {'count': imported}),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translateMessage(e.toString()))),
+      );
+    }
+  }
+
   void _showReportDownloadBottomSheet(BuildContext context) {
     final language = context.read<LanguageCubit>();
     final colors = context.colors;
@@ -112,16 +227,12 @@ class _CashViewState extends State<CashView>
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              language.translate('cash_export_excel_ok'),
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: _exporting
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _exportCash('xlsx');
+                            },
                       icon: Icon(
                         TablerIcons.file_spreadsheet,
                         color: colors.accentGreen,
@@ -136,16 +247,12 @@ class _CashViewState extends State<CashView>
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              language.translate('cash_export_pdf_ok'),
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: _exporting
+                          ? null
+                          : () {
+                              Navigator.pop(context);
+                              _exportCash('pdf');
+                            },
                       icon: Icon(
                         TablerIcons.file_text,
                         color: colors.accentRed,
@@ -162,13 +269,7 @@ class _CashViewState extends State<CashView>
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              language.translate('cash_import_started'),
-                            ),
-                          ),
-                        );
+                        _importCash();
                       },
                       icon: Icon(
                         TablerIcons.upload,
@@ -291,12 +392,20 @@ class _CashViewState extends State<CashView>
                       state.registers,
                     ),
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
                     icon: const Icon(TablerIcons.plus),
                     label: Text(
                       language.translate('cash_new_operation_btn'),
                       style: textStyles.bodySans.copyWith(
-                        color: Colors.white,
+                        color: colors.surface,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -308,12 +417,20 @@ class _CashViewState extends State<CashView>
                             state.registers,
                           ),
                           backgroundColor: colors.brand,
-                          foregroundColor: Colors.white,
+                          foregroundColor: colors.surface,
+                          elevation: 0,
+                          highlightElevation: 0,
+                          focusElevation: 0,
+                          hoverElevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(color: colors.brand),
+                          ),
                           icon: const Icon(TablerIcons.plus),
                           label: Text(
                             language.translate('cash_open_shift_btn'),
                             style: textStyles.bodySans.copyWith(
-                              color: Colors.white,
+                              color: colors.surface,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

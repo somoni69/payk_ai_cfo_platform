@@ -41,10 +41,11 @@ class ApiBranchesRepository implements BranchesRepository {
   @override
   Future<List<Branch>> getBranches() async {
     try {
-      final response = await _client.dio.get('/api/v1/branches');
+      final response = await _client.dio.get('/branches');
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
-            .map((e) => Branch.fromJson(e as Map<String, dynamic>))
+            .whereType<Map>()
+            .map((e) => Branch.fromJson(Map<String, dynamic>.from(e)))
             .toList();
       }
     } catch (_) {}
@@ -68,8 +69,8 @@ class ApiBranchesRepository implements BranchesRepository {
     );
     try {
       final response = await _client.dio.post(
-        '/api/v1/branches',
-        data: newBranch.toJson(),
+        '/branches',
+        data: {'name': name, 'address': address, 'phone': phone},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Branch.fromJson(response.data as Map<String, dynamic>);
@@ -101,9 +102,14 @@ class ApiBranchesRepository implements BranchesRepository {
       employeesCount: existing?.employeesCount ?? 1,
     );
     try {
-      final response = await _client.dio.put(
-        '/api/v1/branches/$id',
-        data: updated.toJson(),
+      final response = await _client.dio.patch(
+        '/branches/$id',
+        data: {
+          'name': name,
+          'address': address,
+          'phone': phone,
+          'is_active': isActive,
+        },
       );
       if (response.statusCode == 200) {
         return Branch.fromJson(response.data as Map<String, dynamic>);
@@ -119,7 +125,7 @@ class ApiBranchesRepository implements BranchesRepository {
   @override
   Future<void> deleteBranch(String id) async {
     try {
-      await _client.dio.delete('/api/v1/branches/$id');
+      await _client.dio.delete('/branches/$id');
     } catch (_) {}
     _mockBranches.removeWhere((b) => b.id == id);
   }

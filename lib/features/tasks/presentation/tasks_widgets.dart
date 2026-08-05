@@ -326,16 +326,54 @@ String _taskCountLabel(LanguageCubit language, int count) {
   return language.translatePlural('tasks_count', count);
 }
 
-class _LazyTaskTab extends StatelessWidget {
+/// Builds a tab lazily on first activation, then keeps it mounted (offstage)
+/// so NestedScrollView/tab transitions do not tear down InheritedWidgets mid-frame.
+class _LazyTaskTab extends StatefulWidget {
   final bool isActive;
   final WidgetBuilder builder;
 
   const _LazyTaskTab({required this.isActive, required this.builder});
 
   @override
+  State<_LazyTaskTab> createState() => _LazyTaskTabState();
+}
+
+class _LazyTaskTabState extends State<_LazyTaskTab>
+    with AutomaticKeepAliveClientMixin {
+  bool _hasBeenActive = false;
+
+  @override
+  bool get wantKeepAlive => _hasBeenActive;
+
+  @override
+  void didUpdateWidget(covariant _LazyTaskTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !_hasBeenActive) {
+      _hasBeenActive = true;
+      updateKeepAlive();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _hasBeenActive = widget.isActive;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!isActive) return const SizedBox.expand();
-    return builder(context);
+    super.build(context);
+    if (!_hasBeenActive && !widget.isActive) {
+      return const SizedBox.expand();
+    }
+    _hasBeenActive = true;
+    return TickerMode(
+      enabled: widget.isActive,
+      child: Offstage(
+        offstage: !widget.isActive,
+        child: widget.builder(context),
+      ),
+    );
   }
 }
 
@@ -405,12 +443,14 @@ class _GanttTaskTab extends StatelessWidget {
     final timelineWidth = columnCount * _dayColumnWidth;
     final chartWidth = _taskColumnWidth + timelineWidth;
     final monthNames = _ganttMonthShortNames(language);
-    final dueDateFormatter = DateFormat('dd.MM');
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportWidth = constraints.maxWidth;
         final contentWidth = math.max(viewportWidth, chartWidth + 32);
+        final rangeLabel =
+            '${formatLocalizedDateTime(context, timelineStart, style: LocalizedDateTimeStyle.date)} – '
+            '${formatLocalizedDateTime(context, timelineEnd, style: LocalizedDateTimeStyle.date)}';
 
         return SingleChildScrollView(
           key: const PageStorageKey<String>('tasks-gantt-horizontal'),
@@ -442,8 +482,7 @@ class _GanttTaskTab extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '${DateFormat('dd.MM.yyyy').format(timelineStart)} - '
-                            '${DateFormat('dd.MM.yyyy').format(timelineEnd)}',
+                            rangeLabel,
                             style: textStyles.smallMono.copyWith(
                               color: colors.textTooltip,
                             ),
@@ -583,7 +622,8 @@ class _GanttTaskTab extends StatelessWidget {
                                   fontSize: 9,
                                   fontWeight: FontWeight.w500,
                                 ),
-                                dueDateLabel: dueDateFormatter.format(
+                                dueDateLabel: _formatLocalizedCompactDate(
+                                  language,
                                   task.dueDate,
                                 ),
                               ),

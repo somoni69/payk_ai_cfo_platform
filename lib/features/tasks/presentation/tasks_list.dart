@@ -139,7 +139,7 @@ extension _TasksListBuilders on _TasksViewState {
     return RefreshIndicator(
       onRefresh: () => _refreshTasks(context),
       child: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         itemCount: tasks.length + 1,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {

@@ -3,16 +3,21 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../features/auth/bloc/auth_bloc.dart';
+import '../../../features/auth/bloc/auth_state.dart';
+import '../../../features/auth/domain/app_access.dart';
 import '../../../features/dashboard/bloc/dashboard_bloc.dart';
 import '../../../features/dashboard/bloc/dashboard_event.dart';
 import '../../../features/dashboard/bloc/dashboard_state.dart';
 import '../../../features/dashboard/domain/finance_repository.dart';
 import '../../../features/dashboard/domain/finance_model.dart';
+import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_ai_card.dart';
+import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
@@ -22,6 +27,7 @@ part 'dashboard_tab_plan_fact.dart';
 part 'dashboard_tab_break_even.dart';
 part 'dashboard_tab_abc.dart';
 part 'dashboard_tab_accounts.dart';
+part 'dashboard_tab_clients.dart';
 part 'dashboard_tab_ai.dart';
 part 'dashboard_chart.dart';
 
@@ -55,14 +61,16 @@ class _DashboardViewState extends State<DashboardView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 7, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
     _tabController.addListener(_handleTabChange);
   }
 
   void _handleTabChange() {
     final nextIndex = _tabController.index;
     if (!mounted || nextIndex == _activeTabIndex) return;
-    _activeTabIndex = nextIndex;
+    setState(() {
+      _activeTabIndex = nextIndex;
+    });
     final section = _sectionForTab(nextIndex);
     if (section != null) {
       context.read<DashboardBloc>().add(LoadDashboardSection(section));
@@ -76,7 +84,8 @@ class _DashboardViewState extends State<DashboardView>
       3 => DashboardSection.breakEven,
       4 => DashboardSection.abc,
       5 => DashboardSection.accountsRates,
-      6 => DashboardSection.aiInsights,
+      6 => DashboardSection.clients,
+      7 => DashboardSection.aiInsights,
       _ => null,
     };
   }
@@ -185,7 +194,38 @@ class _DashboardViewState extends State<DashboardView>
           final m = state.metrics;
           final currency = state.currency;
 
+          final authState = context.watch<AuthBloc>().state;
+          final canWrite = authState is AuthAuthenticated &&
+              authState.role.canWrite(AppCapability.dashboard);
+
           return Scaffold(
+            floatingActionButton: (_activeTabIndex == 2 && canWrite)
+                ? FloatingActionButton.extended(
+                    onPressed: () {
+                      final period =
+                          state.planFact?.period ?? _defaultPlanPeriod();
+                      _showCreatePlanSheet(context, period);
+                    },
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
+                    icon: const Icon(TablerIcons.plus),
+                    label: Text(
+                      languageCubit.translate('dashboard_plan_add'),
+                      style: textStyles.bodySans.copyWith(
+                        color: colors.surface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  )
+                : null,
             body: NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
@@ -252,6 +292,11 @@ class _DashboardViewState extends State<DashboardView>
                         Tab(
                           text: languageCubit.translate(
                             'dashboard_tab_accounts_rates',
+                          ),
+                        ),
+                        Tab(
+                          text: languageCubit.translate(
+                            'dashboard_tab_clients',
                           ),
                         ),
                         Tab(
@@ -354,6 +399,12 @@ class _DashboardViewState extends State<DashboardView>
                         currency,
                       );
                     },
+                  ),
+                  _buildLazyDashboardSection<ClientAnalysisReport>(
+                    section: DashboardSection.clients,
+                    select: (loaded) => loaded.clients,
+                    contentBuilder: (context, data, currency) =>
+                        _buildClientsTab(context, data),
                   ),
                   _buildLazyDashboardSection<AiInsightsReport>(
                     section: DashboardSection.aiInsights,

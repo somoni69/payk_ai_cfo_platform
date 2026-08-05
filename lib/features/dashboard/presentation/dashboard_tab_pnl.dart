@@ -69,7 +69,7 @@ extension _DashboardPnlTab on _DashboardViewState {
                     ),
                   ),
                 ),
-                const Divider(),
+                if (rows.isNotEmpty) const Divider(),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Row(

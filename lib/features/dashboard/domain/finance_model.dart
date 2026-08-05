@@ -229,3 +229,57 @@ class PlanFactReport {
     required this.totalFact,
   });
 }
+
+class PlanItem {
+  final int id;
+  final String period;
+  final String category;
+  final String type; // income | expense
+  final double plannedAmount;
+
+  const PlanItem({
+    required this.id,
+    required this.period,
+    required this.category,
+    required this.type,
+    required this.plannedAmount,
+  });
+}
+
+class ClientAnalysisRow {
+  final String name;
+  final int purchases;
+  final double total;
+  final DateTime? lastPurchase;
+  final int? daysSince;
+
+  const ClientAnalysisRow({
+    required this.name,
+    required this.purchases,
+    required this.total,
+    this.lastPurchase,
+    this.daysSince,
+  });
+}
+
+class ClientAnalysisReport {
+  final List<ClientAnalysisRow> frequent;
+  final List<ClientAnalysisRow> dormant;
+
+  const ClientAnalysisReport({
+    this.frequent = const [],
+    this.dormant = const [],
+  });
+}
+
+class ConvertResult {
+  final String base;
+  final double amount;
+  final Map<String, double> values;
+
+  const ConvertResult({
+    required this.base,
+    required this.amount,
+    required this.values,
+  });
+}
