@@ -11,6 +11,7 @@ class PaykLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
 
     return Image.asset(
       'assets/images/payk_logo_transparent.png',
@@ -27,20 +28,19 @@ class PaykLogo extends StatelessWidget {
                 color: colors.brand,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text(
+              child: Text(
                 'P',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.surface,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
             const SizedBox(width: 8),
             Text(
               'PAYK',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w500,
                 fontSize: height * 0.65,
                 color: colors.brand,
                 letterSpacing: 1.0,

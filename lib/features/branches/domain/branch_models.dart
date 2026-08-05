@@ -21,10 +21,10 @@ class Branch extends Equatable {
 
   factory Branch.fromJson(Map<String, dynamic> json) {
     return Branch(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      address: json['address'] as String? ?? '',
-      phone: json['phone'] as String? ?? '',
+      id: (json['id'] ?? '').toString(),
+      name: json['name']?.toString() ?? '',
+      address: json['address']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
       isActive: json['is_active'] as bool? ?? true,
       registersCount: (json['registers_count'] as num?)?.toInt() ?? 0,
       employeesCount: (json['employees_count'] as num?)?.toInt() ?? 0,

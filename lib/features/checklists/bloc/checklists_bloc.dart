@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../domain/checklist_models.dart';
 import '../domain/checklists_repository.dart';
 import 'checklists_event.dart';
 import 'checklists_state.dart';
@@ -8,10 +9,11 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
 
   ChecklistsBloc(this._repository) : super(ChecklistsInitial()) {
     on<LoadChecklists>(_onLoadChecklists);
-    on<CreateChecklistRunRequested>(_onCreateChecklistRunRequested);
     on<ToggleEntryRequested>(_onToggleEntryRequested);
     on<AddEntryRequested>(_onAddEntryRequested);
     on<DeleteEntryRequested>(_onDeleteEntryRequested);
+    on<CreateTemplateRequested>(_onCreateTemplate);
+    on<DeleteTemplateRequested>(_onDeleteTemplate);
   }
 
   Future<void> _onLoadChecklists(
@@ -22,29 +24,35 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
       emit(ChecklistsLoading());
     }
     try {
-      final runs = await _repository.getTodayRuns();
-      emit(ChecklistsLoaded(todayRuns: runs));
+      final results = await Future.wait([
+        _repository.getTodayRuns(),
+        _repository.getTemplates(),
+        _repository.getSummary(),
+      ]);
+      emit(
+        ChecklistsLoaded(
+          todayRuns: results[0] as List<ChecklistRun>,
+          templates: results[1] as List<ChecklistTemplate>,
+          summary: results[2] as List<ChecklistSummaryRow>,
+        ),
+      );
     } catch (e) {
       emit(ChecklistsError(e.toString()));
     }
   }
 
-  Future<void> _onCreateChecklistRunRequested(
-    CreateChecklistRunRequested event,
-    Emitter<ChecklistsState> emit,
-  ) async {
-    try {
-      await _repository.createRun(
-        title: event.title,
-        branchName: event.branchName,
-        responsiblePerson: event.responsiblePerson,
-        items: event.items,
-      );
-      final runs = await _repository.getTodayRuns();
-      emit(ChecklistsLoaded(todayRuns: runs));
-    } catch (e) {
-      emit(ChecklistsError(e.toString()));
-    }
+  Future<void> _reload(Emitter<ChecklistsState> emit, {String? msg}) async {
+    final runs = await _repository.getTodayRuns();
+    final templates = await _repository.getTemplates();
+    final summary = await _repository.getSummary();
+    emit(
+      ChecklistsLoaded(
+        todayRuns: runs,
+        templates: templates,
+        summary: summary,
+        actionMessage: msg,
+      ),
+    );
   }
 
   Future<void> _onToggleEntryRequested(
@@ -57,8 +65,7 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
         entryId: event.entryId,
         isDone: event.isDone,
       );
-      final runs = await _repository.getTodayRuns();
-      emit(ChecklistsLoaded(todayRuns: runs));
+      await _reload(emit);
     } catch (e) {
       emit(ChecklistsError(e.toString()));
     }
@@ -70,8 +77,7 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
   ) async {
     try {
       await _repository.addRunEntry(runId: event.runId, text: event.text);
-      final runs = await _repository.getTodayRuns();
-      emit(ChecklistsLoaded(todayRuns: runs));
+      await _reload(emit);
     } catch (e) {
       emit(ChecklistsError(e.toString()));
     }
@@ -86,8 +92,36 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
         runId: event.runId,
         entryId: event.entryId,
       );
-      final runs = await _repository.getTodayRuns();
-      emit(ChecklistsLoaded(todayRuns: runs));
+      await _reload(emit);
+    } catch (e) {
+      emit(ChecklistsError(e.toString()));
+    }
+  }
+
+  Future<void> _onCreateTemplate(
+    CreateTemplateRequested event,
+    Emitter<ChecklistsState> emit,
+  ) async {
+    try {
+      await _repository.createTemplate(
+        name: event.name,
+        description: event.description,
+        regulationText: event.regulationText,
+        items: event.items,
+      );
+      await _reload(emit, msg: 'checklists_toast_template_created');
+    } catch (e) {
+      emit(ChecklistsError(e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteTemplate(
+    DeleteTemplateRequested event,
+    Emitter<ChecklistsState> emit,
+  ) async {
+    try {
+      await _repository.deleteTemplate(event.id);
+      await _reload(emit, msg: 'checklists_toast_template_deleted');
     } catch (e) {
       emit(ChecklistsError(e.toString()));
     }

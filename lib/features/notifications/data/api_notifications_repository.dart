@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 import 'package:flutter/material.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
@@ -151,7 +152,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
       notifications.sort((a, b) => b.dateTime.compareTo(a.dateTime));
       return notifications;
     } catch (e) {
-      throw Exception('Не удалось загрузить аудит: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -194,9 +195,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
         );
       }
     } catch (e) {
-      throw Exception(
-        'Не удалось обновить статус уведомления: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

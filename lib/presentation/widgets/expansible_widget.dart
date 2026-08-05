@@ -83,12 +83,23 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
       return;
     }
 
+    // Collapse after animation; never touch setState if the sheet/route is gone.
     Future<void>.delayed(kThemeAnimationDuration, () {
       if (!mounted || generation != _expansionGeneration || !_showChildren) {
         return;
       }
+      if (!context.mounted) return;
       setState(() => _showChildren = false);
     });
+  }
+
+  @override
+  void dispose() {
+    _expansionGeneration++; // cancel pending collapse callbacks
+    if (widget.controller == null) {
+      _controller.dispose();
+    }
+    super.dispose();
   }
 
   void _handleOptionSelected(T item) {
@@ -116,7 +127,10 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
             height: 1,
             thickness: 1,
           ),
-        children[index],
+        Padding(
+          padding: widget.tilePadding,
+          child: children[index],
+        ),
       ],
     ];
   }
@@ -143,6 +157,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
         itemLabelBuilder: itemLabelBuilder,
         onSelected: _handleOptionSelected,
         searchable: items.length > _selectionSearchThreshold,
+        tilePadding: widget.tilePadding,
       ),
     ];
   }
@@ -172,7 +187,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
           tilePadding: widget.tilePadding,
           title: DefaultTextStyle.merge(
             style: textStyles.bodySans.copyWith(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w500,
               color: colors.textPrimary,
             ),
             child: widget.title,
@@ -193,6 +208,7 @@ class _SelectionOptions<T> extends StatefulWidget {
   final String Function(T) itemLabelBuilder;
   final ValueChanged<T> onSelected;
   final bool searchable;
+  final EdgeInsetsGeometry tilePadding;
 
   const _SelectionOptions({
     required this.items,
@@ -200,6 +216,7 @@ class _SelectionOptions<T> extends StatefulWidget {
     required this.itemLabelBuilder,
     required this.onSelected,
     required this.searchable,
+    required this.tilePadding,
   });
 
   @override
@@ -243,10 +260,14 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
 
     if (!widget.searchable) return list;
 
+    final padding = widget.tilePadding is EdgeInsets
+        ? (widget.tilePadding as EdgeInsets)
+        : EdgeInsets.zero;
+
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
+          padding: EdgeInsets.fromLTRB(padding.left, 8, padding.right, 6),
           child: TextField(
             style: context.textStyles.bodySans,
             decoration: InputDecoration(
@@ -274,7 +295,7 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
 
     return ListTile(
       dense: true,
-      contentPadding: EdgeInsets.zero,
+      contentPadding: widget.tilePadding,
       splashColor: Colors.transparent,
       focusColor: Colors.transparent,
       hoverColor: Colors.transparent,
@@ -284,7 +305,7 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
         widget.itemLabelBuilder(item),
         style: textStyles.bodySans.copyWith(
           color: isSelected ? colors.brand : colors.textPrimary,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
         ),
       ),
       trailing: isSelected

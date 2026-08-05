@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -6,8 +8,6 @@ import '../../core/theme/theme_extensions.dart';
 import 'bottom_action_wrapper.dart';
 
 /// Единый переиспользуемый компонент для плавающего модального окна (Bottom Sheet).
-/// Отображает контент в виде парящей карточки со скругленными углами,
-/// границами и отступами со всех сторон (left, right, bottom) согласно ТЗ.
 class LedgerBottomSheet extends StatelessWidget {
   final String title;
   final Widget child;
@@ -22,7 +22,11 @@ class LedgerBottomSheet extends StatelessWidget {
     this.footer,
   });
 
-  /// Статический метод для удобного открытия модального окна
+  /// Opens a modal bottom sheet.
+  ///
+  /// [isDirty]: when provided, Android-back / blocked pops ask for discard.
+  /// Swipe-to-dismiss is handled by first dropping the [PopScope] guard, then
+  /// popping on the next frame — avoids `_dependents.isEmpty` crashes.
   static Future<T?> show<T>({
     required BuildContext context,
     required String title,
@@ -30,6 +34,7 @@ class LedgerBottomSheet extends StatelessWidget {
     builder,
     Widget Function(BuildContext context, StateSetter setSheetState)?
     footerBuilder,
+    bool Function()? isDirty,
     bool isDismissible = true,
     bool enableDrag = true,
   }) {
@@ -37,41 +42,17 @@ class LedgerBottomSheet extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
-            final mediaQuery = MediaQuery.of(context);
-            final screenHeight = mediaQuery.size.height;
-            final keyboardHeight = mediaQuery.viewInsets.bottom;
-            final topSafeArea = mediaQuery.padding.top;
-
-            // Вычисляем доступную высоту над клавиатурой с запасом под челку
-            final availableHeight =
-                screenHeight -
-                keyboardHeight -
-                (topSafeArea > 0 ? topSafeArea : 24) -
-                48;
-            final maxAvailableHeight = availableHeight * 0.92;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: keyboardHeight + 16,
-                left: 16,
-                right: 16,
-                top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
-              ),
-              child: LedgerBottomSheet(
-                title: title,
-                maxHeight: maxAvailableHeight,
-                footer: footerBuilder?.call(context, setSheetState),
-                child: builder(context, setSheetState),
-              ),
-            );
-          },
+      builder: (sheetContext) {
+        return _LedgerSheetHost<T>(
+          title: title,
+          builder: builder,
+          footerBuilder: footerBuilder,
+          isDirty: isDirty,
         );
       },
     );
@@ -89,21 +70,14 @@ class LedgerBottomSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: colors.surface,
           borderRadius: BorderRadius.circular(24),
+          // Ledger: borders over shadows (design_language.md)
           border: Border.all(color: colors.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 12),
-            // Индикатор перетаскивания (Handle)
             Center(
               child: Container(
                 width: 32,
@@ -119,7 +93,7 @@ class LedgerBottomSheet extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
                 title,
-                style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.bold),
+                style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -149,7 +123,6 @@ class LedgerBottomSheet extends StatelessWidget {
     );
   }
 
-  /// Диалог подтверждения выхода без сохранения изменений (согласно дизайну)
   static Future<bool?> confirmDiscard(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -186,7 +159,7 @@ class LedgerBottomSheet extends StatelessWidget {
               Text(
                 language.translate('discard_title'),
                 style: textStyles.h2Sans.copyWith(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w500,
                   fontSize: 20,
                 ),
                 textAlign: TextAlign.center,
@@ -208,7 +181,7 @@ class LedgerBottomSheet extends StatelessWidget {
                   onPressed: () => Navigator.pop(context, false),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colors.surface,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -218,8 +191,8 @@ class LedgerBottomSheet extends StatelessWidget {
                   child: Text(
                     language.translate('discard_continue'),
                     style: textStyles.bodySans.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
@@ -245,6 +218,119 @@ class LedgerBottomSheet extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Host that owns sheet state + safe pop pipeline.
+class _LedgerSheetHost<T> extends StatefulWidget {
+  const _LedgerSheetHost({
+    required this.title,
+    required this.builder,
+    this.footerBuilder,
+    this.isDirty,
+  });
+
+  final String title;
+  final Widget Function(BuildContext context, StateSetter setSheetState) builder;
+  final Widget Function(BuildContext context, StateSetter setSheetState)?
+      footerBuilder;
+  final bool Function()? isDirty;
+
+  @override
+  State<_LedgerSheetHost<T>> createState() => _LedgerSheetHostState<T>();
+}
+
+class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
+  bool _isDiscarding = false;
+  bool _busy = false;
+
+  bool get _dirty => widget.isDirty?.call() ?? false;
+
+  Future<void> _handlePopInvoked(bool didPop, Object? result) async {
+    // If route already popped cleanly, do nothing.
+    if (didPop || _isDiscarding || _busy || !mounted) return;
+
+    // Only intercept if there are unsaved changes.
+    if (_dirty) {
+      _busy = true;
+      try {
+        final shouldClose = await LedgerBottomSheet.confirmDiscard(context);
+        if (shouldClose == true && mounted) {
+          _isDiscarding = true;
+          Navigator.of(context).pop();
+        }
+      } finally {
+        _busy = false;
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final viewInsets = MediaQuery.viewInsetsOf(context);
+    final padding = MediaQuery.paddingOf(context);
+
+    final keyboardHeight = viewInsets.bottom;
+    final topSafeArea = padding.top;
+
+    final availableHeight = screenSize.height -
+        keyboardHeight -
+        (topSafeArea > 0 ? topSafeArea : 24) -
+        48;
+    final maxAvailableHeight = availableHeight * 0.92;
+
+    final childWidget = Padding(
+      padding: EdgeInsets.only(
+        bottom: keyboardHeight + 16,
+        left: 16,
+        right: 16,
+        top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
+      ),
+      child: _LedgerSheetContentHost(
+        title: widget.title,
+        maxHeight: maxAvailableHeight,
+        builder: widget.builder,
+        footerBuilder: widget.footerBuilder,
+      ),
+    );
+
+    return PopScope(
+      canPop: !_dirty || _isDiscarding,
+      onPopInvokedWithResult: _handlePopInvoked,
+      child: childWidget,
+    );
+  }
+}
+
+class _LedgerSheetContentHost extends StatefulWidget {
+  final String title;
+  final double maxHeight;
+  final Widget Function(BuildContext context, StateSetter setSheetState) builder;
+  final Widget Function(BuildContext context, StateSetter setSheetState)?
+      footerBuilder;
+
+  const _LedgerSheetContentHost({
+    required this.title,
+    required this.maxHeight,
+    required this.builder,
+    this.footerBuilder,
+  });
+
+  @override
+  State<_LedgerSheetContentHost> createState() =>
+      _LedgerSheetContentHostState();
+}
+
+class _LedgerSheetContentHostState extends State<_LedgerSheetContentHost> {
+  @override
+  Widget build(BuildContext context) {
+    return LedgerBottomSheet(
+      title: widget.title,
+      maxHeight: widget.maxHeight,
+      footer: widget.footerBuilder?.call(context, setState),
+      child: widget.builder(context, setState),
     );
   }
 }

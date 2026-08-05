@@ -24,6 +24,9 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     on<LoadWarehouseData>(_onLoadWarehouseData);
     on<CreateProductRequested>(_onCreateProductRequested);
     on<CreateMovementRequested>(_onCreateMovementRequested);
+    on<UpdateProductRequested>(_onUpdateProductRequested);
+    on<DeleteProductRequested>(_onDeleteProductRequested);
+    on<ZeroOutProductRequested>(_onZeroOutProductRequested);
   }
 
   Future<void> reload() {
@@ -191,6 +194,67 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
           errorMessage: 'Не удалось провести операцию. Повторите попытку.',
         ),
       );
+    }
+  }
+
+  Future<void> _onUpdateProductRequested(
+    UpdateProductRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      final updated = await _repository.updateProduct(event.product);
+      _cachedProducts = _cachedProducts
+          .map((p) => p.id == updated.id ? updated : p)
+          .toList();
+      _cachedSummary = await _repository.getSummary();
+      _emitLoaded(emit, successMessage: 'warehouse_toast_product_updated');
+    } catch (e) {
+      if (state is WarehouseLoaded) {
+        emit(
+          (state as WarehouseLoaded).copyWith(errorMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onDeleteProductRequested(
+    DeleteProductRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      await _repository.deleteProduct(event.id);
+      _cachedProducts = _cachedProducts.where((p) => p.id != event.id).toList();
+      _cachedSummary = await _repository.getSummary();
+      _emitLoaded(emit, successMessage: 'warehouse_toast_product_deleted');
+    } catch (e) {
+      if (state is WarehouseLoaded) {
+        emit(
+          (state as WarehouseLoaded).copyWith(errorMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onZeroOutProductRequested(
+    ZeroOutProductRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      await _repository.zeroOutProduct(event.id);
+      _cachedProducts = _cachedProducts
+          .map((p) => p.id == event.id ? p.copyWith(stockQty: 0) : p)
+          .toList();
+      _cachedSummary = await _repository.getSummary();
+      _emitLoaded(emit, successMessage: 'warehouse_toast_product_zeroed');
+    } catch (e) {
+      if (state is WarehouseLoaded) {
+        emit(
+          (state as WarehouseLoaded).copyWith(errorMessage: e.toString()),
+        );
+      }
     }
   }
 

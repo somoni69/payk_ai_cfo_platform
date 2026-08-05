@@ -2,6 +2,7 @@ import '../../../core/network/api_client.dart';
 import '../domain/audit_models.dart';
 import '../domain/audit_repository.dart';
 
+/// Audit repository. Offline fallbacks use localization keys (not raw RU).
 class ApiAuditRepository implements AuditRepository {
   final ApiClient _client;
 
@@ -11,42 +12,42 @@ class ApiAuditRepository implements AuditRepository {
     AuditLog(
       id: 'log-1',
       timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      userName: 'Алишер Рахимов',
-      action: 'Создание инкассации',
+      userName: 'mock_user_alisher',
+      action: 'mock_action_encashment_create',
       entityType: 'Encashment',
-      details: 'Сумма 25,000 TJS в Ориёнбанк',
+      details: 'mock_detail_encashment_oriyon',
     ),
     AuditLog(
       id: 'log-2',
       timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      userName: 'Зарина Шарипова',
-      action: 'Закрытие смены',
+      userName: 'mock_user_zarina',
+      action: 'mock_action_shift_close',
       entityType: 'Shift',
-      details: 'Z-отчет #402 выведен без расхождений',
+      details: 'mock_detail_z_report',
     ),
     AuditLog(
       id: 'log-3',
       timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-      userName: 'Парвиз Назаров',
-      action: 'Изменение роли пользователя',
+      userName: 'mock_user_parviz',
+      action: 'mock_action_role_change',
       entityType: 'UserRole',
-      details: 'Пользователь cashier_2 переведен в роль Кассир',
+      details: 'mock_detail_cashier_role',
     ),
   ];
 
   final List<AuditAlert> _mockAlerts = [
     AuditAlert(
       id: 'alt-1',
-      type: 'Крупный расход',
+      type: 'mock_alert_large_expense',
       severity: 'high',
-      message: 'Выявлена инкассация выше лимита 20,000 TJS',
+      message: 'mock_msg_encashment_limit',
       timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
     ),
     AuditAlert(
       id: 'alt-2',
-      type: 'Повторный вход',
+      type: 'mock_alert_multi_login',
       severity: 'medium',
-      message: 'Попытка параллельного входа с двух IP-адресов',
+      message: 'mock_msg_parallel_login',
       timestamp: DateTime.now().subtract(const Duration(hours: 5)),
     ),
   ];
@@ -89,10 +90,9 @@ class ApiAuditRepository implements AuditRepository {
     } catch (_) {}
     final newAlert = AuditAlert(
       id: 'alt-${DateTime.now().millisecondsSinceEpoch}',
-      type: 'Проверка завершена',
+      type: 'mock_alert_scan_done',
       severity: 'low',
-      message:
-          'AI-детектор: Системных аномалий не обнаружено (100% закрепелено)',
+      message: 'mock_msg_no_anomalies',
       timestamp: DateTime.now(),
     );
     _mockAlerts.insert(0, newAlert);

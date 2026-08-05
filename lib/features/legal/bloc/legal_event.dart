@@ -56,3 +56,61 @@ class GenerateContractFromTemplate extends LegalEvent {
   @override
   List<Object?> get props => [templateId, variables];
 }
+
+class CreateLawRequested extends LegalEvent {
+  final String title;
+  final String body;
+  final String? category;
+
+  const CreateLawRequested({
+    required this.title,
+    required this.body,
+    this.category,
+  });
+
+  @override
+  List<Object?> get props => [title, body, category];
+}
+
+class DeleteLawRequested extends LegalEvent {
+  final String id;
+
+  const DeleteLawRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class CreateDeadlineRequested extends LegalEvent {
+  final String title;
+  final String type;
+  final DateTime dueDate;
+  final String? amount;
+  final String? note;
+
+  const CreateDeadlineRequested({
+    required this.title,
+    required this.type,
+    required this.dueDate,
+    this.amount,
+    this.note,
+  });
+
+  @override
+  List<Object?> get props => [title, type, dueDate, amount, note];
+}
+
+class CreateTemplateRequested extends LegalEvent {
+  final String name;
+  final String body;
+  final String? category;
+
+  const CreateTemplateRequested({
+    required this.name,
+    required this.body,
+    this.category,
+  });
+
+  @override
+  List<Object?> get props => [name, body, category];
+}

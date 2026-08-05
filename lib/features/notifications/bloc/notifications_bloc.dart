@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/user_facing_error.dart';
 import '../domain/notification_model.dart';
 import '../domain/notifications_repository.dart';
 import 'notifications_event.dart';
@@ -44,15 +46,17 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       final notifications = await activeRequest;
       if (!ownsRequest ||
           emit.isDone ||
-          !identical(_loadRequest, activeRequest))
+          !identical(_loadRequest, activeRequest)) {
         return;
+      }
       emit(NotificationsLoaded(_reconcileConfirmedReads(notifications)));
     } catch (_) {
       if (!ownsRequest ||
           emit.isDone ||
-          !identical(_loadRequest, activeRequest))
+          !identical(_loadRequest, activeRequest)) {
         return;
-      const message = 'Не удалось загрузить уведомления. Проверьте соединение.';
+      }
+      const message = ErrorKeys.loadFailed;
       if (previous != null) {
         emit(previous.copyWith(errorMessage: message));
       } else {

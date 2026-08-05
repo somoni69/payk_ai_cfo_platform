@@ -43,9 +43,10 @@ String formatLocalizedDateTime(
   LocalizedDateTimeStyle style = LocalizedDateTimeStyle.dateTime,
   bool convertToLocal = true,
 }) {
+  final locale = Localizations.maybeLocaleOf(context) ?? const Locale('ru');
   return formatLocalizedDateTimeForLocale(
     value,
-    Localizations.localeOf(context),
+    locale,
     style: style,
     convertToLocal: convertToLocal,
   );

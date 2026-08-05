@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/user_facing_error.dart';
 import '../domain/transaction_model.dart';
 import '../domain/cash_repository.dart';
 import 'cash_event.dart';
@@ -16,6 +18,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   List<CashRegister> _cachedRegisters = [];
   String _currentQuery = '';
   String _currentFilterType = 'all';
+  String _currentPaymentMethod = 'all';
+  String _currentRegisterId = 'all';
+  DateTime? _currentDateFrom;
+  DateTime? _currentDateTo;
   Future<List<Object>>? _loadRequest;
   int _searchRevision = 0;
 
@@ -89,12 +95,23 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     Emitter<CashState> emit,
   ) async {
     final revision = ++_searchRevision;
-    if (event.filterType == _currentFilterType) {
+    final onlyQueryChanged =
+        event.filterType == _currentFilterType &&
+        event.paymentMethod == _currentPaymentMethod &&
+        event.registerId == _currentRegisterId &&
+        event.dateFrom == _currentDateFrom &&
+        event.dateTo == _currentDateTo &&
+        event.query != _currentQuery;
+    if (onlyQueryChanged) {
       await Future<void>.delayed(const Duration(milliseconds: 300));
       if (revision != _searchRevision) return;
     }
     _currentQuery = event.query;
     _currentFilterType = event.filterType;
+    _currentPaymentMethod = event.paymentMethod;
+    _currentRegisterId = event.registerId;
+    _currentDateFrom = event.dateFrom;
+    _currentDateTo = event.dateTo;
     _emitCurrentState(emit);
   }
 
@@ -107,12 +124,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
 
     // Валидация: Нельзя провести операцию без открытой смены (CASH-05)
     if (_cachedActiveShift == null) {
-      emit(
-        currentState.copyWith(
-          errorMessage:
-              'Ошибка: кассовая смена закрыта. Сначала откройте смену.',
-        ),
-      );
+      emit(currentState.copyWith(errorMessage: 'cash_err_need_open_shift'));
       return;
     }
 
@@ -121,10 +133,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
       newTx = await _repository.addTransaction(event.transaction);
     } catch (e) {
       if (emit.isDone) return;
-      _emitCurrentState(
-        emit,
-        errorMessage: 'Не удалось добавить транзакцию. Повторите попытку.',
-      );
+      _emitCurrentState(emit, errorMessage: ErrorKeys.saveFailed);
       return;
     }
 
@@ -136,8 +145,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     try {
       _cachedSummaries = await _repository.getSummary();
     } catch (e) {
-      refreshWarning =
-          'Транзакция сохранена, но сводку обновить не удалось. Обновите экран.';
+      refreshWarning = 'cash_tx_saved_summary_failed';
     }
 
     if (emit.isDone) return;
@@ -164,11 +172,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
       _cachedShifts = refreshed[1] as List<CashShift>;
       _emitCurrentState(emit);
     } catch (e) {
-      emit(
-        currentState.copyWith(
-          errorMessage: 'Не удалось открыть смену. Повторите попытку.',
-        ),
-      );
+      emit(currentState.copyWith(errorMessage: ErrorKeys.saveFailed));
     }
   }
 
@@ -196,13 +200,9 @@ class CashBloc extends Bloc<CashEvent, CashState> {
       final expectedBalance = currentShift.startingBalance + netFlow;
       final diff = event.endingBalance - expectedBalance;
 
-      String message = 'Смена успешно закрыта. ';
-      if (diff.abs() < 0.01) {
-        message += 'Остаток сошелся (Разница: 0 TJS)';
-      } else {
-        message +=
-            'Внимание! Расхождение: ${diff > 0 ? "+" : ""}${diff.toStringAsFixed(2)} TJS (Ожидалось в кассе: ${expectedBalance.toStringAsFixed(2)} TJS)';
-      }
+      final message = diff.abs() < 0.01
+          ? 'cash_shift_closed_balanced'
+          : 'cash_shift_closed_diff::${diff > 0 ? "+" : ""}${diff.toStringAsFixed(2)}::${expectedBalance.toStringAsFixed(2)}';
 
       _cachedActiveShift = null;
       final refreshed = await Future.wait([
@@ -242,7 +242,44 @@ class CashBloc extends Bloc<CashEvent, CashState> {
           (_currentFilterType == 'income' && tx.isIncome) ||
           (_currentFilterType == 'expense' && !tx.isIncome);
 
-      return matchesSearch && matchesFilter;
+      final matchesPayment =
+          _currentPaymentMethod == 'all' ||
+          tx.paymentMethod.name == _currentPaymentMethod ||
+          tx.paymentMethod.apiValue == _currentPaymentMethod;
+
+      final matchesRegister =
+          _currentRegisterId == 'all' || tx.registerId == _currentRegisterId;
+
+      final txDay = DateTime(
+        tx.dateTime.year,
+        tx.dateTime.month,
+        tx.dateTime.day,
+      );
+      final matchesFrom =
+          _currentDateFrom == null ||
+          !txDay.isBefore(
+            DateTime(
+              _currentDateFrom!.year,
+              _currentDateFrom!.month,
+              _currentDateFrom!.day,
+            ),
+          );
+      final matchesTo =
+          _currentDateTo == null ||
+          !txDay.isAfter(
+            DateTime(
+              _currentDateTo!.year,
+              _currentDateTo!.month,
+              _currentDateTo!.day,
+            ),
+          );
+
+      return matchesSearch &&
+          matchesFilter &&
+          matchesPayment &&
+          matchesRegister &&
+          matchesFrom &&
+          matchesTo;
     }).toList();
 
     emit(
@@ -255,6 +292,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         registers: _cachedRegisters,
         query: _currentQuery,
         filterType: _currentFilterType,
+        paymentMethod: _currentPaymentMethod,
+        registerId: _currentRegisterId,
+        dateFrom: _currentDateFrom,
+        dateTo: _currentDateTo,
         errorMessage: errorMessage,
       ),
     );

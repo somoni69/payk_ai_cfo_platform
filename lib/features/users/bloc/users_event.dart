@@ -99,3 +99,32 @@ class DeleteUserRequested extends UsersEvent {
   @override
   List<Object?> get props => [id];
 }
+
+class LoadPermissionsMatrix extends UsersEvent {
+  final bool forceRefresh;
+
+  const LoadPermissionsMatrix({this.forceRefresh = false});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
+
+/// Toggle one permission bit; auto-saves via API (web AccessTab parity).
+class TogglePermissionRequested extends UsersEvent {
+  final String role;
+  final String module;
+
+  /// One of: view, create, edit, delete, action
+  final String field;
+  final bool value;
+
+  const TogglePermissionRequested({
+    required this.role,
+    required this.module,
+    required this.field,
+    required this.value,
+  });
+
+  @override
+  List<Object?> get props => [role, module, field, value];
+}

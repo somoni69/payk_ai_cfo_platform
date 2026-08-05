@@ -8,15 +8,15 @@ import 'app_colors.dart';
 /// - системный monospace с [FontFeature.tabularFigures] для сумм и цифр
 /// - Начертания строго w400 (Regular) и w500 (Medium)
 class LedgerTextStyles extends ThemeExtension<LedgerTextStyles> {
-  final TextStyle displayMono; // 28px - Крупные суммы
-  final TextStyle h1Sans; // 22px - Заголовки экранов
-  final TextStyle h1Mono; // 22px - Крупные суммы / счета
-  final TextStyle h2Sans; // 18px - Заголовки карточек
-  final TextStyle bodySans; // 15px - Основной текст
-  final TextStyle bodyMono; // 15px - Денежные значения в строках
-  final TextStyle captionSans; // 13px - Вторичный текст / подписи
-  final TextStyle smallSans; // 12px - Подсказки / лейблы
-  final TextStyle smallMono; // 12px - Мелкие цифры / дельты
+  final TextStyle displayMono; // 30px - Крупные суммы (mono, tabular)
+  final TextStyle h1Sans; // 24px - Заголовки экранов
+  final TextStyle h1Mono; // 24px - Крупные балансы
+  final TextStyle h2Sans; // 20px - Заголовки карточек
+  final TextStyle bodySans; // 16px - Основной текст
+  final TextStyle bodyMono; // 16px - Суммы в строках
+  final TextStyle captionSans; // 14px - Вторичный текст
+  final TextStyle smallSans; // 13px - Пилюли / лейблы
+  final TextStyle smallMono; // 13px - Дельты / даты
 
   const LedgerTextStyles({
     required this.displayMono,

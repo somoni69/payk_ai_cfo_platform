@@ -57,3 +57,81 @@ class UpdateTaskRequested extends TasksEvent {
   @override
   List<Object?> get props => [task];
 }
+
+class LoadMyTasks extends TasksEvent {
+  final bool forceRefresh;
+  final Completer<void>? completion;
+
+  const LoadMyTasks({this.forceRefresh = false, this.completion});
+
+  @override
+  List<Object?> get props => [forceRefresh];
+}
+
+class CreatePersonalTaskRequested extends TasksEvent {
+  final PersonalTaskInput input;
+
+  const CreatePersonalTaskRequested(this.input);
+
+  @override
+  List<Object?> get props => [input];
+}
+
+class UpdatePersonalTaskRequested extends TasksEvent {
+  final String taskId;
+  final PersonalTaskInput input;
+
+  const UpdatePersonalTaskRequested({
+    required this.taskId,
+    required this.input,
+  });
+
+  @override
+  List<Object?> get props => [taskId, input];
+}
+
+class DeletePersonalTaskRequested extends TasksEvent {
+  final String taskId;
+
+  const DeletePersonalTaskRequested(this.taskId);
+
+  @override
+  List<Object?> get props => [taskId];
+}
+
+class AcknowledgeTaskRequested extends TasksEvent {
+  final String taskId;
+
+  const AcknowledgeTaskRequested(this.taskId);
+
+  @override
+  List<Object?> get props => [taskId];
+}
+
+class SubmitTaskRequested extends TasksEvent {
+  final String taskId;
+
+  const SubmitTaskRequested(this.taskId);
+
+  @override
+  List<Object?> get props => [taskId];
+}
+
+class AcceptTaskRequested extends TasksEvent {
+  final String taskId;
+
+  const AcceptTaskRequested(this.taskId);
+
+  @override
+  List<Object?> get props => [taskId];
+}
+
+class RejectTaskRequested extends TasksEvent {
+  final String taskId;
+  final String? reason;
+
+  const RejectTaskRequested({required this.taskId, this.reason});
+
+  @override
+  List<Object?> get props => [taskId, reason];
+}

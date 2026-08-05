@@ -15,7 +15,66 @@ enum DashboardSection {
   breakEven,
   abc,
   accountsRates,
+  clients,
   aiInsights,
+}
+
+class CreatePlanRequested extends DashboardEvent {
+  final String period;
+  final String category;
+  final String type;
+  final double plannedAmount;
+
+  const CreatePlanRequested({
+    required this.period,
+    required this.category,
+    required this.type,
+    required this.plannedAmount,
+  });
+
+  @override
+  List<Object?> get props => [period, category, type, plannedAmount];
+}
+
+class CreateAccountRequested extends DashboardEvent {
+  final String name;
+  final String? bank;
+  final String? number;
+  final String currency;
+  final double balance;
+
+  const CreateAccountRequested({
+    required this.name,
+    this.bank,
+    this.number,
+    this.currency = 'TJS',
+    this.balance = 0,
+  });
+
+  @override
+  List<Object?> get props => [name, bank, number, currency, balance];
+}
+
+class DeleteAccountRequested extends DashboardEvent {
+  final String id;
+
+  const DeleteAccountRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class ZeroOutAccountRequested extends DashboardEvent {
+  final String id;
+
+  const ZeroOutAccountRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class RefreshRatesRequested extends DashboardEvent {
+  const RefreshRatesRequested();
 }
 
 class LoadDashboardData extends DashboardEvent {

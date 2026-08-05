@@ -4,7 +4,7 @@ import 'package:payk_ai_cfo_platform/features/legal/bloc/legal_event.dart';
 import 'package:payk_ai_cfo_platform/features/legal/bloc/legal_state.dart';
 import 'package:payk_ai_cfo_platform/features/legal/domain/legal_models.dart';
 import 'package:payk_ai_cfo_platform/features/legal/domain/legal_repository.dart';
-import 'package:payk_ai_cfo_platform/presentation/screens/legal_screen.dart';
+import 'package:payk_ai_cfo_platform/features/legal/presentation/legal_screen.dart';
 
 class MockLegalTestRepository implements LegalRepository {
   @override
@@ -75,6 +75,59 @@ class MockLegalTestRepository implements LegalRepository {
       title: 'Gen title',
       body: 'Gen body',
       createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<Law> createLaw({
+    required String title,
+    required String body,
+    String? category,
+  }) async {
+    return Law(
+      id: 'new_law',
+      title: title,
+      body: body,
+      category: category,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> deleteLaw(String id) async {}
+
+  @override
+  Future<LegalDeadline> createDeadline({
+    required String title,
+    required String type,
+    required DateTime dueDate,
+    String? amount,
+    String? note,
+  }) async {
+    return LegalDeadline(
+      id: 'new_dl',
+      title: title,
+      type: type,
+      dueDate: dueDate,
+      amount: amount,
+      note: note,
+      isDone: false,
+      daysLeft: dueDate.difference(DateTime.now()).inDays,
+    );
+  }
+
+  @override
+  Future<ContractTemplate> createTemplate({
+    required String name,
+    required String body,
+    String? category,
+  }) async {
+    return ContractTemplate(
+      id: 'new_tpl',
+      name: name,
+      body: body,
+      category: category,
+      variables: const [],
     );
   }
 }

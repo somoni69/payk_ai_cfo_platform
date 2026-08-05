@@ -1,4 +1,4 @@
-import '../bloc/auth_state.dart';
+import 'user_role.dart';
 
 /// Application modules that can be protected at navigation boundaries.
 enum AppCapability {
@@ -55,6 +55,7 @@ extension UserRoleAccess on UserRole {
     UserRole.cashier => const <AppCapability>{
       AppCapability.cash,
       AppCapability.checklists,
+      AppCapability.reports,
     },
     UserRole.hr => const <AppCapability>{AppCapability.tasks, AppCapability.hr},
     UserRole.viewer => const <AppCapability>{
@@ -87,12 +88,22 @@ extension UserRoleAccess on UserRole {
         capability == AppCapability.cash ||
             capability == AppCapability.finOps ||
             capability == AppCapability.reports,
-      UserRole.cashier => capability == AppCapability.cash,
+      UserRole.cashier =>
+        capability == AppCapability.cash ||
+            capability == AppCapability.reports ||
+            capability == AppCapability.checklists,
       UserRole.hr =>
         capability == AppCapability.tasks || capability == AppCapability.hr,
       UserRole.viewer => false,
     };
   }
+
+  /// Create/update (web `can(module, "create"|"update")` until matrix is wired).
+  bool canWrite(AppCapability capability) => canManage(capability);
+
+  /// Destructive delete (web `can(module, "delete")`).
+  /// Same role set as [canManage] for now; director/manager for CRM.
+  bool canDelete(AppCapability capability) => canManage(capability);
 
   String get landingLocation => switch (this) {
     UserRole.cashier => '/cash',

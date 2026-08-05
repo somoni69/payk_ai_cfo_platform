@@ -13,6 +13,9 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
     on<UpdateTransferStatusRequested>(_onUpdateTransferStatusRequested);
     on<CreateFinancialAidRequested>(_onCreateFinancialAidRequested);
     on<RepayFinancialAidRequested>(_onRepayFinancialAidRequested);
+    on<CreateBankRequested>(_onCreateBank);
+    on<DeleteBankRequested>(_onDeleteBank);
+    on<CancelStoreTransferRequested>(_onCancelTransfer);
   }
 
   Future<void> _onLoadFinOpsData(
@@ -111,6 +114,42 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
         aidId: event.aidId,
         amount: event.amount,
       );
+      add(const LoadFinOpsData(forceRefresh: true));
+    } catch (e) {
+      emit(FinOpsError(e.toString()));
+    }
+  }
+
+  Future<void> _onCreateBank(
+    CreateBankRequested event,
+    Emitter<FinOpsState> emit,
+  ) async {
+    try {
+      await _repository.createBank(name: event.name);
+      add(const LoadFinOpsData(forceRefresh: true));
+    } catch (e) {
+      emit(FinOpsError(e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteBank(
+    DeleteBankRequested event,
+    Emitter<FinOpsState> emit,
+  ) async {
+    try {
+      await _repository.deleteBank(event.id);
+      add(const LoadFinOpsData(forceRefresh: true));
+    } catch (e) {
+      emit(FinOpsError(e.toString()));
+    }
+  }
+
+  Future<void> _onCancelTransfer(
+    CancelStoreTransferRequested event,
+    Emitter<FinOpsState> emit,
+  ) async {
+    try {
+      await _repository.cancelStoreTransfer(event.transferId);
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
       emit(FinOpsError(e.toString()));

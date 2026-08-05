@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/warehouse_models.dart';
 import '../domain/warehouse_repository.dart';
 
@@ -9,7 +10,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
   int _requirePositiveId(String value, String fieldName) {
     final id = int.tryParse(value);
     if (id == null || id <= 0) {
-      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+      throw ArgumentError.value(value, fieldName, ErrorKeys.invalidId);
     }
     return id;
   }
@@ -39,7 +40,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить товары: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -68,7 +69,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить историю движений: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -85,7 +86,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
         ),
       );
     } catch (e) {
-      throw Exception('Не удалось получить сводку склада: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -116,7 +117,61 @@ class ApiWarehouseRepository implements WarehouseRepository {
         externalId: map['external_id']?.toString(),
       );
     } catch (e) {
-      throw Exception('Не удалось создать товар: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<WarehouseProduct> updateProduct(WarehouseProduct product) async {
+    try {
+      final response = await _apiClient.dio.patch(
+        '/warehouse/products/${_requirePositiveId(product.id, 'id')}',
+        data: {
+          'name': product.name,
+          'sku': product.sku,
+          'unit': product.unit,
+          'price': product.price,
+          'stock_qty': product.stockQty,
+        },
+      );
+      final map = response.data as Map<String, dynamic>;
+      return WarehouseProduct(
+        id: (map['id'] ?? product.id).toString(),
+        name: map['name'] ?? product.name,
+        sku: map['sku']?.toString(),
+        unit: map['unit'] ?? product.unit,
+        price: _toDouble(map['price']),
+        stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+        externalId: map['external_id']?.toString(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteProduct(String id) async {
+    try {
+      await _apiClient.dio.delete(
+        '/warehouse/products/${_requirePositiveId(id, 'id')}',
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> zeroOutProduct(String id) async {
+    try {
+      await _apiClient.dio.post(
+        '/finance-ops/zero-out',
+        data: {
+          'target': 'product',
+          'id': _requirePositiveId(id, 'id'),
+        },
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 
@@ -159,7 +214,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
         cashOperationId: map['cash_operation_id']?.toString(),
       );
     } catch (e) {
-      throw Exception('Не удалось зафиксировать движение: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

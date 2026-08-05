@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/user_facing_error.dart';
 import '../domain/finance_model.dart';
 import '../domain/finance_repository.dart';
 import 'dashboard_event.dart';
@@ -16,6 +18,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ExchangeRatesReport? _cachedRates;
   AiInsightsReport? _cachedAiInsights;
   PlanFactReport? _cachedPlanFact;
+  ClientAnalysisReport? _cachedClients;
   String _currentCurrency = 'TJS';
 
   final Set<DashboardSection> _loadingSections = {};
@@ -31,6 +34,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<LoadDashboardSection>(_onLoadDashboardSection);
     on<ChangeCurrency>(_onChangeCurrency);
     on<ChangeAbcDimension>(_onChangeAbcDimension);
+    on<CreatePlanRequested>(_onCreatePlan);
+    on<CreateAccountRequested>(_onCreateAccount);
+    on<DeleteAccountRequested>(_onDeleteAccount);
+    on<ZeroOutAccountRequested>(_onZeroOutAccount);
+    on<RefreshRatesRequested>(_onRefreshRates);
   }
 
   Future<void> _onLoadDashboardData(
@@ -60,17 +68,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     } catch (_) {
       if (emit.isDone) return;
       if (_cachedBaseMetrics != null && _cachedBaseHistory != null) {
-        _emitCurrentState(
-          emit,
-          overviewError:
-              'Не удалось загрузить финансовые данные. Проверьте соединение.',
-        );
+        _emitCurrentState(emit, overviewError: ErrorKeys.loadFailed);
       } else {
-        emit(
-          const DashboardError(
-            'Не удалось загрузить финансовые данные. Проверьте соединение.',
-          ),
-        );
+        emit(const DashboardError(ErrorKeys.loadFailed));
       }
     } finally {
       if (identical(_overviewRequest, request)) {
@@ -158,6 +158,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           _cachedBankAccounts = values[0] as BankAccountsReport;
           _cachedRates = values[1] as ExchangeRatesReport;
           break;
+        case DashboardSection.clients:
+          _cachedClients = await _repository.getClientAnalysis();
+          break;
         case DashboardSection.aiInsights:
           _cachedAiInsights = await _repository.getAiInsights();
           break;
@@ -167,8 +170,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (error) {
       if (abcRevision == null || abcRevision == _abcRevision) {
-        _sectionErrors[section] =
-            'Не удалось загрузить раздел. Повторите попытку.';
+        _sectionErrors[section] = ErrorKeys.loadFailed;
       }
     } finally {
       if (abcRevision == null || abcRevision == _abcRevision) {
@@ -207,6 +209,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       DashboardSection.abc => _cachedAbc != null,
       DashboardSection.accountsRates =>
         _cachedBankAccounts != null && _cachedRates != null,
+      DashboardSection.clients => _cachedClients != null,
       DashboardSection.aiInsights => _cachedAiInsights != null,
     };
   }
@@ -237,7 +240,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         (row) => row.code.toUpperCase() == currency && row.rate > 0,
       );
       if (!hasRate) {
-        const message = 'Курс выбранной валюты недоступен. Повторите попытку.';
+        const message = ErrorKeys.loadFailed;
         _sectionErrors[DashboardSection.accountsRates] = message;
         _emitCurrentState(emit, overviewError: message);
         return;
@@ -248,7 +251,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _emitCurrentState(emit);
     } catch (_) {
       if (revision != _currencyRevision || emit.isDone) return;
-      const message = 'Курс выбранной валюты недоступен. Повторите попытку.';
+      const message = ErrorKeys.loadFailed;
       _sectionErrors[DashboardSection.accountsRates] = message;
       _emitCurrentState(emit, overviewError: message);
     }
@@ -270,8 +273,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedAbc = abc;
     } catch (error) {
       if (revision == _abcRevision && !emit.isDone) {
-        _sectionErrors[DashboardSection.abc] =
-            'Не удалось загрузить ABC-анализ. Повторите попытку.';
+        _sectionErrors[DashboardSection.abc] = ErrorKeys.loadFailed;
       }
     } finally {
       if (revision == _abcRevision) {
@@ -302,11 +304,153 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         rates: _cachedRates,
         aiInsights: _cachedAiInsights,
         planFact: _convertPlanFact(_cachedPlanFact, currency),
+        clients: _cachedClients,
         loadingSections: Set.unmodifiable(_loadingSections),
         sectionErrors: Map.unmodifiable(_sectionErrors),
         overviewError: overviewError,
       ),
     );
+  }
+
+  Future<void> _onCreatePlan(
+    CreatePlanRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.createPlan(
+        period: event.period,
+        category: event.category,
+        type: event.type,
+        plannedAmount: event.plannedAmount,
+      );
+      _cachedPlanFact = await _repository.getPlanFactReport();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            planFact: _convertPlanFact(_cachedPlanFact, _currentCurrency),
+            actionMessage: 'dashboard_toast_plan_created',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onCreateAccount(
+    CreateAccountRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.createAccount(
+        name: event.name,
+        bank: event.bank,
+        number: event.number,
+        currency: event.currency,
+        balance: event.balance,
+      );
+      _cachedBankAccounts = await _repository.getBankAccounts();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            bankAccounts: _cachedBankAccounts,
+            actionMessage: 'dashboard_toast_account_created',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onDeleteAccount(
+    DeleteAccountRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.deleteAccount(event.id);
+      _cachedBankAccounts = await _repository.getBankAccounts();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            bankAccounts: _cachedBankAccounts,
+            actionMessage: 'dashboard_toast_account_deleted',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onZeroOutAccount(
+    ZeroOutAccountRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.zeroOutAccount(event.id);
+      _cachedBankAccounts = await _repository.getBankAccounts();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            bankAccounts: _cachedBankAccounts,
+            actionMessage: 'dashboard_toast_account_zeroed',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
+  }
+
+  Future<void> _onRefreshRates(
+    RefreshRatesRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.refreshRates();
+      _cachedRates = await _repository.getExchangeRates();
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(
+            rates: _cachedRates,
+            actionMessage: 'dashboard_toast_rates_refreshed',
+          ),
+        );
+      } else {
+        _emitCurrentState(emit);
+      }
+    } catch (e) {
+      if (state is DashboardLoaded) {
+        emit(
+          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
+        );
+      }
+    }
   }
 
   double _convert(double amount, String targetCurrency) {

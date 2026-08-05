@@ -1,4 +1,3 @@
-import com.android.build.api.dsl.ApplicationExtension
 import java.util.Properties
 
 plugins {
@@ -51,7 +50,7 @@ if (releaseRequested && !allowUnsafeRelease) {
     }
 }
 
-extensions.configure<ApplicationExtension> {
+android {
     namespace = "com.example.payk_ai_cfo_platform"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../domain/transaction_model.dart';
 import '../domain/cash_repository.dart';
 
@@ -206,5 +208,24 @@ class MockCashRepository implements CashRepository {
       CashRegister(id: '2', name: 'Касса №2'),
       CashRegister(id: '3', name: 'iiko'),
     ];
+  }
+
+  @override
+  Future<Uint8List> exportOperations({
+    required String format,
+    CashOperationFilters filters = const CashOperationFilters(),
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return Uint8List.fromList('mock-export'.codeUnits);
+  }
+
+  @override
+  Future<int> importOperations({
+    required int registerId,
+    required String filename,
+    required Uint8List bytes,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return 0;
   }
 }

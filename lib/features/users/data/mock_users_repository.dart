@@ -118,4 +118,68 @@ class MockUsersRepository implements UsersRepository {
     await Future.delayed(const Duration(milliseconds: 200));
     _users.removeWhere((u) => u.id == id);
   }
+
+  @override
+  Future<PermissionMatrix> getPermissionMatrix() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    const modules = [
+      'dashboard',
+      'cash',
+      'reports',
+      'finance-ops',
+      'finance',
+      'warehouse',
+      'crm',
+      'hr',
+      'tasks',
+      'my-tasks',
+      'checklists',
+      'audit',
+      'legal',
+      'marketing',
+      'strategy',
+      'integrations',
+      'branches',
+    ];
+    const roles = ['manager', 'accountant', 'cashier', 'hr', 'viewer'];
+    final cells = <PermissionCell>[];
+    for (final role in roles) {
+      for (final module in modules) {
+        cells.add(
+          PermissionCell(
+            role: role,
+            module: module,
+            canView: true,
+            canCreate: role != 'viewer',
+            canEdit: role != 'viewer',
+            canDelete: role == 'manager' || role == 'accountant',
+            canAction: role != 'viewer',
+          ),
+        );
+      }
+    }
+    return PermissionMatrix(
+      modules: modules,
+      roles: roles,
+      perms: const ['view', 'create', 'edit', 'delete', 'action'],
+      cells: cells,
+    );
+  }
+
+  @override
+  Future<PermissionMatrix> updatePermissions(List<PermissionCell> cells) async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    // Mock: return full matrix with provided cells applied on top of defaults.
+    final base = await getPermissionMatrix();
+    final map = base.cellMap;
+    for (final c in cells) {
+      map[PermissionCell.keyOf(c.role, c.module)] = c;
+    }
+    return PermissionMatrix(
+      modules: base.modules,
+      roles: base.roles,
+      perms: base.perms,
+      cells: map.values.toList(),
+    );
+  }
 }

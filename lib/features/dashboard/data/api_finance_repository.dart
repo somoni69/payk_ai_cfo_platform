@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
@@ -137,9 +138,7 @@ class ApiFinanceRepository implements FinanceRepository {
         cashForecastDelta: cashForecastDelta,
       );
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить финансовые показатели: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -187,9 +186,7 @@ class ApiFinanceRepository implements FinanceRepository {
 
       return points;
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить историю движения денег: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -238,7 +235,7 @@ class ApiFinanceRepository implements FinanceRepository {
         profit: _toDouble(data['profit']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить P&L отчет: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -257,9 +254,7 @@ class ApiFinanceRepository implements FinanceRepository {
         marginOfSafety: _toDouble(data['margin_of_safety']),
       );
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить анализ безубыточности: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -289,7 +284,7 @@ class ApiFinanceRepository implements FinanceRepository {
         total: _toDouble(data['total']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить ABC-анализ: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -316,7 +311,7 @@ class ApiFinanceRepository implements FinanceRepository {
         totalTjs: _toDouble(data['total_tjs']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить список счетов: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -339,7 +334,7 @@ class ApiFinanceRepository implements FinanceRepository {
 
       return ExchangeRatesReport(rates: list);
     } catch (e) {
-      throw Exception('Не удалось загрузить курсы валют: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -364,7 +359,7 @@ class ApiFinanceRepository implements FinanceRepository {
         recommendations: data['recommendations'] ?? 'Рекомендаций нет.',
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить ИИ инсайты: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -393,7 +388,170 @@ class ApiFinanceRepository implements FinanceRepository {
         totalFact: _toDouble(data['total_fact']),
       );
     } catch (e) {
-      throw Exception('Не удалось загрузить план-факт отчет: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<ClientAnalysisReport> getClientAnalysis() async {
+    try {
+      final response = await _dio.get('/finance/clients');
+      final data = response.data as Map<String, dynamic>;
+      ClientAnalysisRow mapRow(Map<String, dynamic> map) {
+        return ClientAnalysisRow(
+          name: map['name']?.toString() ?? '',
+          purchases: (map['purchases'] as num?)?.toInt() ?? 0,
+          total: _toDouble(map['total']),
+          lastPurchase: map['last_purchase'] != null
+              ? DateTime.tryParse(map['last_purchase'].toString())
+              : null,
+          daysSince: (map['days_since'] as num?)?.toInt(),
+        );
+      }
+
+      return ClientAnalysisReport(
+        frequent: (data['frequent'] as List<dynamic>? ?? [])
+            .whereType<Map>()
+            .map((e) => mapRow(Map<String, dynamic>.from(e)))
+            .toList(),
+        dormant: (data['dormant'] as List<dynamic>? ?? [])
+            .whereType<Map>()
+            .map((e) => mapRow(Map<String, dynamic>.from(e)))
+            .toList(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<PlanItem> createPlan({
+    required String period,
+    required String category,
+    required String type,
+    required double plannedAmount,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/finance/plans',
+        data: {
+          'period': period,
+          'category': category,
+          'type': type,
+          'planned_amount': plannedAmount,
+        },
+      );
+      final map = response.data as Map<String, dynamic>;
+      return PlanItem(
+        id: (map['id'] as num?)?.toInt() ?? 0,
+        period: map['period']?.toString() ?? period,
+        category: map['category']?.toString() ?? category,
+        type: map['type']?.toString() ?? type,
+        plannedAmount: _toDouble(map['planned_amount']),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deletePlan(int planId) async {
+    try {
+      await _dio.delete('/finance/plans/$planId');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<BankAccountInfo> createAccount({
+    required String name,
+    String? bank,
+    String? number,
+    String currency = 'TJS',
+    double balance = 0,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/finance/accounts',
+        data: {
+          'name': name,
+          'bank': bank,
+          'number': number,
+          'currency': currency,
+          'balance': balance,
+        },
+      );
+      final map = response.data as Map<String, dynamic>;
+      return BankAccountInfo(
+        id: (map['id'] ?? '').toString(),
+        name: map['name']?.toString() ?? name,
+        bank: map['bank']?.toString(),
+        number: map['number']?.toString(),
+        currency: map['currency']?.toString() ?? currency,
+        balance: _toDouble(map['balance']),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteAccount(String accountId) async {
+    try {
+      final id = int.tryParse(accountId);
+      if (id == null || id <= 0) throw StateError(ErrorKeys.invalidId);
+      await _dio.delete('/finance/accounts/$id');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> zeroOutAccount(String accountId) async {
+    try {
+      final id = int.tryParse(accountId);
+      if (id == null || id <= 0) throw StateError(ErrorKeys.invalidId);
+      await _dio.post(
+        '/finance-ops/zero-out',
+        data: {'target': 'account', 'id': id},
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<ConvertResult> convertAmount(double amount, String base) async {
+    try {
+      final response = await _dio.get(
+        '/finance/convert',
+        queryParameters: {'amount': amount, 'base': base},
+      );
+      final data = response.data as Map<String, dynamic>;
+      final valuesRaw = data['values'];
+      final values = <String, double>{};
+      if (valuesRaw is Map) {
+        valuesRaw.forEach((k, v) {
+          values[k.toString()] = _toDouble(v);
+        });
+      }
+      return ConvertResult(
+        base: data['base']?.toString() ?? base,
+        amount: _toDouble(data['amount']),
+        values: values,
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<void> refreshRates() async {
+    try {
+      await _dio.post('/finance/rates/refresh');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 }

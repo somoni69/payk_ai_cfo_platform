@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/integrations_models.dart';
 import '../domain/integrations_repository.dart';
@@ -28,9 +29,7 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить статус интеграций: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -64,9 +63,7 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить логи синхронизации: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -85,7 +82,7 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         message: map['message'] ?? '',
       );
     } catch (e) {
-      throw Exception('Ошибка синхронизации: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 }

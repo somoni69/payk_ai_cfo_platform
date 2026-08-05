@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/network/user_facing_error.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
@@ -21,7 +22,7 @@ class ApiLegalRepository
   int _requirePositiveId(String value, String fieldName) {
     final id = int.tryParse(value);
     if (id == null || id <= 0) {
-      throw ArgumentError.value(value, fieldName, 'Ожидается положительный ID');
+      throw ArgumentError.value(value, fieldName, ErrorKeys.invalidId);
     }
     return id;
   }
@@ -54,9 +55,7 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(
-        'Не удалось загрузить шаблоны договоров: ${e.toString()}',
-      );
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -91,7 +90,7 @@ class ApiLegalRepository
       );
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось сгенерировать договор');
+      throw Exception(ErrorKeys.saveFailed);
     } finally {
       if (identical(_contractCancelToken, cancelToken)) {
         _contractCancelToken = null;
@@ -126,7 +125,7 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить законы: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -155,7 +154,7 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception('Не удалось загрузить календарь сроков: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -185,7 +184,7 @@ class ApiLegalRepository
         daysLeft: map['days_left'],
       );
     } catch (e) {
-      throw Exception('Не удалось обновить статус срока: ${e.toString()}');
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
@@ -206,11 +205,139 @@ class ApiLegalRepository
       return map['answer'] ?? 'Ответ от ИИ пуст.';
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception('Не удалось получить ответ ИИ');
+      throw Exception(ErrorKeys.loadFailed);
     } finally {
       if (identical(_lawyerCancelToken, cancelToken)) {
         _lawyerCancelToken = null;
       }
+    }
+  }
+
+  Law _mapLaw(Map<String, dynamic> map) {
+    return Law(
+      id: (map['id'] ?? '').toString(),
+      title: map['title'] ?? '',
+      category: map['category'],
+      body: map['body'] ?? '',
+      sourceUrl: map['source_url'] ?? map['sourceUrl'],
+      createdAt: DateTime.parse(
+        map['created_at'] ?? DateTime.now().toIso8601String(),
+      ),
+    );
+  }
+
+  LegalDeadline _mapDeadline(Map<String, dynamic> map) {
+    return LegalDeadline(
+      id: (map['id'] ?? '').toString(),
+      title: map['title'] ?? '',
+      type: map['type'] ?? 'OTHER',
+      dueDate: DateTime.parse(
+        map['due_date'] ?? DateTime.now().toIso8601String(),
+      ),
+      amount: map['amount'],
+      note: map['note'],
+      isDone: map['is_done'] ?? false,
+      daysLeft: map['days_left'],
+    );
+  }
+
+  ContractTemplate _mapTemplate(Map<String, dynamic> map) {
+    final vars = (map['variables'] as List<dynamic>? ?? []).map((v) {
+      final vMap = v as Map<String, dynamic>;
+      return TemplateVariable(
+        key: vMap['key'] ?? '',
+        label: vMap['label'] ?? '',
+      );
+    }).toList();
+
+    return ContractTemplate(
+      id: (map['id'] ?? '').toString(),
+      name: map['name'] ?? '',
+      category: map['category'],
+      body: map['body'] ?? '',
+      variables: vars,
+    );
+  }
+
+  @override
+  Future<Law> createLaw({
+    required String title,
+    required String body,
+    String? category,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/legal/laws',
+        data: {
+          'title': title,
+          'body': body,
+          if (category != null && category.isNotEmpty) 'category': category,
+        },
+      );
+      _lawsCache.invalidate();
+      return _mapLaw(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteLaw(String id) async {
+    try {
+      await _apiClient.dio.delete(
+        '/legal/laws/${_requirePositiveId(id, 'id')}',
+      );
+      _lawsCache.invalidate();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<LegalDeadline> createDeadline({
+    required String title,
+    required String type,
+    required DateTime dueDate,
+    String? amount,
+    String? note,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/legal/deadlines',
+        data: {
+          'title': title,
+          'type': type,
+          'due_date': dueDate.toIso8601String().split('T').first,
+          if (amount != null && amount.isNotEmpty) 'amount': amount,
+          if (note != null && note.isNotEmpty) 'note': note,
+        },
+      );
+      _deadlinesCache.invalidate();
+      return _mapDeadline(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<ContractTemplate> createTemplate({
+    required String name,
+    required String body,
+    String? category,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/legal/templates',
+        data: {
+          'name': name,
+          'body': body,
+          if (category != null && category.isNotEmpty) 'category': category,
+        },
+      );
+      _templatesCache.invalidate();
+      return _mapTemplate(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 

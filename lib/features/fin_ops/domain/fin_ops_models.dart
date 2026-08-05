@@ -1,8 +1,12 @@
 import 'package:equatable/equatable.dart';
 
+/// Справочник банков (web `/finance-ops/banks`).
 class BankAccount extends Equatable {
   final String id;
   final String bankName;
+  final bool isActive;
+
+  /// Legacy display fields (optional).
   final String accountNumber;
   final double balance;
   final String currency;
@@ -10,33 +14,35 @@ class BankAccount extends Equatable {
   const BankAccount({
     required this.id,
     required this.bankName,
-    required this.accountNumber,
-    required this.balance,
+    this.isActive = true,
+    this.accountNumber = '',
+    this.balance = 0,
     this.currency = 'TJS',
   });
 
   factory BankAccount.fromJson(Map<String, dynamic> json) {
     return BankAccount(
-      id: json['id'] as String? ?? '',
-      bankName: json['bank_name'] as String? ?? '',
-      accountNumber: json['account_number'] as String? ?? '',
+      id: (json['id'] ?? '').toString(),
+      bankName: (json['name'] ?? json['bank_name'] ?? '').toString(),
+      isActive: json['is_active'] as bool? ?? true,
+      accountNumber: json['account_number']?.toString() ?? '',
       balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? 'TJS',
+      currency: json['currency']?.toString() ?? 'TJS',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'bank_name': bankName,
-      'account_number': accountNumber,
-      'balance': balance,
+      'name': bankName,
+      if (accountNumber.isNotEmpty) 'account_number': accountNumber,
+      if (balance != 0) 'balance': balance,
       'currency': currency,
     };
   }
 
   @override
-  List<Object?> get props => [id, bankName, accountNumber, balance, currency];
+  List<Object?> get props =>
+      [id, bankName, isActive, accountNumber, balance, currency];
 }
 
 class Encashment extends Equatable {
@@ -56,19 +62,21 @@ class Encashment extends Equatable {
 
   factory Encashment.fromJson(Map<String, dynamic> json) {
     return Encashment(
-      id: json['id'] as String? ?? '',
-      bankName: json['bank_name'] as String? ?? '',
+      id: (json['id'] ?? '').toString(),
+      bankName: (json['bank_name'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      responsiblePerson: json['responsible_person'] as String? ?? '',
-      date: json['date'] != null
-          ? DateTime.parse(json['date'] as String)
-          : DateTime.now(),
+      responsiblePerson:
+          (json['responsible_name'] ?? json['responsible_person'] ?? '')
+              .toString(),
+      date: DateTime.tryParse(
+            (json['occurred_at'] ?? json['date'] ?? '').toString(),
+          ) ??
+          DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'bank_name': bankName,
       'amount': amount,
       'responsible_person': responsiblePerson,
@@ -85,7 +93,7 @@ class StoreTransfer extends Equatable {
   final String fromBranch;
   final String toBranch;
   final double amount;
-  final String status; // 'pending', 'received', 'cancelled'
+  final String status; // pending | received | cancelled
   final DateTime date;
 
   const StoreTransfer({
@@ -99,20 +107,22 @@ class StoreTransfer extends Equatable {
 
   factory StoreTransfer.fromJson(Map<String, dynamic> json) {
     return StoreTransfer(
-      id: json['id'] as String? ?? '',
-      fromBranch: json['from_branch'] as String? ?? '',
-      toBranch: json['to_branch'] as String? ?? '',
+      id: (json['id'] ?? '').toString(),
+      fromBranch: (json['from_branch_name'] ?? json['from_branch'] ?? '')
+          .toString(),
+      toBranch:
+          (json['to_branch_name'] ?? json['to_branch'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      status: json['status'] as String? ?? 'pending',
-      date: json['date'] != null
-          ? DateTime.parse(json['date'] as String)
-          : DateTime.now(),
+      status: (json['status'] ?? 'pending').toString(),
+      date: DateTime.tryParse(
+            (json['created_at'] ?? json['date'] ?? '').toString(),
+          ) ??
+          DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'from_branch': fromBranch,
       'to_branch': toBranch,
       'amount': amount,
@@ -122,7 +132,8 @@ class StoreTransfer extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, fromBranch, toBranch, amount, status, date];
+  List<Object?> get props =>
+      [id, fromBranch, toBranch, amount, status, date];
 }
 
 class FinancialAid extends Equatable {
@@ -130,7 +141,7 @@ class FinancialAid extends Equatable {
   final String employeeName;
   final double amount;
   final double repaidAmount;
-  final String status; // 'active', 'repaid'
+  final String status;
   final DateTime date;
 
   const FinancialAid({
@@ -142,24 +153,30 @@ class FinancialAid extends Equatable {
     required this.date,
   });
 
-  double get remainingAmount => amount - repaidAmount;
+  double get remainingAmount {
+    final left = amount - repaidAmount;
+    return left < 0 ? 0 : left;
+  }
 
   factory FinancialAid.fromJson(Map<String, dynamic> json) {
     return FinancialAid(
-      id: json['id'] as String? ?? '',
-      employeeName: json['employee_name'] as String? ?? '',
+      id: (json['id'] ?? '').toString(),
+      employeeName: (json['employee_name'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       repaidAmount: (json['repaid_amount'] as num?)?.toDouble() ?? 0.0,
-      status: json['status'] as String? ?? 'active',
-      date: json['date'] != null
-          ? DateTime.parse(json['date'] as String)
-          : DateTime.now(),
+      status: (json['status'] ??
+              (json['deducted_in_period'] != null ? 'repaid' : 'active'))
+          .toString(),
+      date: DateTime.tryParse(
+            (json['issued_at'] ?? json['date'] ?? json['created_at'] ?? '')
+                .toString(),
+          ) ??
+          DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'employee_name': employeeName,
       'amount': amount,
       'repaid_amount': repaidAmount,
@@ -169,12 +186,6 @@ class FinancialAid extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-    id,
-    employeeName,
-    amount,
-    repaidAmount,
-    status,
-    date,
-  ];
+  List<Object?> get props =>
+      [id, employeeName, amount, repaidAmount, status, date];
 }

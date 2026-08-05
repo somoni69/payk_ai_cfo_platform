@@ -18,8 +18,10 @@ class LegalLoaded extends LegalState {
   chatHistory; // sender: 'user'/'ai', text: '...'
   final bool isAskingAi;
   final bool isGenerating;
+  final bool isMutating;
   final GeneratedContract? generatedContract;
   final String? errorMessage;
+  final String? successMessage;
 
   const LegalLoaded({
     required this.templates,
@@ -28,8 +30,10 @@ class LegalLoaded extends LegalState {
     required this.chatHistory,
     this.isAskingAi = false,
     this.isGenerating = false,
+    this.isMutating = false,
     this.generatedContract,
     this.errorMessage,
+    this.successMessage,
   });
 
   LegalLoaded copyWith({
@@ -39,9 +43,13 @@ class LegalLoaded extends LegalState {
     List<Map<String, String>>? chatHistory,
     bool? isAskingAi,
     bool? isGenerating,
+    bool? isMutating,
     GeneratedContract? generatedContract,
     String? errorMessage,
+    String? successMessage,
     bool clearGeneratedContract = false,
+    bool clearError = false,
+    bool clearSuccess = false,
   }) {
     return LegalLoaded(
       templates: templates ?? this.templates,
@@ -50,10 +58,13 @@ class LegalLoaded extends LegalState {
       chatHistory: chatHistory ?? this.chatHistory,
       isAskingAi: isAskingAi ?? this.isAskingAi,
       isGenerating: isGenerating ?? this.isGenerating,
+      isMutating: isMutating ?? this.isMutating,
       generatedContract: clearGeneratedContract
           ? null
           : (generatedContract ?? this.generatedContract),
-      errorMessage: errorMessage, // We reset error on update usually
+      errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      successMessage:
+          clearSuccess ? null : (successMessage ?? this.successMessage),
     );
   }
 
@@ -65,8 +76,10 @@ class LegalLoaded extends LegalState {
     chatHistory,
     isAskingAi,
     isGenerating,
+    isMutating,
     generatedContract,
     errorMessage,
+    successMessage,
   ];
 }
 

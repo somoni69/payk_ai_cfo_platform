@@ -44,7 +44,7 @@ class LedgerCollapsingHeader extends StatelessWidget {
     final double appBarFontSize = screenWidth >= 600 ? 24.0 : 22.0;
     final TextStyle appBarTitleStyle = textStyles.h1Sans.copyWith(
       fontSize: appBarFontSize,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w500,
       height: 1.2,
     );
 

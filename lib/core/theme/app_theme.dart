@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
 
-/// Тема оформления Ledger для Flutter.
-/// Настраивает стандартные компоненты Material 3 под требования дизайна PAYK:
-/// - Нет мягких теней (все разделено тонкими границами [LedgerColors.border])
-/// - Радиус карточек: 10px
-/// - Радиус полей ввода и кнопок: 8px
-/// - Цветовые семантические акценты (зеленый/красный/янтарь/индиго)
+/// Тема оформления Ledger для Flutter (design_language.md).
+/// - Нет мягких теней (блоки — 1px [LedgerColors.border])
+/// - Радиус карточек: 16px; кнопки/поля: 8px
+/// - Начертания только w400 / w500
 class LedgerTheme {
   static final ThemeData light = _buildLight();
 
@@ -29,11 +27,7 @@ class LedgerTheme {
         scrolledUnderElevation: 0,
         iconTheme: IconThemeData(color: colors.brand),
         actionsIconTheme: IconThemeData(color: colors.brand),
-        titleTextStyle: textStyles.h1Sans.copyWith(
-          fontSize: 22.0,
-          fontWeight: FontWeight.w600,
-          color: colors.textPrimary,
-        ),
+        titleTextStyle: textStyles.h1Sans.copyWith(color: colors.textPrimary),
       ),
 
       // Стандартная цветовая схема

@@ -26,4 +26,10 @@ abstract class UsersRepository {
   });
 
   Future<void> deleteUser(String id);
+
+  /// Full permission matrix (`GET /permissions`) — director only.
+  Future<PermissionMatrix> getPermissionMatrix();
+
+  /// Auto-save one or more cells (`PUT /permissions`).
+  Future<PermissionMatrix> updatePermissions(List<PermissionCell> cells);
 }

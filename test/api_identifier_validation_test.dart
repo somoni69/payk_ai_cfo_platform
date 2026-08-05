@@ -14,7 +14,12 @@ void main() {
     ApiClient().dio.httpClientAdapter = adapter;
 
     await expectLater(
-      ApiCrmRepository().createDeal('0', 'Deal', 10, 'lead'),
+      ApiCrmRepository().createDeal(
+        clientId: '0',
+        title: 'Deal',
+        amount: 10,
+        stage: 'lead',
+      ),
       throwsA(isA<Exception>()),
     );
     await expectLater(

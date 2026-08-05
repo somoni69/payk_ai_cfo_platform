@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/checklist_models.dart';
 import '../domain/checklists_repository.dart';
 
@@ -6,119 +7,108 @@ class ApiChecklistsRepository implements ChecklistsRepository {
   final ApiClient _client;
 
   ApiChecklistsRepository({ApiClient? client})
-    : _client = client ?? ApiClient();
-
-  final List<ChecklistRun> _mockRuns = [
-    ChecklistRun(
-      id: 'chk-1',
-      title: 'Утренняя инспекция смены',
-      branchName: 'Филиал «Центральный»',
-      responsiblePerson: 'Алишер Рахимов',
-      entries: [
-        const ChecklistEntry(
-          id: 'e-1',
-          runId: 'chk-1',
-          text: 'Проверить пломбы кассового сейфа',
-          isDone: true,
-        ),
-        const ChecklistEntry(
-          id: 'e-2',
-          runId: 'chk-1',
-          text: 'Провести сверку стартового остатка кассы',
-          isDone: true,
-        ),
-        const ChecklistEntry(
-          id: 'e-3',
-          runId: 'chk-1',
-          text: 'Проверить работу терминалов ЭКВАЙРИНГ',
-          isDone: false,
-        ),
-        const ChecklistEntry(
-          id: 'e-4',
-          runId: 'chk-1',
-          text: 'Включить сканеры штрихкодов на кассе 2',
-          isDone: false,
-        ),
-      ],
-    ),
-    ChecklistRun(
-      id: 'chk-2',
-      title: 'Закрытие торгового зала',
-      branchName: 'Филиал «Сомони»',
-      responsiblePerson: 'Зарина Шарипова',
-      entries: [
-        const ChecklistEntry(
-          id: 'e-5',
-          runId: 'chk-2',
-          text: 'Сформировать Z-отчет смены',
-          isDone: true,
-        ),
-        const ChecklistEntry(
-          id: 'e-6',
-          runId: 'chk-2',
-          text: 'Подготовить наличность для инкассации',
-          isDone: true,
-        ),
-        const ChecklistEntry(
-          id: 'e-7',
-          runId: 'chk-2',
-          text: 'Сдать ключи от помещения на пульт охраны',
-          isDone: true,
-        ),
-      ],
-    ),
-  ];
+      : _client = client ?? ApiClient();
 
   @override
   Future<List<ChecklistRun>> getTodayRuns() async {
     try {
-      final response = await _client.dio.get('/api/v1/checklists/runs/today');
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((e) => ChecklistRun.fromJson(e as Map<String, dynamic>))
-            .toList();
+      final response = await _client.dio.get('/checklists/today');
+      final data = response.data;
+      if (data is! List) {
+        throw const FormatException(ErrorKeys.invalidResponse);
       }
-    } catch (_) {}
-    return List.from(_mockRuns);
+      return data
+          .whereType<Map>()
+          .map((e) => ChecklistRun.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
   }
 
   @override
-  Future<ChecklistRun> createRun({
-    required String title,
-    required String branchName,
-    required String responsiblePerson,
-    required List<String> items,
+  Future<List<ChecklistTemplate>> getTemplates({
+    bool activeOnly = false,
   }) async {
-    final runId = 'chk-${DateTime.now().millisecondsSinceEpoch}';
-    final newRun = ChecklistRun(
-      id: runId,
-      title: title,
-      branchName: branchName,
-      responsiblePerson: responsiblePerson,
-      entries: items
+    try {
+      final response = await _client.dio.get(
+        '/checklists',
+        queryParameters: activeOnly ? {'active_only': true} : null,
+      );
+      final data = response.data;
+      if (data is! List) {
+        throw const FormatException(ErrorKeys.invalidResponse);
+      }
+      return data
+          .whereType<Map>()
           .map(
-            (text) => ChecklistEntry(
-              id: 'e-${DateTime.now().millisecondsSinceEpoch}-${items.indexOf(text)}',
-              runId: runId,
-              text: text,
-              isDone: false,
-            ),
+            (e) => ChecklistTemplate.fromJson(Map<String, dynamic>.from(e)),
           )
-          .toList(),
-    );
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
 
+  @override
+  Future<ChecklistTemplate> createTemplate({
+    required String name,
+    String? description,
+    String? regulationText,
+    List<String> items = const [],
+  }) async {
     try {
       final response = await _client.dio.post(
-        '/api/v1/checklists/runs',
-        data: newRun.toJson(),
+        '/checklists',
+        data: {
+          'name': name,
+          'description': description,
+          'regulation_text': regulationText,
+          'items': [
+            for (var i = 0; i < items.length; i++)
+              {'text': items[i], 'position': i},
+          ],
+        },
       );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return ChecklistRun.fromJson(response.data as Map<String, dynamic>);
-      }
-    } catch (_) {}
+      return ChecklistTemplate.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
 
-    _mockRuns.add(newRun);
-    return newRun;
+  @override
+  Future<void> deleteTemplate(String id) async {
+    try {
+      final parsed = int.tryParse(id);
+      if (parsed == null || parsed <= 0) {
+        throw StateError(ErrorKeys.invalidId);
+      }
+      await _client.dio.delete('/checklists/$parsed');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<ChecklistSummaryRow>> getSummary() async {
+    try {
+      final response = await _client.dio.get('/checklists/summary');
+      final data = response.data;
+      if (data is! List) {
+        throw const FormatException(ErrorKeys.invalidResponse);
+      }
+      return data
+          .whereType<Map>()
+          .map(
+            (e) =>
+                ChecklistSummaryRow.fromJson(Map<String, dynamic>.from(e)),
+          )
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
   }
 
   @override
@@ -128,28 +118,11 @@ class ApiChecklistsRepository implements ChecklistsRepository {
     required bool isDone,
   }) async {
     try {
-      await _client.dio.patch(
-        '/api/v1/checklists/entries/$entryId/toggle',
-        data: {'is_done': isDone},
-      );
-    } catch (_) {}
-
-    final runIndex = _mockRuns.indexWhere((r) => r.id == runId);
-    if (runIndex != -1) {
-      final run = _mockRuns[runIndex];
-      final newEntries = run.entries.map((e) {
-        if (e.id == entryId) {
-          return e.copyWith(isDone: isDone);
-        }
-        return e;
-      }).toList();
-      _mockRuns[runIndex] = ChecklistRun(
-        id: run.id,
-        title: run.title,
-        branchName: run.branchName,
-        responsiblePerson: run.responsiblePerson,
-        entries: newEntries,
-      );
+      final id = int.tryParse(entryId);
+      if (id == null || id <= 0) throw StateError(ErrorKeys.invalidId);
+      await _client.dio.post('/checklists/entries/$id/toggle');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 
@@ -158,32 +131,25 @@ class ApiChecklistsRepository implements ChecklistsRepository {
     required String runId,
     required String text,
   }) async {
-    final entry = ChecklistEntry(
-      id: 'e-${DateTime.now().millisecondsSinceEpoch}',
-      runId: runId,
-      text: text,
-      isDone: false,
-    );
     try {
-      await _client.dio.post(
-        '/api/v1/checklists/runs/$runId/entries',
-        data: entry.toJson(),
+      final id = int.tryParse(runId);
+      if (id == null || id <= 0) throw StateError(ErrorKeys.invalidId);
+      final response = await _client.dio.post(
+        '/checklists/runs/$id/entries',
+        data: {'text': text},
       );
-    } catch (_) {}
-
-    final runIndex = _mockRuns.indexWhere((r) => r.id == runId);
-    if (runIndex != -1) {
-      final run = _mockRuns[runIndex];
-      final newEntries = List<ChecklistEntry>.from(run.entries)..add(entry);
-      _mockRuns[runIndex] = ChecklistRun(
-        id: run.id,
-        title: run.title,
-        branchName: run.branchName,
-        responsiblePerson: run.responsiblePerson,
-        entries: newEntries,
-      );
+      // API returns full RunRead — take last entry matching text
+      final data = response.data;
+      if (data is Map) {
+        final run = ChecklistRun.fromJson(Map<String, dynamic>.from(data));
+        final match = run.entries.where((e) => e.text == text).toList();
+        if (match.isNotEmpty) return match.last;
+        if (run.entries.isNotEmpty) return run.entries.last;
+      }
+      return ChecklistEntry(id: '', runId: runId, text: text);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
-    return entry;
   }
 
   @override
@@ -192,20 +158,11 @@ class ApiChecklistsRepository implements ChecklistsRepository {
     required String entryId,
   }) async {
     try {
-      await _client.dio.delete('/api/v1/checklists/entries/$entryId');
-    } catch (_) {}
-
-    final runIndex = _mockRuns.indexWhere((r) => r.id == runId);
-    if (runIndex != -1) {
-      final run = _mockRuns[runIndex];
-      final newEntries = run.entries.where((e) => e.id != entryId).toList();
-      _mockRuns[runIndex] = ChecklistRun(
-        id: run.id,
-        title: run.title,
-        branchName: run.branchName,
-        responsiblePerson: run.responsiblePerson,
-        entries: newEntries,
-      );
+      final eId = int.tryParse(entryId);
+      if (eId == null || eId <= 0) throw StateError(ErrorKeys.invalidId);
+      await _client.dio.delete('/checklists/entries/$eId');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 }

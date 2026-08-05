@@ -10,19 +10,19 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<BankAccount> _mockBanks = [
     const BankAccount(
       id: 'bnk-1',
-      bankName: 'Ориёнбанк',
+      bankName: 'mock_bank_oriyon',
       accountNumber: '20202810400000123456',
       balance: 145000.0,
     ),
     const BankAccount(
       id: 'bnk-2',
-      bankName: 'Алиф Банк',
+      bankName: 'mock_bank_alif',
       accountNumber: '20202810900000789012',
       balance: 89000.0,
     ),
     const BankAccount(
       id: 'bnk-3',
-      bankName: 'Банк Эсхата',
+      bankName: 'mock_bank_eskhata',
       accountNumber: '20202810100000345678',
       balance: 62000.0,
     ),
@@ -31,16 +31,16 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<Encashment> _mockEncashments = [
     Encashment(
       id: 'enc-1',
-      bankName: 'Ориёнбанк',
+      bankName: 'mock_bank_oriyon',
       amount: 25000.0,
-      responsiblePerson: 'Сайфиддинов Б.',
+      responsiblePerson: 'mock_person_sayfiddinov',
       date: DateTime.now().subtract(const Duration(hours: 4)),
     ),
     Encashment(
       id: 'enc-2',
-      bankName: 'Алиф Банк',
+      bankName: 'mock_bank_alif',
       amount: 15000.0,
-      responsiblePerson: 'Алишер Рахимов',
+      responsiblePerson: 'mock_user_alisher',
       date: DateTime.now().subtract(const Duration(days: 1)),
     ),
   ];
@@ -48,16 +48,16 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<StoreTransfer> _mockTransfers = [
     StoreTransfer(
       id: 'tr-1',
-      fromBranch: 'Филиал «Центральный»',
-      toBranch: 'Филиал «Сомони»',
+      fromBranch: 'mock_branch_central',
+      toBranch: 'mock_branch_somoni',
       amount: 5000.0,
       status: 'pending',
       date: DateTime.now().subtract(const Duration(hours: 2)),
     ),
     StoreTransfer(
       id: 'tr-2',
-      fromBranch: 'Точка «Худжанд»',
-      toBranch: 'Филиал «Центральный»',
+      fromBranch: 'mock_branch_khujand',
+      toBranch: 'mock_branch_central',
       amount: 12000.0,
       status: 'received',
       date: DateTime.now().subtract(const Duration(days: 2)),
@@ -67,7 +67,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   final List<FinancialAid> _mockAids = [
     FinancialAid(
       id: 'aid-1',
-      employeeName: 'Парвиз Назаров',
+      employeeName: 'mock_user_parviz',
       amount: 4000.0,
       repaidAmount: 2000.0,
       status: 'active',
@@ -75,7 +75,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
     ),
     FinancialAid(
       id: 'aid-2',
-      employeeName: 'Муножот К.',
+      employeeName: 'mock_person_munojot',
       amount: 1500.0,
       repaidAmount: 1500.0,
       status: 'repaid',
@@ -86,7 +86,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<BankAccount>> getBankAccounts() async {
     try {
-      final response = await _client.dio.get('/api/v1/finance-ops/banks');
+      final response = await _client.dio.get('/finance-ops/banks');
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => BankAccount.fromJson(e as Map<String, dynamic>))
@@ -99,7 +99,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<Encashment>> getEncashments() async {
     try {
-      final response = await _client.dio.get('/api/v1/finance-ops/encashments');
+      final response = await _client.dio.get('/finance-ops/encashments');
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => Encashment.fromJson(e as Map<String, dynamic>))
@@ -113,7 +113,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   Future<List<StoreTransfer>> getStoreTransfers() async {
     try {
       final response = await _client.dio.get(
-        '/api/v1/finance-ops/store-transfers',
+        '/finance-ops/store-transfers',
       );
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
@@ -128,7 +128,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   Future<List<FinancialAid>> getFinancialAids() async {
     try {
       final response = await _client.dio.get(
-        '/api/v1/finance-ops/financial-aid',
+        '/finance-ops/financial-aid',
       );
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
@@ -154,7 +154,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
     );
     try {
       await _client.dio.post(
-        '/api/v1/finance-ops/encashments',
+        '/finance-ops/encashments',
         data: enc.toJson(),
       );
     } catch (_) {}
@@ -179,7 +179,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
     );
     try {
       await _client.dio.post(
-        '/api/v1/finance-ops/store-transfers',
+        '/finance-ops/store-transfers',
         data: tr.toJson(),
       );
     } catch (_) {}
@@ -195,7 +195,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   }) async {
     try {
       await _client.dio.post(
-        '/api/v1/finance-ops/store-transfers/$transferId/$status',
+        '/finance-ops/store-transfers/$transferId/$status',
       );
     } catch (_) {}
 
@@ -228,7 +228,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
     );
     try {
       await _client.dio.post(
-        '/api/v1/finance-ops/financial-aid',
+        '/finance-ops/financial-aid',
         data: aid.toJson(),
       );
     } catch (_) {}
@@ -244,7 +244,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   }) async {
     try {
       await _client.dio.post(
-        '/api/v1/finance-ops/financial-aid/$aidId/repay',
+        '/finance-ops/financial-aid/$aidId/repay',
         data: {'amount': amount},
       );
     } catch (_) {}
@@ -261,6 +261,109 @@ class ApiFinOpsRepository implements FinOpsRepository {
         repaidAmount: newRepaid,
         status: newStatus,
         date: a.date,
+      );
+    }
+  }
+
+  @override
+  Future<BankAccount> createBank({required String name}) async {
+    try {
+      final response = await _client.dio.post(
+        '/finance-ops/banks',
+        data: {'name': name},
+      );
+      if (response.data is Map) {
+        final bank = BankAccount.fromJson(
+          Map<String, dynamic>.from(response.data as Map),
+        );
+        _mockBanks.insert(0, bank);
+        return bank;
+      }
+    } catch (_) {}
+    final bank = BankAccount(
+      id: 'bnk-${DateTime.now().millisecondsSinceEpoch}',
+      bankName: name,
+    );
+    _mockBanks.insert(0, bank);
+    return bank;
+  }
+
+  @override
+  Future<BankAccount> updateBank({
+    required String id,
+    String? name,
+    bool? isActive,
+  }) async {
+    try {
+      final response = await _client.dio.patch(
+        '/finance-ops/banks/$id',
+        data: {
+          'name': ?name,
+          'is_active': ?isActive,
+        },
+      );
+      if (response.data is Map) {
+        final bank = BankAccount.fromJson(
+          Map<String, dynamic>.from(response.data as Map),
+        );
+        final idx = _mockBanks.indexWhere((b) => b.id == id);
+        if (idx != -1) _mockBanks[idx] = bank;
+        return bank;
+      }
+    } catch (_) {}
+    final idx = _mockBanks.indexWhere((b) => b.id == id);
+    if (idx != -1) {
+      final old = _mockBanks[idx];
+      final bank = BankAccount(
+        id: old.id,
+        bankName: name ?? old.bankName,
+        isActive: isActive ?? old.isActive,
+        accountNumber: old.accountNumber,
+        balance: old.balance,
+        currency: old.currency,
+      );
+      _mockBanks[idx] = bank;
+      return bank;
+    }
+    throw Exception('error_no_resource');
+  }
+
+  @override
+  Future<void> deleteBank(String id) async {
+    try {
+      await _client.dio.delete('/finance-ops/banks/$id');
+    } catch (_) {}
+    final idx = _mockBanks.indexWhere((b) => b.id == id);
+    if (idx != -1) {
+      final old = _mockBanks[idx];
+      _mockBanks[idx] = BankAccount(
+        id: old.id,
+        bankName: old.bankName,
+        isActive: false,
+        accountNumber: old.accountNumber,
+        balance: old.balance,
+        currency: old.currency,
+      );
+    }
+  }
+
+  @override
+  Future<void> cancelStoreTransfer(String transferId) async {
+    try {
+      await _client.dio.post(
+        '/finance-ops/store-transfers/$transferId/cancel',
+      );
+    } catch (_) {}
+    final idx = _mockTransfers.indexWhere((t) => t.id == transferId);
+    if (idx != -1) {
+      final t = _mockTransfers[idx];
+      _mockTransfers[idx] = StoreTransfer(
+        id: t.id,
+        fromBranch: t.fromBranch,
+        toBranch: t.toBranch,
+        amount: t.amount,
+        status: 'cancelled',
+        date: t.date,
       );
     }
   }

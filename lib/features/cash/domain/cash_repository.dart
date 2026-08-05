@@ -1,4 +1,30 @@
+import 'dart:typed_data';
+
 import 'transaction_model.dart';
+
+/// Filters for cash operations list / export (web parity).
+class CashOperationFilters {
+  final int? registerId;
+  final String? type; // income | expense
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+
+  const CashOperationFilters({
+    this.registerId,
+    this.type,
+    this.dateFrom,
+    this.dateTo,
+  });
+
+  Map<String, dynamic> toQuery() {
+    final q = <String, dynamic>{};
+    if (registerId != null) q['register_id'] = registerId;
+    if (type != null && type!.isNotEmpty && type != 'all') q['type'] = type;
+    if (dateFrom != null) q['date_from'] = dateFrom!.toUtc().toIso8601String();
+    if (dateTo != null) q['date_to'] = dateTo!.toUtc().toIso8601String();
+    return q;
+  }
+}
 
 /// Интерфейс репозитория кассовых операций и смен.
 abstract class CashRepository {
@@ -35,4 +61,17 @@ abstract class CashRepository {
 
   /// Получить список всех касс (кассовых аппаратов)
   Future<List<CashRegister>> getRegisters();
+
+  /// Export operations (`GET /cash/export`) — fmt: xlsx | csv | pdf.
+  Future<Uint8List> exportOperations({
+    required String format,
+    CashOperationFilters filters = const CashOperationFilters(),
+  });
+
+  /// Import operations file (`POST /cash/import`).
+  Future<int> importOperations({
+    required int registerId,
+    required String filename,
+    required Uint8List bytes,
+  });
 }

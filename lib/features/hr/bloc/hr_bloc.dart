@@ -12,17 +12,28 @@ class HrBloc extends Bloc<HrEvent, HrState> {
   List<SalaryRecord> _cachedSalaries = [];
   final Map<String, Future<List<Object>>> _loadRequests = {};
   int _loadGeneration = 0;
+  String _period = '';
 
   HrBloc(this._repository) : super(HrLoading()) {
     on<LoadHrData>(_onLoadHrData);
+    on<LoadHrSection>(_onLoadHrSection);
     on<CreateEmployeeRequested>(_onCreateEmployeeRequested);
     on<RecalcSalaryRequested>(_onRecalcSalaryRequested);
+    on<CreateAttendanceRequested>(_onCreateAttendance);
+    on<DeleteAttendanceRequested>(_onDeleteAttendance);
+    on<CreateCandidateRequested>(_onCreateCandidate);
+    on<UpdateCandidateStageRequested>(_onUpdateCandidateStage);
+    on<DeleteCandidateRequested>(_onDeleteCandidate);
+    on<CreateEvaluationRequested>(_onCreateEvaluation);
+    on<CreateContractRequested>(_onCreateContract);
+    on<DeleteContractRequested>(_onDeleteContract);
   }
 
   Future<void> _onLoadHrData(LoadHrData event, Emitter<HrState> emit) async {
     final generation = ++_loadGeneration;
     final previous = state is HrLoaded ? state as HrLoaded : null;
     final canKeepCurrent = previous?.period == event.period;
+    _period = event.period;
 
     if (canKeepCurrent) {
       emit(
@@ -66,6 +77,20 @@ class HrBloc extends Bloc<HrEvent, HrState> {
           kpiAlerts: _cachedKpiAlerts,
           salaryRecords: _cachedSalaries,
           period: event.period,
+          // Preserve already loaded sections when refreshing same period.
+          orgChart: canKeepCurrent ? previous!.orgChart : const [],
+          orgLoaded: canKeepCurrent ? previous!.orgLoaded : false,
+          attendance: canKeepCurrent ? previous!.attendance : const [],
+          attendanceLoaded: canKeepCurrent ? previous!.attendanceLoaded : false,
+          candidates: canKeepCurrent ? previous!.candidates : const [],
+          candidatesLoaded: canKeepCurrent ? previous!.candidatesLoaded : false,
+          evaluations: canKeepCurrent ? previous!.evaluations : const [],
+          evaluationsLoaded:
+              canKeepCurrent ? previous!.evaluationsLoaded : false,
+          contracts: canKeepCurrent ? previous!.contracts : const [],
+          contractsLoaded: canKeepCurrent ? previous!.contractsLoaded : false,
+          movement: canKeepCurrent ? previous!.movement : null,
+          movementLoaded: canKeepCurrent ? previous!.movementLoaded : false,
         ),
       );
     } catch (error) {
@@ -93,7 +118,144 @@ class HrBloc extends Bloc<HrEvent, HrState> {
     }
   }
 
-  void _onCreateEmployeeRequested(
+  Future<void> _onLoadHrSection(
+    LoadHrSection event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+
+    final alreadyLoaded = switch (event.section) {
+      HrSection.org => current.orgLoaded,
+      HrSection.attendance => current.attendanceLoaded,
+      HrSection.recruitment => current.candidatesLoaded,
+      HrSection.nineBox => current.evaluationsLoaded,
+      HrSection.contracts => current.contractsLoaded,
+      HrSection.movement => current.movementLoaded,
+    };
+    if (alreadyLoaded && !event.forceRefresh) {
+      if (event.completion?.isCompleted == false) event.completion!.complete();
+      return;
+    }
+
+    emit(current.copyWith(sectionLoading: true, clearError: true));
+
+    try {
+      switch (event.section) {
+        case HrSection.org:
+          final org = await _repository.getOrgChart(
+            forceRefresh: event.forceRefresh,
+          );
+          if (state is HrLoaded) {
+            emit(
+              (state as HrLoaded).copyWith(
+                orgChart: org,
+                orgLoaded: true,
+                sectionLoading: false,
+              ),
+            );
+          }
+          break;
+        case HrSection.attendance:
+          final rows = await _repository.getAttendance(
+            forceRefresh: event.forceRefresh,
+          );
+          if (state is HrLoaded) {
+            emit(
+              (state as HrLoaded).copyWith(
+                attendance: rows,
+                attendanceLoaded: true,
+                sectionLoading: false,
+              ),
+            );
+          }
+          break;
+        case HrSection.recruitment:
+          final rows = await _repository.getCandidates(
+            forceRefresh: event.forceRefresh,
+          );
+          if (state is HrLoaded) {
+            emit(
+              (state as HrLoaded).copyWith(
+                candidates: rows,
+                candidatesLoaded: true,
+                sectionLoading: false,
+              ),
+            );
+          }
+          break;
+        case HrSection.nineBox:
+          final period = _period.isNotEmpty ? _period : current.period;
+          final rows = await _repository.getEvaluations(
+            period: period,
+            forceRefresh: event.forceRefresh,
+          );
+          if (state is HrLoaded) {
+            emit(
+              (state as HrLoaded).copyWith(
+                evaluations: rows,
+                evaluationsLoaded: true,
+                sectionLoading: false,
+              ),
+            );
+          }
+          break;
+        case HrSection.contracts:
+          final rows = await _repository.getContracts(
+            forceRefresh: event.forceRefresh,
+          );
+          if (state is HrLoaded) {
+            emit(
+              (state as HrLoaded).copyWith(
+                contracts: rows,
+                contractsLoaded: true,
+                sectionLoading: false,
+              ),
+            );
+          }
+          break;
+        case HrSection.movement:
+          final period = _period.isNotEmpty ? _period : current.period;
+          final parts = period.split('-');
+          final year = int.tryParse(parts[0]) ?? DateTime.now().year;
+          final month = parts.length > 1
+              ? (int.tryParse(parts[1]) ?? DateTime.now().month)
+              : DateTime.now().month;
+          final from = '$year-${month.toString().padLeft(2, '0')}-01';
+          final lastDay = DateTime(year, month + 1, 0).day;
+          final to =
+              '$year-${month.toString().padLeft(2, '0')}-${lastDay.toString().padLeft(2, '0')}';
+          final report = await _repository.getMovementReport(
+            dateFrom: from,
+            dateTo: to,
+            forceRefresh: event.forceRefresh,
+          );
+          if (state is HrLoaded) {
+            emit(
+              (state as HrLoaded).copyWith(
+                movement: report,
+                movementLoaded: true,
+                sectionLoading: false,
+              ),
+            );
+          }
+          break;
+      }
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit(
+          (state as HrLoaded).copyWith(
+            sectionLoading: false,
+            errorMessage: e.toString(),
+          ),
+        );
+      }
+    } finally {
+      if (event.completion?.isCompleted == false) event.completion!.complete();
+    }
+  }
+
+  Future<void> _onCreateEmployeeRequested(
     CreateEmployeeRequested event,
     Emitter<HrState> emit,
   ) async {
@@ -107,20 +269,17 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       emit(
         currentState.copyWith(
           employees: _cachedEmployees,
-          successMessage:
-              'Сотрудник "${created.fullName}" успешно принят на работу.',
+          successMessage: 'hr_toast_employee_created',
         ),
       );
     } catch (e) {
       emit(
-        currentState.copyWith(
-          errorMessage: 'Не удалось добавить сотрудника. Проверьте данные.',
-        ),
+        currentState.copyWith(errorMessage: e.toString()),
       );
     }
   }
 
-  void _onRecalcSalaryRequested(
+  Future<void> _onRecalcSalaryRequested(
     RecalcSalaryRequested event,
     Emitter<HrState> emit,
   ) async {
@@ -136,14 +295,12 @@ class HrBloc extends Bloc<HrEvent, HrState> {
         bonusFormula: event.bonusFormula,
       );
 
-      // Ищем и заменяем запись в локальном списке расчетных листков
       final updatedSalaries = _cachedSalaries.map((s) {
         return (s.employeeId == event.employeeId && s.period == event.period)
             ? recalculated
             : s;
       }).toList();
 
-      // Если записи не было в списке, добавляем её
       if (!updatedSalaries.any(
         (s) => s.employeeId == event.employeeId && s.period == event.period,
       )) {
@@ -155,16 +312,215 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       emit(
         currentState.copyWith(
           salaryRecords: _cachedSalaries,
-          successMessage:
-              'Расчет по сотруднику "${recalculated.employeeName}" успешно обновлен.',
+          successMessage: 'hr_toast_salary_recalc',
         ),
       );
     } catch (e) {
+      emit(currentState.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onCreateAttendance(
+    CreateAttendanceRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      final row = await _repository.createAttendance(
+        employeeId: event.employeeId,
+        workDate: event.workDate,
+        hours: event.hours,
+      );
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
       emit(
-        currentState.copyWith(
-          errorMessage: 'Не удалось выполнить перерасчёт. Проверьте данные.',
+        current.copyWith(
+          attendance: [row, ...current.attendance],
+          attendanceLoaded: true,
+          successMessage: 'hr_toast_attendance_created',
         ),
       );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onDeleteAttendance(
+    DeleteAttendanceRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      await _repository.deleteAttendance(event.id);
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          attendance:
+              current.attendance.where((a) => a.id != event.id).toList(),
+          successMessage: 'hr_toast_attendance_deleted',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onCreateCandidate(
+    CreateCandidateRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      final row = await _repository.createCandidate(
+        fullName: event.fullName,
+        vacancy: event.vacancy,
+        phone: event.phone,
+        email: event.email,
+      );
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          candidates: [row, ...current.candidates],
+          candidatesLoaded: true,
+          successMessage: 'hr_toast_candidate_created',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onUpdateCandidateStage(
+    UpdateCandidateStageRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      final row = await _repository.updateCandidateStage(event.id, event.stage);
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          candidates: current.candidates
+              .map((c) => c.id == event.id ? row : c)
+              .toList(),
+          successMessage: 'hr_toast_candidate_updated',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onDeleteCandidate(
+    DeleteCandidateRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      await _repository.deleteCandidate(event.id);
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          candidates:
+              current.candidates.where((c) => c.id != event.id).toList(),
+          successMessage: 'hr_toast_candidate_deleted',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onCreateEvaluation(
+    CreateEvaluationRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      final row = await _repository.createEvaluation(
+        employeeId: event.employeeId,
+        period: event.period,
+        performance: event.performance,
+        potential: event.potential,
+        note: event.note,
+      );
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          evaluations: [row, ...current.evaluations],
+          evaluationsLoaded: true,
+          successMessage: 'hr_toast_evaluation_created',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onCreateContract(
+    CreateContractRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      final row = await _repository.createContract(
+        employeeId: event.employeeId,
+        number: event.number,
+        startDate: event.startDate,
+        endDate: event.endDate,
+      );
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          contracts: [row, ...current.contracts],
+          contractsLoaded: true,
+          successMessage: 'hr_toast_contract_created',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onDeleteContract(
+    DeleteContractRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    try {
+      await _repository.deleteContract(event.id);
+      if (state is! HrLoaded) return;
+      final current = state as HrLoaded;
+      emit(
+        current.copyWith(
+          contracts: current.contracts.where((c) => c.id != event.id).toList(),
+          successMessage: 'hr_toast_contract_deleted',
+        ),
+      );
+    } catch (e) {
+      if (state is HrLoaded) {
+        emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
+      }
     }
   }
 }

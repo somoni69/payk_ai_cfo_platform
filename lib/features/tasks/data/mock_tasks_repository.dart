@@ -197,4 +197,108 @@ class MockTasksRepository implements TasksRepository {
       ),
     ];
   }
+
+  @override
+  Future<List<Task>> getMyTasks() async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    return _tasks
+        .where((t) => t.isPersonal || t.assigneeId == '1')
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<Task>> getAssignedToMe() async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    return _tasks
+        .where((t) => !t.isPersonal && t.assigneeId == '1')
+        .toList(growable: false);
+  }
+
+  @override
+  Future<Task> createPersonalTask(PersonalTaskInput input) async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    final task = Task(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: input.title,
+      description: input.description ?? '',
+      status: input.status ?? TaskStatus.todo,
+      dueDate: input.dueDate ?? DateTime.now().add(const Duration(days: 1)),
+      priority: input.priority ?? TaskPriority.medium,
+      startDate: input.startDate,
+      isPersonal: true,
+      createdBy: 1,
+      assigneeId: '1',
+      assigneeName: 'Шерзод Азимов',
+    );
+    _tasks.insert(0, task);
+    return task;
+  }
+
+  @override
+  Future<Task> updatePersonalTask(
+    String taskId,
+    PersonalTaskInput input,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    final index = _tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw StateError('not found');
+    final updated = _tasks[index].copyWith(
+      title: input.title,
+      description: input.description ?? _tasks[index].description,
+      status: input.status ?? _tasks[index].status,
+      priority: input.priority ?? _tasks[index].priority,
+      dueDate: input.dueDate ?? _tasks[index].dueDate,
+      startDate: input.startDate ?? _tasks[index].startDate,
+    );
+    _tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deletePersonalTask(String taskId) async {
+    await Future.delayed(const Duration(milliseconds: 40));
+    _tasks.removeWhere((t) => t.id == taskId);
+  }
+
+  @override
+  Future<Task> acknowledgeTask(String taskId) async {
+    final index = _tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw StateError('not found');
+    final updated = _tasks[index].copyWith(acknowledgedAt: DateTime.now());
+    _tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Task> submitTask(String taskId) async {
+    final index = _tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw StateError('not found');
+    final updated = _tasks[index].copyWith(status: TaskStatus.review);
+    _tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Task> acceptTask(String taskId) async {
+    final index = _tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw StateError('not found');
+    final updated = _tasks[index].copyWith(
+      status: TaskStatus.done,
+      acceptedAt: DateTime.now(),
+    );
+    _tasks[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Task> rejectTask(String taskId, {String? reason}) async {
+    final index = _tasks.indexWhere((t) => t.id == taskId);
+    if (index < 0) throw StateError('not found');
+    final updated = _tasks[index].copyWith(
+      status: TaskStatus.inProgress,
+      rejectReason: reason,
+    );
+    _tasks[index] = updated;
+    return updated;
+  }
 }

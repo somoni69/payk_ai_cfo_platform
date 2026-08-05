@@ -89,6 +89,33 @@ class MockUsersTestRepository implements UsersRepository {
   Future<void> deleteUser(String id) async {
     if (shouldFail) throw Exception('Delete user failed');
   }
+
+  @override
+  Future<PermissionMatrix> getPermissionMatrix() async {
+    if (shouldFail) throw Exception('Permissions failed');
+    return const PermissionMatrix(
+      modules: ['cash'],
+      roles: ['manager'],
+      perms: ['view', 'create', 'edit', 'delete', 'action'],
+      cells: [
+        PermissionCell(
+          role: 'manager',
+          module: 'cash',
+          canView: true,
+          canCreate: true,
+          canEdit: true,
+          canDelete: false,
+          canAction: true,
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<PermissionMatrix> updatePermissions(List<PermissionCell> cells) async {
+    if (shouldFail) throw Exception('Update permissions failed');
+    return getPermissionMatrix();
+  }
 }
 
 void main() {

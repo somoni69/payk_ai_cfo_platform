@@ -25,4 +25,26 @@ abstract class TasksRepository {
 
   /// Получить критический путь задач
   Future<List<TaskCriticalPath>> getCriticalPath();
+
+  // --- My tasks / acceptance (web parity) ---
+
+  /// Tasks where current user is author or assignee (`GET /tasks/my`).
+  Future<List<Task>> getMyTasks();
+
+  /// Team tasks assigned to me (`GET /tasks/my/assigned`).
+  Future<List<Task>> getAssignedToMe();
+
+  Future<Task> createPersonalTask(PersonalTaskInput input);
+
+  Future<Task> updatePersonalTask(String taskId, PersonalTaskInput input);
+
+  Future<void> deletePersonalTask(String taskId);
+
+  Future<Task> acknowledgeTask(String taskId);
+
+  Future<Task> submitTask(String taskId);
+
+  Future<Task> acceptTask(String taskId);
+
+  Future<Task> rejectTask(String taskId, {String? reason});
 }

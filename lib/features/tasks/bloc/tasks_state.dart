@@ -33,6 +33,10 @@ class TasksLoaded extends TasksState {
   final List<TaskAssignee> assignees;
   final List<TaskOverload> overloaded;
   final List<TaskCriticalPath> criticalPath;
+  final List<Task> myTasks;
+  final List<Task> assignedToMe;
+  final bool myTasksLoaded;
+  final bool isMyTasksLoading;
   final Set<String> pendingStatusTaskIds;
   final TaskStatusUpdateResult? lastStatusUpdateResult;
   final bool isRefreshing;
@@ -40,6 +44,7 @@ class TasksLoaded extends TasksState {
   final bool analyticsLoaded;
   final String? analyticsError;
   final String? loadError;
+  final String? actionMessage;
 
   const TasksLoaded({
     required this.tasks,
@@ -47,6 +52,10 @@ class TasksLoaded extends TasksState {
     this.assignees = const [],
     this.overloaded = const [],
     this.criticalPath = const [],
+    this.myTasks = const [],
+    this.assignedToMe = const [],
+    this.myTasksLoaded = false,
+    this.isMyTasksLoading = false,
     this.pendingStatusTaskIds = const {},
     this.lastStatusUpdateResult,
     this.isRefreshing = false,
@@ -54,6 +63,7 @@ class TasksLoaded extends TasksState {
     this.analyticsLoaded = false,
     this.analyticsError,
     this.loadError,
+    this.actionMessage,
   });
 
   TasksLoaded copyWith({
@@ -62,6 +72,10 @@ class TasksLoaded extends TasksState {
     List<TaskAssignee>? assignees,
     List<TaskOverload>? overloaded,
     List<TaskCriticalPath>? criticalPath,
+    List<Task>? myTasks,
+    List<Task>? assignedToMe,
+    bool? myTasksLoaded,
+    bool? isMyTasksLoading,
     Set<String>? pendingStatusTaskIds,
     TaskStatusUpdateResult? lastStatusUpdateResult,
     bool clearLastResult = false,
@@ -72,6 +86,8 @@ class TasksLoaded extends TasksState {
     bool clearAnalyticsError = false,
     String? loadError,
     bool clearLoadError = false,
+    String? actionMessage,
+    bool clearActionMessage = false,
   }) {
     return TasksLoaded(
       tasks: tasks ?? this.tasks,
@@ -79,6 +95,10 @@ class TasksLoaded extends TasksState {
       assignees: assignees ?? this.assignees,
       overloaded: overloaded ?? this.overloaded,
       criticalPath: criticalPath ?? this.criticalPath,
+      myTasks: myTasks ?? this.myTasks,
+      assignedToMe: assignedToMe ?? this.assignedToMe,
+      myTasksLoaded: myTasksLoaded ?? this.myTasksLoaded,
+      isMyTasksLoading: isMyTasksLoading ?? this.isMyTasksLoading,
       pendingStatusTaskIds: pendingStatusTaskIds ?? this.pendingStatusTaskIds,
       lastStatusUpdateResult: clearLastResult
           ? null
@@ -90,6 +110,9 @@ class TasksLoaded extends TasksState {
           ? null
           : (analyticsError ?? this.analyticsError),
       loadError: clearLoadError ? null : (loadError ?? this.loadError),
+      actionMessage: clearActionMessage
+          ? null
+          : (actionMessage ?? this.actionMessage),
     );
   }
 
@@ -100,6 +123,10 @@ class TasksLoaded extends TasksState {
     assignees,
     overloaded,
     criticalPath,
+    myTasks,
+    assignedToMe,
+    myTasksLoaded,
+    isMyTasksLoading,
     pendingStatusTaskIds,
     lastStatusUpdateResult,
     isRefreshing,
@@ -107,6 +134,7 @@ class TasksLoaded extends TasksState {
     analyticsLoaded,
     analyticsError,
     loadError,
+    actionMessage,
   ];
 }
 

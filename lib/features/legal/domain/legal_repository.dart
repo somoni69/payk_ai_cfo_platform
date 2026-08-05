@@ -21,6 +21,28 @@ abstract class LegalRepository {
 
   /// Запрос к ИИ-Юристу
   Future<String> askAiLawyer(String question);
+
+  Future<Law> createLaw({
+    required String title,
+    required String body,
+    String? category,
+  });
+
+  Future<void> deleteLaw(String id);
+
+  Future<LegalDeadline> createDeadline({
+    required String title,
+    required String type,
+    required DateTime dueDate,
+    String? amount,
+    String? note,
+  });
+
+  Future<ContractTemplate> createTemplate({
+    required String name,
+    required String body,
+    String? category,
+  });
 }
 
 abstract interface class CancellableLegalRepository {

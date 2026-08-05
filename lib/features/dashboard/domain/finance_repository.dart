@@ -41,4 +41,31 @@ abstract class FinanceRepository {
 
   /// Получить план-факт отчет за период
   Future<PlanFactReport> getPlanFactReport();
+
+  Future<ClientAnalysisReport> getClientAnalysis();
+
+  Future<PlanItem> createPlan({
+    required String period,
+    required String category,
+    required String type,
+    required double plannedAmount,
+  });
+
+  Future<void> deletePlan(int planId);
+
+  Future<BankAccountInfo> createAccount({
+    required String name,
+    String? bank,
+    String? number,
+    String currency = 'TJS',
+    double balance = 0,
+  });
+
+  Future<void> deleteAccount(String accountId);
+
+  Future<void> zeroOutAccount(String accountId);
+
+  Future<ConvertResult> convertAmount(double amount, String base);
+
+  Future<void> refreshRates();
 }

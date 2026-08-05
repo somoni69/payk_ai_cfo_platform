@@ -14,6 +14,13 @@ abstract class WarehouseRepository {
   /// Добавить новый товар
   Future<WarehouseProduct> createProduct(WarehouseProduct product);
 
+  Future<WarehouseProduct> updateProduct(WarehouseProduct product);
+
+  Future<void> deleteProduct(String id);
+
+  /// Director-only: zero stock via `/finance-ops/zero-out`.
+  Future<void> zeroOutProduct(String id);
+
   /// Добавить операцию перемещения товара (приход/расход)
   Future<WarehouseMovement> createMovement(
     String productId,
