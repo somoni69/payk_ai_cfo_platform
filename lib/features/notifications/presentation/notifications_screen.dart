@@ -13,6 +13,7 @@ import '../../../features/notifications/domain/notifications_repository.dart';
 import '../../../features/notifications/domain/notification_model.dart';
 import '../../../presentation/widgets/ledger_ai_card.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
 /// Входная точка экрана уведомлений с внедрением NotificationsBloc.
@@ -115,7 +116,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                   snap: true,
                 ),
               ],
-              body: const Center(child: CircularProgressIndicator()),
+              body: const LedgerListShimmer(showStatsHeader: false, itemCount: 5),
             ),
           );
         }

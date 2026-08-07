@@ -18,6 +18,7 @@ import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
 class MarketingScreen extends StatelessWidget {
@@ -194,6 +195,11 @@ class _MarketingViewState extends State<MarketingView>
                     label: Text(
                       localeCubit.translate('marketing_mode_ad_ideas'),
                     ),
+                    labelStyle: textStyles.captionSans.copyWith(
+                      color: !_generatePostTextMode ? Colors.white : colors.textPrimary,
+                      fontWeight: !_generatePostTextMode ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                    checkmarkColor: Colors.white,
                     selected: !_generatePostTextMode,
                     onSelected: (val) {
                       if (val) {
@@ -210,6 +216,11 @@ class _MarketingViewState extends State<MarketingView>
                     label: Text(
                       localeCubit.translate('marketing_mode_ready_post'),
                     ),
+                    labelStyle: textStyles.captionSans.copyWith(
+                      color: _generatePostTextMode ? Colors.white : colors.textPrimary,
+                      fontWeight: _generatePostTextMode ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                    checkmarkColor: Colors.white,
                     selected: _generatePostTextMode,
                     onSelected: (val) {
                       if (val) {
@@ -391,7 +402,7 @@ class _MarketingViewState extends State<MarketingView>
           previous.isCampaignsLoading != current.isCampaignsLoading,
       builder: (context, state) {
         if (state.isCampaignsLoading && state.campaigns.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const LedgerListShimmer(showStatsHeader: false, itemCount: 5);
         }
 
         final visibleCount = _visibleCampaigns < state.campaigns.length
@@ -499,7 +510,7 @@ class _MarketingViewState extends State<MarketingView>
           previous.isPostsLoading != current.isPostsLoading,
       builder: (context, state) {
         if (state.isPostsLoading && state.posts.isEmpty) {
-          return const Center(child: CircularProgressIndicator());
+          return const LedgerListShimmer(showStatsHeader: false, itemCount: 5);
         }
 
         final visibleCount = _visiblePosts < state.posts.length

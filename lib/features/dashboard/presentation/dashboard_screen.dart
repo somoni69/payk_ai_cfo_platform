@@ -20,6 +20,7 @@ import '../../../presentation/widgets/ledger_ai_card.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 part 'dashboard_sections.dart';
 part 'dashboard_tab_pnl.dart';
@@ -149,13 +150,6 @@ class _DashboardViewState extends State<DashboardView>
         return previous.runtimeType != current.runtimeType;
       },
       builder: (context, state) {
-        if (state is DashboardLoading) {
-          return Scaffold(
-            backgroundColor: colors.background,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
         if (state is DashboardError) {
           return Scaffold(
             backgroundColor: colors.background,
@@ -190,22 +184,21 @@ class _DashboardViewState extends State<DashboardView>
           );
         }
 
-        if (state is DashboardLoaded) {
-          final m = state.metrics;
-          final currency = state.currency;
+        final loadedState = state is DashboardLoaded ? state : null;
+        final currency = loadedState?.currency ?? 'TJS';
 
-          final authState = context.watch<AuthBloc>().state;
-          final canWrite = authState is AuthAuthenticated &&
-              authState.role.canWrite(AppCapability.dashboard);
+        final authState = context.watch<AuthBloc>().state;
+        final canWrite = authState is AuthAuthenticated &&
+            authState.role.canWrite(AppCapability.dashboard);
 
-          return Scaffold(
-            floatingActionButton: (_activeTabIndex == 2 && canWrite)
-                ? FloatingActionButton.extended(
-                    onPressed: () {
-                      final period =
-                          state.planFact?.period ?? _defaultPlanPeriod();
-                      _showCreatePlanSheet(context, period);
-                    },
+        return Scaffold(
+          floatingActionButton: (_activeTabIndex == 2 && canWrite && loadedState != null)
+              ? FloatingActionButton.extended(
+                  onPressed: () {
+                    final period =
+                        loadedState.planFact?.period ?? _defaultPlanPeriod();
+                    _showCreatePlanSheet(context, period);
+                  },
                     backgroundColor: colors.brand,
                     foregroundColor: colors.surface,
                     elevation: 0,
@@ -256,7 +249,7 @@ class _DashboardViewState extends State<DashboardView>
                     pinned: true,
                     floating: true,
                     snap: true,
-                    actions: [_buildCurrencySelector(context, state.currency)],
+                    actions: [_buildCurrencySelector(context, currency)],
                     bottom: TabBar(
                       controller: _tabController,
                       isScrollable: true,
@@ -309,59 +302,61 @@ class _DashboardViewState extends State<DashboardView>
                   ),
                 ];
               },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  RefreshIndicator(
-                    onRefresh: () => _refreshDashboard(context),
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // AI Рекомендация (MOB-04 / FIN-11)
-                            LedgerAICard(
-                              title: languageCubit.translate(
-                                'dashboard_daily_recommendation_title',
-                              ),
-                              content: languageCubit.translate(
-                                'dashboard_daily_recommendation_content',
-                              ),
-                            ),
-                            const SizedBox(height: 20),
+              body: loadedState == null
+                  ? const DashboardOverviewShimmer()
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        RefreshIndicator(
+                          onRefresh: () => _refreshDashboard(context),
+                          child: SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // AI Рекомендация (MOB-04 / FIN-11)
+                                  LedgerAICard(
+                                    title: languageCubit.translate(
+                                      'dashboard_daily_recommendation_title',
+                                    ),
+                                    content: languageCubit.translate(
+                                      'dashboard_daily_recommendation_content',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
 
-                            // Сетка 6 ключевых цифр
-                            Text(
-                              languageCubit.translate(
-                                'dashboard_key_metrics_title',
-                              ),
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildMetricsGrid(m, currency),
-                            const SizedBox(height: 20),
+                                  // Сетка 6 ключевых цифр
+                                  Text(
+                                    languageCubit.translate(
+                                      'dashboard_key_metrics_title',
+                                    ),
+                                    style: textStyles.bodySans.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildMetricsGrid(loadedState.metrics, currency),
+                                  const SizedBox(height: 20),
 
-                            // Реальный график движения денежных средств
-                            Text(
-                              languageCubit.translate(
-                                'dashboard_cash_flow_30_days_title',
-                              ),
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                  // Реальный график движения денежных средств
+                                  Text(
+                                    languageCubit.translate(
+                                      'dashboard_cash_flow_30_days_title',
+                                    ),
+                                    style: textStyles.bodySans.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildChart(loadedState.history, currency),
+                                  const SizedBox(height: 20),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            _buildChart(state.history, currency),
-                            const SizedBox(height: 20),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                   _buildLazyDashboardSection<PnlReport>(
                     section: DashboardSection.pnl,
                     select: (loaded) => loaded.pnl,
@@ -415,10 +410,7 @@ class _DashboardViewState extends State<DashboardView>
               ),
             ),
           );
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
+        },
+      );
   }
 }

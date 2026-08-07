@@ -11,6 +11,7 @@ import '../../../features/audit/domain/audit_repository.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class AuditScreen extends StatelessWidget {
   const AuditScreen({super.key});
@@ -111,7 +112,7 @@ class _AuditViewState extends State<AuditView>
           },
           builder: (context, state) {
             if (state is AuditLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
             }
             if (state is AuditError) {
               return Center(child: Text(state.message));

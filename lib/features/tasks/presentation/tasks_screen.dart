@@ -18,6 +18,7 @@ import '../../../features/tasks/domain/tasks_repository.dart';
 import '../../../features/tasks/domain/task_model.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
@@ -35,11 +36,16 @@ class TasksScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<TasksBloc>(
-      create: (context) =>
-          TasksBloc(context.read<TasksRepository>())..add(LoadTasks()),
-      child: const TasksView(),
-    );
+    try {
+      context.read<TasksBloc>();
+      return const TasksView();
+    } catch (_) {
+      return BlocProvider<TasksBloc>(
+        create: (context) =>
+            TasksBloc(context.read<TasksRepository>())..add(LoadTasks()),
+        child: const TasksView(),
+      );
+    }
   }
 }
 
@@ -358,7 +364,7 @@ class _TasksViewState extends State<TasksView>
           },
           builder: (context, state) {
             if (state is TasksLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
             }
 
             if (state is TasksError) {

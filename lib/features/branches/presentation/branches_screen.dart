@@ -15,6 +15,7 @@ import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class BranchesScreen extends StatelessWidget {
   const BranchesScreen({super.key});
@@ -202,7 +203,7 @@ class BranchesView extends StatelessWidget {
           },
           builder: (context, state) {
             if (state is BranchesLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return const LedgerListShimmer(showStatsHeader: false, itemCount: 5);
             }
             if (state is BranchesError) {
               return Center(child: Text(state.message));

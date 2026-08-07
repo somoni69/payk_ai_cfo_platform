@@ -322,6 +322,8 @@ const Map<String, String> kRussianCatalog = {
   'login_2fa_submit': 'Подтвердить',
   'login_2fa_back': 'Назад к входу',
   'more_access_settings': 'НАСТРОЙКИ ДОСТУПА',
+  'more_privacy_policy': 'Политика конфиденциальности',
+  'login_privacy_agreement': 'При входе вы соглашаетесь с правилами использования и политикой конфиденциальности',
   'more_group_business': 'УПРАВЛЕНИЕ БИЗНЕСОМ',
   'more_group_finance': 'ФИНАНСЫ И АНАЛИТИКА',
   'more_group_marketing': 'МАРКЕТИНГ И ПРАВО',

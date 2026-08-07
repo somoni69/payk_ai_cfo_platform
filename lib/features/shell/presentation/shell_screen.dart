@@ -9,6 +9,19 @@ import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
 
+import '../../../features/dashboard/bloc/dashboard_bloc.dart';
+import '../../../features/dashboard/bloc/dashboard_event.dart';
+import '../../../features/dashboard/domain/finance_repository.dart';
+import '../../../features/cash/bloc/cash_bloc.dart';
+import '../../../features/cash/bloc/cash_event.dart';
+import '../../../features/cash/domain/cash_repository.dart';
+import '../../../features/tasks/bloc/tasks_bloc.dart';
+import '../../../features/tasks/bloc/tasks_event.dart';
+import '../../../features/tasks/domain/tasks_repository.dart';
+import '../../../features/warehouse/bloc/warehouse_bloc.dart';
+import '../../../features/warehouse/bloc/warehouse_event.dart';
+import '../../../features/warehouse/domain/warehouse_repository.dart';
+
 class TabItem {
   const TabItem({
     required this.branchIndex,
@@ -77,31 +90,51 @@ class ShellScreen extends StatelessWidget {
     );
     if (activeNavbarIndex == -1) activeNavbarIndex = 0;
 
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: colors.border)),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<DashboardBloc>(
+          create: (context) => DashboardBloc(context.read<FinanceRepository>())
+            ..add(LoadDashboardData()),
         ),
-        child: BottomNavigationBar(
-          currentIndex: activeNavbarIndex,
-          onTap: (index) {
-            final targetTab = visibleTabs[index];
-            navigationShell.goBranch(
-              targetTab.branchIndex,
-              initialLocation:
-                  targetTab.branchIndex == navigationShell.currentIndex,
-            );
-          },
-          items: visibleTabs
-              .map((tab) {
-                return BottomNavigationBarItem(
-                  icon: Icon(tab.icon),
-                  activeIcon: Icon(tab.icon),
-                  label: language.translate(tab.labelKey),
-                );
-              })
-              .toList(growable: false),
+        BlocProvider<CashBloc>(
+          create: (context) => CashBloc(context.read<CashRepository>())
+            ..add(LoadCashData()),
+        ),
+        BlocProvider<TasksBloc>(
+          create: (context) => TasksBloc(context.read<TasksRepository>())
+            ..add(LoadTasks()),
+        ),
+        BlocProvider<WarehouseBloc>(
+          create: (context) => WarehouseBloc(context.read<WarehouseRepository>())
+            ..add(LoadWarehouseData()),
+        ),
+      ],
+      child: Scaffold(
+        body: navigationShell,
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: colors.border)),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: activeNavbarIndex,
+            onTap: (index) {
+              final targetTab = visibleTabs[index];
+              navigationShell.goBranch(
+                targetTab.branchIndex,
+                initialLocation:
+                    targetTab.branchIndex == navigationShell.currentIndex,
+              );
+            },
+            items: visibleTabs
+                .map((tab) {
+                  return BottomNavigationBarItem(
+                    icon: Icon(tab.icon),
+                    activeIcon: Icon(tab.icon),
+                    label: language.translate(tab.labelKey),
+                  );
+                })
+                .toList(growable: false),
+          ),
         ),
       ),
     );

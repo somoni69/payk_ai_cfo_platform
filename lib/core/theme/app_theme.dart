@@ -157,6 +157,28 @@ class LedgerTheme {
         space: 1,
       ),
 
+      // Настройка чипов (фильтры)
+      chipTheme: ChipThemeData(
+        backgroundColor: colors.surface,
+        selectedColor: colors.brand,
+        disabledColor: colors.border,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        side: BorderSide(color: colors.border),
+        labelStyle: textStyles.captionSans.copyWith(
+          color: colors.textPrimary,
+          fontWeight: FontWeight.w400,
+        ),
+        secondaryLabelStyle: textStyles.captionSans.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
+        checkmarkColor: Colors.white,
+        showCheckmark: true,
+      ),
+
       // Подключение кастомных расширений в контекст темы
       extensions: [colors, textStyles],
     );

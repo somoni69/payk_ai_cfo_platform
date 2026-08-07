@@ -31,7 +31,7 @@ val hasReleaseSigning =
 
 val applicationIdValue = providers.gradleProperty("paykApplicationId")
     .orElse(providers.environmentVariable("PAYK_APPLICATION_ID"))
-    .orElse("com.example.payk_ai_cfo_platform")
+    .orElse("tj.payk.cfo")
     .get()
 val allowUnsafeRelease =
     providers.gradleProperty("allowUnsafeRelease").orNull == "true"
@@ -51,7 +51,7 @@ if (releaseRequested && !allowUnsafeRelease) {
 }
 
 android {
-    namespace = "com.example.payk_ai_cfo_platform"
+    namespace = "tj.payk.cfo"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

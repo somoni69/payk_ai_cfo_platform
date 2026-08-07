@@ -313,7 +313,6 @@ extension _TasksListBuilders on _TasksViewState {
     );
   }
 
-  /// Compact priority chips in a single row (no orphan wrap on the second line).
   Widget _buildPriorityChips(
     BuildContext context, {
     required TaskPriority selectedPriority,
@@ -324,54 +323,33 @@ extension _TasksListBuilders on _TasksViewState {
     final language = context.watch<LanguageCubit>();
 
     return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+      spacing: 8,
+      runSpacing: 8,
       children: TaskPriority.values.map((priority) {
         final isSelected = selectedPriority == priority;
 
-        final selectedTextColor = switch (priority) {
+        final priorityColor = switch (priority) {
           TaskPriority.urgent => colors.accentRed,
           TaskPriority.high => colors.accentAmber,
           TaskPriority.low => colors.accentGreen,
           TaskPriority.medium => colors.brand,
         };
 
-        final selectedBgColor = selectedTextColor.withValues(alpha: 0.15);
-        final selectedBorderColor = selectedTextColor;
-
-        return Semantics(
-          button: true,
+        return ChoiceChip(
+          label: Text(language.translate(priority.localizationKey)),
           selected: isSelected,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: () => onSelected(priority),
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 48),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected ? selectedBgColor : colors.surface,
-                  border: Border.all(
-                    color: isSelected ? selectedBorderColor : colors.border,
-                  ),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                child: Text(
-                  language.translate(priority.localizationKey),
-                  style: textStyles.captionSans.copyWith(
-                    color: isSelected
-                        ? selectedTextColor
-                        : colors.textSecondary,
-                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                  ),
-                ),
-              ),
-            ),
+          onSelected: (val) {
+            if (val) onSelected(priority);
+          },
+          selectedColor: priorityColor,
+          backgroundColor: colors.surface,
+          checkmarkColor: Colors.white,
+          labelStyle: textStyles.captionSans.copyWith(
+            color: isSelected ? Colors.white : colors.textPrimary,
+            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+          ),
+          side: BorderSide(
+            color: isSelected ? priorityColor : colors.border,
           ),
         );
       }).toList(),

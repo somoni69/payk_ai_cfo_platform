@@ -15,6 +15,7 @@ import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class ChecklistsScreen extends StatelessWidget {
   const ChecklistsScreen({super.key});
@@ -244,7 +245,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
         body: BlocBuilder<ChecklistsBloc, ChecklistsState>(
           builder: (context, state) {
             if (state is ChecklistsLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
             }
             if (state is ChecklistsError) {
               return Center(child: Text(state.message));

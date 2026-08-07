@@ -65,6 +65,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedBaseMetrics = overview.metrics;
       _cachedBaseHistory = overview.history;
       _emitCurrentState(emit);
+
+      // Pre-fetch all dashboard sections in parallel background requests so sub-tabs open instantly!
+      for (final s in DashboardSection.values) {
+        add(LoadDashboardSection(s, forceRefresh: event.forceRefresh));
+      }
     } catch (_) {
       if (emit.isDone) return;
       if (_cachedBaseMetrics != null && _cachedBaseHistory != null) {

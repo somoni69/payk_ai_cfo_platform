@@ -12,11 +12,14 @@ import '../../../features/fin_ops/bloc/fin_ops_event.dart';
 import '../../../features/fin_ops/bloc/fin_ops_state.dart';
 import '../../../features/fin_ops/domain/fin_ops_models.dart';
 import '../../../features/fin_ops/domain/fin_ops_repository.dart';
+import '../../../features/branches/domain/branch_models.dart';
+import '../../../features/branches/domain/branches_repository.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class FinOpsScreen extends StatelessWidget {
   const FinOpsScreen({super.key});
@@ -24,9 +27,10 @@ class FinOpsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<FinOpsBloc>(
-      create: (context) =>
-          FinOpsBloc(context.read<FinOpsRepository>())
-            ..add(const LoadFinOpsData()),
+      create: (context) => FinOpsBloc(
+        context.read<FinOpsRepository>(),
+        context.read<BranchesRepository>(),
+      )..add(const LoadFinOpsData()),
       child: const FinOpsView(),
     );
   }
@@ -167,14 +171,12 @@ class _FinOpsViewState extends State<FinOpsView>
     );
   }
 
-  void _showTransferModal(BuildContext context) {
+  void _showTransferModal(BuildContext context, List<Branch> branches) {
     final locale = context.read<LanguageCubit>();
-    final fromCtrl = TextEditingController(
-      text: locale.translate('mock_branch_central'),
-    );
-    final toCtrl = TextEditingController(
-      text: locale.translate('mock_branch_somoni'),
-    );
+    final textStyles = context.textStyles;
+
+    Branch? selectedFromBranch = branches.isNotEmpty ? branches.first : null;
+    Branch? selectedToBranch = branches.length > 1 ? branches[1] : (branches.isNotEmpty ? branches.first : null);
     final amountCtrl = TextEditingController();
 
     LedgerBottomSheet.show(
@@ -184,20 +186,54 @@ class _FinOpsViewState extends State<FinOpsView>
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: fromCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_from_branch'),
-            ),
+          Text(
+            locale.translate('fin_ops_from_branch'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: toCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_to_branch'),
+          const SizedBox(height: 6),
+          ExpansibleWidget<Branch?>.selection(
+            borderRadius: 8.0,
+            title: Text(
+              selectedFromBranch != null
+                  ? context.read<LanguageCubit>().translateMessage(selectedFromBranch!.name)
+                  : locale.translate('common_select'),
+              style: textStyles.bodySans,
             ),
+            items: branches,
+            selectedValue: selectedFromBranch,
+            itemLabelBuilder: (b) =>
+                context.read<LanguageCubit>().translateMessage(b?.name ?? ''),
+            onSelected: (b) {
+              setSheetState(() => selectedFromBranch = b);
+            },
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            tilePadding: EdgeInsets.zero,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          Text(
+            locale.translate('fin_ops_to_branch'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          ExpansibleWidget<Branch?>.selection(
+            borderRadius: 8.0,
+            title: Text(
+              selectedToBranch != null
+                  ? context.read<LanguageCubit>().translateMessage(selectedToBranch!.name)
+                  : locale.translate('common_select'),
+              style: textStyles.bodySans,
+            ),
+            items: branches,
+            selectedValue: selectedToBranch,
+            itemLabelBuilder: (b) =>
+                context.read<LanguageCubit>().translateMessage(b?.name ?? ''),
+            onSelected: (b) {
+              setSheetState(() => selectedToBranch = b);
+            },
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            tilePadding: EdgeInsets.zero,
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: amountCtrl,
             keyboardType: TextInputType.number,
@@ -209,11 +245,13 @@ class _FinOpsViewState extends State<FinOpsView>
           ElevatedButton(
             onPressed: () {
               final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-              if (amt == null || amt <= 0) return;
+              if (amt == null || amt <= 0 || selectedFromBranch == null || selectedToBranch == null) {
+                return;
+              }
               context.read<FinOpsBloc>().add(
                 CreateStoreTransferRequested(
-                  fromBranch: fromCtrl.text.trim(),
-                  toBranch: toCtrl.text.trim(),
+                  fromBranch: selectedFromBranch!.name,
+                  toBranch: selectedToBranch!.name,
                   amount: amt,
                 ),
               );
@@ -309,7 +347,7 @@ class _FinOpsViewState extends State<FinOpsView>
         body: BlocBuilder<FinOpsBloc, FinOpsState>(
           builder: (context, state) {
             if (state is FinOpsLoading) {
-              return const Center(child: CircularProgressIndicator());
+              return const FinOpsOverviewShimmer();
             }
             if (state is FinOpsError) {
               return Center(child: Text(state.message));
@@ -522,7 +560,7 @@ class _FinOpsViewState extends State<FinOpsView>
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
-              onPressed: () => _showTransferModal(context),
+              onPressed: () => _showTransferModal(context, state.branches),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,
               elevation: 0,

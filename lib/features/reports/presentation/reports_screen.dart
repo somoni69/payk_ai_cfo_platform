@@ -27,6 +27,7 @@ import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -610,7 +611,7 @@ class _ReportsViewState extends State<ReportsView> {
           },
           builder: (context, state) {
             if (state is ReportsLoading || state is ReportsInitial) {
-              return const Center(child: CircularProgressIndicator());
+              return const LedgerListShimmer(showStatsHeader: true, itemCount: 5);
             }
             if (state is ReportsError) {
               return Center(
