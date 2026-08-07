@@ -20,6 +20,7 @@ import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import 'crm_funnel.dart';
 import 'crm_labels.dart';
 import 'crm_sheets.dart';
@@ -270,43 +271,7 @@ class _CrmSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    Widget bar({double h = 72}) => Container(
-          height: h,
-          decoration: BoxDecoration(
-            color: colors.surfaceNested,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: colors.border),
-          ),
-        );
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          children: [
-            Expanded(child: bar()),
-            const SizedBox(width: 8),
-            Expanded(child: bar()),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(child: bar()),
-            const SizedBox(width: 8),
-            Expanded(child: bar()),
-          ],
-        ),
-        const SizedBox(height: 16),
-        bar(h: 48),
-        const SizedBox(height: 12),
-        bar(h: 88),
-        const SizedBox(height: 10),
-        bar(h: 88),
-        const SizedBox(height: 10),
-        bar(h: 88),
-      ],
-    );
+    return const CrmOverviewShimmer();
   }
 }
 

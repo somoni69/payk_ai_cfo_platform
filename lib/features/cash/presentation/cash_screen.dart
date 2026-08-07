@@ -23,6 +23,7 @@ import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import 'cash_transaction_tile.dart';
 
@@ -37,11 +38,16 @@ class CashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
 
-    return BlocProvider<CashBloc>(
-      create: (context) =>
-          CashBloc(context.read<CashRepository>())..add(LoadCashData()),
-      child: const CashView(),
-    );
+    try {
+      context.read<CashBloc>();
+      return const CashView();
+    } catch (_) {
+      return BlocProvider<CashBloc>(
+        create: (context) =>
+            CashBloc(context.read<CashRepository>())..add(LoadCashData()),
+        child: const CashView(),
+      );
+    }
   }
 }
 
@@ -341,13 +347,6 @@ class _CashViewState extends State<CashView>
         }
       },
       builder: (context, state) {
-        if (state is CashLoading) {
-          return Scaffold(
-            backgroundColor: colors.background,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
         if (state is CashError) {
           return Scaffold(
             backgroundColor: colors.background,
@@ -382,15 +381,16 @@ class _CashViewState extends State<CashView>
           );
         }
 
-        if (state is CashLoaded) {
-          return Scaffold(
-            floatingActionButton: !isViewer && _tabController.index == 0
-                ? FloatingActionButton.extended(
-                    onPressed: () => _showAddTransactionBottomSheet(
-                      context,
-                      authState,
-                      state.registers,
-                    ),
+        final loadedState = state is CashLoaded ? state : null;
+
+        return Scaffold(
+          floatingActionButton: (!isViewer && _tabController.index == 0 && loadedState != null)
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showAddTransactionBottomSheet(
+                    context,
+                    authState,
+                    loadedState.registers,
+                  ),
                     backgroundColor: colors.brand,
                     foregroundColor: colors.surface,
                     elevation: 0,
@@ -410,11 +410,11 @@ class _CashViewState extends State<CashView>
                       ),
                     ),
                   )
-                : (!isViewer && _tabController.index == 1
+                : (!isViewer && _tabController.index == 1 && loadedState != null
                       ? FloatingActionButton.extended(
                           onPressed: () => _showOpenShiftBottomSheet(
                             context,
-                            state.registers,
+                            loadedState.registers,
                           ),
                           backgroundColor: colors.brand,
                           foregroundColor: colors.surface,
@@ -485,20 +485,19 @@ class _CashViewState extends State<CashView>
                   ),
                 ];
               },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildOperationsTab(context, state),
-                  _buildShiftsTab(context, state, isViewer),
-                  _buildSummaryTab(context, state.summaries),
-                ],
-              ),
+              body: loadedState == null
+                  ? const CashOverviewShimmer()
+                  : TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildOperationsTab(context, loadedState),
+                        _buildShiftsTab(context, loadedState, isViewer),
+                        _buildSummaryTab(context, loadedState.summaries),
+                      ],
+                    ),
             ),
           );
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
+        },
+      );
   }
 }

@@ -323,6 +323,8 @@ const Map<String, String> kTajikCatalog = {
   'login_2fa_submit': 'Тасдиқ кардан',
   'login_2fa_back': 'Бозгашт ба воридшавӣ',
   'more_access_settings': 'ТАНЗИМОТИ ДАСТРАСӢ',
+  'more_privacy_policy': 'Сиёсати махфият',
+  'login_privacy_agreement': 'Ҳангоми воридшавӣ шумо ба қоидаҳои истифода ва сиёсати махфият розӣ мешавед',
   'more_group_business': 'ИДОРАКУНИИ ТИҶОРАТ',
   'more_group_finance': 'МОЛИЯ ВА ТАҲЛИЛ',
   'more_group_marketing': 'МАРКЕТИНГ ВА ҲУҚУҚ',

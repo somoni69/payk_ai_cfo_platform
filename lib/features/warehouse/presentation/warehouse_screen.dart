@@ -18,6 +18,7 @@ import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class WarehouseScreen extends StatelessWidget {
   const WarehouseScreen({super.key});
@@ -26,12 +27,17 @@ class WarehouseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
 
-    return BlocProvider<WarehouseBloc>(
-      create: (context) =>
-          WarehouseBloc(context.read<WarehouseRepository>())
-            ..add(LoadWarehouseData()),
-      child: const WarehouseView(),
-    );
+    try {
+      context.read<WarehouseBloc>();
+      return const WarehouseView();
+    } catch (_) {
+      return BlocProvider<WarehouseBloc>(
+        create: (context) =>
+            WarehouseBloc(context.read<WarehouseRepository>())
+              ..add(LoadWarehouseData()),
+        child: const WarehouseView(),
+      );
+    }
   }
 }
 
@@ -182,7 +188,10 @@ class _WarehouseViewState extends State<WarehouseView>
             },
             builder: (context, state) {
               if (state is WarehouseLoading) {
-                return const Center(child: CircularProgressIndicator());
+                return const LedgerListShimmer(
+                  showStatsHeader: true,
+                  itemCount: 6,
+                );
               }
 
               if (state is WarehouseError) {

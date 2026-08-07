@@ -11,6 +11,7 @@ import '../../../features/integrations/domain/integrations_repository.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class IntegrationsScreen extends StatelessWidget {
   const IntegrationsScreen({super.key});
@@ -113,7 +114,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
             if (state.isLoading &&
                 state.integrations.isEmpty &&
                 state.logs.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
+              return const LedgerListShimmer(showStatsHeader: false, itemCount: 4);
             }
 
             final visibleLogCount = _visibleLogs < state.logs.length
@@ -199,12 +200,20 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                           ),
                                         );
                                       },
-                                icon: const Icon(TablerIcons.refresh, size: 16),
+                                icon: const Icon(
+                                  TablerIcons.refresh,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
                                 label: Text(
                                   localeCubit.translate('integrations_sync'),
-                                  style: textStyles.smallSans,
+                                  style: textStyles.smallSans.copyWith(
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 style: ElevatedButton.styleFrom(
+                                  backgroundColor: colors.brand,
+                                  foregroundColor: Colors.white,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 14,
                                     vertical: 8,

@@ -28,6 +28,11 @@ extension _DashboardAbcTab on _DashboardViewState {
                   label: Text(
                     languageCubit.translate('dashboard_abc_by_categories'),
                   ),
+                  labelStyle: textStyles.captionSans.copyWith(
+                    color: isCategory ? Colors.white : colors.textPrimary,
+                    fontWeight: isCategory ? FontWeight.w500 : FontWeight.w400,
+                  ),
+                  checkmarkColor: Colors.white,
                   selected: isCategory,
                   onSelected: (val) {
                     if (val) {
@@ -44,6 +49,11 @@ extension _DashboardAbcTab on _DashboardViewState {
                   label: Text(
                     languageCubit.translate('dashboard_abc_by_clients'),
                   ),
+                  labelStyle: textStyles.captionSans.copyWith(
+                    color: !isCategory ? Colors.white : colors.textPrimary,
+                    fontWeight: !isCategory ? FontWeight.w500 : FontWeight.w400,
+                  ),
+                  checkmarkColor: Colors.white,
                   selected: !isCategory,
                   onSelected: (val) {
                     if (val) {

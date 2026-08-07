@@ -13,6 +13,7 @@ import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class UsersScreen extends StatelessWidget {
   const UsersScreen({super.key});
@@ -218,7 +219,7 @@ class _UsersViewState extends State<UsersView>
 
             Expanded(
               child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const LedgerListShimmer(showStatsHeader: false, itemCount: 6)
                   : RefreshIndicator(
                       onRefresh: () async {
                         _visibleUsers = _pageSize;
@@ -495,13 +496,14 @@ class _UsersViewState extends State<UsersView>
                     child: ChoiceChip(
                       label: Text(_roleLabel(language, role)),
                       selected: isSelected,
-                      selectedColor: colors.brand.withValues(alpha: 0.15),
+                      selectedColor: colors.brand,
                       labelStyle: textStyles.captionSans.copyWith(
-                        color: isSelected ? colors.brand : colors.textPrimary,
+                        color: isSelected ? Colors.white : colors.textPrimary,
                         fontWeight: isSelected
                             ? FontWeight.w500
                             : FontWeight.w400,
                       ),
+                      checkmarkColor: Colors.white,
                       side: BorderSide(
                         color: isSelected ? colors.brand : colors.border,
                       ),

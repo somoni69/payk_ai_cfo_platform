@@ -1,12 +1,14 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../domain/fin_ops_repository.dart';
+import '../../branches/domain/branches_repository.dart';
 import 'fin_ops_event.dart';
 import 'fin_ops_state.dart';
 
 class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
   final FinOpsRepository _repository;
+  final BranchesRepository _branchesRepository;
 
-  FinOpsBloc(this._repository) : super(FinOpsInitial()) {
+  FinOpsBloc(this._repository, this._branchesRepository) : super(FinOpsInitial()) {
     on<LoadFinOpsData>(_onLoadFinOpsData);
     on<CreateEncashmentRequested>(_onCreateEncashmentRequested);
     on<CreateStoreTransferRequested>(_onCreateStoreTransferRequested);
@@ -30,12 +32,14 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       final encashments = await _repository.getEncashments();
       final transfers = await _repository.getStoreTransfers();
       final aids = await _repository.getFinancialAids();
+      final branches = await _branchesRepository.getBranches();
       emit(
         FinOpsLoaded(
           bankAccounts: banks,
           encashments: encashments,
           storeTransfers: transfers,
           financialAids: aids,
+          branches: branches,
         ),
       );
     } catch (e) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -113,6 +114,39 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                   ],
+                  const SizedBox(height: 32),
+                  // Privacy Policy Link (Moderation requirement)
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          language.translate('login_privacy_agreement'),
+                          style: textStyles.smallSans.copyWith(
+                            color: colors.textTooltip,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => launchUrl(
+                          Uri.parse('https://payk-ecosystem.vercel.app/privacy'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            language.translate('more_privacy_policy'),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

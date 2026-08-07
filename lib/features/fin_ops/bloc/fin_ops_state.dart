@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../domain/fin_ops_models.dart';
+import '../../branches/domain/branch_models.dart';
 
 abstract class FinOpsState extends Equatable {
   const FinOpsState();
@@ -17,6 +18,7 @@ class FinOpsLoaded extends FinOpsState {
   final List<Encashment> encashments;
   final List<StoreTransfer> storeTransfers;
   final List<FinancialAid> financialAids;
+  final List<Branch> branches;
   final String? message;
 
   const FinOpsLoaded({
@@ -24,6 +26,7 @@ class FinOpsLoaded extends FinOpsState {
     required this.encashments,
     required this.storeTransfers,
     required this.financialAids,
+    required this.branches,
     this.message,
   });
 
@@ -33,6 +36,7 @@ class FinOpsLoaded extends FinOpsState {
     encashments,
     storeTransfers,
     financialAids,
+    branches,
     message,
   ];
 }

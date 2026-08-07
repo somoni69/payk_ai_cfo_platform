@@ -22,6 +22,7 @@ import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 part 'hr_extra_tabs.dart';
 
@@ -278,7 +279,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                 child: BlocBuilder<HrBloc, HrState>(
                 builder: (context, state) {
                   if (state is HrLoading) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const HrOverviewShimmer();
                   }
 
                   if (state is HrError) {

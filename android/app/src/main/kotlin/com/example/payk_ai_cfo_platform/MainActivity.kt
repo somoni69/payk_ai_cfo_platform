@@ -1,4 +1,4 @@
-package com.example.payk_ai_cfo_platform
+package tj.payk.cfo
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

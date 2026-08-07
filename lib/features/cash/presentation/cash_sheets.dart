@@ -93,36 +93,37 @@ extension _CashSheetBuilders on _CashViewState {
                 hintText: '5 000',
               ),
             ),
-            const SizedBox(height: 24),
-
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () {
-                  final bal = parseLocalizedNumber(context, controller.text);
-                  if (bal != null && bal >= 0) {
-                    context.read<CashBloc>().add(OpenShiftRequested(bal));
-                    Navigator.pop(context);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  language.translate('cash_open_shift_action'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              final bal = parseLocalizedNumber(context, controller.text);
+              if (bal != null && bal >= 0) {
+                context.read<CashBloc>().add(OpenShiftRequested(bal));
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
-          ],
+            child: Text(
+              language.translate('cash_open_shift_action'),
+              style: textStyles.bodySans.copyWith(
+                color: colors.surface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         );
       },
     );
@@ -321,18 +322,26 @@ extension _CashSheetBuilders on _CashViewState {
                 runSpacing: 8,
                 children: PaymentMethod.values.map((pm) {
                   final isSelected = selectedPaymentMethod == pm;
+
+                  // Фирменные цвета согласно запросу
+                  final Color selectedColor = switch (pm) {
+                    PaymentMethod.alif => colors.accentGreen,
+                    PaymentMethod.dushanbeCity => const Color(0xFFFF6B22),
+                    _ => colors.brand,
+                  };
+
                   return ChoiceChip(
                     label: Text(language.translate(pm.labelKey)),
                     selected: isSelected,
-                    selectedColor: colors.brand.withValues(alpha: 0.12),
+                    selectedColor: selectedColor,
+                    backgroundColor: colors.surface,
+                    checkmarkColor: Colors.white,
                     labelStyle: textStyles.captionSans.copyWith(
-                      color: isSelected ? colors.brand : colors.textPrimary,
-                      fontWeight: isSelected
-                          ? FontWeight.w500
-                          : FontWeight.w400,
+                      color: isSelected ? Colors.white : colors.textPrimary,
+                      fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                     ),
                     side: BorderSide(
-                      color: isSelected ? colors.brand : colors.border,
+                      color: isSelected ? selectedColor : colors.border,
                     ),
                     onSelected: (val) {
                       if (val) setSheetState(() => selectedPaymentMethod = pm);
@@ -407,54 +416,54 @@ extension _CashSheetBuilders on _CashViewState {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              // 8. Фирменная кнопка "Записать в Ledger"
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (!formKey.currentState!.validate()) return;
-                    final amt = parseLocalizedNumber(
-                      context,
-                      amountController.text,
-                    )!;
-
-                    final tx = Transaction(
-                      id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
-                      title: counterpartyController.text.trim(),
-                      category: selectedCategory ?? 'cash_category_other',
-                      amount: amt,
-                      isIncome: isIncome,
-                      paymentMethod: selectedPaymentMethod,
-                      dateTime: DateTime.now(),
-                      registerId: selectedRegisterId,
-                      cashierName: authState is AuthAuthenticated
-                          ? authState.username
-                          : 'role_director',
-                    );
-
-                    context.read<CashBloc>().add(AddTransactionRequested(tx));
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    language.translate('save_to_ledger'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 16),
             ],
+          ),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              final amt = parseLocalizedNumber(
+                context,
+                amountController.text,
+              )!;
+
+              final tx = Transaction(
+                id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
+                title: counterpartyController.text.trim(),
+                category: selectedCategory ?? 'cash_category_other',
+                amount: amt,
+                isIncome: isIncome,
+                paymentMethod: selectedPaymentMethod,
+                dateTime: DateTime.now(),
+                registerId: selectedRegisterId,
+                cashierName: authState is AuthAuthenticated
+                    ? authState.username
+                    : 'role_director',
+              );
+
+              context.read<CashBloc>().add(AddTransactionRequested(tx));
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              language.translate('save_to_ledger'),
+              style: textStyles.bodySans.copyWith(
+                color: colors.surface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         );
       },

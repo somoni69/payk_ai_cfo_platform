@@ -16,6 +16,7 @@ import '../../../features/strategy/domain/strategy_repository.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class StrategyScreen extends StatelessWidget {
   const StrategyScreen({super.key});
@@ -318,12 +319,7 @@ class _StrategyViewState extends State<StrategyView>
             const SizedBox(height: 20),
 
             if (state.isWhatIfLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
-                ),
-              )
+              const StrategyOverviewShimmer()
             else if (state.whatIfAnswer != null)
               LedgerCard(
                 borderColor: colors.accentAmber,
@@ -449,12 +445,7 @@ class _StrategyViewState extends State<StrategyView>
             const SizedBox(height: 20),
 
             if (state.isMarketingLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
-                ),
-              )
+              const StrategyOverviewShimmer()
             else if (state.marketingIdeas.isNotEmpty)
               LedgerCard(
                 padding: const EdgeInsets.all(16),
@@ -532,6 +523,15 @@ class _StrategyViewState extends State<StrategyView>
                   Expanded(
                     child: ChoiceChip(
                       label: const Text('SWOT'),
+                      labelStyle: textStyles.captionSans.copyWith(
+                        color: _selectedAnalysisType == 'swot'
+                            ? Colors.white
+                            : colors.textPrimary,
+                        fontWeight: _selectedAnalysisType == 'swot'
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
+                      checkmarkColor: Colors.white,
                       selected: _selectedAnalysisType == 'swot',
                       onSelected: (val) {
                         if (val) {
@@ -549,6 +549,15 @@ class _StrategyViewState extends State<StrategyView>
                   Expanded(
                     child: ChoiceChip(
                       label: const Text('PESTEL'),
+                      labelStyle: textStyles.captionSans.copyWith(
+                        color: _selectedAnalysisType == 'pestel'
+                            ? Colors.white
+                            : colors.textPrimary,
+                        fontWeight: _selectedAnalysisType == 'pestel'
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
+                      checkmarkColor: Colors.white,
                       selected: _selectedAnalysisType == 'pestel',
                       onSelected: (val) {
                         if (val) {
@@ -566,6 +575,15 @@ class _StrategyViewState extends State<StrategyView>
                   Expanded(
                     child: ChoiceChip(
                       label: const Text('BCG'),
+                      labelStyle: textStyles.captionSans.copyWith(
+                        color: _selectedAnalysisType == 'bcg'
+                            ? Colors.white
+                            : colors.textPrimary,
+                        fontWeight: _selectedAnalysisType == 'bcg'
+                            ? FontWeight.w500
+                            : FontWeight.w400,
+                      ),
+                      checkmarkColor: Colors.white,
                       selected: _selectedAnalysisType == 'bcg',
                       onSelected: (val) {
                         if (val) {
@@ -608,12 +626,7 @@ class _StrategyViewState extends State<StrategyView>
               const SizedBox(height: 20),
 
               if (state.isAnalysisLoading || state.isGeneratingAnalysis)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
+                const StrategyOverviewShimmer()
               else if (analysis == null)
                 LedgerCard(
                   padding: const EdgeInsets.all(24),
@@ -936,7 +949,7 @@ class _StrategyViewState extends State<StrategyView>
     return BlocBuilder<StrategyBloc, StrategyState>(
       builder: (context, state) {
         if (state.isMacroLoading && !state.macroLoaded) {
-          return const Center(child: CircularProgressIndicator());
+          return const StrategyOverviewShimmer();
         }
         if (state.macro.isEmpty) {
           return Center(
@@ -1009,7 +1022,7 @@ class _StrategyViewState extends State<StrategyView>
     return BlocBuilder<StrategyBloc, StrategyState>(
       builder: (context, state) {
         if (state.isNewsLoading && !state.newsLoaded) {
-          return const Center(child: CircularProgressIndicator());
+          return const StrategyOverviewShimmer();
         }
         if (state.news.isEmpty) {
           return Center(
@@ -1077,7 +1090,7 @@ class _StrategyViewState extends State<StrategyView>
     return BlocBuilder<StrategyBloc, StrategyState>(
       builder: (context, state) {
         if (state.isScenariosLoading && !state.scenariosLoaded) {
-          return const Center(child: CircularProgressIndicator());
+          return const StrategyOverviewShimmer();
         }
         return RefreshIndicator(
           onRefresh: () async {
@@ -1146,7 +1159,7 @@ class _StrategyViewState extends State<StrategyView>
     return BlocBuilder<StrategyBloc, StrategyState>(
       builder: (context, state) {
         if (state.isSummaryLoading && !state.summaryLoaded) {
-          return const Center(child: CircularProgressIndicator());
+          return const StrategyOverviewShimmer();
         }
         final summary = state.dailySummary;
         return RefreshIndicator(

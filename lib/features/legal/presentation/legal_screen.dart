@@ -14,6 +14,7 @@ import '../../../features/legal/bloc/legal_state.dart';
 import '../../../features/legal/domain/legal_models.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
@@ -184,7 +185,7 @@ class _LegalScreenState extends State<LegalScreen>
                       snap: true,
                     ),
                   ],
-                  body: const Center(child: CircularProgressIndicator()),
+                  body: const LedgerListShimmer(showStatsHeader: false, itemCount: 5),
                 ),
               );
             }
@@ -547,6 +548,11 @@ class _LegalScreenState extends State<LegalScreen>
                       child: ChoiceChip(
                         label: Text(localeCubit.translate(category.labelKey)),
                         selected: isSel,
+                        labelStyle: textStyles.captionSans.copyWith(
+                          color: isSel ? Colors.white : colors.textPrimary,
+                          fontWeight: isSel ? FontWeight.w500 : FontWeight.w400,
+                        ),
+                        checkmarkColor: Colors.white,
                         onSelected: (val) {
                           if (val) {
                             setState(() {
