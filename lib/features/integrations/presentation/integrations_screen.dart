@@ -100,8 +100,8 @@ class _IntegrationsViewState extends State<IntegrationsView> {
             LedgerCollapsingHeader(
               title: localeCubit.translate('integrations_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
             ),
           ],
           body: BlocBuilder<IntegrationsBloc, IntegrationsState>(

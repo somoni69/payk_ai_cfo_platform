@@ -132,112 +132,146 @@ class _MoreScreenState extends State<MoreScreen> {
     context.watch<PermissionsCubit>();
 
     return LedgerAiAssistantHost(
-      child: Scaffold(
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              LedgerCollapsingHeader(
-                title: context.translate('more'),
-                pinned: true,
-                floating: true,
-                snap: true,
-                actions: const [
-                  NotificationBell(),
-                  SizedBox(width: 8),
-                  PaykLogo(height: 22),
-                ],
-              ),
-            ];
-          },
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Профиль пользователя
-                  _buildProfileCard(),
-                  const SizedBox(height: 20),
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            body: CustomScrollView(
+              slivers: [
+                LedgerCollapsingHeader(
+                  title: context.translate('more'),
+                  pinned: true,
+                  floating: false,
+                  snap: false,
+                  actions: const [
+                    NotificationBell(),
+                    SizedBox(width: 8),
+                    PaykLogo(height: 22),
+                  ],
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    16,
+                    8,
+                    16,
+                    16 + kLiquidNavClearance,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // Профиль пользователя
+                      _buildProfileCard(),
+                      const SizedBox(height: 16),
 
-                  // Безопасность и настройки
-                  Text(
-                    context.translate('more_access_settings'),
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  LedgerCard(
-                    padding: EdgeInsets.zero,
-                    child: _buildSettingsToggleRow(
-                      icon: TablerIcons.fingerprint,
-                      title: context.translate('biometrics'),
-                      value: _biometricEnabled,
-                      onChanged: _onBiometricToggleChanged,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ExpansibleWidget<String>.selection(
-                    cardPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    tilePadding: EdgeInsets.zero,
-                    title: Row(
-                      children: [
-                        Icon(
-                          TablerIcons.language,
-                          color: colors.textSecondary,
-                          size: 20,
+                      // Безопасность и настройки
+                      Text(
+                        context.translate('more_access_settings'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            context.translate('language'),
-                            style: textStyles.bodySans,
+                      ),
+                      const SizedBox(height: 6),
+                      LedgerCard(
+                        padding: EdgeInsets.zero,
+                        child: _buildSettingsToggleRow(
+                          icon: TablerIcons.fingerprint,
+                          title: context.translate('biometrics'),
+                          value: _biometricEnabled,
+                          onChanged: _onBiometricToggleChanged,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ExpansibleWidget<String>.selection(
+                        cardPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        tilePadding: EdgeInsets.zero,
+                        title: Row(
+                          children: [
+                            Icon(
+                              TablerIcons.language,
+                              color: colors.textSecondary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                context.translate('language'),
+                                style: textStyles.bodySans,
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Text(
+                          currentLanguageLabel,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
                           ),
                         ),
-                      ],
-                    ),
-                    subtitle: Text(
-                      currentLanguageLabel,
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
+                        items: const ['ru', 'tg'],
+                        selectedValue: locale.languageCode,
+                        itemLabelBuilder: (code) => code == 'tg'
+                            ? context.translate('language_tajik')
+                            : context.translate('language_russian'),
+                        onSelected: (val) {
+                          context.read<LanguageCubit>().setLanguage(val);
+                        },
                       ),
-                    ),
-                    items: const ['ru', 'tg'],
-                    selectedValue: locale.languageCode,
-                    itemLabelBuilder: (code) => code == 'tg'
-                        ? context.translate('language_tajik')
-                        : context.translate('language_russian'),
-                    onSelected: (val) {
-                      context.read<LanguageCubit>().setLanguage(val);
-                    },
-                  ),
-                  const SizedBox(height: 20),
+                      const SizedBox(height: 12),
 
-                  if (role != null) ..._buildGroupedModules(role),
-
-                  // Выход (Смена сессии)
-                  OutlinedButton(
-                    onPressed: () {
-                      context.read<AuthBloc>().add(LogoutRequested());
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.accentRed,
-                      side: BorderSide(
-                        color: colors.accentRed.withValues(alpha: 0.5),
+                      LedgerCard(
+                        onTap: () => LedgerAiAssistantHost.open(context),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              TablerIcons.message_circle,
+                              size: 20,
+                              color: colors.brand,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                context.translate('assistant_title'),
+                                style: textStyles.bodySans.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              TablerIcons.chevron_right,
+                              size: 18,
+                              color: colors.textTooltip,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Text(context.translate('logout')),
+                      const SizedBox(height: 16),
+
+                      if (role != null) ..._buildGroupedModules(role),
+
+                      OutlinedButton(
+                        onPressed: () {
+                          context.read<AuthBloc>().add(LogoutRequested());
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.accentRed,
+                          side: BorderSide(
+                            color: colors.accentRed.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Text(context.translate('logout')),
+                      ),
+                      const SizedBox(height: 8),
+                    ]),
                   ),
-                  // Space so content is not hidden under the AI FAB.
-                  const SizedBox(height: 72),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
@@ -371,34 +405,76 @@ class _MoreScreenState extends State<MoreScreen> {
       widgets.add(
         Text(
           context.translate(group.titleKey),
-          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
         ),
       );
-      widgets.add(const SizedBox(height: 8));
-
-      final rows = <Widget>[];
-      for (var i = 0; i < allowedModules.length; i++) {
-        final module = allowedModules[i];
-        if (i > 0) rows.add(const Divider());
-        rows.add(
-          _buildSettingsNavigationRow(
-            icon: module.icon,
-            title: context.translate(module.titleKey),
-            onTap: () => GoRouter.of(context).push(module.route),
+      widgets.add(const SizedBox(height: 6));
+      for (var i = 0; i < allowedModules.length; i += 2) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: i + 2 < allowedModules.length ? 8 : 0,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _buildModuleTile(
+                    icon: allowedModules[i].icon,
+                    title: context.translate(allowedModules[i].titleKey),
+                    onTap: () =>
+                        GoRouter.of(context).push(allowedModules[i].route),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: i + 1 < allowedModules.length
+                      ? _buildModuleTile(
+                          icon: allowedModules[i + 1].icon,
+                          title: context.translate(
+                            allowedModules[i + 1].titleKey,
+                          ),
+                          onTap: () => GoRouter.of(
+                            context,
+                          ).push(allowedModules[i + 1].route),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
           ),
         );
       }
-
-      widgets.add(
-        LedgerCard(
-          padding: EdgeInsets.zero,
-          child: Column(children: rows),
-        ),
-      );
-      widgets.add(const SizedBox(height: 20));
+      widgets.add(const SizedBox(height: 16));
     }
 
     return widgets;
+  }
+
+  Widget _buildModuleTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    return LedgerCard(
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 20, color: colors.brand),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildProfileCard() {
@@ -426,8 +502,8 @@ class _MoreScreenState extends State<MoreScreen> {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: colors.brand.withValues(alpha: 0.1),
-            child: Icon(TablerIcons.user, color: colors.brand, size: 24),
+            backgroundColor: colors.surfaceNested,
+            child: Icon(TablerIcons.user, color: colors.textPrimary, size: 24),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -480,34 +556,6 @@ class _MoreScreenState extends State<MoreScreen> {
             activeTrackColor: colors.brand,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsNavigationRow({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-        child: Row(
-          children: [
-            Icon(icon, color: colors.textSecondary, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(title, style: textStyles.bodySans)),
-            Icon(
-              TablerIcons.chevron_right,
-              color: colors.textTooltip,
-              size: 16,
-            ),
-          ],
-        ),
       ),
     );
   }

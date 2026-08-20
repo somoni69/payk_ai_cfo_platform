@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../core/theme/theme_extensions.dart';
 import 'ledger_pill.dart';
+import 'ledger_spotlight.dart';
 
-/// Строка операции в списке транзакций.
-/// Содержит заголовок, категорию, статус-пилюлю и сумму в формате Mono.
+/// Строка события: иконка смысла, заголовок, сумма как акцент.
 class LedgerOperationRow extends StatelessWidget {
   final String title;
   final String category;
@@ -13,6 +14,7 @@ class LedgerOperationRow extends StatelessWidget {
   final Color? pillColor;
   final Color? pillTextColor;
   final VoidCallback? onTap;
+  final IconData? leadingIcon;
 
   const LedgerOperationRow({
     super.key,
@@ -24,12 +26,14 @@ class LedgerOperationRow extends StatelessWidget {
     this.pillColor,
     this.pillTextColor,
     this.onTap,
+    this.leadingIcon,
   });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final accent = isIncome ? colors.accentGreen : colors.accentRed;
 
     return InkWell(
       onTap: onTap,
@@ -37,6 +41,17 @@ class LedgerOperationRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Row(
           children: [
+            LedgerIconBadge(
+              icon:
+                  leadingIcon ??
+                  (isIncome
+                      ? TablerIcons.arrow_down_left
+                      : TablerIcons.arrow_up_right),
+              color: accent,
+              size: 36,
+              iconSize: 18,
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,7 +59,6 @@ class LedgerOperationRow extends StatelessWidget {
                   Text(
                     title,
                     style: textStyles.bodySans.copyWith(
-                      fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 1,
@@ -64,7 +78,7 @@ class LedgerOperationRow extends StatelessWidget {
                       Expanded(
                         child: Text(
                           category,
-                          style: textStyles.captionSans.copyWith(fontSize: 14),
+                          style: textStyles.captionSans,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -74,13 +88,13 @@ class LedgerOperationRow extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Text(
               amount,
-              style: textStyles.bodyMono.copyWith(
+              style: textStyles.bodySans.copyWith(
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: isIncome ? colors.accentGreen : colors.accentRed,
+                fontWeight: FontWeight.w600,
+                color: accent,
               ),
             ),
           ],

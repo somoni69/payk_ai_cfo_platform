@@ -115,8 +115,8 @@ class _InboxScreenState extends State<InboxScreen> {
             LedgerCollapsingHeader(
               title: language.translate('inbox_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               actions: [
                 if (unread > 0)
                   TextButton(

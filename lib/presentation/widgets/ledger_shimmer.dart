@@ -27,6 +27,16 @@ class _LedgerShimmerState extends State<LedgerShimmer>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (TickerMode.valuesOf(context).enabled) {
+      if (!_controller.isAnimating) _controller.repeat();
+    } else if (_controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -266,39 +276,55 @@ class DashboardOverviewShimmer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const LedgerAdviceShimmer(),
-            const SizedBox(height: 20),
-            const ShimmerBox(width: 170, height: 16, borderRadius: 4),
-            const SizedBox(height: 8),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.45,
+            const SizedBox(height: 16),
+            const LedgerCard(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerBox(width: 120, height: 12, borderRadius: 4),
+                  SizedBox(height: 10),
+                  ShimmerBox(width: 200, height: 32, borderRadius: 6),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 160, height: 14, borderRadius: 4),
+                ],
               ),
-              itemCount: 6,
-              itemBuilder: (context, index) {
-                return const LedgerCard(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ShimmerBox(width: 100, height: 12, borderRadius: 4),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ShimmerBox(width: 110, height: 16, borderRadius: 4),
-                          SizedBox(height: 4),
-                          ShimmerBox(width: 48, height: 10, borderRadius: 4),
-                        ],
-                      ),
-                    ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: LedgerCard(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                        SizedBox(height: 14),
+                        ShimmerBox(width: 80, height: 12, borderRadius: 4),
+                        SizedBox(height: 6),
+                        ShimmerBox(width: 110, height: 18, borderRadius: 4),
+                      ],
+                    ),
                   ),
-                );
-              },
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: LedgerCard(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                        SizedBox(height: 14),
+                        ShimmerBox(width: 80, height: 12, borderRadius: 4),
+                        SizedBox(height: 6),
+                        ShimmerBox(width: 110, height: 18, borderRadius: 4),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             const LedgerCard(

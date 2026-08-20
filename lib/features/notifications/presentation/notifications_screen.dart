@@ -112,8 +112,8 @@ class _NotificationsViewState extends State<NotificationsView> {
                 LedgerCollapsingHeader(
                   title: languageCubit.translate('notifications_title'),
                   pinned: true,
-                  floating: true,
-                  snap: true,
+                  floating: false,
+                  snap: false,
                 ),
               ],
               body: const InboxOverviewShimmer(),
@@ -184,8 +184,8 @@ class _NotificationsViewState extends State<NotificationsView> {
                 LedgerCollapsingHeader(
                   title: languageCubit.translate('notifications_title'),
                   pinned: true,
-                  floating: true,
-                  snap: true,
+                  floating: false,
+                  snap: false,
                 ),
               ],
               body: RefreshIndicator(

@@ -57,7 +57,7 @@ class CashTransactionTile extends StatelessWidget {
         pillText: formatLocalizedDateTime(
           context,
           transaction.dateTime,
-          style: LocalizedDateTimeStyle.dateTime,
+          style: LocalizedDateTimeStyle.time,
         ),
         pillColor: colors.surfaceNested,
         pillTextColor: colors.textSecondary,

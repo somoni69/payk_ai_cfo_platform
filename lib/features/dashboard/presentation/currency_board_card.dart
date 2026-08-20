@@ -31,7 +31,10 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
   void initState() {
     super.initState();
     _load();
-    _poll = Timer.periodic(const Duration(minutes: 30), (_) => _load());
+    _poll = Timer.periodic(const Duration(minutes: 30), (_) {
+      if (!mounted || !TickerMode.valuesOf(context).enabled) return;
+      _load();
+    });
   }
 
   @override
@@ -47,6 +50,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
       setState(() {
         _board = board;
         _loading = false;
+        _failed = false;
       });
     } catch (_) {
       if (!mounted) return;
@@ -138,66 +142,97 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
               ),
             )
           else ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowHeight: 36,
-                dataRowMinHeight: 36,
-                dataRowMaxHeight: 44,
-                headingTextStyle: textStyles.smallSans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: colors.textSecondary,
-                ),
-                columns: [
-                  DataColumn(
-                    label: Text(language.translate('dashboard_rates_bank')),
-                  ),
-                  for (final code in _codes)
-                    DataColumn(
-                      numeric: true,
-                      label: Text(
-                        '$code\n${language.translate('dashboard_rates_buy_sell')}',
+            Row(
+              children: [
+                for (var i = 0; i < _codes.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 12,
                       ),
-                    ),
-                ],
-                rows: [
-                  DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          language.translate('dashboard_rates_nbt'),
-                          style: textStyles.captionSans.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceNested,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      for (final code in _codes)
-                        DataCell(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
                           Text(
-                            fmt(official[code]?.rate),
-                            style: textStyles.smallMono,
-                          ),
-                        ),
-                    ],
-                  ),
-                  for (final entry in byBank.entries)
-                    DataRow(
-                      cells: [
-                        DataCell(
-                          Text(
-                            names[entry.key] ?? entry.key,
-                            style: textStyles.captionSans.copyWith(
+                            _codes[i],
+                            style: textStyles.smallSans.copyWith(
+                              color: colors.textSecondary,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ),
-                        for (final code in _codes)
-                          DataCell(_buySell(context, entry.value[code])),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            fmt(official[_codes[i]]?.rate),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            language.translate('dashboard_rates_nbt'),
+                            style: textStyles.smallSans.copyWith(
+                              color: colors.textTooltip,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
                 ],
-              ),
+              ],
             ),
+            if (byBank.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ...byBank.entries.map((entry) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        names[entry.key] ?? entry.key,
+                        style: textStyles.captionSans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            for (var i = 0; i < _codes.length; i++) ...[
+                              if (i > 0)
+                                TextSpan(
+                                  text: '   ',
+                                  style: textStyles.smallSans,
+                                ),
+                              TextSpan(
+                                text: '${_codes[i]} ',
+                                style: textStyles.smallSans.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.baseline,
+                                baseline: TextBaseline.alphabetic,
+                                child: _buySell(
+                                  context,
+                                  entry.value[_codes[i]],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
             if (byBank.isEmpty) ...[
               const SizedBox(height: 8),
               Text(

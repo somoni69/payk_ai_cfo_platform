@@ -187,8 +187,8 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
               LedgerCollapsingHeader(
                 title: localeCubit.translate('hr_title'),
                 pinned: true,
-                floating: true,
-                snap: true,
+                floating: false,
+                snap: false,
                 actions: [
                   InkWell(
                     onTap: () {

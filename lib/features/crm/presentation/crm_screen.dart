@@ -147,8 +147,8 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                 overflow: TextOverflow.ellipsis,
               ),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               bottom: LedgerTabBar(
                 controller: _tabs,
                 isScrollable: true,

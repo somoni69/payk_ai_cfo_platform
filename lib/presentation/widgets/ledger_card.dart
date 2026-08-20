@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/theme_extensions.dart';
 
-/// Карточка в дизайн-системе Ledger.
-/// Скругление 16px, граница 1px (`border`), без теней.
+/// Visual weight of a [LedgerCard].
+enum LedgerCardStyle {
+  /// 1px border — lists, forms, dense reports.
+  outlined,
+
+  /// No border; separation by spacing.
+  plain,
+
+  /// Soft brand/tint fill, no border — heroes and callouts.
+  tinted,
+}
+
+/// Карточка PAYK: 16px radius, no shadow.
 class LedgerCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -10,6 +21,7 @@ class LedgerCard extends StatelessWidget {
   final Color? borderColor;
   final double borderRadius;
   final VoidCallback? onTap;
+  final LedgerCardStyle style;
 
   const LedgerCard({
     super.key,
@@ -19,19 +31,34 @@ class LedgerCard extends StatelessWidget {
     this.borderColor,
     this.borderRadius = 16,
     this.onTap,
+    this.style = LedgerCardStyle.outlined,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final cardChild = Padding(padding: padding, child: child);
+
+    final Color fill = switch (style) {
+      LedgerCardStyle.tinted =>
+        backgroundColor ?? colors.brand.withValues(alpha: 0.08),
+      LedgerCardStyle.plain ||
+      LedgerCardStyle.outlined => backgroundColor ?? colors.surface,
+    };
+
+    final BoxBorder? border = switch (style) {
+      LedgerCardStyle.outlined => Border.all(
+        color: borderColor ?? colors.border,
+        width: 1,
+      ),
+      LedgerCardStyle.plain || LedgerCardStyle.tinted =>
+        borderColor == null ? null : Border.all(color: borderColor!, width: 1),
+    };
 
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor ?? context.colors.surface,
-        border: Border.all(
-          color: borderColor ?? context.colors.border,
-          width: 1,
-        ),
+        color: fill,
+        border: border,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: onTap != null

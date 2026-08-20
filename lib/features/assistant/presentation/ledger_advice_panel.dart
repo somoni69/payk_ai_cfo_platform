@@ -118,14 +118,13 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: LedgerCard(
-        borderColor: colors.accentAmber,
         padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                Icon(TablerIcons.robot, size: 20, color: colors.accentAmber),
+                Icon(TablerIcons.notes, size: 20, color: colors.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: InkWell(
@@ -137,7 +136,6 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
                             language.translate('advice_title'),
                             style: textStyles.bodySans.copyWith(
                               fontWeight: FontWeight.w500,
-                              color: colors.accentAmber,
                             ),
                           ),
                         ),
@@ -195,7 +193,7 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: colors.accentAmber,
+                          color: colors.brand,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -226,9 +224,9 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
                       child: OutlinedButton.icon(
                         onPressed: _generate,
                         icon: Icon(
-                          TablerIcons.sparkles,
+                          TablerIcons.refresh,
                           size: 16,
-                          color: colors.accentAmber,
+                          color: colors.brand,
                         ),
                         label: Text(language.translate('advice_generate')),
                       ),

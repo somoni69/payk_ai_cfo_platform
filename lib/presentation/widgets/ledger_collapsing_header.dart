@@ -22,8 +22,8 @@ class LedgerCollapsingHeader extends StatelessWidget {
     this.bottom,
     this.expandedHeight,
     this.pinned = true,
-    this.floating = true,
-    this.snap = true,
+    this.floating = false,
+    this.snap = false,
   });
 
   @override
@@ -36,15 +36,18 @@ class LedgerCollapsingHeader extends StatelessWidget {
     // Ревизия типографики AppBar для пропорциональности на всех типах экранов (от компактных до больших)
     // Ограничиваем масштабирование (clamp textScaler) 0.85..1.15, чтобы заголовок в AppBar не раздувался
     final clampedTextScaler = mediaQuery.textScaler.clamp(
-      minScaleFactor: 0.85,
-      maxScaleFactor: 1.15,
+      minScaleFactor: 0.9,
+      maxScaleFactor: 1.25,
     );
 
-    // Подбираем сбалансированный размер шрифта AppBar (22px для телефонов, 24px для крупных экранов/планшетов)
-    final double appBarFontSize = screenWidth >= 600 ? 24.0 : 22.0;
+    final double appBarFontSize = screenWidth >= 600
+        ? context.fontSize(24)
+        : screenWidth >= 428
+        ? context.fontSize(23)
+        : context.fontSize(22);
     final TextStyle appBarTitleStyle = textStyles.h1Sans.copyWith(
       fontSize: appBarFontSize,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w600,
       height: 1.2,
     );
 

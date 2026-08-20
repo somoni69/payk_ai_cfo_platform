@@ -119,8 +119,8 @@ class _MarketingViewState extends State<MarketingView>
             LedgerCollapsingHeader(
               title: localeCubit.translate('marketing_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               bottom: LedgerTabBar(
                 controller: _tabController,
                 tabs: [
@@ -267,7 +267,7 @@ class _MarketingViewState extends State<MarketingView>
                         );
                       }
                     },
-              icon: const Icon(TablerIcons.sparkles),
+              icon: const Icon(TablerIcons.plus),
               label: Text(
                 localeCubit.translate(
                   state.isGenerating

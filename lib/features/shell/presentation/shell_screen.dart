@@ -1,4 +1,7 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
@@ -69,12 +72,60 @@ class ShellScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    final language = context.watch<LanguageCubit>();
-    final authState = context.watch<AuthBloc>().state;
-    final userRole = authState is AuthAuthenticated
-        ? authState.role
-        : UserRole.viewer;
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<DashboardBloc>(
+          create: (context) => DashboardBloc(context.read<FinanceRepository>()),
+        ),
+        BlocProvider<CashBloc>(
+          create: (context) => CashBloc(context.read<CashRepository>()),
+        ),
+        BlocProvider<TasksBloc>(
+          create: (context) => TasksBloc(context.read<TasksRepository>()),
+        ),
+        BlocProvider<WarehouseBloc>(
+          create: (context) =>
+              WarehouseBloc(context.read<WarehouseRepository>()),
+        ),
+      ],
+      child: _ShellScaffold(navigationShell: navigationShell),
+    );
+  }
+}
+
+class _ShellScaffold extends StatelessWidget {
+  const _ShellScaffold({required this.navigationShell});
+
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBody: true,
+      body: RepaintBoundary(child: navigationShell),
+      bottomNavigationBar: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: SafeArea(
+          top: false,
+          minimum: const EdgeInsets.only(bottom: 8),
+          child: _ShellNavOverlay(navigationShell: navigationShell),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShellNavOverlay extends StatelessWidget {
+  const _ShellNavOverlay({required this.navigationShell});
+
+  final StatefulNavigationShell navigationShell;
+
+  @override
+  Widget build(BuildContext context) {
+    final userRole = context.select<AuthBloc, UserRole>((bloc) {
+      final state = bloc.state;
+      return state is AuthAuthenticated ? state.role : UserRole.viewer;
+    });
     final permissions = context.watch<PermissionsCubit>();
 
     final visibleTabs = _allTabs
@@ -94,49 +145,162 @@ class ShellScreen extends StatelessWidget {
     );
     if (activeNavbarIndex == -1) activeNavbarIndex = 0;
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<DashboardBloc>(
-          create: (context) => DashboardBloc(context.read<FinanceRepository>()),
+    return _LiquidBottomNav(
+      tabs: visibleTabs,
+      currentIndex: activeNavbarIndex,
+      onTap: (index) {
+        HapticFeedback.selectionClick();
+        final targetTab = visibleTabs[index];
+        navigationShell.goBranch(
+          targetTab.branchIndex,
+          initialLocation:
+              targetTab.branchIndex == navigationShell.currentIndex,
+        );
+      },
+    );
+  }
+}
+
+/// Floating frosted capsule: one sliding liquid pill, not a per-tab fill.
+class _LiquidBottomNav extends StatelessWidget {
+  const _LiquidBottomNav({
+    required this.tabs,
+    required this.currentIndex,
+    required this.onTap,
+  });
+
+  final List<TabItem> tabs;
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final language = context.watch<LanguageCubit>();
+    final count = tabs.length;
+    final bubbleAlign = count <= 1
+        ? Alignment.center
+        : Alignment(-1.0 + (2.0 * currentIndex / (count - 1)), 0);
+
+    return Material(
+      type: MaterialType.transparency,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: colors.textPrimary.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        BlocProvider<CashBloc>(
-          create: (context) => CashBloc(context.read<CashRepository>()),
-        ),
-        BlocProvider<TasksBloc>(
-          create: (context) => TasksBloc(context.read<TasksRepository>()),
-        ),
-        BlocProvider<WarehouseBloc>(
-          create: (context) =>
-              WarehouseBloc(context.read<WarehouseRepository>()),
-        ),
-      ],
-      child: Scaffold(
-        body: navigationShell,
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: colors.border)),
+        child: RepaintBoundary(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: 8,
+                sigmaY: 8,
+                tileMode: TileMode.decal,
+              ),
+              child: ColoredBox(
+                color: colors.surface.withValues(alpha: 0.72),
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: SizedBox(
+                    height: 52,
+                    child: Stack(
+                      children: [
+                        AnimatedAlign(
+                          duration: const Duration(milliseconds: 420),
+                          curve: Curves.easeOutCubic,
+                          alignment: bubbleAlign,
+                          child: FractionallySizedBox(
+                            widthFactor: 1 / count,
+                            heightFactor: 1,
+                            child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: colors.brand.withValues(alpha: 0.16),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            for (var i = 0; i < count; i++)
+                              Expanded(
+                                child: _LiquidNavItem(
+                                  icon: tabs[i].icon,
+                                  label: language.translate(tabs[i].labelKey),
+                                  selected: i == currentIndex,
+                                  onTap: () => onTap(i),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: BottomNavigationBar(
-            currentIndex: activeNavbarIndex,
-            onTap: (index) {
-              final targetTab = visibleTabs[index];
-              navigationShell.goBranch(
-                targetTab.branchIndex,
-                initialLocation:
-                    targetTab.branchIndex == navigationShell.currentIndex,
-              );
-            },
-            items: visibleTabs
-                .map((tab) {
-                  return BottomNavigationBarItem(
-                    icon: Icon(tab.icon),
-                    activeIcon: Icon(tab.icon),
-                    label: language.translate(tab.labelKey),
-                  );
-                })
-                .toList(growable: false),
-          ),
         ),
+      ),
+    );
+  }
+}
+
+class _LiquidNavItem extends StatelessWidget {
+  const _LiquidNavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final foreground = selected ? colors.brand : colors.textSecondary;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      splashColor: colors.brand.withValues(alpha: 0.08),
+      highlightColor: Colors.transparent,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedScale(
+            scale: selected ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            child: Icon(icon, size: 22, color: foreground),
+          ),
+          const SizedBox(height: 2),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            style: textStyles.smallSans.copyWith(
+              fontSize: context.fontSize(11),
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: foreground,
+            ),
+            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+        ],
       ),
     );
   }

@@ -59,13 +59,6 @@ extension _DashboardSectionBuilders on _DashboardViewState {
     );
   }
 
-  static const Map<String, String> _currencyFlags = {
-    'TJS': '🇹🇯',
-    'USD': '🇺🇸',
-    'RUB': '🇷🇺',
-    'EUR': '🇪🇺',
-  };
-
   Widget _buildCurrencySelector(BuildContext context, String currentCurrency) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -86,7 +79,6 @@ extension _DashboardSectionBuilders on _DashboardViewState {
       itemBuilder: (BuildContext context) {
         return currencies.map((String c) {
           final isCurrent = c == currentCurrency;
-          final flag = _currencyFlags[c] ?? '';
 
           return PopupMenuItem<String>(
             value: c,
@@ -95,13 +87,11 @@ extension _DashboardSectionBuilders on _DashboardViewState {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(flag, style: textStyles.bodySans.copyWith(fontSize: 18)),
-                const SizedBox(width: 10),
                 Text(
                   c,
-                  style: textStyles.bodyMono.copyWith(
+                  style: textStyles.bodySans.copyWith(
                     fontSize: 14,
-                    fontWeight: isCurrent ? FontWeight.w500 : FontWeight.w500,
+                    fontWeight: FontWeight.w500,
                     color: isCurrent ? colors.brand : colors.textPrimary,
                   ),
                 ),
@@ -135,135 +125,195 @@ extension _DashboardSectionBuilders on _DashboardViewState {
     );
   }
 
-  Widget _buildMetricsGrid(FinanceMetrics m, String currency) {
+  Widget _buildOverviewHome(
+    BuildContext context,
+    DashboardLoaded loaded,
+    String currency,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final languageCubit = context.read<LanguageCubit>();
+    final language = context.read<LanguageCubit>();
+    final m = loaded.metrics;
 
-    String amount(double? value) =>
-        value == null ? '—' : '${_formatAmount(context, value)} $currency';
+    String money(double value) => '${_formatAmount(context, value)} $currency';
 
-    String formatDelta(double? value, double fallback) {
-      final v = value ?? fallback;
-      return '${v > 0 ? "+" : ""}${formatLocalizedNumber(context, v)}%';
+    String deltaLabel(double? value) {
+      final v = value ?? 0;
+      final sign = v > 0 ? '+' : '';
+      return '$sign${formatLocalizedNumber(context, v)}%';
     }
 
-    Color getDeltaColor(
-      double? value,
-      double fallback, {
-      bool inverse = false,
-    }) {
-      final v = value ?? fallback;
-      final positive = v > 0;
-      if (inverse) return positive ? colors.accentRed : colors.accentGreen;
-      return positive ? colors.accentGreen : colors.accentRed;
+    Color deltaColor(double? value, {bool inverse = false}) {
+      final v = value ?? 0;
+      final up = v >= 0;
+      if (inverse) return up ? colors.accentRed : colors.accentGreen;
+      return up ? colors.accentGreen : colors.accentRed;
     }
 
-    final double balanceDeltaVal =
-        m.cashBalanceDelta ?? (m.cashBalance > 0 ? 8.4 : 0.0);
-    final double revDeltaVal = m.revenueDelta ?? (m.revenue > 0 ? 12.5 : 0.0);
-    final double expDeltaVal = m.expensesDelta ?? (m.expenses > 0 ? -3.2 : 0.0);
-    final double profitDeltaVal =
-        m.netProfitDelta ?? (m.netProfit != 0 ? 15.1 : 0.0);
+    final profitOk = m.netProfit >= 0;
+    final caption = profitOk
+        ? language.translate(
+            'dashboard_hero_profit_ok',
+            params: {'amount': money(m.netProfit)},
+          )
+        : language.translate(
+            'dashboard_hero_profit_loss',
+            params: {'amount': money(m.netProfit.abs())},
+          );
 
-    final double calculatedBreakEven =
-        m.breakEvenPoint ?? (m.expenses > 0 ? m.expenses * 1.35 : 180000.0);
-    final double calculatedForecast =
-        m.cashForecast ??
-        (m.cashBalance > 0 ? m.cashBalance + m.netProfit * 0.4 : 410000.0);
-    final double forecastDeltaVal = m.cashForecastDelta ?? 5.0;
-
-    final List<Map<String, dynamic>> items = [
-      {
-        'label': languageCubit.translate('dashboard_metric_cash_balance'),
-        'value': amount(m.cashBalance),
-        'delta': formatDelta(m.cashBalanceDelta, balanceDeltaVal),
-        'color': getDeltaColor(m.cashBalanceDelta, balanceDeltaVal),
-      },
-      {
-        'label': languageCubit.translate('dashboard_metric_revenue_june'),
-        'value': amount(m.revenue),
-        'delta': formatDelta(m.revenueDelta, revDeltaVal),
-        'color': getDeltaColor(m.revenueDelta, revDeltaVal),
-      },
-      {
-        'label': languageCubit.translate('dashboard_metric_expenses_june'),
-        'value': amount(m.expenses),
-        'delta': formatDelta(m.expensesDelta, expDeltaVal),
-        'color': getDeltaColor(m.expensesDelta, expDeltaVal, inverse: true),
-      },
-      {
-        'label': languageCubit.translate('dashboard_metric_net_profit'),
-        'value': amount(m.netProfit),
-        'delta': formatDelta(m.netProfitDelta, profitDeltaVal),
-        'color': getDeltaColor(m.netProfitDelta, profitDeltaVal),
-      },
-      {
-        'label': languageCubit.translate('dashboard_metric_break_even'),
-        'value': amount(m.breakEvenPoint ?? calculatedBreakEven),
-        'delta': languageCubit.translate('dashboard_metric_normal'),
-        'color': colors.accentGreen,
-      },
-      {
-        'label': languageCubit.translate('dashboard_metric_cash_forecast'),
-        'value': amount(m.cashForecast ?? calculatedForecast),
-        'delta': formatDelta(m.cashForecastDelta, forecastDeltaVal),
-        'color': getDeltaColor(m.cashForecastDelta, forecastDeltaVal),
-      },
+    final reports = <(DashboardSection, IconData, String)>[
+      (
+        DashboardSection.pnl,
+        TablerIcons.report_money,
+        language.translate('dashboard_tab_pnl'),
+      ),
+      (
+        DashboardSection.planFact,
+        TablerIcons.chart_bar,
+        language.translate('dashboard_tab_plan_fact'),
+      ),
+      (
+        DashboardSection.breakEven,
+        TablerIcons.target,
+        language.translate('dashboard_tab_break_even'),
+      ),
+      (
+        DashboardSection.abc,
+        TablerIcons.chart_dots,
+        language.translate('dashboard_tab_abc'),
+      ),
+      (
+        DashboardSection.accountsRates,
+        TablerIcons.building_bank,
+        language.translate('dashboard_tab_accounts_rates'),
+      ),
+      (
+        DashboardSection.clients,
+        TablerIcons.users,
+        language.translate('dashboard_tab_clients'),
+      ),
+      (
+        DashboardSection.aiInsights,
+        TablerIcons.bulb,
+        language.translate('dashboard_tab_ai_insights'),
+      ),
     ];
 
-    return GridView.builder(
-      padding: EdgeInsets.zero,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 1.45,
+    return RefreshIndicator(
+      onRefresh: () => _refreshDashboard(context),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const LedgerAdvicePanel(module: 'finance'),
+            const SizedBox(height: 16),
+            LedgerHero(
+              label: language.translate('dashboard_metric_cash_balance'),
+              value: money(m.cashBalance),
+              caption: caption,
+              captionColor: profitOk ? colors.accentGreen : colors.accentRed,
+              trailing: LedgerIconBadge(
+                icon: TablerIcons.wallet,
+                color: colors.brand,
+                size: 48,
+                iconSize: 24,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: LedgerMetricTile(
+                    icon: TablerIcons.trending_up,
+                    iconColor: colors.accentGreen,
+                    label: language.translate('dashboard_metric_net_profit'),
+                    value: money(m.netProfit),
+                    delta: deltaLabel(m.netProfitDelta),
+                    deltaColor: deltaColor(m.netProfitDelta),
+                    onTap: () => _openDashboardReport(DashboardSection.pnl),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: LedgerMetricTile(
+                    icon: TablerIcons.trending_down,
+                    iconColor: colors.accentRed,
+                    label: language.translate('dashboard_metric_expenses_june'),
+                    value: money(m.expenses),
+                    delta: deltaLabel(m.expensesDelta),
+                    deltaColor: deltaColor(m.expensesDelta, inverse: true),
+                    onTap: () => _openDashboardReport(DashboardSection.pnl),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            LedgerMetricTile(
+              icon: TablerIcons.cash,
+              iconColor: colors.brand,
+              label: language.translate('dashboard_metric_revenue_june'),
+              value: money(m.revenue),
+              delta: deltaLabel(m.revenueDelta),
+              deltaColor: deltaColor(m.revenueDelta),
+            ),
+            const SizedBox(height: 20),
+            const SalesProfitCard(hideOnError: true),
+            const SizedBox(height: 16),
+            const CurrencyBoardCard(),
+            const SizedBox(height: 20),
+            Text(
+              language.translate('dashboard_cash_flow_30_days_title'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 10),
+            _buildChart(loaded.history, currency),
+            const SizedBox(height: 24),
+            Text(
+              language.translate('dashboard_reports_title'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              language.translate('dashboard_reports_subtitle'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            for (var i = 0; i < reports.length; i += 2)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: i + 2 < reports.length ? 8 : 0,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: LedgerReportTile(
+                        icon: reports[i].$2,
+                        title: reports[i].$3,
+                        onTap: () => _openDashboardReport(reports[i].$1),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: i + 1 < reports.length
+                          ? LedgerReportTile(
+                              icon: reports[i + 1].$2,
+                              title: reports[i + 1].$3,
+                              onTap: () =>
+                                  _openDashboardReport(reports[i + 1].$1),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-
-        return LedgerCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                item['label'] as String,
-                style: textStyles.captionSans,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['value'] as String,
-                    style: textStyles.bodyMono.copyWith(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 16,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    item['delta'] as String,
-                    style: textStyles.smallMono.copyWith(
-                      color: item['color'] as Color,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 

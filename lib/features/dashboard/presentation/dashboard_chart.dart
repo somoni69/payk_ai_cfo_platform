@@ -84,15 +84,11 @@ class CashFlowChartPainter extends CustomPainter {
 
     final greenPath = Path();
     final redPath = Path();
-    final greenAreaPath = Path();
-    greenAreaPath.moveTo(chartLeft, chartBottom);
 
     if (len > 0) {
-      // Начальные точки кривых
       final double yGreen0 =
           chartBottom - ((points[0].income / rangeY) * chartHeight);
       greenPath.moveTo(chartLeft, yGreen0);
-      greenAreaPath.lineTo(chartLeft, yGreen0);
 
       final double yRed0 =
           chartBottom - ((points[0].expense / rangeY) * chartHeight);
@@ -111,33 +107,13 @@ class CashFlowChartPainter extends CustomPainter {
         final double yRed2 =
             chartBottom - ((points[i + 1].expense / rangeY) * chartHeight);
 
-        // Расчет сглаженных контрольных точек (Cubic Bezier)
         final double cx1 = x1 + (x2 - x1) / 2.0;
-        final double cyGreen1 = yGreen1;
         final double cx2 = x1 + (x2 - x1) / 2.0;
-        final double cyGreen2 = yGreen2;
 
-        greenPath.cubicTo(cx1, cyGreen1, cx2, cyGreen2, x2, yGreen2);
-        greenAreaPath.cubicTo(cx1, cyGreen1, cx2, cyGreen2, x2, yGreen2);
-
-        final double cyRed1 = yRed1;
-        final double cyRed2 = yRed2;
-        redPath.cubicTo(cx1, cyRed1, cx2, cyRed2, x2, yRed2);
+        greenPath.cubicTo(cx1, yGreen1, cx2, yGreen2, x2, yGreen2);
+        redPath.cubicTo(cx1, yRed1, cx2, yRed2, x2, yRed2);
       }
-
-      greenAreaPath.lineTo(chartLeft + (len - 1) * stepX, chartBottom);
-      greenAreaPath.close();
     }
-
-    // Отрисовка красивого градиента под графиком приходов
-    final fillPaint = Paint()..style = PaintingStyle.fill;
-    final gradient = ui.Gradient.linear(
-      Offset(chartLeft, chartTop),
-      Offset(chartLeft, chartBottom),
-      [greenColor.withValues(alpha: 0.16), greenColor.withValues(alpha: 0.01)],
-    );
-    fillPaint.shader = gradient;
-    canvas.drawPath(greenAreaPath, fillPaint);
 
     // Отрисовка сглаженной линии Прихода
     final greenLinePaint = Paint()
