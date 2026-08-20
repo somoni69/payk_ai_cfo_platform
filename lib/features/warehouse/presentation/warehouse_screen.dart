@@ -373,7 +373,12 @@ class _WarehouseViewState extends State<WarehouseView>
       onRefresh: context.read<WarehouseBloc>().reload,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + kLiquidNavClearance,
+        ),
         itemCount: state.products.isEmpty ? 2 : state.products.length + 1,
         separatorBuilder: (context, index) =>
             SizedBox(height: index == 0 ? 16 : 12),
@@ -586,7 +591,12 @@ class _WarehouseViewState extends State<WarehouseView>
       onRefresh: context.read<WarehouseBloc>().reload,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + kLiquidNavClearance,
+        ),
         itemCount: state.movements.isEmpty ? 1 : state.movements.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
@@ -733,7 +743,12 @@ class _WarehouseViewState extends State<WarehouseView>
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + kLiquidNavClearance,
+        ),
         children: [
           const LedgerAdvicePanel(module: 'warehouse'),
           Row(
