@@ -228,11 +228,8 @@ class _ChecklistsViewState extends State<ChecklistsView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
                 tabs: [
                   Tab(text: locale.translate('checklists_tab_runs')),
                   Tab(text: locale.translate('checklists_tab_templates')),
@@ -245,7 +242,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
         body: BlocBuilder<ChecklistsBloc, ChecklistsState>(
           builder: (context, state) {
             if (state is ChecklistsLoading) {
-              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
+              return const ChecklistsOverviewShimmer();
             }
             if (state is ChecklistsError) {
               return Center(child: Text(state.message));

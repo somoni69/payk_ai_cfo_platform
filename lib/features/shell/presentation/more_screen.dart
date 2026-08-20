@@ -4,17 +4,20 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_event.dart';
 import '../../../features/auth/bloc/auth_state.dart';
+import '../../../features/assistant/presentation/ledger_ai_assistant.dart';
 import '../../../features/auth/domain/app_access.dart';
+import '../../../features/permissions/cubit/permissions_cubit.dart';
+import '../../../features/permissions/domain/my_permissions.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/payk_logo.dart';
+import '../../notifications/presentation/notification_bell.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -126,103 +129,112 @@ class _MoreScreenState extends State<MoreScreen> {
         : context.translate('language_russian');
     final authState = context.watch<AuthBloc>().state;
     final role = authState is AuthAuthenticated ? authState.role : null;
+    context.watch<PermissionsCubit>();
 
-    return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            LedgerCollapsingHeader(
-              title: context.translate('more'),
-              pinned: true,
-              floating: true,
-              snap: true,
-              actions: const [PaykLogo(height: 22)],
-            ),
-          ];
-        },
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Профиль пользователя
-                _buildProfileCard(),
-                const SizedBox(height: 20),
+    return LedgerAiAssistantHost(
+      child: Scaffold(
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              LedgerCollapsingHeader(
+                title: context.translate('more'),
+                pinned: true,
+                floating: true,
+                snap: true,
+                actions: const [
+                  NotificationBell(),
+                  SizedBox(width: 8),
+                  PaykLogo(height: 22),
+                ],
+              ),
+            ];
+          },
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Профиль пользователя
+                  _buildProfileCard(),
+                  const SizedBox(height: 20),
 
-                // Безопасность и настройки
-                Text(
-                  context.translate('more_access_settings'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
+                  // Безопасность и настройки
+                  Text(
+                    context.translate('more_access_settings'),
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                LedgerCard(
-                  padding: EdgeInsets.zero,
-                  child: _buildSettingsToggleRow(
-                    icon: TablerIcons.fingerprint,
-                    title: context.translate('biometrics'),
-                    value: _biometricEnabled,
-                    onChanged: _onBiometricToggleChanged,
+                  const SizedBox(height: 8),
+                  LedgerCard(
+                    padding: EdgeInsets.zero,
+                    child: _buildSettingsToggleRow(
+                      icon: TablerIcons.fingerprint,
+                      title: context.translate('biometrics'),
+                      value: _biometricEnabled,
+                      onChanged: _onBiometricToggleChanged,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                ExpansibleWidget<String>.selection(
-                  cardPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
-                  ),
-                  tilePadding: EdgeInsets.zero,
-                  title: Row(
-                    children: [
-                      Icon(
-                        TablerIcons.language,
-                        color: colors.textSecondary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          context.translate('language'),
-                          style: textStyles.bodySans,
+                  const SizedBox(height: 12),
+                  ExpansibleWidget<String>.selection(
+                    cardPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
+                    tilePadding: EdgeInsets.zero,
+                    title: Row(
+                      children: [
+                        Icon(
+                          TablerIcons.language,
+                          color: colors.textSecondary,
+                          size: 20,
                         ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            context.translate('language'),
+                            style: textStyles.bodySans,
+                          ),
+                        ),
+                      ],
+                    ),
+                    subtitle: Text(
+                      currentLanguageLabel,
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
                       ),
-                    ],
-                  ),
-                  subtitle: Text(
-                    currentLanguageLabel,
-                    style: textStyles.captionSans.copyWith(
-                      color: colors.textSecondary,
                     ),
+                    items: const ['ru', 'tg'],
+                    selectedValue: locale.languageCode,
+                    itemLabelBuilder: (code) => code == 'tg'
+                        ? context.translate('language_tajik')
+                        : context.translate('language_russian'),
+                    onSelected: (val) {
+                      context.read<LanguageCubit>().setLanguage(val);
+                    },
                   ),
-                  items: const ['ru', 'tg'],
-                  selectedValue: locale.languageCode,
-                  itemLabelBuilder: (code) => code == 'tg'
-                      ? context.translate('language_tajik')
-                      : context.translate('language_russian'),
-                  onSelected: (val) {
-                    context.read<LanguageCubit>().setLanguage(val);
-                  },
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                if (role != null) ..._buildGroupedModules(role),
+                  if (role != null) ..._buildGroupedModules(role),
 
-                // Выход (Смена сессии)
-                OutlinedButton(
-                  onPressed: () {
-                    context.read<AuthBloc>().add(LogoutRequested());
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: colors.accentRed,
-                    side: BorderSide(
-                      color: colors.accentRed.withValues(alpha: 0.5),
+                  // Выход (Смена сессии)
+                  OutlinedButton(
+                    onPressed: () {
+                      context.read<AuthBloc>().add(LogoutRequested());
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.accentRed,
+                      side: BorderSide(
+                        color: colors.accentRed.withValues(alpha: 0.5),
+                      ),
                     ),
+                    child: Text(context.translate('logout')),
                   ),
-                  child: Text(context.translate('logout')),
-                ),
-              ],
+                  // Space so content is not hidden under the AI FAB.
+                  const SizedBox(height: 72),
+                ],
+              ),
             ),
           ),
         ),
@@ -248,6 +260,12 @@ class _MoreScreenState extends State<MoreScreen> {
             icon: TablerIcons.users,
             titleKey: 'crm_menu',
             route: '/crm',
+          ),
+          (
+            capability: AppCapability.crm,
+            icon: TablerIcons.brand_meta,
+            titleKey: 'more_meta',
+            route: '/meta',
           ),
           (
             capability: AppCapability.checklists,
@@ -337,8 +355,15 @@ class _MoreScreenState extends State<MoreScreen> {
     final widgets = <Widget>[];
 
     for (final group in groups) {
+      final permissions = context.read<PermissionsCubit>();
       final allowedModules = group.modules
-          .where((m) => role.can(m.capability))
+          .where(
+            (m) => permissions.can(
+              m.capability,
+              action: PermAction.view,
+              fallbackRole: role,
+            ),
+          )
           .toList();
 
       if (allowedModules.isEmpty) continue;
@@ -427,6 +452,7 @@ class _MoreScreenState extends State<MoreScreen> {
       UserRole.accountant => 'role_accountant',
       UserRole.cashier => 'role_cashier',
       UserRole.hr => 'role_hr',
+      UserRole.marketer => 'role_marketer',
       UserRole.viewer => 'role_viewer',
     };
   }

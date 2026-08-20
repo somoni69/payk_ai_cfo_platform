@@ -97,7 +97,7 @@ class ChangeCurrency extends DashboardEvent {
 }
 
 class ChangeAbcDimension extends DashboardEvent {
-  final String dimension; // 'category' or 'client'
+  final String dimension; // 'category' or 'counterparty' (legacy: 'client')
 
   const ChangeAbcDimension(this.dimension);
 

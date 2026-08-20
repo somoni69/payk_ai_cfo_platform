@@ -483,12 +483,18 @@ class ApiAuthRepository {
         return UserRole.cashier;
       case 'hr':
         return UserRole.hr;
+      case 'marketer':
+      case 'marketing':
+        return UserRole.marketer;
       case 'viewer':
         return UserRole.viewer;
     }
     // Loose aliases for older tokens / combined scopes.
     if (cleanRole.contains('director') || cleanRole.contains('admin')) {
       return UserRole.director;
+    }
+    if (cleanRole.contains('marketer') || cleanRole.contains('marketolog')) {
+      return UserRole.marketer;
     }
     if (cleanRole.contains('manager')) {
       return UserRole.manager;

@@ -114,7 +114,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
             if (state.isLoading &&
                 state.integrations.isEmpty &&
                 state.logs.isEmpty) {
-              return const LedgerListShimmer(showStatsHeader: false, itemCount: 4);
+              return const IntegrationsOverviewShimmer();
             }
 
             final visibleLogCount = _visibleLogs < state.logs.length

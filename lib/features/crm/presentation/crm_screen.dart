@@ -149,15 +149,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabs,
                 isScrollable: true,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
                 tabs: [
                   Tab(text: language.translate('crm_tab_clients')),
                   Tab(text: language.translate('crm_tab_funnel')),

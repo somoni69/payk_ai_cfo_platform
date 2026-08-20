@@ -8,18 +8,16 @@ import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
+import '../../../features/permissions/cubit/permissions_cubit.dart';
+import '../../../features/permissions/domain/my_permissions.dart';
 
 import '../../../features/dashboard/bloc/dashboard_bloc.dart';
-import '../../../features/dashboard/bloc/dashboard_event.dart';
 import '../../../features/dashboard/domain/finance_repository.dart';
 import '../../../features/cash/bloc/cash_bloc.dart';
-import '../../../features/cash/bloc/cash_event.dart';
 import '../../../features/cash/domain/cash_repository.dart';
 import '../../../features/tasks/bloc/tasks_bloc.dart';
-import '../../../features/tasks/bloc/tasks_event.dart';
 import '../../../features/tasks/domain/tasks_repository.dart';
 import '../../../features/warehouse/bloc/warehouse_bloc.dart';
-import '../../../features/warehouse/bloc/warehouse_event.dart';
 import '../../../features/warehouse/domain/warehouse_repository.dart';
 
 class TabItem {
@@ -77,11 +75,17 @@ class ShellScreen extends StatelessWidget {
     final userRole = authState is AuthAuthenticated
         ? authState.role
         : UserRole.viewer;
+    final permissions = context.watch<PermissionsCubit>();
 
     final visibleTabs = _allTabs
         .where((tab) {
           final capability = tab.capability;
-          return capability == null || userRole.can(capability);
+          if (capability == null) return true;
+          return permissions.can(
+            capability,
+            action: PermAction.view,
+            fallbackRole: userRole,
+          );
         })
         .toList(growable: false);
 
@@ -93,20 +97,18 @@ class ShellScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<DashboardBloc>(
-          create: (context) => DashboardBloc(context.read<FinanceRepository>())
-            ..add(LoadDashboardData()),
+          create: (context) =>
+              DashboardBloc(context.read<FinanceRepository>()),
         ),
         BlocProvider<CashBloc>(
-          create: (context) => CashBloc(context.read<CashRepository>())
-            ..add(LoadCashData()),
+          create: (context) => CashBloc(context.read<CashRepository>()),
         ),
         BlocProvider<TasksBloc>(
-          create: (context) => TasksBloc(context.read<TasksRepository>())
-            ..add(LoadTasks()),
+          create: (context) => TasksBloc(context.read<TasksRepository>()),
         ),
         BlocProvider<WarehouseBloc>(
-          create: (context) => WarehouseBloc(context.read<WarehouseRepository>())
-            ..add(LoadWarehouseData()),
+          create: (context) =>
+              WarehouseBloc(context.read<WarehouseRepository>()),
         ),
       ],
       child: Scaffold(

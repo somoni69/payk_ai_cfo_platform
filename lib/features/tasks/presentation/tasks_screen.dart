@@ -22,6 +22,7 @@ import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../assistant/presentation/ledger_advice_panel.dart';
 
 part 'tasks_list.dart';
 part 'tasks_forms.dart';
@@ -31,11 +32,29 @@ part 'tasks_widgets.dart';
 part 'tasks_my.dart';
 
 /// Входная точка планировщика задач с внедрением TasksBloc.
-class TasksScreen extends StatelessWidget {
+class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
 
   @override
+  State<TasksScreen> createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends State<TasksScreen> {
+  var _activated = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_activated || !TickerMode.valuesOf(context).enabled) return;
+    _activated = true;
+    context.read<TasksBloc>().add(LoadTasks());
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (!_activated && !TickerMode.valuesOf(context).enabled) {
+      return const SizedBox.shrink();
+    }
     try {
       context.read<TasksBloc>();
       return const TasksView();
@@ -90,7 +109,7 @@ class _TasksViewState extends State<TasksView>
     final nextIndex = _tabController.index;
     if (nextIndex == _activeTabIndex) return;
     setState(() => _activeTabIndex = nextIndex);
-    if (nextIndex == 0) {
+    if (nextIndex == 0 || nextIndex == 5 || nextIndex == 6) {
       context.read<TasksBloc>().add(const LoadMyTasks());
     } else if (nextIndex == 7) {
       context.read<TasksBloc>().add(const LoadTaskAnalytics());
@@ -140,12 +159,14 @@ class _TasksViewState extends State<TasksView>
       focusElevation: 0,
       hoverElevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: colors.brand),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colors.brand),
+      ),
       icon: const Icon(TablerIcons.plus),
       label: Text(
-        language.translate(isPersonal ? 'tasks_fab_personal' : 'tasks_fab_team'),
+        language.translate(
+          isPersonal ? 'tasks_fab_personal' : 'tasks_fab_team',
+        ),
         style: textStyles.bodySans.copyWith(
           color: colors.surface,
           fontWeight: FontWeight.w500,
@@ -162,22 +183,29 @@ class _TasksViewState extends State<TasksView>
     super.dispose();
   }
 
-  Future<void> _refreshTasks(BuildContext context) {
-    final completion = Completer<void>();
+  Future<void> _refreshTasks(BuildContext context) async {
+    final bloc = context.read<TasksBloc>();
     if (_activeTabIndex == 0) {
-      context.read<TasksBloc>().add(
-        LoadMyTasks(forceRefresh: true, completion: completion),
-      );
-    } else if (_activeTabIndex == 7) {
-      context.read<TasksBloc>().add(
-        LoadTaskAnalytics(forceRefresh: true, completion: completion),
-      );
-    } else {
-      context.read<TasksBloc>().add(
-        LoadTasks(forceRefresh: true, completion: completion),
-      );
+      final completion = Completer<void>();
+      bloc.add(LoadMyTasks(forceRefresh: true, completion: completion));
+      await completion.future;
+      return;
     }
-    return completion.future;
+    if (_activeTabIndex == 7) {
+      final completion = Completer<void>();
+      bloc.add(LoadTaskAnalytics(forceRefresh: true, completion: completion));
+      await completion.future;
+      return;
+    }
+
+    final boardDone = Completer<void>();
+    bloc.add(LoadTasks(forceRefresh: true, completion: boardDone));
+    await boardDone.future;
+    if (_activeTabIndex == 5 || _activeTabIndex == 6) {
+      final mineDone = Completer<void>();
+      bloc.add(LoadMyTasks(forceRefresh: true, completion: mineDone));
+      await mineDone.future;
+    }
   }
 
   /// Allows library parts / extensions to trigger rebuilds without calling
@@ -190,7 +218,27 @@ class _TasksViewState extends State<TasksView>
         authState.role.canManage(AppCapability.tasks);
   }
 
-  List<Task> _getFilteredTasks(List<Task> tasks) {
+  /// Combined personal + corporate load for Calendar / Gantt.
+  ///
+  /// Project filter applies to corporate items only — personal tasks are not
+  /// bound to a team project and still count toward the user's workload.
+  List<Task> _getWorkloadTasks(TasksLoaded state) {
+    return _getFilteredTasks(
+      state.workloadTasks,
+      applyProjectFilter: false,
+    ).where((task) {
+      if (_selectedProjectId == null || _selectedProjectId!.isEmpty) {
+        return true;
+      }
+      if (task.isPersonal) return true;
+      return task.projectId == _selectedProjectId;
+    }).toList();
+  }
+
+  List<Task> _getFilteredTasks(
+    List<Task> tasks, {
+    bool applyProjectFilter = true,
+  }) {
     return tasks.where((task) {
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
@@ -198,7 +246,9 @@ class _TasksViewState extends State<TasksView>
         final matchesDesc = task.description.toLowerCase().contains(query);
         if (!matchesTitle && !matchesDesc) return false;
       }
-      if (_selectedProjectId != null && _selectedProjectId!.isNotEmpty) {
+      if (applyProjectFilter &&
+          _selectedProjectId != null &&
+          _selectedProjectId!.isNotEmpty) {
         if (task.projectId != _selectedProjectId) return false;
       }
       if (_onlyOverdue) {
@@ -299,21 +349,9 @@ class _TasksViewState extends State<TasksView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
                 isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                indicatorColor: colors.brand,
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: colors.border,
-                labelStyle: textStyles.captionSans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                unselectedLabelStyle: textStyles.captionSans.copyWith(
-                  fontWeight: FontWeight.w400,
-                ),
                 tabs: [
                   Tab(text: language.translate('tasks_tab_my')),
                   Tab(text: language.translate('tasks_tab_new')),
@@ -364,7 +402,7 @@ class _TasksViewState extends State<TasksView>
           },
           builder: (context, state) {
             if (state is TasksLoading) {
-              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
+              return const TasksOverviewShimmer();
             }
 
             if (state is TasksError) {
@@ -400,6 +438,7 @@ class _TasksViewState extends State<TasksView>
 
             if (state is TasksLoaded) {
               final filteredTasks = _getFilteredTasks(state.tasks);
+              final workloadTasks = _getWorkloadTasks(state);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -547,7 +586,7 @@ class _TasksViewState extends State<TasksView>
                           isActive: _activeTabIndex == 5,
                           builder: (context) => _buildCalendarTab(
                             context,
-                            filteredTasks,
+                            workloadTasks,
                             state.projects,
                             state.assignees,
                           ),
@@ -555,7 +594,7 @@ class _TasksViewState extends State<TasksView>
                         _LazyTaskTab(
                           isActive: _activeTabIndex == 6,
                           builder: (context) => _GanttTaskTab(
-                            tasks: filteredTasks,
+                            tasks: workloadTasks,
                             onRefresh: () => _refreshTasks(context),
                           ),
                         ),

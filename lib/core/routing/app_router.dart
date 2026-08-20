@@ -4,6 +4,7 @@ import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/bloc/auth_state.dart';
 import '../../features/auth/domain/app_access.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/permissions/cubit/permissions_cubit.dart';
 import '../../features/audit/presentation/audit_screen.dart';
 import '../../features/branches/presentation/branches_screen.dart';
 import '../../features/cash/presentation/cash_screen.dart';
@@ -15,6 +16,8 @@ import '../../features/hr/presentation/hr_screen.dart';
 import '../../features/integrations/presentation/integrations_screen.dart';
 import '../../features/legal/presentation/legal_screen.dart';
 import '../../features/marketing/presentation/marketing_screen.dart';
+import '../../features/meta/presentation/meta_screen.dart';
+import '../../features/notifications/presentation/inbox_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/shell/presentation/more_screen.dart';
@@ -44,9 +47,11 @@ final GlobalKey<NavigatorState> _moreNavigatorKey = GlobalKey<NavigatorState>(
 /// Фабрика роутера с внедрением состояния [AuthBloc].
 ///
 /// Настраивает авто-редиректы при смене состояния авторизации.
+/// Optional [permissions] enables `GET /permissions/me` for route guards.
 GoRouter createRouter(
   AuthBloc authBloc, {
   required Listenable refreshListenable,
+  PermissionsCubit? permissions,
 }) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -82,7 +87,12 @@ GoRouter createRouter(
           return landingLocation;
         }
 
-        if (!AppAccess.canOpen(authState.role, location)) {
+        final effective = permissions?.state.data;
+        if (!AppAccess.canOpenEffective(
+          authState.role,
+          location,
+          effective: effective,
+        )) {
           return landingLocation;
         }
       }
@@ -105,6 +115,12 @@ GoRouter createRouter(
         builder: (context, state) => const NotificationsScreen(),
       ),
 
+      GoRoute(
+        path: '/inbox',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const InboxScreen(),
+      ),
+
       // Кадры и KPI (Спринт 9.2)
       GoRoute(
         path: '/hr',
@@ -117,6 +133,13 @@ GoRouter createRouter(
         path: '/crm',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const CrmScreen(),
+      ),
+
+      // Чаты Meta (Facebook / Instagram / WhatsApp) — под правом CRM
+      GoRoute(
+        path: '/meta',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const MetaScreen(),
       ),
 
       // Стратегия What-if и ИИ-Маркетинг (Спринт 9.4)

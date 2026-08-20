@@ -1,8 +1,14 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../features/assistant/data/api_assistant_repository.dart';
+import '../../features/assistant/domain/assistant_repository.dart';
 import '../../features/audit/data/api_audit_repository.dart';
 import '../../features/audit/domain/audit_repository.dart';
+import '../../features/meta/data/api_meta_repository.dart';
+import '../../features/meta/domain/meta_repository.dart';
+import '../../features/permissions/data/api_permissions_repository.dart';
+import '../../features/permissions/domain/permissions_repository.dart';
 import '../../features/branches/data/api_branches_repository.dart';
 import '../../features/branches/domain/branches_repository.dart';
 import '../../features/cash/data/api_cash_repository.dart';
@@ -76,6 +82,13 @@ abstract final class AppRepositories {
       create: (_) => ApiReportsRepository(),
     ),
     RepositoryProvider<AuditRepository>(create: (_) => ApiAuditRepository()),
+    RepositoryProvider<AssistantRepository>(
+      create: (_) => ApiAssistantRepository(),
+    ),
+    RepositoryProvider<MetaRepository>(create: (_) => ApiMetaRepository()),
+    RepositoryProvider<PermissionsRepository>(
+      create: (_) => ApiPermissionsRepository(),
+    ),
   ];
 
   /// Wraps [child] with the production repository graph.

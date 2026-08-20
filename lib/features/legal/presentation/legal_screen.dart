@@ -185,7 +185,7 @@ class _LegalScreenState extends State<LegalScreen>
                       snap: true,
                     ),
                   ],
-                  body: const LedgerListShimmer(showStatsHeader: false, itemCount: 5),
+                  body: const LegalOverviewShimmer(),
                 ),
               );
             }
@@ -248,21 +248,9 @@ class _LegalScreenState extends State<LegalScreen>
                         pinned: true,
                         floating: true,
                         snap: true,
-                        bottom: TabBar(
+                        bottom: LedgerTabBar(
                           controller: _tabController,
                           isScrollable: true,
-                          tabAlignment: TabAlignment.start,
-                          labelColor: colors.brand,
-                          unselectedLabelColor: colors.textSecondary,
-                          indicatorColor: colors.brand,
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          dividerColor: colors.border,
-                          labelStyle: textStyles.captionSans.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                          unselectedLabelStyle: textStyles.captionSans.copyWith(
-                            fontWeight: FontWeight.w400,
-                          ),
                           tabs: [
                             Tab(
                               text: localeCubit.translate(

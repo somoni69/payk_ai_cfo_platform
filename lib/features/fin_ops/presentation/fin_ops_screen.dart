@@ -314,7 +314,6 @@ class _FinOpsViewState extends State<FinOpsView>
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final locale = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
     final canManage =
@@ -330,11 +329,8 @@ class _FinOpsViewState extends State<FinOpsView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
                 tabs: [
                   Tab(text: locale.translate('fin_ops_tab_banks')),
                   Tab(text: locale.translate('fin_ops_tab_transfers')),

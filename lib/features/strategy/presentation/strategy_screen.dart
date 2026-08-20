@@ -161,7 +161,6 @@ class _StrategyViewState extends State<StrategyView>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final textStyles = context.textStyles;
     final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
@@ -188,21 +187,9 @@ class _StrategyViewState extends State<StrategyView>
                 pinned: true,
                 floating: true,
                 snap: true,
-                bottom: TabBar(
+                bottom: LedgerTabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  indicatorColor: colors.brand,
-                  labelColor: colors.brand,
-                  unselectedLabelColor: colors.textSecondary,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: colors.border,
-                  labelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                  unselectedLabelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w400,
-                  ),
                   tabs: [
                     Tab(text: localeCubit.translate('strategy_tab_whatif')),
                     Tab(text: localeCubit.translate('strategy_tab_marketing')),

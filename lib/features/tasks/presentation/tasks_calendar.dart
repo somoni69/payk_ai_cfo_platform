@@ -104,6 +104,13 @@ extension _TasksCalendarBuilders on _TasksViewState {
             ],
           ),
           const SizedBox(height: 6),
+          Text(
+            language.translate('tasks_calendar_workload_hint'),
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
           GridView.builder(
             padding: EdgeInsets.zero,
             shrinkWrap: true,
@@ -278,10 +285,15 @@ extension _TasksCalendarBuilders on _TasksViewState {
     return Column(
       children: dayTasks.map((task) {
         return GestureDetector(
-          onTap: _canManageTasks(context)
-              ? () =>
-                    _showEditTaskBottomSheet(context, task, projects, assignees)
-              : null,
+          onTap: () {
+            if (task.isPersonal) {
+              _showPersonalTaskSheet(context, editing: task);
+              return;
+            }
+            if (_canManageTasks(context)) {
+              _showEditTaskBottomSheet(context, task, projects, assignees);
+            }
+          },
           child: Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
@@ -317,28 +329,44 @@ extension _TasksCalendarBuilders on _TasksViewState {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (task.projectName != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          language.translate(
-                            'tasks_project_value',
-                            params: {'project': task.projectName!},
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          LedgerPill(
+                            text: language.translate(
+                              task.isPersonal
+                                  ? 'tasks_source_personal'
+                                  : 'tasks_source_corporate',
+                            ),
+                            backgroundColor: task.isPersonal
+                                ? colors.accentAmber.withValues(alpha: 0.12)
+                                : colors.surfaceNested,
+                            textColor: task.isPersonal
+                                ? colors.accentAmber
+                                : colors.textSecondary,
                           ),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
-                      if (task.assigneeName != null &&
-                          task.assigneeName!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          '👤 ${language.translateMessage(task.assigneeName!)}',
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ],
+                          if (task.projectName != null)
+                            Text(
+                              language.translate(
+                                'tasks_project_value',
+                                params: {'project': task.projectName!},
+                              ),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          if (task.assigneeName != null &&
+                              task.assigneeName!.trim().isNotEmpty)
+                            Text(
+                              language.translateMessage(task.assigneeName!),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),

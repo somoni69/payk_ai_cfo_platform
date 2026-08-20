@@ -10,4 +10,15 @@ abstract class NotificationsRepository {
 
   /// Отметить уведомление как прочитанное
   Future<void> markAsRead(String id);
+
+  /// Personal inbox (`GET /notifications`).
+  Future<List<AppNotification>> getInbox({int limit = 30}) =>
+      getNotifications();
+
+  Future<int> getUnreadCount() async {
+    final items = await getInbox();
+    return items.where((item) => !item.isRead).length;
+  }
+
+  Future<void> markAllRead() async {}
 }

@@ -36,6 +36,9 @@ abstract class FinanceRepository {
   /// Получить курсы валют НБТ
   Future<ExchangeRatesReport> getExchangeRates();
 
+  /// Доска курсов: НБТ + покупка/продажа банков (`GET /finance/currency-board`).
+  Future<CurrencyBoard> getCurrencyBoard();
+
   /// Получить AI-рекомендации и прогноз кассового разрыва
   Future<AiInsightsReport> getAiInsights();
 

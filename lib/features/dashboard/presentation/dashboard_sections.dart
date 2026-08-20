@@ -28,7 +28,7 @@ extension _DashboardSectionBuilders on _DashboardViewState {
 
         final error = state.sectionErrors[section];
         if (error == null) {
-          return const DashboardOverviewShimmer();
+          return const DashboardSectionShimmer();
         }
 
         final language = context.read<LanguageCubit>();

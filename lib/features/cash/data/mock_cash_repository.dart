@@ -12,8 +12,11 @@ class MockCashRepository implements CashRepository {
   }) => openShift(startingBalance);
 
   @override
-  Future<CashShift> closeShiftById(double endingBalance, {String? shiftId}) =>
-      closeShift(endingBalance);
+  Future<CashShift> closeShiftById(
+    double endingBalance, {
+    String? shiftId,
+    String? note,
+  }) => closeShift(endingBalance, note: note);
 
   // Статический массив для сохранения данных во время сессии приложения
   static final List<Transaction> _transactions = [
@@ -95,6 +98,36 @@ class MockCashRepository implements CashRepository {
   }
 
   @override
+  Future<List<SaleProduct>> getSaleProducts({String? search}) async {
+    return const [];
+  }
+
+  @override
+  Future<SalesProfit> getSalesProfit({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    return const SalesProfit(revenue: 0, cost: 0, profit: 0);
+  }
+
+  @override
+  Future<Transaction> getOperation(String id) async {
+    return _transactions.firstWhere((t) => t.id == id);
+  }
+
+  @override
+  Future<Transaction> updateTransaction(Transaction transaction) async {
+    final index = _transactions.indexWhere((t) => t.id == transaction.id);
+    if (index >= 0) _transactions[index] = transaction;
+    return transaction;
+  }
+
+  @override
+  Future<void> deleteTransaction(String id) async {
+    _transactions.removeWhere((t) => t.id == id);
+  }
+
+  @override
   Future<Transaction> addTransaction(Transaction transaction) async {
     await Future.delayed(const Duration(milliseconds: 200));
     final newTx = Transaction(
@@ -133,7 +166,7 @@ class MockCashRepository implements CashRepository {
   }
 
   @override
-  Future<CashShift> closeShift(double endingBalance) async {
+  Future<CashShift> closeShift(double endingBalance, {String? note}) async {
     await Future.delayed(const Duration(milliseconds: 250));
     if (_activeShift == null) {
       throw Exception('Нет активной смены для закрытия');
@@ -150,7 +183,7 @@ class MockCashRepository implements CashRepository {
       registerName: _activeShift!.registerName,
       difference: endingBalance - (_activeShift!.startingBalance + 8300.0),
       status: 'closed',
-      note: 'Закрыто с мобильного устройства',
+      note: note ?? 'Закрыто с мобильного устройства',
     );
 
     _mockShifts.insert(0, closedShift);

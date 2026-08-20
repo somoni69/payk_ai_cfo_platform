@@ -88,11 +88,8 @@ class _AuditViewState extends State<AuditView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
                 tabs: [
                   Tab(text: locale.translate('audit_tab_logs')),
                   Tab(text: locale.translate('audit_tab_alerts')),
@@ -112,7 +109,7 @@ class _AuditViewState extends State<AuditView>
           },
           builder: (context, state) {
             if (state is AuditLoading) {
-              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
+              return const AuditOverviewShimmer();
             }
             if (state is AuditError) {
               return Center(child: Text(state.message));

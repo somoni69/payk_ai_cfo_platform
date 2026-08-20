@@ -124,14 +124,8 @@ class _UsersViewState extends State<UsersView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
                 tabs: [
                   Tab(text: language.translate('users_tab_users')),
                   Tab(text: language.translate('users_tab_access')),
@@ -219,7 +213,7 @@ class _UsersViewState extends State<UsersView>
 
             Expanded(
               child: state.isLoading
-                  ? const LedgerListShimmer(showStatsHeader: false, itemCount: 6)
+                  ? const UsersOverviewShimmer()
                   : RefreshIndicator(
                       onRefresh: () async {
                         _visibleUsers = _pageSize;
@@ -830,6 +824,7 @@ class _UsersViewState extends State<UsersView>
       'accountant',
       'cashier',
       'hr',
+      'marketer',
       'director',
     ];
 

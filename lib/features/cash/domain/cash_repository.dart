@@ -34,6 +34,21 @@ abstract class CashRepository {
   /// Добавить новую транзакцию
   Future<Transaction> addTransaction(Transaction transaction);
 
+  Future<Transaction> getOperation(String id) =>
+      getTransactions().then((list) => list.firstWhere((t) => t.id == id));
+
+  Future<Transaction> updateTransaction(Transaction transaction) =>
+      addTransaction(transaction);
+
+  Future<void> deleteTransaction(String id) async {}
+
+  /// Каталог товаров для продажи без штрих-кода (`GET /cash/sale-products`).
+  /// Кассиру доступен без права на модуль «Склад».
+  Future<List<SaleProduct>> getSaleProducts({String? search});
+
+  /// Чистая прибыль с продаж (выручка − закупка) за период.
+  Future<SalesProfit> getSalesProfit({DateTime? dateFrom, DateTime? dateTo});
+
   /// Получить данные о текущей смене
   Future<CashShift?> getActiveShift();
 
@@ -46,12 +61,15 @@ abstract class CashRepository {
     String? registerId,
   }) => openShift(startingBalance);
 
-  /// Закрыть текущую смену с подсчетом разницы (CASH-06)
-  Future<CashShift> closeShift(double endingBalance);
-
   /// Closes a known active shift without reloading the shifts collection.
-  Future<CashShift> closeShiftById(double endingBalance, {String? shiftId}) =>
-      closeShift(endingBalance);
+  Future<CashShift> closeShiftById(
+    double endingBalance, {
+    String? shiftId,
+    String? note,
+  }) => closeShift(endingBalance, note: note);
+
+  /// Закрыть текущую смену с подсчетом разницы (CASH-06)
+  Future<CashShift> closeShift(double endingBalance, {String? note});
 
   /// Получить сводные показатели касс
   Future<List<CashSummary>> getSummary();

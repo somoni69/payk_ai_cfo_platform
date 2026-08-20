@@ -66,6 +66,24 @@ class TasksLoaded extends TasksState {
     this.actionMessage,
   });
 
+  /// Corporate board + personal / assigned queues, de-duplicated by id.
+  ///
+  /// Calendar and Gantt use this so each user sees total load allowed
+  /// by their access: team tasks they can see plus their own personal items.
+  List<Task> get workloadTasks {
+    final byId = <String, Task>{};
+    for (final task in tasks) {
+      byId[task.id] = task;
+    }
+    for (final task in myTasks) {
+      byId.putIfAbsent(task.id, () => task);
+    }
+    for (final task in assignedToMe) {
+      byId.putIfAbsent(task.id, () => task);
+    }
+    return byId.values.toList(growable: false);
+  }
+
   TasksLoaded copyWith({
     List<Task>? tasks,
     List<TaskProject>? projects,

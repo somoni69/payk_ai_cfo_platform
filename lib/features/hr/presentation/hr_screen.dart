@@ -209,7 +209,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                         children: [
                           Text(
                             _formatPeriod(_selectedPeriod, localeCubit),
-                            style: textStyles.bodySans.copyWith(
+                            style: textStyles.captionSans.copyWith(
                               fontWeight: FontWeight.w500,
                               color: colors.brand,
                             ),
@@ -234,21 +234,9 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                       onPressed: () => _showAddEmployeeBottomSheet(context),
                     ),
                 ],
-                bottom: TabBar(
+                bottom: LedgerTabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  indicatorColor: colors.brand,
-                  labelColor: colors.brand,
-                  unselectedLabelColor: colors.textSecondary,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: colors.border,
-                  labelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                  unselectedLabelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w400,
-                  ),
                   tabs: [
                     Tab(text: localeCubit.translate('hr_tab_staff')),
                     Tab(text: localeCubit.translate('hr_tab_org')),

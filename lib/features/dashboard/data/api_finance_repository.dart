@@ -261,9 +261,10 @@ class ApiFinanceRepository implements FinanceRepository {
   @override
   Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
     try {
+      final apiDimension = AbcDimensions.toApi(dimension);
       final response = await _dio.get(
         '/finance/abc',
-        queryParameters: {'dimension': dimension},
+        queryParameters: {'dimension': apiDimension},
       );
       final data = response.data as Map<String, dynamic>;
 
@@ -279,7 +280,9 @@ class ApiFinanceRepository implements FinanceRepository {
       }).toList();
 
       return AbcAnalysis(
-        dimension: data['dimension'] ?? dimension,
+        dimension: AbcDimensions.toApi(
+          (data['dimension'] ?? apiDimension).toString(),
+        ),
         rows: rowsList,
         total: _toDouble(data['total']),
       );
@@ -333,6 +336,43 @@ class ApiFinanceRepository implements FinanceRepository {
       }).toList();
 
       return ExchangeRatesReport(rates: list);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<CurrencyBoard> getCurrencyBoard() async {
+    try {
+      final response = await _dio.get('/finance/currency-board');
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final official = (data['official'] as List<dynamic>? ?? []).map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        return RateRow(
+          code: (map['code'] ?? 'USD').toString(),
+          rate: _toDouble(map['rate']),
+          rateDate: DateTime.tryParse(
+                (map['rate_date'] ?? map['rateDate'] ?? '').toString(),
+              ) ??
+              DateTime.now(),
+        );
+      }).toList();
+      final banks = (data['banks'] as List<dynamic>? ?? []).map((e) {
+        final map = Map<String, dynamic>.from(e as Map);
+        final fetched = map['fetched_at'] ?? map['fetchedAt'];
+        return BankRateQuote(
+          bank: (map['bank'] ?? '').toString(),
+          bankName: (map['bank_name'] ?? map['bankName'] ?? map['bank'] ?? '')
+              .toString(),
+          currency: (map['currency'] ?? '').toString(),
+          buy: map['buy'] == null ? null : _toDouble(map['buy']),
+          sell: map['sell'] == null ? null : _toDouble(map['sell']),
+          fetchedAt: fetched is String ? DateTime.tryParse(fetched) : null,
+        );
+      }).toList();
+      return CurrencyBoard(official: official, banks: banks);
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }

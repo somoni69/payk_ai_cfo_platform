@@ -117,8 +117,24 @@ class AbcRow {
   });
 }
 
+/// Backend `/finance/abc` accepts only `category` | `counterparty`.
+abstract final class AbcDimensions {
+  static const category = 'category';
+  static const counterparty = 'counterparty';
+
+  static String toApi(String raw) {
+    final dimension = raw.trim().toLowerCase();
+    if (dimension == 'client' || dimension == counterparty) {
+      return counterparty;
+    }
+    return category;
+  }
+
+  static bool isCategory(String raw) => toApi(raw) == category;
+}
+
 class AbcAnalysis {
-  final String dimension; // "category" or "client"
+  final String dimension; // "category" or "counterparty" (legacy: "client")
   final List<AbcRow> rows;
   final double total;
 
@@ -170,6 +186,32 @@ class ExchangeRatesReport {
   final List<RateRow> rates;
 
   const ExchangeRatesReport({required this.rates});
+}
+
+/// Commercial bank buy/sell quote (`GET /finance/currency-board`).
+class BankRateQuote {
+  final String bank;
+  final String bankName;
+  final String currency;
+  final double? buy;
+  final double? sell;
+  final DateTime? fetchedAt;
+
+  const BankRateQuote({
+    required this.bank,
+    required this.bankName,
+    required this.currency,
+    this.buy,
+    this.sell,
+    this.fetchedAt,
+  });
+}
+
+class CurrencyBoard {
+  final List<RateRow> official;
+  final List<BankRateQuote> banks;
+
+  const CurrencyBoard({this.official = const [], this.banks = const []});
 }
 
 class CashGapForecast {

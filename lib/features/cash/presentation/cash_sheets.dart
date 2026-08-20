@@ -105,7 +105,9 @@ extension _CashSheetBuilders on _CashViewState {
             onPressed: () {
               final bal = parseLocalizedNumber(context, controller.text);
               if (bal != null && bal >= 0) {
-                context.read<CashBloc>().add(OpenShiftRequested(bal));
+                context.read<CashBloc>().add(
+                  OpenShiftRequested(bal, registerId: selectedRegisterId),
+                );
                 Navigator.pop(context);
               }
             },
@@ -145,10 +147,21 @@ extension _CashSheetBuilders on _CashViewState {
     final counterpartyController = TextEditingController();
     final descriptionController = TextEditingController();
     PaymentMethod selectedPaymentMethod = PaymentMethod.cash;
+    final cashPartController = TextEditingController();
+    final cashlessPartController = TextEditingController();
+    String? selectedBankId;
+    var banks = <BankAccount>[];
+    var banksLoadStarted = false;
     String? selectedCategory;
     String? selectedRegisterId = registers.isNotEmpty
         ? registers.first.id
         : null;
+    final saleLines = <_CashSaleLine>[];
+    var saleProducts = <SaleProduct>[];
+    var saleProductsLoading = true;
+    var saleProductsLoadStarted = false;
+    String? itemsError;
+    var submitting = false;
 
     final categories = [
       language.translate('cash_category_salary'),
@@ -163,6 +176,33 @@ extension _CashSheetBuilders on _CashViewState {
       context: context,
       title: language.translate('cash_new_operation'),
       builder: (context, setSheetState) {
+        if (!banksLoadStarted) {
+          banksLoadStarted = true;
+          try {
+            context
+                .read<FinOpsRepository>()
+                .getBankAccounts()
+                .then((list) {
+                  setSheetState(() => banks = list);
+                })
+                .catchError((_) {});
+          } catch (_) {}
+        }
+        if (!saleProductsLoadStarted) {
+          saleProductsLoadStarted = true;
+          context
+              .read<CashRepository>()
+              .getSaleProducts()
+              .then((list) {
+                setSheetState(() {
+                  saleProducts = list;
+                  saleProductsLoading = false;
+                });
+              })
+              .catchError((_) {
+                setSheetState(() => saleProductsLoading = false);
+              });
+        }
         return Form(
           key: formKey,
           child: Column(
@@ -210,7 +250,14 @@ extension _CashSheetBuilders on _CashViewState {
                   Expanded(
                     child: InkWell(
                       borderRadius: BorderRadius.circular(10),
-                      onTap: () => setSheetState(() => isIncome = false),
+                      onTap: () => setSheetState(() {
+                        isIncome = false;
+                        for (final line in saleLines) {
+                          line.dispose();
+                        }
+                        saleLines.clear();
+                        itemsError = null;
+                      }),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
@@ -284,29 +331,247 @@ extension _CashSheetBuilders on _CashViewState {
                 const SizedBox(height: 16),
               ],
 
-              // 3. Сумма операции (Иконка доллара)
-              TextFormField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  hintText: language.translate('cash_operation_amount'),
-                  prefixIcon: Icon(
-                    TablerIcons.currency_dollar,
-                    color: colors.textSecondary,
-                    size: 20,
+              if (isIncome) ...[
+                Text(
+                  language.translate('cash_sale_products_title'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                validator: (val) {
-                  final parsed = parseLocalizedNumber(context, val ?? '');
-                  if (parsed == null || parsed <= 0) {
-                    return language.translate('cash_amount_required');
+                const SizedBox(height: 4),
+                Text(
+                  language.translate('cash_sale_products_hint'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (saleProductsLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  ),
+                ...List.generate(saleLines.length, (index) {
+                  final line = saleLines[index];
+                  SaleProduct? selected;
+                  for (final p in saleProducts) {
+                    if (p.id == line.productId) {
+                      selected = p;
+                      break;
+                    }
                   }
-                  return null;
-                },
-              ),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: LedgerCard(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ExpansibleWidget<String>.selection(
+                            cardPadding: EdgeInsets.zero,
+                            tilePadding: EdgeInsets.zero,
+                            title: Text(
+                              selected?.name ??
+                                  language.translate('cash_sale_pick_product'),
+                              style: textStyles.bodySans,
+                            ),
+                            items: saleProducts.map((p) => p.id).toList(),
+                            selectedValue: line.productId,
+                            itemLabelBuilder: (id) {
+                              final p = saleProducts.firstWhere(
+                                (e) => e.id == id,
+                                orElse: () => SaleProduct(
+                                  id: id,
+                                  name: id,
+                                  unit: '',
+                                  price: 0,
+                                  stockQty: 0,
+                                ),
+                              );
+                              return language.translate(
+                                'cash_sale_product_option',
+                                params: {
+                                  'name': p.name,
+                                  'qty': formatLocalizedNumber(
+                                    context,
+                                    p.stockQty,
+                                  ),
+                                  'unit': p.unit,
+                                },
+                              );
+                            },
+                            onSelected: (id) {
+                              setSheetState(() {
+                                line.productId = id;
+                                for (final p in saleProducts) {
+                                  if (p.id == id) {
+                                    line.priceCtrl.text = formatLocalizedNumber(
+                                      context,
+                                      p.price,
+                                    );
+                                    break;
+                                  }
+                                }
+                                itemsError = null;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: line.qtyCtrl,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: textStyles.bodyMono,
+                                  decoration: InputDecoration(
+                                    labelText: language.translate(
+                                      'cash_sale_qty',
+                                    ),
+                                  ),
+                                  onChanged: (_) => setSheetState(() {}),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  controller: line.priceCtrl,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  style: textStyles.bodyMono,
+                                  decoration: InputDecoration(
+                                    labelText: language.translate(
+                                      'cash_sale_price',
+                                    ),
+                                  ),
+                                  onChanged: (_) => setSheetState(() {}),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () {
+                                  setSheetState(() {
+                                    line.dispose();
+                                    saleLines.removeAt(index);
+                                    itemsError = null;
+                                  });
+                                },
+                                icon: Icon(
+                                  TablerIcons.trash,
+                                  size: 18,
+                                  color: colors.accentRed,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (selected != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                language.translate(
+                                  'cash_sale_stock',
+                                  params: {
+                                    'qty': formatLocalizedNumber(
+                                      context,
+                                      selected.stockQty,
+                                    ),
+                                    'unit': selected.unit,
+                                  },
+                                ),
+                                style: textStyles.smallSans.copyWith(
+                                  color: colors.textTooltip,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                OutlinedButton.icon(
+                  onPressed: saleProducts.isEmpty
+                      ? null
+                      : () {
+                          setSheetState(() {
+                            saleLines.add(_CashSaleLine());
+                            itemsError = null;
+                          });
+                        },
+                  icon: const Icon(TablerIcons.plus, size: 18),
+                  label: Text(language.translate('cash_sale_add_line')),
+                ),
+                if (itemsError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    language.resolveMessage(itemsError!),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.accentRed,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+              ],
+
+              // 3. Сумма операции — при строках товаров считается автоматически.
+              if (saleLines.isNotEmpty) ...[
+                LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          language.translate('cash_sale_total'),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        formatLocalizedNumber(
+                          context,
+                          _saleLinesTotal(context, saleLines),
+                        ),
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else
+                TextFormField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: textStyles.bodySans,
+                  decoration: InputDecoration(
+                    hintText: language.translate('cash_operation_amount'),
+                    prefixIcon: Icon(
+                      TablerIcons.currency_dollar,
+                      color: colors.textSecondary,
+                      size: 20,
+                    ),
+                  ),
+                  validator: (val) {
+                    if (saleLines.isNotEmpty) return null;
+                    final parsed = parseLocalizedNumber(context, val ?? '');
+                    if (parsed == null || parsed <= 0) {
+                      return language.translate('cash_amount_required');
+                    }
+                    return null;
+                  },
+                ),
               const SizedBox(height: 16),
 
               // 4. Способ оплаты (Чипы горизонтально)
@@ -338,17 +603,95 @@ extension _CashSheetBuilders on _CashViewState {
                     checkmarkColor: Colors.white,
                     labelStyle: textStyles.captionSans.copyWith(
                       color: isSelected ? Colors.white : colors.textPrimary,
-                      fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                      fontWeight: isSelected
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                     ),
                     side: BorderSide(
                       color: isSelected ? selectedColor : colors.border,
                     ),
                     onSelected: (val) {
-                      if (val) setSheetState(() => selectedPaymentMethod = pm);
+                      if (val) {
+                        setSheetState(() => selectedPaymentMethod = pm);
+                      }
                     },
                   );
                 }).toList(),
               ),
+              if (selectedPaymentMethod == PaymentMethod.mixed) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: cashPartController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: textStyles.bodyMono,
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_mixed_cash'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: cashlessPartController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: textStyles.bodyMono,
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_mixed_cashless'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (selectedPaymentMethod != PaymentMethod.cash &&
+                  banks.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  language.translate('cash_bank'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ExpansibleWidget<String>.selection(
+                  cardPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 2,
+                  ),
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                    selectedBankId == null
+                        ? language.translate('cash_bank_optional')
+                        : banks
+                              .firstWhere(
+                                (b) => b.id == selectedBankId,
+                                orElse: () => BankAccount(
+                                  id: selectedBankId!,
+                                  bankName: selectedBankId!,
+                                ),
+                              )
+                              .bankName,
+                    style: textStyles.bodySans,
+                  ),
+                  items: banks.map((b) => b.id).toList(),
+                  selectedValue: selectedBankId,
+                  itemLabelBuilder: (id) => banks
+                      .firstWhere(
+                        (b) => b.id == id,
+                        orElse: () => BankAccount(id: id, bankName: id),
+                      )
+                      .bankName,
+                  onSelected: (val) =>
+                      setSheetState(() => selectedBankId = val),
+                ),
+              ],
               const SizedBox(height: 16),
 
               // 5. Категория (Заголовок + Наш фирменный ExpansibleWidget)
@@ -426,30 +769,135 @@ extension _CashSheetBuilders on _CashViewState {
           width: double.infinity,
           height: 48,
           child: ElevatedButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              final amt = parseLocalizedNumber(
-                context,
-                amountController.text,
-              )!;
+            onPressed: submitting
+                ? null
+                : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final items = <SaleItemInput>[];
+                    if (isIncome && saleLines.isNotEmpty) {
+                      for (final line in saleLines) {
+                        if (line.productId == null || line.productId!.isEmpty) {
+                          setSheetState(() {
+                            itemsError = 'cash_sale_err_no_product';
+                          });
+                          return;
+                        }
+                        final qty = parseLocalizedNumber(
+                          context,
+                          line.qtyCtrl.text,
+                        );
+                        final price = parseLocalizedNumber(
+                          context,
+                          line.priceCtrl.text,
+                        );
+                        if (qty == null ||
+                            qty <= 0 ||
+                            price == null ||
+                            price < 0) {
+                          setSheetState(() {
+                            itemsError = 'cash_sale_err_qty_price';
+                          });
+                          return;
+                        }
+                        SaleProduct? product;
+                        for (final p in saleProducts) {
+                          if (p.id == line.productId) {
+                            product = p;
+                            break;
+                          }
+                        }
+                        if (product != null && qty > product.stockQty) {
+                          setSheetState(() {
+                            itemsError = 'cash_sale_err_stock';
+                          });
+                          return;
+                        }
+                        items.add(
+                          SaleItemInput(
+                            productId: line.productId!,
+                            qty: qty,
+                            price: price,
+                          ),
+                        );
+                      }
+                    }
 
-              final tx = Transaction(
-                id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
-                title: counterpartyController.text.trim(),
-                category: selectedCategory ?? 'cash_category_other',
-                amount: amt,
-                isIncome: isIncome,
-                paymentMethod: selectedPaymentMethod,
-                dateTime: DateTime.now(),
-                registerId: selectedRegisterId,
-                cashierName: authState is AuthAuthenticated
-                    ? authState.username
-                    : 'role_director',
-              );
+                    final amt = items.isNotEmpty
+                        ? items.fold<double>(0, (s, i) => s + i.amount)
+                        : parseLocalizedNumber(context, amountController.text);
+                    if (amt == null || amt <= 0) {
+                      setSheetState(() {
+                        itemsError = 'cash_amount_required';
+                      });
+                      return;
+                    }
 
-              context.read<CashBloc>().add(AddTransactionRequested(tx));
-              Navigator.pop(context);
-            },
+                    double? cashPart;
+                    double? cashlessPart;
+                    if (selectedPaymentMethod == PaymentMethod.mixed) {
+                      cashPart = parseLocalizedNumber(
+                        context,
+                        cashPartController.text,
+                      );
+                      cashlessPart = parseLocalizedNumber(
+                        context,
+                        cashlessPartController.text,
+                      );
+                      if (cashPart == null ||
+                          cashlessPart == null ||
+                          cashPart < 0 ||
+                          cashlessPart < 0 ||
+                          (cashPart + cashlessPart - amt).abs() > 0.01) {
+                        setSheetState(() {
+                          itemsError = 'cash_mixed_err_sum';
+                        });
+                        return;
+                      }
+                    }
+
+                    final tx = Transaction(
+                      id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
+                      title: counterpartyController.text.trim(),
+                      category: selectedCategory ?? 'cash_category_other',
+                      amount: amt,
+                      isIncome: isIncome,
+                      paymentMethod: selectedPaymentMethod,
+                      dateTime: DateTime.now(),
+                      registerId: selectedRegisterId,
+                      cashierName: authState is AuthAuthenticated
+                          ? authState.username
+                          : 'role_director',
+                      description: descriptionController.text.trim().isEmpty
+                          ? null
+                          : descriptionController.text.trim(),
+                      cashAmount: cashPart,
+                      cashlessAmount: cashlessPart,
+                      bankId: selectedBankId,
+                      saleItems: items,
+                    );
+
+                    setSheetState(() {
+                      submitting = true;
+                      itemsError = null;
+                    });
+                    final result = Completer<String?>();
+                    context.read<CashBloc>().add(
+                      AddTransactionRequested(tx, result: result),
+                    );
+                    final error = await result.future;
+                    if (!context.mounted) return;
+                    if (error != null) {
+                      setSheetState(() {
+                        submitting = false;
+                        itemsError = error;
+                      });
+                      return;
+                    }
+                    for (final line in saleLines) {
+                      line.dispose();
+                    }
+                    Navigator.pop(context);
+                  },
             style: ElevatedButton.styleFrom(
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,
@@ -469,4 +917,326 @@ extension _CashSheetBuilders on _CashViewState {
       },
     );
   }
+
+  void _showCloseShiftBottomSheet(BuildContext context, CashShift shift) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final balanceCtrl = TextEditingController();
+    final noteCtrl = TextEditingController();
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('cash_close_shift_title'),
+      builder: (context, setSheetState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              shift.registerName ?? language.translate('cash_default_register'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              language.translate(
+                'cash_close_shift_opening',
+                params: {
+                  'amount': formatLocalizedNumber(
+                    context,
+                    shift.startingBalance,
+                  ),
+                },
+              ),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: balanceCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: textStyles.bodyMono,
+              decoration: InputDecoration(
+                labelText: language.translate('cash_shift_actual_balance'),
+                suffixText: language.translate('cash_currency_suffix'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              decoration: InputDecoration(
+                labelText: language.translate('cash_close_shift_note'),
+              ),
+            ),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              final bal = parseLocalizedNumber(context, balanceCtrl.text);
+              if (bal == null || bal < 0) return;
+              context.read<CashBloc>().add(
+                CloseShiftRequested(
+                  bal,
+                  shiftId: shift.id,
+                  note: noteCtrl.text.trim().isEmpty
+                      ? null
+                      : noteCtrl.text.trim(),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(language.translate('cash_close_shift_action')),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditTransactionSheet(
+    BuildContext context,
+    Transaction transaction,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final formKey = GlobalKey<FormState>();
+    var isIncome = transaction.isIncome;
+    final amountController = TextEditingController(
+      text: formatLocalizedNumber(context, transaction.amount),
+    );
+    final counterpartyController = TextEditingController(
+      text: transaction.title,
+    );
+    final descriptionController = TextEditingController(
+      text: transaction.description ?? '',
+    );
+    var method = transaction.paymentMethod;
+    final cashPartController = TextEditingController(
+      text: transaction.cashAmount == null
+          ? ''
+          : formatLocalizedNumber(context, transaction.cashAmount!),
+    );
+    final cashlessPartController = TextEditingController(
+      text: transaction.cashlessAmount == null
+          ? ''
+          : formatLocalizedNumber(context, transaction.cashlessAmount!),
+    );
+    final hasSale =
+        transaction.lines.isNotEmpty || transaction.saleItems.isNotEmpty;
+    var submitting = false;
+    String? error;
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('cash_edit_operation'),
+      builder: (context, setSheetState) {
+        return Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!hasSale)
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: Text(language.translate('cash_income')),
+                        selected: isIncome,
+                        onSelected: (v) {
+                          if (v) setSheetState(() => isIncome = true);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: Text(language.translate('cash_expense')),
+                        selected: !isIncome,
+                        onSelected: (v) {
+                          if (v) setSheetState(() => isIncome = false);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: amountController,
+                enabled: !hasSale,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: textStyles.bodyMono,
+                decoration: InputDecoration(
+                  labelText: language.translate('cash_operation_amount'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: PaymentMethod.values.map((pm) {
+                  return ChoiceChip(
+                    label: Text(language.translate(pm.labelKey)),
+                    selected: method == pm,
+                    onSelected: (v) {
+                      if (v) setSheetState(() => method = pm);
+                    },
+                  );
+                }).toList(),
+              ),
+              if (method == PaymentMethod.mixed) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: cashPartController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_mixed_cash'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: cashlessPartController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_mixed_cashless'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: counterpartyController,
+                decoration: InputDecoration(
+                  labelText: language.translate('cash_counterparty'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(
+                  labelText: language.translate('cash_description'),
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  language.resolveMessage(error!),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.accentRed,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: submitting
+                ? null
+                : () async {
+                    final amt = parseLocalizedNumber(
+                      context,
+                      amountController.text,
+                    );
+                    if (amt == null || amt <= 0) {
+                      setSheetState(() => error = 'cash_amount_required');
+                      return;
+                    }
+                    double? cashPart;
+                    double? cashlessPart;
+                    if (method == PaymentMethod.mixed) {
+                      cashPart = parseLocalizedNumber(
+                        context,
+                        cashPartController.text,
+                      );
+                      cashlessPart = parseLocalizedNumber(
+                        context,
+                        cashlessPartController.text,
+                      );
+                      if (cashPart == null ||
+                          cashlessPart == null ||
+                          (cashPart + cashlessPart - amt).abs() > 0.01) {
+                        setSheetState(() => error = 'cash_mixed_err_sum');
+                        return;
+                      }
+                    }
+                    setSheetState(() {
+                      submitting = true;
+                      error = null;
+                    });
+                    final result = Completer<String?>();
+                    context.read<CashBloc>().add(
+                      UpdateTransactionRequested(
+                        transaction.copyWith(
+                          title: counterpartyController.text.trim(),
+                          amount: amt,
+                          isIncome: isIncome,
+                          paymentMethod: method,
+                          description: descriptionController.text.trim(),
+                          cashAmount: cashPart,
+                          cashlessAmount: cashlessPart,
+                        ),
+                        result: result,
+                      ),
+                    );
+                    final err = await result.future;
+                    if (!context.mounted) return;
+                    if (err != null) {
+                      setSheetState(() {
+                        submitting = false;
+                        error = err;
+                      });
+                      return;
+                    }
+                    Navigator.pop(context);
+                  },
+            child: Text(language.translate('common_save')),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _CashSaleLine {
+  String? productId;
+  final qtyCtrl = TextEditingController(text: '1');
+  final priceCtrl = TextEditingController();
+
+  void dispose() {
+    qtyCtrl.dispose();
+    priceCtrl.dispose();
+  }
+}
+
+double _saleLinesTotal(BuildContext context, List<_CashSaleLine> lines) {
+  var sum = 0.0;
+  for (final line in lines) {
+    final qty = parseLocalizedNumber(context, line.qtyCtrl.text) ?? 0;
+    final price = parseLocalizedNumber(context, line.priceCtrl.text) ?? 0;
+    sum += qty * price;
+  }
+  return sum;
 }

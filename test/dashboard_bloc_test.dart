@@ -124,6 +124,11 @@ class MockFinanceTestRepository implements FinanceRepository {
   }
 
   @override
+  Future<CurrencyBoard> getCurrencyBoard() async {
+    return const CurrencyBoard();
+  }
+
+  @override
   Future<AiInsightsReport> getAiInsights() async {
     if (shouldFail) throw Exception('AI fail');
     return const AiInsightsReport(
@@ -287,14 +292,14 @@ void main() {
         final updatedFuture = bloc.stream.firstWhere(
           (state) =>
               state is DashboardLoaded &&
-              state.abc?.dimension == 'client' &&
+              state.abc?.dimension == AbcDimensions.counterparty &&
               !state.loadingSections.contains(DashboardSection.abc),
         );
 
-        bloc.add(const ChangeAbcDimension('client'));
+        bloc.add(const ChangeAbcDimension(AbcDimensions.counterparty));
 
         final loaded = await updatedFuture as DashboardLoaded;
-        expect(loaded.abc?.dimension, 'client');
+        expect(loaded.abc?.dimension, AbcDimensions.counterparty);
       },
     );
     test(
@@ -306,34 +311,42 @@ void main() {
         final categoryGate = Completer<AbcAnalysis>();
         final clientGate = Completer<AbcAnalysis>();
         repository
-          ..abcGates['category'] = categoryGate
-          ..abcGates['client'] = clientGate
-          ..abcRequestsStarted['category'] = Completer<void>()
-          ..abcRequestsStarted['client'] = Completer<void>();
+          ..abcGates[AbcDimensions.category] = categoryGate
+          ..abcGates[AbcDimensions.counterparty] = clientGate
+          ..abcRequestsStarted[AbcDimensions.category] = Completer<void>()
+          ..abcRequestsStarted[AbcDimensions.counterparty] = Completer<void>();
 
-        bloc.add(const ChangeAbcDimension('category'));
-        await repository.abcRequestsStarted['category']!.future;
-        bloc.add(const ChangeAbcDimension('client'));
-        await repository.abcRequestsStarted['client']!.future;
+        bloc.add(const ChangeAbcDimension(AbcDimensions.category));
+        await repository.abcRequestsStarted[AbcDimensions.category]!.future;
+        bloc.add(const ChangeAbcDimension(AbcDimensions.counterparty));
+        await repository.abcRequestsStarted[AbcDimensions.counterparty]!.future;
 
         final clientLoaded = bloc.stream.firstWhere(
           (state) =>
               state is DashboardLoaded &&
-              state.abc?.dimension == 'client' &&
+              state.abc?.dimension == AbcDimensions.counterparty &&
               !state.loadingSections.contains(DashboardSection.abc),
         );
         clientGate.complete(
-          const AbcAnalysis(dimension: 'client', rows: [], total: 20),
+          const AbcAnalysis(
+            dimension: AbcDimensions.counterparty,
+            rows: [],
+            total: 20,
+          ),
         );
         await clientLoaded;
 
         categoryGate.complete(
-          const AbcAnalysis(dimension: 'category', rows: [], total: 10),
+          const AbcAnalysis(
+            dimension: AbcDimensions.category,
+            rows: [],
+            total: 10,
+          ),
         );
         await Future<void>.delayed(Duration.zero);
 
         final state = bloc.state as DashboardLoaded;
-        expect(state.abc?.dimension, 'client');
+        expect(state.abc?.dimension, AbcDimensions.counterparty);
         expect(state.abc?.total, 20);
         expect(state.loadingSections, isNot(contains(DashboardSection.abc)));
       },
