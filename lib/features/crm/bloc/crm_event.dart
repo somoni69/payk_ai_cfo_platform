@@ -60,8 +60,15 @@ class UpdateClientRequested extends CrmEvent {
   });
 
   @override
-  List<Object?> get props =>
-      [id, fullName, phone, email, birthDate, acquisitionCost, note];
+  List<Object?> get props => [
+    id,
+    fullName,
+    phone,
+    email,
+    birthDate,
+    acquisitionCost,
+    note,
+  ];
 }
 
 class DeleteClientRequested extends CrmEvent {
@@ -154,10 +161,7 @@ class SendReactivationRequested extends CrmEvent {
   final String clientId;
   final String text;
 
-  const SendReactivationRequested({
-    required this.clientId,
-    required this.text,
-  });
+  const SendReactivationRequested({required this.clientId, required this.text});
 
   @override
   List<Object?> get props => [clientId, text];

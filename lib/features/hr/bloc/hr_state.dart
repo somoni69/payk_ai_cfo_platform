@@ -109,27 +109,27 @@ class HrLoaded extends HrState {
 
   @override
   List<Object?> get props => [
-        employees,
-        kpiAlerts,
-        salaryRecords,
-        period,
-        orgChart,
-        orgLoaded,
-        attendance,
-        attendanceLoaded,
-        candidates,
-        candidatesLoaded,
-        evaluations,
-        evaluationsLoaded,
-        contracts,
-        contractsLoaded,
-        movement,
-        movementLoaded,
-        sectionLoading,
-        errorMessage,
-        successMessage,
-        isRefreshing,
-      ];
+    employees,
+    kpiAlerts,
+    salaryRecords,
+    period,
+    orgChart,
+    orgLoaded,
+    attendance,
+    attendanceLoaded,
+    candidates,
+    candidatesLoaded,
+    evaluations,
+    evaluationsLoaded,
+    contracts,
+    contractsLoaded,
+    movement,
+    movementLoaded,
+    sectionLoading,
+    errorMessage,
+    successMessage,
+    isRefreshing,
+  ];
 }
 
 class HrError extends HrState {

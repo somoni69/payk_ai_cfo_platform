@@ -95,10 +95,7 @@ extension _DashboardSectionBuilders on _DashboardViewState {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  flag,
-                  style: textStyles.bodySans.copyWith(fontSize: 18),
-                ),
+                Text(flag, style: textStyles.bodySans.copyWith(fontSize: 18)),
                 const SizedBox(width: 10),
                 Text(
                   c,

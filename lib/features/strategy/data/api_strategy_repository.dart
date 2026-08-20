@@ -151,13 +151,13 @@ class ApiStrategyRepository
         return MacroIndicator(
           id: (map['id'] ?? '').toString(),
           name: map['name']?.toString() ?? '',
-          value: (map['value'] as num?)?.toDouble() ??
+          value:
+              (map['value'] as num?)?.toDouble() ??
               double.tryParse('${map['value']}') ??
               0,
           unit: map['unit']?.toString(),
-          indicatorDate: DateTime.tryParse(
-                map['indicator_date']?.toString() ?? '',
-              ) ??
+          indicatorDate:
+              DateTime.tryParse(map['indicator_date']?.toString() ?? '') ??
               DateTime.now(),
         );
       }).toList();
@@ -234,18 +234,17 @@ class ApiStrategyRepository
       final sources = map['sources'] as List<dynamic>? ?? [];
       return sources.whereType<Map>().map((item) {
         final s = Map<String, dynamic>.from(item);
-        final items = (s['items'] as List<dynamic>? ?? [])
-            .whereType<Map>()
-            .map((n) {
-              final nm = Map<String, dynamic>.from(n);
-              return NewsItem(
-                title: nm['title']?.toString() ?? '',
-                url: nm['url']?.toString() ?? '',
-                source: nm['source']?.toString() ?? s['name']?.toString() ?? '',
-                published: nm['published']?.toString(),
-              );
-            })
-            .toList();
+        final items = (s['items'] as List<dynamic>? ?? []).whereType<Map>().map(
+          (n) {
+            final nm = Map<String, dynamic>.from(n);
+            return NewsItem(
+              title: nm['title']?.toString() ?? '',
+              url: nm['url']?.toString() ?? '',
+              source: nm['source']?.toString() ?? s['name']?.toString() ?? '',
+              published: nm['published']?.toString(),
+            );
+          },
+        ).toList();
         return NewsSource(
           code: s['code']?.toString() ?? '',
           name: s['name']?.toString() ?? '',

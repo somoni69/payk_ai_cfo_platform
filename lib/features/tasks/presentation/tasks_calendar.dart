@@ -106,9 +106,7 @@ extension _TasksCalendarBuilders on _TasksViewState {
           const SizedBox(height: 6),
           Text(
             language.translate('tasks_calendar_workload_hint'),
-            style: textStyles.captionSans.copyWith(
-              color: colors.textSecondary,
-            ),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 8),
           GridView.builder(

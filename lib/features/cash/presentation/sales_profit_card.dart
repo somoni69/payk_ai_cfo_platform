@@ -111,9 +111,11 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                 if (i > 0) const SizedBox(width: 6),
                 Expanded(
                   child: ChoiceChip(
-                    label: Text(language.translate(
-                      'cash_profit_${_ProfitPeriod.values[i].name}',
-                    )),
+                    label: Text(
+                      language.translate(
+                        'cash_profit_${_ProfitPeriod.values[i].name}',
+                      ),
+                    ),
                     labelStyle: textStyles.captionSans.copyWith(
                       color: _period == _ProfitPeriod.values[i]
                           ? Colors.white

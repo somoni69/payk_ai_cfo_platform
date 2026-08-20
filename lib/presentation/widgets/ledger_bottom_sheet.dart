@@ -232,9 +232,10 @@ class _LedgerSheetHost<T> extends StatefulWidget {
   });
 
   final String title;
-  final Widget Function(BuildContext context, StateSetter setSheetState) builder;
+  final Widget Function(BuildContext context, StateSetter setSheetState)
+  builder;
   final Widget Function(BuildContext context, StateSetter setSheetState)?
-      footerBuilder;
+  footerBuilder;
   final bool Function()? isDirty;
 
   @override
@@ -275,7 +276,8 @@ class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
     final keyboardHeight = viewInsets.bottom;
     final topSafeArea = padding.top;
 
-    final availableHeight = screenSize.height -
+    final availableHeight =
+        screenSize.height -
         keyboardHeight -
         (topSafeArea > 0 ? topSafeArea : 24) -
         48;
@@ -307,9 +309,10 @@ class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
 class _LedgerSheetContentHost extends StatefulWidget {
   final String title;
   final double maxHeight;
-  final Widget Function(BuildContext context, StateSetter setSheetState) builder;
+  final Widget Function(BuildContext context, StateSetter setSheetState)
+  builder;
   final Widget Function(BuildContext context, StateSetter setSheetState)?
-      footerBuilder;
+  footerBuilder;
 
   const _LedgerSheetContentHost({
     required this.title,

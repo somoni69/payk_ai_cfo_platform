@@ -59,8 +59,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
     final colors = context.colors;
     final locale = context.read<LanguageCubit>();
     final titleCtrl = TextEditingController(text: template?.name ?? '');
-    final regCtrl =
-        TextEditingController(text: template?.regulationText ?? '');
+    final regCtrl = TextEditingController(text: template?.regulationText ?? '');
     final itemCtrl = TextEditingController();
     final List<String> items = List<String>.from(
       template?.items.map((i) => i.text) ?? [],
@@ -439,8 +438,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
                   ),
                 ],
               ),
-              if (t.regulationText != null &&
-                  t.regulationText!.isNotEmpty) ...[
+              if (t.regulationText != null && t.regulationText!.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   t.regulationText!,

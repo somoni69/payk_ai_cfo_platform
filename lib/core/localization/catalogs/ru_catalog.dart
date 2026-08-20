@@ -1393,6 +1393,5 @@ const Map<String, String> kRussianCatalog = {
   'warehouse_edit_batch_title': 'Редактировать партию',
   'warehouse_toast_batch_updated': 'Партия обновлена',
   'warehouse_delete_batch_title': 'Удалить партию?',
-  'warehouse_delete_batch_msg':
-      'Партия «{product}» ({qty}) будет удалена.',
+  'warehouse_delete_batch_msg': 'Партия «{product}» ({qty}) будет удалена.',
 };

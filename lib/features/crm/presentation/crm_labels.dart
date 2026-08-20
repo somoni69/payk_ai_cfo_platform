@@ -42,17 +42,14 @@ String crmStagePill(LanguageCubit language, String stage) {
 ({Color bg, Color fg}) crmLoyaltyColors(LedgerColors colors, String level) {
   return switch (level) {
     'gold' => (
-        bg: colors.accentAmber.withValues(alpha: 0.1),
-        fg: colors.accentAmber,
-      ),
-    'silver' => (
-        bg: colors.brand.withValues(alpha: 0.08),
-        fg: colors.brand,
-      ),
+      bg: colors.accentAmber.withValues(alpha: 0.1),
+      fg: colors.accentAmber,
+    ),
+    'silver' => (bg: colors.brand.withValues(alpha: 0.08), fg: colors.brand),
     'platinum' => (
-        bg: colors.accentGreen.withValues(alpha: 0.1),
-        fg: colors.accentGreen,
-      ),
+      bg: colors.accentGreen.withValues(alpha: 0.1),
+      fg: colors.accentGreen,
+    ),
     _ => (bg: colors.border, fg: colors.textPrimary),
   };
 }
@@ -60,21 +57,18 @@ String crmStagePill(LanguageCubit language, String stage) {
 ({Color bg, Color fg}) crmStageColors(LedgerColors colors, String stage) {
   return switch (stage) {
     'won' => (
-        bg: colors.accentGreen.withValues(alpha: 0.1),
-        fg: colors.accentGreen,
-      ),
+      bg: colors.accentGreen.withValues(alpha: 0.1),
+      fg: colors.accentGreen,
+    ),
     'lost' => (
-        bg: colors.accentRed.withValues(alpha: 0.1),
-        fg: colors.accentRed,
-      ),
+      bg: colors.accentRed.withValues(alpha: 0.1),
+      fg: colors.accentRed,
+    ),
     'negotiation' => (
-        bg: colors.accentAmber.withValues(alpha: 0.1),
-        fg: colors.accentAmber,
-      ),
-    'proposal' => (
-        bg: colors.brand.withValues(alpha: 0.08),
-        fg: colors.brand,
-      ),
+      bg: colors.accentAmber.withValues(alpha: 0.1),
+      fg: colors.accentAmber,
+    ),
+    'proposal' => (bg: colors.brand.withValues(alpha: 0.08), fg: colors.brand),
     _ => (bg: colors.border, fg: colors.textPrimary),
   };
 }

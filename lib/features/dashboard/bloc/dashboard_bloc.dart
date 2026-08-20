@@ -144,7 +144,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           break;
         case DashboardSection.abc:
           final abc = await _repository.getAbcAnalysis(
-            AbcDimensions.toApi(_cachedAbc?.dimension ?? AbcDimensions.category),
+            AbcDimensions.toApi(
+              _cachedAbc?.dimension ?? AbcDimensions.category,
+            ),
           );
           if (abcRevision == _abcRevision) {
             _cachedAbc = abc;
@@ -350,9 +352,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -382,9 +382,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -408,9 +406,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -434,9 +430,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -460,9 +454,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }

@@ -48,11 +48,7 @@ class _LedgerShimmerState extends State<LedgerShimmer>
             return LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: [
-                baseColor,
-                highlightColor,
-                baseColor,
-              ],
+              colors: [baseColor, highlightColor, baseColor],
               stops: const [0.0, 0.5, 1.0],
               transform: _SlidingGradientTransform(slidePercent: value),
             ).createShader(bounds);
@@ -319,17 +315,11 @@ class DashboardOverviewShimmer extends StatelessWidget {
                   SizedBox(height: 10),
                   Row(
                     children: [
-                      Expanded(
-                        child: ShimmerBox(height: 36, borderRadius: 8),
-                      ),
+                      Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
                       SizedBox(width: 6),
-                      Expanded(
-                        child: ShimmerBox(height: 36, borderRadius: 8),
-                      ),
+                      Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
                       SizedBox(width: 6),
-                      Expanded(
-                        child: ShimmerBox(height: 36, borderRadius: 8),
-                      ),
+                      Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
                     ],
                   ),
                   SizedBox(height: 12),
@@ -373,7 +363,11 @@ class DashboardOverviewShimmer extends StatelessWidget {
                     ],
                   ),
                   SizedBox(height: 12),
-                  ShimmerBox(width: double.infinity, height: 120, borderRadius: 8),
+                  ShimmerBox(
+                    width: double.infinity,
+                    height: 120,
+                    borderRadius: 8,
+                  ),
                 ],
               ),
             ),
@@ -531,7 +525,11 @@ class CrmOverviewShimmer extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: ShimmerBox(width: 140, height: 16, borderRadius: 4),
+                          child: ShimmerBox(
+                            width: 140,
+                            height: 16,
+                            borderRadius: 4,
+                          ),
                         ),
                         LedgerChipShimmer(width: 70),
                       ],
@@ -641,7 +639,11 @@ class StrategyOverviewShimmer extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          const ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+          const ShimmerBox(
+            width: double.infinity,
+            height: 48,
+            borderRadius: 12,
+          ),
           const SizedBox(height: 16),
           const ShimmerBox(width: 180, height: 12, borderRadius: 4),
           const SizedBox(height: 10),
@@ -713,7 +715,11 @@ class TasksOverviewShimmer extends StatelessWidget {
                             children: [
                               LedgerChipShimmer(width: 56),
                               SizedBox(width: 8),
-                              ShimmerBox(width: 80, height: 12, borderRadius: 4),
+                              ShimmerBox(
+                                width: 80,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
                             ],
                           ),
                         ],
@@ -898,7 +904,11 @@ class UsersOverviewShimmer extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(bottom: 10, top: 8),
-            child: ShimmerBox(width: double.infinity, height: 44, borderRadius: 8),
+            child: ShimmerBox(
+              width: double.infinity,
+              height: 44,
+              borderRadius: 8,
+            ),
           ),
           ...List.generate(6, (index) {
             return const Padding(
@@ -911,7 +921,11 @@ class UsersOverviewShimmer extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: ShimmerBox(width: 140, height: 16, borderRadius: 4),
+                          child: ShimmerBox(
+                            width: 140,
+                            height: 16,
+                            borderRadius: 4,
+                          ),
                         ),
                         LedgerChipShimmer(width: 80),
                       ],
@@ -959,7 +973,11 @@ class IntegrationsOverviewShimmer extends StatelessWidget {
                             children: [
                               ShimmerBox(width: 8, height: 8, borderRadius: 4),
                               SizedBox(width: 6),
-                              ShimmerBox(width: 70, height: 12, borderRadius: 4),
+                              ShimmerBox(
+                                width: 70,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
                             ],
                           ),
                         ],
@@ -997,7 +1015,11 @@ class AuditOverviewShimmer extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: ShimmerBox(width: 180, height: 16, borderRadius: 4),
+                      child: ShimmerBox(
+                        width: 180,
+                        height: 16,
+                        borderRadius: 4,
+                      ),
                     ),
                     ShimmerBox(width: 40, height: 12, borderRadius: 4),
                   ],
@@ -1035,7 +1057,11 @@ class ChecklistsOverviewShimmer extends StatelessWidget {
                 const Row(
                   children: [
                     Expanded(
-                      child: ShimmerBox(width: 160, height: 18, borderRadius: 4),
+                      child: ShimmerBox(
+                        width: 160,
+                        height: 18,
+                        borderRadius: 4,
+                      ),
                     ),
                     LedgerChipShimmer(width: 72),
                   ],
@@ -1092,7 +1118,11 @@ class BranchesOverviewShimmer extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: ShimmerBox(width: 160, height: 18, borderRadius: 4),
+                      child: ShimmerBox(
+                        width: 160,
+                        height: 18,
+                        borderRadius: 4,
+                      ),
                     ),
                     LedgerChipShimmer(width: 70),
                   ],
@@ -1102,9 +1132,7 @@ class BranchesOverviewShimmer extends StatelessWidget {
                   children: [
                     ShimmerBox(width: 16, height: 16, borderRadius: 4),
                     SizedBox(width: 6),
-                    Expanded(
-                      child: ShimmerBox(height: 14, borderRadius: 4),
-                    ),
+                    Expanded(child: ShimmerBox(height: 14, borderRadius: 4)),
                   ],
                 ),
                 SizedBox(height: 6),

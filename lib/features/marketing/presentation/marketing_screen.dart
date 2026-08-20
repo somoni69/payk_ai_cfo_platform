@@ -189,8 +189,12 @@ class _MarketingViewState extends State<MarketingView>
                       localeCubit.translate('marketing_mode_ad_ideas'),
                     ),
                     labelStyle: textStyles.captionSans.copyWith(
-                      color: !_generatePostTextMode ? Colors.white : colors.textPrimary,
-                      fontWeight: !_generatePostTextMode ? FontWeight.w500 : FontWeight.w400,
+                      color: !_generatePostTextMode
+                          ? Colors.white
+                          : colors.textPrimary,
+                      fontWeight: !_generatePostTextMode
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                     ),
                     checkmarkColor: Colors.white,
                     selected: !_generatePostTextMode,
@@ -210,8 +214,12 @@ class _MarketingViewState extends State<MarketingView>
                       localeCubit.translate('marketing_mode_ready_post'),
                     ),
                     labelStyle: textStyles.captionSans.copyWith(
-                      color: _generatePostTextMode ? Colors.white : colors.textPrimary,
-                      fontWeight: _generatePostTextMode ? FontWeight.w500 : FontWeight.w400,
+                      color: _generatePostTextMode
+                          ? Colors.white
+                          : colors.textPrimary,
+                      fontWeight: _generatePostTextMode
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                     ),
                     checkmarkColor: Colors.white,
                     selected: _generatePostTextMode,

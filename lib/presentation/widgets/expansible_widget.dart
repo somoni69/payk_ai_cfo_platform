@@ -127,10 +127,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
             height: 1,
             thickness: 1,
           ),
-        Padding(
-          padding: widget.tilePadding,
-          child: children[index],
-        ),
+        Padding(padding: widget.tilePadding, child: children[index]),
       ],
     ];
   }

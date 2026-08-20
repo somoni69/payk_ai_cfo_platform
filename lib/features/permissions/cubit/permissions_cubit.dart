@@ -16,11 +16,7 @@ class PermissionsState {
   final bool loading;
   final String? error;
 
-  const PermissionsState({
-    this.data,
-    this.loading = false,
-    this.error,
-  });
+  const PermissionsState({this.data, this.loading = false, this.error});
 
   static const initial = PermissionsState();
 

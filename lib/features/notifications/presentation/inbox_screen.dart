@@ -74,9 +74,7 @@ class _InboxScreenState extends State<InboxScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            language.resolveMessage(
-              e.toString().replaceAll('Exception: ', ''),
-            ),
+            language.resolveMessage(e.toString().replaceAll('Exception: ', '')),
           ),
         ),
       );
@@ -233,7 +231,8 @@ class _InboxScreenState extends State<InboxScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         item.title,

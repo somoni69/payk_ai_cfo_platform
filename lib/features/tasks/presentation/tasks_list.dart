@@ -348,9 +348,7 @@ extension _TasksListBuilders on _TasksViewState {
             color: isSelected ? Colors.white : colors.textPrimary,
             fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
           ),
-          side: BorderSide(
-            color: isSelected ? priorityColor : colors.border,
-          ),
+          side: BorderSide(color: isSelected ? priorityColor : colors.border),
         );
       }).toList(),
     );

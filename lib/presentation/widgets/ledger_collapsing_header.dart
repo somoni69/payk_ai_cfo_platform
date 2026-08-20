@@ -139,7 +139,8 @@ class LedgerTabBar extends StatelessWidget implements PreferredSizeWidget {
     return TabBar(
       controller: controller,
       isScrollable: isScrollable,
-      tabAlignment: tabAlignment ??
+      tabAlignment:
+          tabAlignment ??
           (isScrollable ? TabAlignment.start : TabAlignment.fill),
       onTap: onTap,
       labelColor: colors.brand,

@@ -129,9 +129,7 @@ class _MetaScreenState extends State<MetaScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            language.resolveMessage(
-              e.toString().replaceAll('Exception: ', ''),
-            ),
+            language.resolveMessage(e.toString().replaceAll('Exception: ', '')),
           ),
         ),
       );
@@ -163,9 +161,7 @@ class _MetaScreenState extends State<MetaScreen> {
     final language = context.read<LanguageCubit>();
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final searchCtrl = TextEditingController(
-      text: thread.peerPhone ?? '',
-    );
+    final searchCtrl = TextEditingController(text: thread.peerPhone ?? '');
     List<CrmClient> results = const [];
     var searching = true;
     int? pickedId = thread.clientId;
@@ -214,9 +210,8 @@ class _MetaScreenState extends State<MetaScreen> {
                 language.translate(
                   'meta_link_hint',
                   params: {
-                    'peer': thread.peerName ??
-                        thread.peerPhone ??
-                        thread.peerId,
+                    'peer':
+                        thread.peerName ?? thread.peerPhone ?? thread.peerId,
                   },
                 ),
                 style: textStyles.captionSans.copyWith(
@@ -498,9 +493,7 @@ class _MetaScreenState extends State<MetaScreen> {
                         selected: isSel,
                         labelStyle: textStyles.captionSans.copyWith(
                           color: isSel ? Colors.white : colors.textPrimary,
-                          fontWeight: isSel
-                              ? FontWeight.w500
-                              : FontWeight.w400,
+                          fontWeight: isSel ? FontWeight.w500 : FontWeight.w400,
                         ),
                         checkmarkColor: Colors.white,
                         onSelected: (val) {
@@ -571,9 +564,7 @@ class _MetaScreenState extends State<MetaScreen> {
                         const SizedBox(height: 6),
                         LedgerPill(
                           text: '${t.unread}',
-                          backgroundColor: colors.brand.withValues(
-                            alpha: 0.12,
-                          ),
+                          backgroundColor: colors.brand.withValues(alpha: 0.12),
                           textColor: colors.brand,
                         ),
                       ],

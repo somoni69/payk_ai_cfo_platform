@@ -105,9 +105,9 @@ class _LegalScreenState extends State<LegalScreen>
       focusElevation: 0,
       hoverElevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: colors.brand),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colors.brand),
+      ),
       icon: const Icon(TablerIcons.plus),
       label: Text(
         locale.translate(labelKey),
@@ -257,9 +257,7 @@ class _LegalScreenState extends State<LegalScreen>
                                 'legal_tab_ai_lawyer',
                               ),
                             ),
-                            Tab(
-                              text: localeCubit.translate('legal_tab_laws'),
-                            ),
+                            Tab(text: localeCubit.translate('legal_tab_laws')),
                             Tab(
                               text: localeCubit.translate(
                                 'legal_tab_constructor',

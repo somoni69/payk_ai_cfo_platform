@@ -56,8 +56,7 @@ class ApiCrmRepository implements CrmRepository {
           : int.tryParse('${map['purchases_count']}') ?? 0,
       lastPurchaseAt: _parseDate(map['last_purchase_at']),
       note: map['note']?.toString(),
-      createdAt:
-          _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
+      createdAt: _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
       roi: map['roi'] != null ? _toDouble(map['roi']) : null,
       churnRisk: map['churn_risk'] == true,
     );
@@ -70,8 +69,7 @@ class ApiCrmRepository implements CrmRepository {
       title: map['title']?.toString() ?? '',
       amount: _toDouble(map['amount']),
       stage: map['stage']?.toString() ?? 'lead',
-      createdAt:
-          _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
+      createdAt: _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
       clientName: map['client_name']?.toString(),
       expectedClose: _parseDate(map['expected_close']),
     );
@@ -102,10 +100,7 @@ class ApiCrmRepository implements CrmRepository {
       key,
       ExpiringRequestCache<ClientsPage>.new,
     );
-    return cache.get(
-      () => _fetchClients(filters),
-      forceRefresh: forceRefresh,
-    );
+    return cache.get(() => _fetchClients(filters), forceRefresh: forceRefresh);
   }
 
   Future<ClientsPage> _fetchClients(ClientListFilters filters) async {
@@ -133,12 +128,8 @@ class ApiCrmRepository implements CrmRepository {
         total: dataMap['total'] is int
             ? dataMap['total'] as int
             : int.tryParse('${dataMap['total']}') ?? list.length,
-        page: dataMap['page'] is int
-            ? dataMap['page'] as int
-            : filters.page,
-        size: dataMap['size'] is int
-            ? dataMap['size'] as int
-            : filters.size,
+        page: dataMap['page'] is int ? dataMap['page'] as int : filters.page,
+        size: dataMap['size'] is int ? dataMap['size'] as int : filters.size,
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
@@ -365,9 +356,7 @@ class ApiCrmRepository implements CrmRepository {
   @override
   Future<void> deleteDeal(String id) async {
     try {
-      await _apiClient.dio.delete(
-        '/crm/deals/${_requirePositiveId(id, 'id')}',
-      );
+      await _apiClient.dio.delete('/crm/deals/${_requirePositiveId(id, 'id')}');
       _invalidateMutations();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
@@ -377,8 +366,7 @@ class ApiCrmRepository implements CrmRepository {
   @override
   Future<List<LoyaltySummaryRow>> getLoyaltySummary({
     bool forceRefresh = false,
-  }) =>
-      _loyaltyCache.get(_fetchLoyaltySummary, forceRefresh: forceRefresh);
+  }) => _loyaltyCache.get(_fetchLoyaltySummary, forceRefresh: forceRefresh);
 
   Future<List<LoyaltySummaryRow>> _fetchLoyaltySummary() async {
     try {
@@ -424,8 +412,7 @@ class ApiCrmRepository implements CrmRepository {
           clientId: (map['client_id'] ?? '').toString(),
           points: _toDouble(map['points']),
           reason: map['reason']?.toString(),
-          createdAt:
-              _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
+          createdAt: _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
         );
       }).toList();
       return LoyaltyTxnsPage(
@@ -463,8 +450,7 @@ class ApiCrmRepository implements CrmRepository {
         clientId: (map['client_id'] ?? '').toString(),
         points: _toDouble(map['points']),
         reason: map['reason']?.toString(),
-        createdAt:
-            _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
+        createdAt: _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
@@ -566,8 +552,7 @@ class ApiCrmRepository implements CrmRepository {
           id: (map['id'] ?? '').toString(),
           fullName: map['full_name']?.toString() ?? '',
           phone: map['phone']?.toString(),
-          birthDate:
-              _parseDate(map['birth_date']) ?? DateTime.now().toUtc(),
+          birthDate: _parseDate(map['birth_date']) ?? DateTime.now().toUtc(),
           daysUntil: map['days_until'] is int
               ? map['days_until'] as int
               : int.tryParse('${map['days_until']}') ?? 0,

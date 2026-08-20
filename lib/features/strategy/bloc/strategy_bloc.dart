@@ -155,11 +155,7 @@ class StrategyBloc extends Bloc<StrategyEvent, StrategyState> {
     try {
       final rows = await _repository.getMacroIndicators();
       emit(
-        state.copyWith(
-          macro: rows,
-          macroLoaded: true,
-          isMacroLoading: false,
-        ),
+        state.copyWith(macro: rows, macroLoaded: true, isMacroLoading: false),
       );
     } catch (_) {
       emit(
@@ -245,21 +241,12 @@ class StrategyBloc extends Bloc<StrategyEvent, StrategyState> {
     }
   }
 
-  Future<void> _onLoadNews(
-    LoadNews event,
-    Emitter<StrategyState> emit,
-  ) async {
+  Future<void> _onLoadNews(LoadNews event, Emitter<StrategyState> emit) async {
     if (state.newsLoaded && !event.forceRefresh) return;
     emit(state.copyWith(isNewsLoading: true, clearError: true));
     try {
       final news = await _repository.getNews();
-      emit(
-        state.copyWith(
-          news: news,
-          newsLoaded: true,
-          isNewsLoading: false,
-        ),
-      );
+      emit(state.copyWith(news: news, newsLoaded: true, isNewsLoading: false));
     } catch (_) {
       emit(
         state.copyWith(

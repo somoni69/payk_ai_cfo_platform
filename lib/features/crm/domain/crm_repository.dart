@@ -19,7 +19,8 @@ abstract class CrmRepository {
 
   Future<CrmClient> createClient(CrmClient client);
 
-  Future<CrmClient> updateClient(String id, {
+  Future<CrmClient> updateClient(
+    String id, {
     String? fullName,
     String? phone,
     String? email,
@@ -72,7 +73,10 @@ abstract class CrmRepository {
     String? reason,
   });
 
-  Future<List<CrmClient>> getReactivation({int? days, bool forceRefresh = false});
+  Future<List<CrmClient>> getReactivation({
+    int? days,
+    bool forceRefresh = false,
+  });
 
   Future<bool> sendReactivation(String clientId, String text);
 

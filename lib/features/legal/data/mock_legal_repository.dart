@@ -81,10 +81,7 @@ class MockLegalRepository implements LegalRepository {
           'заключили настоящий договор о продаже товаров на сумму {price} сомони.',
       variables: [
         TemplateVariable(key: 'seller', label: 'ФИО / Наименование Продавца'),
-        TemplateVariable(
-          key: 'buyer',
-          label: 'ФИО / Наименование Покупателя',
-        ),
+        TemplateVariable(key: 'buyer', label: 'ФИО / Наименование Покупателя'),
         TemplateVariable(key: 'price', label: 'Сумма сделки (сомони)'),
       ],
     ),

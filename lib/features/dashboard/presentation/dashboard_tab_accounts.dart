@@ -11,7 +11,8 @@ extension _DashboardAccountsTab on _DashboardViewState {
     final textStyles = context.textStyles;
     final languageCubit = context.read<LanguageCubit>();
     final auth = context.watch<AuthBloc>().state;
-    final canWrite = auth is AuthAuthenticated &&
+    final canWrite =
+        auth is AuthAuthenticated &&
         auth.role.canWrite(AppCapability.dashboard);
     final isDirector =
         auth is AuthAuthenticated && auth.role == UserRole.director;
@@ -87,9 +88,9 @@ extension _DashboardAccountsTab on _DashboardViewState {
                         children: [
                           if (isDirector && acc.balance != 0)
                             TextButton(
-                              onPressed: () => context.read<DashboardBloc>().add(
-                                    ZeroOutAccountRequested(acc.id),
-                                  ),
+                              onPressed: () => context
+                                  .read<DashboardBloc>()
+                                  .add(ZeroOutAccountRequested(acc.id)),
                               child: Text(
                                 languageCubit.translate(
                                   'dashboard_account_zero_out',
@@ -99,8 +100,8 @@ extension _DashboardAccountsTab on _DashboardViewState {
                           const Spacer(),
                           IconButton(
                             onPressed: () => context.read<DashboardBloc>().add(
-                                  DeleteAccountRequested(acc.id),
-                                ),
+                              DeleteAccountRequested(acc.id),
+                            ),
                             icon: Icon(
                               TablerIcons.trash,
                               size: 18,
@@ -152,9 +153,13 @@ extension _DashboardAccountsTab on _DashboardViewState {
               if (canWrite)
                 TextButton.icon(
                   onPressed: () => context.read<DashboardBloc>().add(
-                        const RefreshRatesRequested(),
-                      ),
-                  icon: Icon(TablerIcons.refresh, size: 16, color: colors.brand),
+                    const RefreshRatesRequested(),
+                  ),
+                  icon: Icon(
+                    TablerIcons.refresh,
+                    size: 16,
+                    color: colors.brand,
+                  ),
                   label: Text(
                     languageCubit.translate('dashboard_rates_refresh'),
                   ),
@@ -283,18 +288,18 @@ extension _DashboardAccountsTab on _DashboardViewState {
                 final balance =
                     parseLocalizedNumber(context, balanceCtrl.text.trim()) ?? 0;
                 this.context.read<DashboardBloc>().add(
-                      CreateAccountRequested(
-                        name: name,
-                        bank: bankCtrl.text.trim().isEmpty
-                            ? null
-                            : bankCtrl.text.trim(),
-                        number: numberCtrl.text.trim().isEmpty
-                            ? null
-                            : numberCtrl.text.trim(),
-                        currency: currency,
-                        balance: balance,
-                      ),
-                    );
+                  CreateAccountRequested(
+                    name: name,
+                    bank: bankCtrl.text.trim().isEmpty
+                        ? null
+                        : bankCtrl.text.trim(),
+                    number: numberCtrl.text.trim().isEmpty
+                        ? null
+                        : numberCtrl.text.trim(),
+                    currency: currency,
+                    balance: balance,
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -343,9 +348,9 @@ class _CurrencyConverterCardState extends State<_CurrencyConverterCard> {
     setState(() => _loading = true);
     try {
       final res = await context.read<FinanceRepository>().convertAmount(
-            amount,
-            _base,
-          );
+        amount,
+        _base,
+      );
       if (!mounted) return;
       setState(() => _result = res);
     } catch (_) {

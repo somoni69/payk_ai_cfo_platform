@@ -105,224 +105,228 @@ class _IntegrationsViewState extends State<IntegrationsView> {
             ),
           ],
           body: BlocBuilder<IntegrationsBloc, IntegrationsState>(
-          buildWhen: (previous, current) =>
-              previous.integrations != current.integrations ||
-              previous.logs != current.logs ||
-              previous.isLoading != current.isLoading ||
-              previous.isSyncing != current.isSyncing,
-          builder: (context, state) {
-            if (state.isLoading &&
-                state.integrations.isEmpty &&
-                state.logs.isEmpty) {
-              return const IntegrationsOverviewShimmer();
-            }
+            buildWhen: (previous, current) =>
+                previous.integrations != current.integrations ||
+                previous.logs != current.logs ||
+                previous.isLoading != current.isLoading ||
+                previous.isSyncing != current.isSyncing,
+            builder: (context, state) {
+              if (state.isLoading &&
+                  state.integrations.isEmpty &&
+                  state.logs.isEmpty) {
+                return const IntegrationsOverviewShimmer();
+              }
 
-            final visibleLogCount = _visibleLogs < state.logs.length
-                ? _visibleLogs
-                : state.logs.length;
-            final logsHeaderIndex = state.integrations.length + 1;
-            final logItemCount = state.logs.isEmpty ? 1 : visibleLogCount;
+              final visibleLogCount = _visibleLogs < state.logs.length
+                  ? _visibleLogs
+                  : state.logs.length;
+              final logsHeaderIndex = state.integrations.length + 1;
+              final logItemCount = state.logs.isEmpty ? 1 : visibleLogCount;
 
-            return RefreshIndicator(
-              onRefresh: context.read<IntegrationsBloc>().reload,
-              child: ListView.builder(
-                controller: _scrollController,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                itemCount: state.integrations.length + logItemCount + 2,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        localeCubit.translate('integrations_connected_systems'),
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
+              return RefreshIndicator(
+                onRefresh: context.read<IntegrationsBloc>().reload,
+                child: ListView.builder(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: state.integrations.length + logItemCount + 2,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          localeCubit.translate(
+                            'integrations_connected_systems',
+                          ),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
-                    );
-                  }
+                      );
+                    }
 
-                  if (index <= state.integrations.length) {
-                    final integration = state.integrations[index - 1];
+                    if (index <= state.integrations.length) {
+                      final integration = state.integrations[index - 1];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: LedgerCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    integration.name,
+                                    style: textStyles.bodySans.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: BoxDecoration(
+                                          color: integration.available
+                                              ? colors.accentGreen
+                                              : colors.textSecondary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        localeCubit.translate(
+                                          integration.available
+                                              ? 'integrations_status_active'
+                                              : 'integrations_status_inactive',
+                                        ),
+                                        style: textStyles.captionSans.copyWith(
+                                          color: colors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              if (integration.canSync)
+                                ElevatedButton.icon(
+                                  onPressed: state.isSyncing
+                                      ? null
+                                      : () {
+                                          context.read<IntegrationsBloc>().add(
+                                            TriggerSyncRequested(
+                                              integration.system,
+                                            ),
+                                          );
+                                        },
+                                  icon: const Icon(
+                                    TablerIcons.refresh,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    localeCubit.translate('integrations_sync'),
+                                    style: textStyles.smallSans.copyWith(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: colors.brand,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (index == logsHeaderIndex) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 12, bottom: 10),
+                        child: Text(
+                          localeCubit.translate('integrations_sync_logs'),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (state.logs.isEmpty) {
+                      return Center(
+                        child: Text(
+                          localeCubit.translate('integrations_empty_logs'),
+                        ),
+                      );
+                    }
+
+                    final logIndex = index - logsHeaderIndex - 1;
+                    final log = state.logs[logIndex];
+                    final isSuccess = log.success;
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
+                      padding: const EdgeInsets.only(bottom: 10.0),
                       child: LedgerCard(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  integration.name,
+                                  log.system.toUpperCase(),
                                   style: textStyles.bodySans.copyWith(
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: integration.available
-                                            ? colors.accentGreen
-                                            : colors.textSecondary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      localeCubit.translate(
-                                        integration.available
-                                            ? 'integrations_status_active'
-                                            : 'integrations_status_inactive',
-                                      ),
-                                      style: textStyles.captionSans.copyWith(
-                                        color: colors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
+                                LedgerPill(
+                                  text: localeCubit.translate(
+                                    isSuccess
+                                        ? 'integrations_success'
+                                        : 'integrations_error',
+                                  ),
+                                  backgroundColor: isSuccess
+                                      ? colors.accentGreen.withValues(
+                                          alpha: 0.1,
+                                        )
+                                      : colors.accentRed.withValues(alpha: 0.1),
+                                  textColor: isSuccess
+                                      ? colors.accentGreen
+                                      : colors.accentRed,
                                 ),
                               ],
                             ),
-                            if (integration.canSync)
-                              ElevatedButton.icon(
-                                onPressed: state.isSyncing
-                                    ? null
-                                    : () {
-                                        context.read<IntegrationsBloc>().add(
-                                          TriggerSyncRequested(
-                                            integration.system,
-                                          ),
-                                        );
-                                      },
-                                icon: const Icon(
-                                  TablerIcons.refresh,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
-                                label: Text(
-                                  localeCubit.translate('integrations_sync'),
-                                  style: textStyles.smallSans.copyWith(
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: colors.brand,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 8,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (index == logsHeaderIndex) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 12, bottom: 10),
-                      child: Text(
-                        localeCubit.translate('integrations_sync_logs'),
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (state.logs.isEmpty) {
-                    return Center(
-                      child: Text(
-                        localeCubit.translate('integrations_empty_logs'),
-                      ),
-                    );
-                  }
-
-                  final logIndex = index - logsHeaderIndex - 1;
-                  final log = state.logs[logIndex];
-                  final isSuccess = log.success;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 10.0),
-                    child: LedgerCard(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                            if (log.message != null) ...[
+                              const SizedBox(height: 8),
                               Text(
-                                log.system.toUpperCase(),
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w500,
+                                localeCubit.translateMessage(log.message!),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
                                 ),
-                              ),
-                              LedgerPill(
-                                text: localeCubit.translate(
-                                  isSuccess
-                                      ? 'integrations_success'
-                                      : 'integrations_error',
-                                ),
-                                backgroundColor: isSuccess
-                                    ? colors.accentGreen.withValues(alpha: 0.1)
-                                    : colors.accentRed.withValues(alpha: 0.1),
-                                textColor: isSuccess
-                                    ? colors.accentGreen
-                                    : colors.accentRed,
                               ),
                             ],
-                          ),
-                          if (log.message != null) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              localeCubit.translateMessage(log.message!),
-                              style: textStyles.captionSans.copyWith(
-                                color: colors.textSecondary,
-                              ),
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  localeCubit.translatePlural(
+                                    'integrations_records_imported',
+                                    log.records,
+                                  ),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                                Text(
+                                  formatLocalizedDateTime(
+                                    context,
+                                    log.createdAt,
+                                    style: LocalizedDateTimeStyle.dayMonthTime,
+                                  ),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                          const Divider(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                localeCubit.translatePlural(
-                                  'integrations_records_imported',
-                                  log.records,
-                                ),
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                              Text(
-                                formatLocalizedDateTime(
-                                  context,
-                                  log.createdAt,
-                                  style: LocalizedDateTimeStyle.dayMonthTime,
-                                ),
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

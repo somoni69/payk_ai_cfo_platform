@@ -124,11 +124,8 @@ class _StageColumn extends StatelessWidget {
           canWrite && details.data.stage != stage,
       onAcceptWithDetails: (details) {
         context.read<CrmBloc>().add(
-              SetDealStageRequested(
-                dealId: details.data.id,
-                stage: stage,
-              ),
-            );
+          SetDealStageRequested(dealId: details.data.id, stage: stage),
+        );
       },
       builder: (context, candidate, rejected) {
         final highlighting = candidate.isNotEmpty;
@@ -169,9 +166,7 @@ class _StageColumn extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '${oCcy.format(sum)} TJS',
-                style: textStyles.smallMono.copyWith(
-                  color: colors.textTooltip,
-                ),
+                style: textStyles.smallMono.copyWith(color: colors.textTooltip),
               ),
               const SizedBox(height: 10),
               if (deals.isEmpty)
@@ -237,11 +232,8 @@ class _DraggableDealCard extends StatelessWidget {
     final oCcy = localizedDecimalFormat(context);
 
     final card = LedgerCard(
-      onTap: () => showCrmDealForm(
-        context,
-        clients: pickClients,
-        existing: deal,
-      ),
+      onTap: () =>
+          showCrmDealForm(context, clients: pickClients, existing: deal),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -293,11 +285,8 @@ class _DraggableDealCard extends StatelessWidget {
                   onPressed: stageIdx <= 0
                       ? null
                       : () => context.read<CrmBloc>().add(
-                            MoveDealStageRequested(
-                              dealId: deal.id,
-                              delta: -1,
-                            ),
-                          ),
+                          MoveDealStageRequested(dealId: deal.id, delta: -1),
+                        ),
                   icon: const Icon(TablerIcons.chevron_left, size: 18),
                 ),
                 IconButton(
@@ -306,11 +295,8 @@ class _DraggableDealCard extends StatelessWidget {
                   onPressed: stageIdx >= kDealStages.length - 1
                       ? null
                       : () => context.read<CrmBloc>().add(
-                            MoveDealStageRequested(
-                              dealId: deal.id,
-                              delta: 1,
-                            ),
-                          ),
+                          MoveDealStageRequested(dealId: deal.id, delta: 1),
+                        ),
                   icon: const Icon(TablerIcons.chevron_right, size: 18),
                 ),
               ],
@@ -335,10 +321,7 @@ class _DraggableDealCard extends StatelessWidget {
       feedback: Material(
         color: Colors.transparent,
         elevation: 0,
-        child: SizedBox(
-          width: 240,
-          child: Opacity(opacity: 0.92, child: card),
-        ),
+        child: SizedBox(width: 240, child: Opacity(opacity: 0.92, child: card)),
       ),
       childWhenDragging: Opacity(opacity: 0.35, child: card),
       child: card,

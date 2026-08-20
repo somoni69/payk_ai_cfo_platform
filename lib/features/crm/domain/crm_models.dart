@@ -84,6 +84,7 @@ class CrmDeal {
   final String clientId;
   final String title;
   final double amount;
+
   /// lead | contact | proposal | negotiation | won | lost
   final String stage;
   final DateTime createdAt;

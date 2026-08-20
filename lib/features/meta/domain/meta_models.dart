@@ -35,8 +35,7 @@ class MetaThread {
     this.unread = 0,
   });
 
-  String get displayName =>
-      (peerName != null && peerName!.trim().isNotEmpty)
+  String get displayName => (peerName != null && peerName!.trim().isNotEmpty)
       ? peerName!.trim()
       : (clientName != null && clientName!.trim().isNotEmpty)
       ? clientName!.trim()

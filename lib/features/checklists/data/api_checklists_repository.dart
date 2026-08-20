@@ -7,7 +7,7 @@ class ApiChecklistsRepository implements ChecklistsRepository {
   final ApiClient _client;
 
   ApiChecklistsRepository({ApiClient? client})
-      : _client = client ?? ApiClient();
+    : _client = client ?? ApiClient();
 
   @override
   Future<List<ChecklistRun>> getTodayRuns() async {
@@ -41,9 +41,7 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       }
       return data
           .whereType<Map>()
-          .map(
-            (e) => ChecklistTemplate.fromJson(Map<String, dynamic>.from(e)),
-          )
+          .map((e) => ChecklistTemplate.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
@@ -102,8 +100,7 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       return data
           .whereType<Map>()
           .map(
-            (e) =>
-                ChecklistSummaryRow.fromJson(Map<String, dynamic>.from(e)),
+            (e) => ChecklistSummaryRow.fromJson(Map<String, dynamic>.from(e)),
           )
           .toList();
     } catch (e) {

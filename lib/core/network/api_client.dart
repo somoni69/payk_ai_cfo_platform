@@ -209,8 +209,7 @@ class ApiClient {
     final currentToken = _accessToken;
 
     // Ignore late 401s from an old session and unauthenticated calls.
-    if (currentToken == null ||
-        failedAuthorization != 'Bearer $currentToken') {
+    if (currentToken == null || failedAuthorization != 'Bearer $currentToken') {
       return false;
     }
 

@@ -77,10 +77,7 @@ class ApiAuthRepository {
         ),
       );
 
-      return _parseLoginBody(
-        response.data,
-        fallbackUsername: username,
-      );
+      return _parseLoginBody(response.data, fallbackUsername: username);
     } on DioException catch (error) {
       throw Exception(_loginErrorKey(error));
     } catch (_) {
@@ -97,10 +94,7 @@ class ApiAuthRepository {
     try {
       final response = await _apiClient.dio.post(
         '/auth/verify-2fa',
-        data: {
-          'challenge_id': challengeId,
-          'code': code.trim(),
-        },
+        data: {'challenge_id': challengeId, 'code': code.trim()},
         options: Options(
           extra: const <String, dynamic>{'skipUnauthorizedHandler': true},
         ),

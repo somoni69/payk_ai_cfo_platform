@@ -353,7 +353,8 @@ class ApiFinanceRepository implements FinanceRepository {
         return RateRow(
           code: (map['code'] ?? 'USD').toString(),
           rate: _toDouble(map['rate']),
-          rateDate: DateTime.tryParse(
+          rateDate:
+              DateTime.tryParse(
                 (map['rate_date'] ?? map['rateDate'] ?? '').toString(),
               ) ??
               DateTime.now(),
