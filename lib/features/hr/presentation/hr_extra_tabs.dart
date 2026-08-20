@@ -20,12 +20,8 @@ extension _HrExtraTabs on _HrViewState {
         onRefresh: () async {
           final done = Completer<void>();
           context.read<HrBloc>().add(
-                LoadHrSection(
-                  HrSection.org,
-                  forceRefresh: true,
-                  completion: done,
-                ),
-              );
+            LoadHrSection(HrSection.org, forceRefresh: true, completion: done),
+          );
           await done.future;
         },
         child: state.orgChart.isEmpty
@@ -158,12 +154,12 @@ extension _HrExtraTabs on _HrViewState {
           onRefresh: () async {
             final done = Completer<void>();
             context.read<HrBloc>().add(
-                  LoadHrSection(
-                    HrSection.attendance,
-                    forceRefresh: true,
-                    completion: done,
-                  ),
-                );
+              LoadHrSection(
+                HrSection.attendance,
+                forceRefresh: true,
+                completion: done,
+              ),
+            );
             await done.future;
           },
           child: state.attendance.isEmpty
@@ -222,8 +218,8 @@ extension _HrExtraTabs on _HrViewState {
                           if (canWrite)
                             IconButton(
                               onPressed: () => context.read<HrBloc>().add(
-                                    DeleteAttendanceRequested(row.id),
-                                  ),
+                                DeleteAttendanceRequested(row.id),
+                              ),
                               icon: Icon(
                                 TablerIcons.trash,
                                 size: 18,
@@ -338,12 +334,12 @@ extension _HrExtraTabs on _HrViewState {
                     parseLocalizedNumber(context, hoursCtrl.text.trim()) ?? 0;
                 if (hours <= 0 || hours > 24) return;
                 this.context.read<HrBloc>().add(
-                      CreateAttendanceRequested(
-                        employeeId: employeeId,
-                        workDate: workDate,
-                        hours: hours,
-                      ),
-                    );
+                  CreateAttendanceRequested(
+                    employeeId: employeeId,
+                    workDate: workDate,
+                    hours: hours,
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -407,12 +403,12 @@ extension _HrExtraTabs on _HrViewState {
           onRefresh: () async {
             final done = Completer<void>();
             context.read<HrBloc>().add(
-                  LoadHrSection(
-                    HrSection.recruitment,
-                    forceRefresh: true,
-                    completion: done,
-                  ),
-                );
+              LoadHrSection(
+                HrSection.recruitment,
+                forceRefresh: true,
+                completion: done,
+              ),
+            );
             await done.future;
           },
           child: state.candidates.isEmpty
@@ -485,16 +481,16 @@ extension _HrExtraTabs on _HrViewState {
                                       style: textStyles.smallSans,
                                     ),
                                     onPressed: () => context.read<HrBloc>().add(
-                                          UpdateCandidateStageRequested(
-                                            id: c.id,
-                                            stage: stage,
-                                          ),
-                                        ),
+                                      UpdateCandidateStageRequested(
+                                        id: c.id,
+                                        stage: stage,
+                                      ),
+                                    ),
                                   ),
                                 IconButton(
                                   onPressed: () => context.read<HrBloc>().add(
-                                        DeleteCandidateRequested(c.id),
-                                      ),
+                                    DeleteCandidateRequested(c.id),
+                                  ),
                                   icon: Icon(
                                     TablerIcons.trash,
                                     size: 18,
@@ -566,14 +562,14 @@ extension _HrExtraTabs on _HrViewState {
                 final vacancy = vacancyCtrl.text.trim();
                 if (name.isEmpty || vacancy.isEmpty) return;
                 this.context.read<HrBloc>().add(
-                      CreateCandidateRequested(
-                        fullName: name,
-                        vacancy: vacancy,
-                        phone: phoneCtrl.text.trim().isEmpty
-                            ? null
-                            : phoneCtrl.text.trim(),
-                      ),
-                    );
+                  CreateCandidateRequested(
+                    fullName: name,
+                    vacancy: vacancy,
+                    phone: phoneCtrl.text.trim().isEmpty
+                        ? null
+                        : phoneCtrl.text.trim(),
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -639,12 +635,12 @@ extension _HrExtraTabs on _HrViewState {
           onRefresh: () async {
             final done = Completer<void>();
             context.read<HrBloc>().add(
-                  LoadHrSection(
-                    HrSection.nineBox,
-                    forceRefresh: true,
-                    completion: done,
-                  ),
-                );
+              LoadHrSection(
+                HrSection.nineBox,
+                forceRefresh: true,
+                completion: done,
+              ),
+            );
             await done.future;
           },
           child: state.evaluations.isEmpty
@@ -754,8 +750,7 @@ extension _HrExtraTabs on _HrViewState {
                 max: 3,
                 divisions: 2,
                 activeColor: colors.brand,
-                onChanged: (v) =>
-                    setSheetState(() => performance = v.round()),
+                onChanged: (v) => setSheetState(() => performance = v.round()),
               ),
               Text(
                 '${locale.translate('hr_eval_potential')}: $potential',
@@ -786,16 +781,16 @@ extension _HrExtraTabs on _HrViewState {
             child: ElevatedButton(
               onPressed: () {
                 this.context.read<HrBloc>().add(
-                      CreateEvaluationRequested(
-                        employeeId: employeeId,
-                        period: state.period,
-                        performance: performance,
-                        potential: potential,
-                        note: noteCtrl.text.trim().isEmpty
-                            ? null
-                            : noteCtrl.text.trim(),
-                      ),
-                    );
+                  CreateEvaluationRequested(
+                    employeeId: employeeId,
+                    period: state.period,
+                    performance: performance,
+                    potential: potential,
+                    note: noteCtrl.text.trim().isEmpty
+                        ? null
+                        : noteCtrl.text.trim(),
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -859,12 +854,12 @@ extension _HrExtraTabs on _HrViewState {
           onRefresh: () async {
             final done = Completer<void>();
             context.read<HrBloc>().add(
-                  LoadHrSection(
-                    HrSection.contracts,
-                    forceRefresh: true,
-                    completion: done,
-                  ),
-                );
+              LoadHrSection(
+                HrSection.contracts,
+                forceRefresh: true,
+                completion: done,
+              ),
+            );
             await done.future;
           },
           child: state.contracts.isEmpty
@@ -936,8 +931,8 @@ extension _HrExtraTabs on _HrViewState {
                           if (canWrite)
                             IconButton(
                               onPressed: () => context.read<HrBloc>().add(
-                                    DeleteContractRequested(c.id),
-                                  ),
+                                DeleteContractRequested(c.id),
+                              ),
                               icon: Icon(
                                 TablerIcons.trash,
                                 size: 18,
@@ -954,10 +949,7 @@ extension _HrExtraTabs on _HrViewState {
     );
   }
 
-  Future<void> _showContractSheet(
-    BuildContext context,
-    HrLoaded state,
-  ) async {
+  Future<void> _showContractSheet(BuildContext context, HrLoaded state) async {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
@@ -1046,12 +1038,12 @@ extension _HrExtraTabs on _HrViewState {
                 final number = numberCtrl.text.trim();
                 if (number.isEmpty) return;
                 this.context.read<HrBloc>().add(
-                      CreateContractRequested(
-                        employeeId: employeeId,
-                        number: number,
-                        startDate: startDate,
-                      ),
-                    );
+                  CreateContractRequested(
+                    employeeId: employeeId,
+                    number: number,
+                    startDate: startDate,
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -1091,12 +1083,12 @@ extension _HrExtraTabs on _HrViewState {
         onRefresh: () async {
           final done = Completer<void>();
           context.read<HrBloc>().add(
-                LoadHrSection(
-                  HrSection.movement,
-                  forceRefresh: true,
-                  completion: done,
-                ),
-              );
+            LoadHrSection(
+              HrSection.movement,
+              forceRefresh: true,
+              completion: done,
+            ),
+          );
           await done.future;
         },
         child: ListView(
@@ -1123,8 +1115,11 @@ extension _HrExtraTabs on _HrViewState {
                   child: LedgerCard(
                     child: Row(
                       children: [
-                        Icon(TablerIcons.user_plus,
-                            color: colors.accentGreen, size: 18),
+                        Icon(
+                          TablerIcons.user_plus,
+                          color: colors.accentGreen,
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -1182,8 +1177,11 @@ extension _HrExtraTabs on _HrViewState {
                   child: LedgerCard(
                     child: Row(
                       children: [
-                        Icon(TablerIcons.user_minus,
-                            color: colors.accentRed, size: 18),
+                        Icon(
+                          TablerIcons.user_minus,
+                          color: colors.accentRed,
+                          size: 18,
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(

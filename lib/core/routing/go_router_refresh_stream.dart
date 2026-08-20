@@ -1,18 +1,29 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-/// Вспомогательный класс для превращения потока событий (например, состояния Блока)
-/// в [Listenable], который используется в GoRouter для авто-перенаправлений.
+/// Turns one or more streams (e.g. [AuthBloc], [PermissionsCubit]) into a
+/// [Listenable] for [GoRouter.refreshListenable].
 class GoRouterRefreshStream extends ChangeNotifier {
-  late final StreamSubscription<dynamic> _subscription;
+  final List<StreamSubscription<dynamic>> _subscriptions = [];
 
   GoRouterRefreshStream(Stream<dynamic> stream) {
-    _subscription = stream.listen((dynamic _) => notifyListeners());
+    _subscriptions.add(stream.listen((_) => notifyListeners()));
+  }
+
+  /// Notify when any of [streams] emits (auth + permissions refresh).
+  GoRouterRefreshStream.merge(Iterable<Stream<dynamic>> streams) {
+    for (final stream in streams) {
+      _subscriptions.add(stream.listen((_) => notifyListeners()));
+    }
   }
 
   @override
   void dispose() {
-    _subscription.cancel();
+    for (final sub in _subscriptions) {
+      sub.cancel();
+    }
+    _subscriptions.clear();
     super.dispose();
   }
 }

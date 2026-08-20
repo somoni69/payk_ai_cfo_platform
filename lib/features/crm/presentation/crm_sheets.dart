@@ -19,10 +19,7 @@ import '../bloc/crm_state.dart';
 import '../domain/crm_models.dart';
 import 'crm_labels.dart';
 
-Future<void> showCrmClientForm(
-  BuildContext context, {
-  CrmClient? existing,
-}) {
+Future<void> showCrmClientForm(BuildContext context, {CrmClient? existing}) {
   final crmBloc = context.read<CrmBloc>();
   final language = context.read<LanguageCubit>();
   final nameCtrl = TextEditingController(text: existing?.fullName ?? '');
@@ -49,140 +46,142 @@ Future<void> showCrmClientForm(
       return BlocProvider.value(
         value: crmBloc,
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: nameCtrl,
-            style: textStyles.bodySans,
-            onChanged: (_) => dirty = true,
-            decoration: InputDecoration(
-              labelText: lang.translate('crm_full_name_company'),
-              prefixIcon: const Icon(TablerIcons.user, size: 20),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: phoneCtrl,
-            style: textStyles.bodySans,
-            keyboardType: TextInputType.phone,
-            onChanged: (_) => dirty = true,
-            decoration: InputDecoration(
-              labelText: lang.translate('crm_phone'),
-              prefixIcon: const Icon(TablerIcons.phone, size: 20),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: emailCtrl,
-            style: textStyles.bodySans,
-            keyboardType: TextInputType.emailAddress,
-            onChanged: (_) => dirty = true,
-            decoration: InputDecoration(
-              labelText: lang.translate('crm_email'),
-              prefixIcon: const Icon(TablerIcons.mail, size: 20),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: cacCtrl,
-            style: textStyles.bodyMono,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => dirty = true,
-            decoration: InputDecoration(
-              labelText: lang.translate('crm_acquisition_cost'),
-              prefixIcon: const Icon(TablerIcons.coin, size: 20),
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final picked = await showDatePicker(
-                context: ctx,
-                initialDate: birthDate ?? DateTime.now(),
-                firstDate: DateTime(1940),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) {
-                setSheet(() {
-                  birthDate = picked;
-                  dirty = true;
-                });
-              }
-            },
-            icon: const Icon(TablerIcons.cake, size: 18),
-            label: Text(
-              birthDate == null
-                  ? lang.translate('crm_birth_date')
-                  : formatLocalizedDateTime(
-                      ctx,
-                      birthDate!,
-                      style: LocalizedDateTimeStyle.date,
-                    ),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: nameCtrl,
               style: textStyles.bodySans,
+              onChanged: (_) => dirty = true,
+              decoration: InputDecoration(
+                labelText: lang.translate('crm_full_name_company'),
+                prefixIcon: const Icon(TablerIcons.user, size: 20),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: noteCtrl,
-            style: textStyles.bodySans,
-            maxLines: 2,
-            onChanged: (_) => dirty = true,
-            decoration: InputDecoration(
-              labelText: lang.translate('crm_note'),
-              prefixIcon: const Icon(TablerIcons.note, size: 20),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneCtrl,
+              style: textStyles.bodySans,
+              keyboardType: TextInputType.phone,
+              onChanged: (_) => dirty = true,
+              decoration: InputDecoration(
+                labelText: lang.translate('crm_phone'),
+                prefixIcon: const Icon(TablerIcons.phone, size: 20),
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
-              final cac = parseLocalizedNumber(ctx, cacCtrl.text) ?? 0;
-              final client = CrmClient(
-                id: existing?.id ?? '',
-                fullName: name,
-                phone: phoneCtrl.text.trim().isEmpty
-                    ? null
-                    : phoneCtrl.text.trim(),
-                email: emailCtrl.text.trim().isEmpty
-                    ? null
-                    : emailCtrl.text.trim(),
-                birthDate: birthDate,
-                loyaltyLevel: existing?.loyaltyLevel ?? 'bronze',
-                bonusPoints: existing?.bonusPoints ?? 0,
-                totalSpent: existing?.totalSpent ?? 0,
-                acquisitionCost: cac,
-                purchasesCount: existing?.purchasesCount ?? 0,
-                lastPurchaseAt: existing?.lastPurchaseAt,
-                note: noteCtrl.text.trim().isEmpty
-                    ? null
-                    : noteCtrl.text.trim(),
-                createdAt: existing?.createdAt ?? DateTime.now(),
-                roi: existing?.roi,
-                churnRisk: existing?.churnRisk ?? false,
-              );
-              if (existing == null) {
-                ctx.read<CrmBloc>().add(CreateClientRequested(client));
-              } else {
-                ctx.read<CrmBloc>().add(
-                      UpdateClientRequested(
-                        id: existing.id,
-                        fullName: client.fullName,
-                        phone: client.phone,
-                        email: client.email,
-                        birthDate: client.birthDate,
-                        acquisitionCost: client.acquisitionCost,
-                        note: client.note,
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailCtrl,
+              style: textStyles.bodySans,
+              keyboardType: TextInputType.emailAddress,
+              onChanged: (_) => dirty = true,
+              decoration: InputDecoration(
+                labelText: lang.translate('crm_email'),
+                prefixIcon: const Icon(TablerIcons.mail, size: 20),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: cacCtrl,
+              style: textStyles.bodyMono,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              onChanged: (_) => dirty = true,
+              decoration: InputDecoration(
+                labelText: lang.translate('crm_acquisition_cost'),
+                prefixIcon: const Icon(TablerIcons.coin, size: 20),
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: ctx,
+                  initialDate: birthDate ?? DateTime.now(),
+                  firstDate: DateTime(1940),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) {
+                  setSheet(() {
+                    birthDate = picked;
+                    dirty = true;
+                  });
+                }
+              },
+              icon: const Icon(TablerIcons.cake, size: 18),
+              label: Text(
+                birthDate == null
+                    ? lang.translate('crm_birth_date')
+                    : formatLocalizedDateTime(
+                        ctx,
+                        birthDate!,
+                        style: LocalizedDateTimeStyle.date,
                       ),
-                    );
-              }
-              Navigator.of(ctx).pop();
-            },
-            child: Text(lang.translate('crm_save')),
-          ),
-        ],
-      ),
-    );
+                style: textStyles.bodySans,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              style: textStyles.bodySans,
+              maxLines: 2,
+              onChanged: (_) => dirty = true,
+              decoration: InputDecoration(
+                labelText: lang.translate('crm_note'),
+                prefixIcon: const Icon(TablerIcons.note, size: 20),
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                final name = nameCtrl.text.trim();
+                if (name.isEmpty) return;
+                final cac = parseLocalizedNumber(ctx, cacCtrl.text) ?? 0;
+                final client = CrmClient(
+                  id: existing?.id ?? '',
+                  fullName: name,
+                  phone: phoneCtrl.text.trim().isEmpty
+                      ? null
+                      : phoneCtrl.text.trim(),
+                  email: emailCtrl.text.trim().isEmpty
+                      ? null
+                      : emailCtrl.text.trim(),
+                  birthDate: birthDate,
+                  loyaltyLevel: existing?.loyaltyLevel ?? 'bronze',
+                  bonusPoints: existing?.bonusPoints ?? 0,
+                  totalSpent: existing?.totalSpent ?? 0,
+                  acquisitionCost: cac,
+                  purchasesCount: existing?.purchasesCount ?? 0,
+                  lastPurchaseAt: existing?.lastPurchaseAt,
+                  note: noteCtrl.text.trim().isEmpty
+                      ? null
+                      : noteCtrl.text.trim(),
+                  createdAt: existing?.createdAt ?? DateTime.now(),
+                  roi: existing?.roi,
+                  churnRisk: existing?.churnRisk ?? false,
+                );
+                if (existing == null) {
+                  ctx.read<CrmBloc>().add(CreateClientRequested(client));
+                } else {
+                  ctx.read<CrmBloc>().add(
+                    UpdateClientRequested(
+                      id: existing.id,
+                      fullName: client.fullName,
+                      phone: client.phone,
+                      email: client.email,
+                      birthDate: client.birthDate,
+                      acquisitionCost: client.acquisitionCost,
+                      note: client.note,
+                    ),
+                  );
+                }
+                Navigator.of(ctx).pop();
+              },
+              child: Text(lang.translate('crm_save')),
+            ),
+          ],
+        ),
+      );
     },
   );
 }
@@ -200,8 +199,8 @@ Future<void> showCrmDealForm(
         ? localizedDecimalFormat(context).format(existing.amount)
         : '',
   );
-  String clientId = existing?.clientId ??
-      (clients.isNotEmpty ? clients.first.id : '');
+  String clientId =
+      existing?.clientId ?? (clients.isNotEmpty ? clients.first.id : '');
   String stage = existing?.stage ?? 'lead';
   DateTime? expected = existing?.expectedClose;
   var dirty = false;
@@ -224,7 +223,9 @@ Future<void> showCrmDealForm(
             if (existing == null) ...[
               Text(
                 lang.translate('crm_client_label'),
-                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 6),
               ExpansibleWidget<CrmClient>.selection(
@@ -242,7 +243,9 @@ Future<void> showCrmDealForm(
                   ),
                 ),
                 items: clients,
-                selectedValue: clients.where((c) => c.id == clientId).firstOrNull,
+                selectedValue: clients
+                    .where((c) => c.id == clientId)
+                    .firstOrNull,
                 itemLabelBuilder: (c) => c.fullName,
                 onSelected: (c) {
                   setSheet(() {
@@ -265,7 +268,9 @@ Future<void> showCrmDealForm(
             TextField(
               controller: amountCtrl,
               style: textStyles.bodyMono,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onChanged: (_) => dirty = true,
               decoration: InputDecoration(
                 labelText: lang.translate('crm_deal_amount'),
@@ -417,7 +422,9 @@ Future<void> showCrmPurchaseSheet(BuildContext context, CrmClient client) {
               controller: amountCtrl,
               style: textStyles.bodyMono,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onChanged: (_) => dirty = true,
               decoration: InputDecoration(
                 labelText: lang.translate('crm_purchase_amount'),
@@ -503,7 +510,9 @@ Future<void> showCrmBonusSheet(
             if (pool.length > 1) ...[
               Text(
                 lang.translate('crm_client_label'),
-                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 6),
               ExpansibleWidget<CrmClient>.selection(
@@ -529,7 +538,9 @@ Future<void> showCrmBonusSheet(
             ] else if (pool.isNotEmpty)
               Text(
                 pool.first.fullName,
-                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             const SizedBox(height: 12),
             TextField(
@@ -598,7 +609,10 @@ Future<void> showCrmSmsSheet(BuildContext context, CrmClient client) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(client.fullName, style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500)),
+            Text(
+              client.fullName,
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
             if (client.phone != null)
               Text(
                 client.phone!,
@@ -622,10 +636,7 @@ Future<void> showCrmSmsSheet(BuildContext context, CrmClient client) {
                 final text = textCtrl.text.trim();
                 if (text.isEmpty) return;
                 crmBloc.add(
-                  SendReactivationRequested(
-                    clientId: client.id,
-                    text: text,
-                  ),
+                  SendReactivationRequested(clientId: client.id, text: text),
                 );
                 Navigator.of(ctx).pop();
               },
@@ -662,10 +673,10 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
       final lang = ctx.read<LanguageCubit>();
       final oCcy = localizedDecimalFormat(ctx);
       final auth = ctx.read<AuthBloc>().state;
-      final canWrite = auth is AuthAuthenticated &&
-          auth.role.canWrite(AppCapability.crm);
-      final canDelete = auth is AuthAuthenticated &&
-          auth.role.canDelete(AppCapability.crm);
+      final canWrite =
+          auth is AuthAuthenticated && auth.role.canWrite(AppCapability.crm);
+      final canDelete =
+          auth is AuthAuthenticated && auth.role.canDelete(AppCapability.crm);
 
       return BlocProvider.value(
         value: crmBloc,
@@ -821,10 +832,7 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(
-                        detail.fullName,
-                        style: textStyles.h2Sans,
-                      ),
+                      child: Text(detail.fullName, style: textStyles.h2Sans),
                     ),
                     LedgerPill(
                       text: crmLoyaltyLabel(lang, detail.loyaltyLevel),
@@ -844,7 +852,11 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                   child: Column(
                     children: [
                       _kv(ctx, 'LTV', '${oCcy.format(detail.totalSpent)} TJS'),
-                      _kv(ctx, 'CAC', '${oCcy.format(detail.acquisitionCost)} TJS'),
+                      _kv(
+                        ctx,
+                        'CAC',
+                        '${oCcy.format(detail.acquisitionCost)} TJS',
+                      ),
                       _kv(
                         ctx,
                         'ROI',
@@ -890,7 +902,9 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                               nameCtrl.text = detail.fullName;
                               phoneCtrl.text = detail.phone ?? '';
                               emailCtrl.text = detail.email ?? '';
-                              cacCtrl.text = oCcy.format(detail.acquisitionCost);
+                              cacCtrl.text = oCcy.format(
+                                detail.acquisitionCost,
+                              );
                               birthDate = detail.birthDate;
                               noteCtrl.text = detail.note ?? '';
                               isEditing = true;
@@ -908,7 +922,8 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                       const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => showCrmPurchaseSheet(context, detail),
+                          onPressed: () =>
+                              showCrmPurchaseSheet(context, detail),
                           icon: const Icon(TablerIcons.shopping_cart, size: 18),
                           label: Text(
                             lang.translate('crm_register_purchase'),
@@ -923,10 +938,8 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => showCrmBonusSheet(
-                        context,
-                        client: detail,
-                      ),
+                      onPressed: () =>
+                          showCrmBonusSheet(context, client: detail),
                       icon: const Icon(TablerIcons.gift, size: 18),
                       label: Text(lang.translate('crm_add_bonus')),
                     ),
@@ -935,7 +948,9 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                 ],
                 Text(
                   lang.translate('crm_client_deals'),
-                  style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (state.detailDeals.isEmpty)
@@ -984,7 +999,9 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                 const SizedBox(height: 12),
                 Text(
                   lang.translate('crm_client_loyalty_history'),
-                  style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (state.detailLoyalty.isEmpty)
@@ -1075,7 +1092,10 @@ Widget _kv(BuildContext context, String label, String value) {
             style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
         ),
-        Text(value, style: textStyles.smallMono.copyWith(fontWeight: FontWeight.w500)),
+        Text(
+          value,
+          style: textStyles.smallMono.copyWith(fontWeight: FontWeight.w500),
+        ),
       ],
     ),
   );

@@ -583,6 +583,12 @@ class _GanttTaskTab extends StatelessWidget {
                                 TaskStatus.done.localizationKey,
                               ),
                             ),
+                            _legendItem(
+                              context,
+                              colors.accentAmber.withValues(alpha: 0.12),
+                              colors.accentAmber,
+                              language.translate('tasks_source_personal'),
+                            ),
                           ],
                         ),
                       ),
@@ -591,9 +597,12 @@ class _GanttTaskTab extends StatelessWidget {
 
                   final task = tasks[index - 2];
                   final palette = _paletteForStatus(context, task.status);
-                  final assignee = language.translateMessage(
-                    task.assigneeName ?? language.translate('tasks_unassigned'),
-                  );
+                  final assignee = task.isPersonal
+                      ? language.translate('tasks_source_personal')
+                      : language.translateMessage(
+                          task.assigneeName ??
+                              language.translate('tasks_unassigned'),
+                        );
 
                   return SizedBox(
                     width: chartWidth,

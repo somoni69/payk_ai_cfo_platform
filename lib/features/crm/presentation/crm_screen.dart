@@ -72,8 +72,8 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
   Future<void> _refresh(BuildContext context) {
     final done = Completer<void>();
     context.read<CrmBloc>().add(
-          LoadCrmData(forceRefresh: true, completion: done),
-        );
+      LoadCrmData(forceRefresh: true, completion: done),
+    );
     return done.future;
   }
 
@@ -149,15 +149,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabs,
                 isScrollable: true,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
                 tabs: [
                   Tab(text: language.translate('crm_tab_clients')),
                   Tab(text: language.translate('crm_tab_funnel')),
@@ -183,8 +177,9 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(language.resolveMessage(msg)),
-                backgroundColor:
-                    isError ? colors.accentRed : colors.accentGreen,
+                backgroundColor: isError
+                    ? colors.accentRed
+                    : colors.accentGreen,
               ),
             );
             context.read<CrmBloc>().add(const ClearCrmFeedback());
@@ -221,8 +216,8 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
                               const Duration(milliseconds: 350),
                               () {
                                 context.read<CrmBloc>().add(
-                                      ClientFiltersChanged(query: q),
-                                    );
+                                  ClientFiltersChanged(query: q),
+                                );
                               },
                             );
                           },
@@ -405,7 +400,7 @@ class _ClientsTab extends StatelessWidget {
     final pages = state.clientsSize <= 0
         ? 1
         : ((state.clientsTotal + state.clientsSize - 1) ~/ state.clientsSize)
-            .clamp(1, 9999);
+              .clamp(1, 9999);
 
     return RefreshIndicator(
       onRefresh: onRefresh,
@@ -462,8 +457,8 @@ class _ClientsTab extends StatelessWidget {
                       itemLabelBuilder: (o) => o.label,
                       onSelected: (o) {
                         context.read<CrmBloc>().add(
-                              ClientFiltersChanged(level: o.value),
-                            );
+                          ClientFiltersChanged(level: o.value),
+                        );
                       },
                     ),
                   ],
@@ -522,15 +517,18 @@ class _ClientsTab extends StatelessWidget {
                                   if (client.churnRisk) ...[
                                     const SizedBox(width: 6),
                                     LedgerPill(
-                                      text: language.translate('crm_churn_risk'),
-                                      backgroundColor:
-                                          colors.accentRed.withValues(alpha: 0.08),
+                                      text: language.translate(
+                                        'crm_churn_risk',
+                                      ),
+                                      backgroundColor: colors.accentRed
+                                          .withValues(alpha: 0.08),
                                       textColor: colors.accentRed,
                                     ),
                                   ],
                                 ],
                               ),
-                              if (client.phone != null || client.email != null) ...[
+                              if (client.phone != null ||
+                                  client.email != null) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   client.phone ?? client.email!,
@@ -596,10 +594,10 @@ class _ClientsTab extends StatelessWidget {
                         onPressed: state.clientsPage <= 1
                             ? null
                             : () => context.read<CrmBloc>().add(
-                                  ClientFiltersChanged(
-                                    page: state.clientsPage - 1,
-                                  ),
+                                ClientFiltersChanged(
+                                  page: state.clientsPage - 1,
                                 ),
+                              ),
                         child: Text(language.translate('crm_prev_page')),
                       ),
                       Text(
@@ -612,10 +610,10 @@ class _ClientsTab extends StatelessWidget {
                         onPressed: state.clientsPage >= pages
                             ? null
                             : () => context.read<CrmBloc>().add(
-                                  ClientFiltersChanged(
-                                    page: state.clientsPage + 1,
-                                  ),
+                                ClientFiltersChanged(
+                                  page: state.clientsPage + 1,
                                 ),
+                              ),
                         child: Text(language.translate('crm_next_page')),
                       ),
                     ],
@@ -763,10 +761,10 @@ class _LoyaltyTab extends StatelessWidget {
                     itemLabelBuilder: (o) => o.label,
                     onSelected: (o) {
                       context.read<CrmBloc>().add(
-                            LoyaltyHistoryFilterChanged(
-                              o.value.isEmpty ? null : o.value,
-                            ),
-                          );
+                        LoyaltyHistoryFilterChanged(
+                          o.value.isEmpty ? null : o.value,
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -776,10 +774,7 @@ class _LoyaltyTab extends StatelessWidget {
           if (canWrite && pick.isNotEmpty) ...[
             const SizedBox(height: 12),
             ElevatedButton.icon(
-              onPressed: () => showCrmBonusSheet(
-                context,
-                clients: pick,
-              ),
+              onPressed: () => showCrmBonusSheet(context, clients: pick),
               icon: const Icon(TablerIcons.gift, size: 18),
               label: Text(language.translate('crm_add_bonus')),
             ),
@@ -793,9 +788,7 @@ class _LoyaltyTab extends StatelessWidget {
           else if (state.loyaltyTxns.isEmpty)
             Text(
               language.translate('crm_no_history'),
-              style: textStyles.captionSans.copyWith(
-                color: colors.textTooltip,
-              ),
+              style: textStyles.captionSans.copyWith(color: colors.textTooltip),
             )
           else
             ...state.loyaltyTxns.map((t) {
@@ -850,9 +843,8 @@ class _LoyaltyTab extends StatelessWidget {
               const Center(child: CircularProgressIndicator())
             else
               OutlinedButton(
-                onPressed: () => context.read<CrmBloc>().add(
-                      const LoadMoreLoyaltyTxns(),
-                    ),
+                onPressed: () =>
+                    context.read<CrmBloc>().add(const LoadMoreLoyaltyTxns()),
                 child: Text(language.translate('crm_loyalty_load_more')),
               ),
           ],
@@ -1024,8 +1016,9 @@ class _ChurnTab extends StatelessWidget {
                           ),
                           LedgerPill(
                             text: language.translate('crm_churn_risk'),
-                            backgroundColor:
-                                colors.accentRed.withValues(alpha: 0.08),
+                            backgroundColor: colors.accentRed.withValues(
+                              alpha: 0.08,
+                            ),
                             textColor: colors.accentRed,
                           ),
                         ],
@@ -1038,8 +1031,8 @@ class _ChurnTab extends StatelessWidget {
                         const SizedBox(height: 8),
                         OutlinedButton.icon(
                           onPressed: () => context.read<CrmBloc>().add(
-                                AnalyzeChurnRequested(c.id),
-                              ),
+                            AnalyzeChurnRequested(c.id),
+                          ),
                           icon: const Icon(TablerIcons.brain, size: 18),
                           label: Text(language.translate('crm_ai_analyze')),
                         ),
@@ -1161,7 +1154,11 @@ class _ErrorBody extends StatelessWidget {
           children: [
             Icon(TablerIcons.alert_circle, size: 48, color: colors.accentRed),
             const SizedBox(height: 16),
-            Text(message, style: textStyles.bodySans, textAlign: TextAlign.center),
+            Text(
+              message,
+              style: textStyles.bodySans,
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: onRetry,

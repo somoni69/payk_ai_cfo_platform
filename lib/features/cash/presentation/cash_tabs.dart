@@ -10,6 +10,19 @@ extension _CashTabBuilders on _CashViewState {
 
     final isEmpty = state.filteredTransactions.isEmpty;
     final totalItems = isEmpty ? 2 : state.filteredTransactions.length + 1;
+    final auth = context.watch<AuthBloc>().state;
+    final role = auth is AuthAuthenticated ? auth.role : UserRole.viewer;
+    final perms = context.watch<PermissionsCubit>();
+    final canEdit = perms.can(
+      AppCapability.cash,
+      action: PermAction.edit,
+      fallbackRole: role,
+    );
+    final canDelete = perms.can(
+      AppCapability.cash,
+      action: PermAction.delete,
+      fallbackRole: role,
+    );
 
     return RefreshIndicator(
       onRefresh: () => _refreshCash(context),
@@ -17,7 +30,8 @@ extension _CashTabBuilders on _CashViewState {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         itemCount: totalItems,
-        separatorBuilder: (context, index) => SizedBox(height: index == 0 ? 8 : 6),
+        separatorBuilder: (context, index) =>
+            SizedBox(height: index == 0 ? 8 : 6),
         itemBuilder: (context, index) {
           if (index == 0) {
             // Системный блок фильтров, который прокручивается вместе со списком операций
@@ -42,7 +56,9 @@ extension _CashTabBuilders on _CashViewState {
                       );
                     },
                     decoration: InputDecoration(
-                      hintText: language.translate('cash_search_counterparty_hint'),
+                      hintText: language.translate(
+                        'cash_search_counterparty_hint',
+                      ),
                       prefixIcon: Icon(
                         TablerIcons.search,
                         size: 18,
@@ -85,7 +101,9 @@ extension _CashTabBuilders on _CashViewState {
                               if (item == 'expense') {
                                 return language.translate('cash_expense');
                               }
-                              return language.translate('cash_filter_all_types');
+                              return language.translate(
+                                'cash_filter_all_types',
+                              );
                             },
                             onSelected: (val) {
                               _rebuild(() => _selectedType = val);
@@ -168,7 +186,9 @@ extension _CashTabBuilders on _CashViewState {
                             tilePadding: EdgeInsets.zero,
                             title: Text(
                               _selectedRegister == 'all'
-                                  ? language.translate('cash_filter_all_registers')
+                                  ? language.translate(
+                                      'cash_filter_all_registers',
+                                    )
                                   : (state.registers
                                         .firstWhere(
                                           (r) => r.id == _selectedRegister,
@@ -220,7 +240,9 @@ extension _CashTabBuilders on _CashViewState {
                               context: context,
                               initialDate: _dateFrom ?? DateTime.now(),
                               firstDate: DateTime(2020),
-                              lastDate: DateTime.now().add(const Duration(days: 1)),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 1),
+                              ),
                             );
                             if (picked == null || !context.mounted) return;
                             _rebuild(() => _dateFrom = picked);
@@ -250,7 +272,9 @@ extension _CashTabBuilders on _CashViewState {
                               context: context,
                               initialDate: _dateTo ?? DateTime.now(),
                               firstDate: DateTime(2020),
-                              lastDate: DateTime.now().add(const Duration(days: 1)),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 1),
+                              ),
                             );
                             if (picked == null || !context.mounted) return;
                             _dateTo = picked;
@@ -311,14 +335,47 @@ extension _CashTabBuilders on _CashViewState {
                 padding: const EdgeInsets.symmetric(vertical: 48),
                 child: Text(
                   language.translate('cash_operations_empty'),
-                  style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               ),
             );
           }
 
           final tx = state.filteredTransactions[index - 1];
-          return CashTransactionTile(transaction: tx);
+          return CashTransactionTile(
+            transaction: tx,
+            onEdit: canEdit && tx.isManual
+                ? () => _showEditTransactionSheet(context, tx)
+                : null,
+            onDelete: canDelete && tx.isManual
+                ? () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: Text(language.translate('cash_delete_title')),
+                        content: Text(language.translate('cash_delete_msg')),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: Text(language.translate('common_cancel')),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: Text(language.translate('common_delete')),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (ok == true && context.mounted) {
+                      context.read<CashBloc>().add(
+                        DeleteTransactionRequested(tx.id),
+                      );
+                    }
+                  }
+                : null,
+          );
         },
       ),
     );
@@ -382,17 +439,23 @@ extension _CashTabBuilders on _CashViewState {
                     ],
                   ),
                 ),
-                LedgerPill(
-                  text: shift.isOpen
-                      ? language.translate('cash_shift_open')
-                      : language.translate('cash_shift_closed'),
-                  backgroundColor: shift.isOpen
-                      ? colors.accentGreen.withValues(alpha: 0.1)
-                      : colors.textSecondary.withValues(alpha: 0.1),
-                  textColor: shift.isOpen
-                      ? colors.accentGreen
-                      : colors.textSecondary,
-                ),
+                if (shift.isOpen && !isViewer)
+                  TextButton(
+                    onPressed: () => _showCloseShiftBottomSheet(context, shift),
+                    child: Text(language.translate('cash_close_shift_action')),
+                  )
+                else
+                  LedgerPill(
+                    text: shift.isOpen
+                        ? language.translate('cash_shift_open')
+                        : language.translate('cash_shift_closed'),
+                    backgroundColor: shift.isOpen
+                        ? colors.accentGreen.withValues(alpha: 0.1)
+                        : colors.textSecondary.withValues(alpha: 0.1),
+                    textColor: shift.isOpen
+                        ? colors.accentGreen
+                        : colors.textSecondary,
+                  ),
               ],
             ),
             children: [
@@ -473,11 +536,19 @@ extension _CashTabBuilders on _CashViewState {
     final oCcy = localizedDecimalFormat(context);
 
     if (summaries.isEmpty) {
-      return Center(
-        child: Text(
-          language.translate('cash_register_summary_empty'),
-          style: textStyles.captionSans.copyWith(color: colors.textTooltip),
-        ),
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const LedgerAdvicePanel(module: 'cash'),
+          const SalesProfitCard(),
+          const SizedBox(height: 16),
+          Center(
+            child: Text(
+              language.translate('cash_register_summary_empty'),
+              style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+            ),
+          ),
+        ],
       );
     }
 
@@ -485,9 +556,16 @@ extension _CashTabBuilders on _CashViewState {
       onRefresh: () => _refreshCash(context),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: summaries.length,
+        itemCount: summaries.length + 2,
         separatorBuilder: (context, index) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
+          if (index == 0) {
+            return const LedgerAdvicePanel(module: 'cash');
+          }
+          if (index == 1) {
+            return const SalesProfitCard();
+          }
+          index -= 2;
           final row = summaries[index];
           final isNegativeNet = row.net < 0;
 

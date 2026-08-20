@@ -112,9 +112,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<StoreTransfer>> getStoreTransfers() async {
     try {
-      final response = await _client.dio.get(
-        '/finance-ops/store-transfers',
-      );
+      final response = await _client.dio.get('/finance-ops/store-transfers');
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => StoreTransfer.fromJson(e as Map<String, dynamic>))
@@ -127,9 +125,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<FinancialAid>> getFinancialAids() async {
     try {
-      final response = await _client.dio.get(
-        '/finance-ops/financial-aid',
-      );
+      final response = await _client.dio.get('/finance-ops/financial-aid');
       if (response.statusCode == 200 && response.data is List) {
         return (response.data as List)
             .map((e) => FinancialAid.fromJson(e as Map<String, dynamic>))
@@ -153,10 +149,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
       date: DateTime.now(),
     );
     try {
-      await _client.dio.post(
-        '/finance-ops/encashments',
-        data: enc.toJson(),
-      );
+      await _client.dio.post('/finance-ops/encashments', data: enc.toJson());
     } catch (_) {}
 
     _mockEncashments.insert(0, enc);
@@ -178,10 +171,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
       date: DateTime.now(),
     );
     try {
-      await _client.dio.post(
-        '/finance-ops/store-transfers',
-        data: tr.toJson(),
-      );
+      await _client.dio.post('/finance-ops/store-transfers', data: tr.toJson());
     } catch (_) {}
 
     _mockTransfers.insert(0, tr);
@@ -227,10 +217,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
       date: DateTime.now(),
     );
     try {
-      await _client.dio.post(
-        '/finance-ops/financial-aid',
-        data: aid.toJson(),
-      );
+      await _client.dio.post('/finance-ops/financial-aid', data: aid.toJson());
     } catch (_) {}
 
     _mockAids.insert(0, aid);
@@ -297,10 +284,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
     try {
       final response = await _client.dio.patch(
         '/finance-ops/banks/$id',
-        data: {
-          'name': ?name,
-          'is_active': ?isActive,
-        },
+        data: {'name': ?name, 'is_active': ?isActive},
       );
       if (response.data is Map) {
         final bank = BankAccount.fromJson(
@@ -350,9 +334,7 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<void> cancelStoreTransfer(String transferId) async {
     try {
-      await _client.dio.post(
-        '/finance-ops/store-transfers/$transferId/cancel',
-      );
+      await _client.dio.post('/finance-ops/store-transfers/$transferId/cancel');
     } catch (_) {}
     final idx = _mockTransfers.indexWhere((t) => t.id == transferId);
     if (idx != -1) {

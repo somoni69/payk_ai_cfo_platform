@@ -54,6 +54,7 @@ extension _TasksAnalysisBuilders on _TasksViewState {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          const LedgerAdvicePanel(module: 'tasks'),
           Row(
             children: [
               Icon(

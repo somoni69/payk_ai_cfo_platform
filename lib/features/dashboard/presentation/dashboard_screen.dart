@@ -16,11 +16,14 @@ import '../../../features/dashboard/bloc/dashboard_state.dart';
 import '../../../features/dashboard/domain/finance_repository.dart';
 import '../../../features/dashboard/domain/finance_model.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_ai_card.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+import '../../cash/presentation/sales_profit_card.dart';
+import '../../assistant/presentation/ledger_advice_panel.dart';
+import '../../notifications/presentation/notification_bell.dart';
+import 'currency_board_card.dart';
 
 part 'dashboard_sections.dart';
 part 'dashboard_tab_pnl.dart';
@@ -33,17 +36,40 @@ part 'dashboard_tab_ai.dart';
 part 'dashboard_chart.dart';
 
 /// Входная точка экрана аналитики с внедрением DashboardBloc.
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  var _activated = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_activated || !TickerMode.valuesOf(context).enabled) return;
+    _activated = true;
+    context.read<DashboardBloc>().add(LoadDashboardData());
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BlocProvider<DashboardBloc>(
-      create: (context) =>
-          DashboardBloc(context.read<FinanceRepository>())
-            ..add(LoadDashboardData()),
-      child: const DashboardView(),
-    );
+    if (!_activated && !TickerMode.valuesOf(context).enabled) {
+      return const SizedBox.shrink();
+    }
+    try {
+      context.read<DashboardBloc>();
+      return const DashboardView();
+    } catch (_) {
+      return BlocProvider<DashboardBloc>(
+        create: (context) =>
+            DashboardBloc(context.read<FinanceRepository>())
+              ..add(LoadDashboardData()),
+        child: const DashboardView(),
+      );
+    }
   }
 }
 
@@ -188,229 +214,218 @@ class _DashboardViewState extends State<DashboardView>
         final currency = loadedState?.currency ?? 'TJS';
 
         final authState = context.watch<AuthBloc>().state;
-        final canWrite = authState is AuthAuthenticated &&
+        final canWrite =
+            authState is AuthAuthenticated &&
             authState.role.canWrite(AppCapability.dashboard);
 
         return Scaffold(
-          floatingActionButton: (_activeTabIndex == 2 && canWrite && loadedState != null)
+          floatingActionButton:
+              (_activeTabIndex == 2 && canWrite && loadedState != null)
               ? FloatingActionButton.extended(
                   onPressed: () {
                     final period =
                         loadedState.planFact?.period ?? _defaultPlanPeriod();
                     _showCreatePlanSheet(context, period);
                   },
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.plus),
-                    label: Text(
-                      languageCubit.translate('dashboard_plan_add'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : null,
-            body: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  LedgerCollapsingHeader(
-                    title: languageCubit.translate('dashboard_title'),
-                    titleWidget: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Image.asset(
-                          'assets/images/payk_icon.png',
-                          height: 24,
-                          fit: BoxFit.contain,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            languageCubit.translate('dashboard_title'),
-                            style: textStyles.h1Sans.copyWith(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                        ),
-                      ],
-                    ),
-                    pinned: true,
-                    floating: true,
-                    snap: true,
-                    actions: [_buildCurrencySelector(context, currency)],
-                    bottom: TabBar(
-                      controller: _tabController,
-                      isScrollable: true,
-                      labelColor: colors.brand,
-                      unselectedLabelColor: colors.textSecondary,
-                      indicatorColor: colors.brand,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: colors.border,
-                      labelStyle: textStyles.captionSans.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      unselectedLabelStyle: textStyles.captionSans.copyWith(
-                        fontWeight: FontWeight.w400,
-                      ),
-                      tabs: [
-                        Tab(
-                          text: languageCubit.translate(
-                            'dashboard_tab_overview',
-                          ),
-                        ),
-                        Tab(text: languageCubit.translate('dashboard_tab_pnl')),
-                        Tab(
-                          text: languageCubit.translate(
-                            'dashboard_tab_plan_fact',
-                          ),
-                        ),
-                        Tab(
-                          text: languageCubit.translate(
-                            'dashboard_tab_break_even',
-                          ),
-                        ),
-                        Tab(text: languageCubit.translate('dashboard_tab_abc')),
-                        Tab(
-                          text: languageCubit.translate(
-                            'dashboard_tab_accounts_rates',
-                          ),
-                        ),
-                        Tab(
-                          text: languageCubit.translate(
-                            'dashboard_tab_clients',
-                          ),
-                        ),
-                        Tab(
-                          text: languageCubit.translate(
-                            'dashboard_tab_ai_insights',
-                          ),
-                        ),
-                      ],
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.brand),
+                  ),
+                  icon: const Icon(TablerIcons.plus),
+                  label: Text(
+                    languageCubit.translate('dashboard_plan_add'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ];
-              },
-              body: loadedState == null
-                  ? const DashboardOverviewShimmer()
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        RefreshIndicator(
-                          onRefresh: () => _refreshDashboard(context),
-                          child: SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // AI Рекомендация (MOB-04 / FIN-11)
-                                  LedgerAICard(
-                                    title: languageCubit.translate(
-                                      'dashboard_daily_recommendation_title',
-                                    ),
-                                    content: languageCubit.translate(
-                                      'dashboard_daily_recommendation_content',
-                                    ),
-                                  ),
-                                  const SizedBox(height: 20),
+                )
+              : null,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                LedgerCollapsingHeader(
+                  title: languageCubit.translate('dashboard_title'),
+                  titleWidget: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/payk_icon.png',
+                        height: 24,
+                        fit: BoxFit.contain,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          languageCubit.translate('dashboard_title'),
+                          style: textStyles.h1Sans.copyWith(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  pinned: true,
+                  floating: true,
+                  snap: true,
+                  actions: [
+                    const NotificationBell(),
+                    _buildCurrencySelector(context, currency),
+                  ],
+                  bottom: LedgerTabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    tabs: [
+                      Tab(
+                        text: languageCubit.translate('dashboard_tab_overview'),
+                      ),
+                      Tab(text: languageCubit.translate('dashboard_tab_pnl')),
+                      Tab(
+                        text: languageCubit.translate(
+                          'dashboard_tab_plan_fact',
+                        ),
+                      ),
+                      Tab(
+                        text: languageCubit.translate(
+                          'dashboard_tab_break_even',
+                        ),
+                      ),
+                      Tab(text: languageCubit.translate('dashboard_tab_abc')),
+                      Tab(
+                        text: languageCubit.translate(
+                          'dashboard_tab_accounts_rates',
+                        ),
+                      ),
+                      Tab(
+                        text: languageCubit.translate('dashboard_tab_clients'),
+                      ),
+                      Tab(
+                        text: languageCubit.translate(
+                          'dashboard_tab_ai_insights',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ];
+            },
+            body: loadedState == null
+                ? const DashboardOverviewShimmer()
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      RefreshIndicator(
+                        onRefresh: () => _refreshDashboard(context),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const LedgerAdvicePanel(module: 'finance'),
+                                const SizedBox(height: 4),
 
-                                  // Сетка 6 ключевых цифр
-                                  Text(
-                                    languageCubit.translate(
-                                      'dashboard_key_metrics_title',
-                                    ),
-                                    style: textStyles.bodySans.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                // Сетка 6 ключевых цифр
+                                Text(
+                                  languageCubit.translate(
+                                    'dashboard_key_metrics_title',
                                   ),
-                                  const SizedBox(height: 8),
-                                  _buildMetricsGrid(loadedState.metrics, currency),
-                                  const SizedBox(height: 20),
+                                  style: textStyles.bodySans.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildMetricsGrid(
+                                  loadedState.metrics,
+                                  currency,
+                                ),
+                                const SizedBox(height: 16),
+                                const SalesProfitCard(hideOnError: true),
+                                const SizedBox(height: 12),
+                                const CurrencyBoardCard(),
+                                const SizedBox(height: 20),
 
-                                  // Реальный график движения денежных средств
-                                  Text(
-                                    languageCubit.translate(
-                                      'dashboard_cash_flow_30_days_title',
-                                    ),
-                                    style: textStyles.bodySans.copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                // Реальный график движения денежных средств
+                                Text(
+                                  languageCubit.translate(
+                                    'dashboard_cash_flow_30_days_title',
                                   ),
-                                  const SizedBox(height: 8),
-                                  _buildChart(loadedState.history, currency),
-                                  const SizedBox(height: 20),
-                                ],
-                              ),
+                                  style: textStyles.bodySans.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                _buildChart(loadedState.history, currency),
+                                const SizedBox(height: 20),
+                              ],
                             ),
                           ),
                         ),
-                  _buildLazyDashboardSection<PnlReport>(
-                    section: DashboardSection.pnl,
-                    select: (loaded) => loaded.pnl,
-                    contentBuilder: _buildPnlTab,
+                      ),
+                      _buildLazyDashboardSection<PnlReport>(
+                        section: DashboardSection.pnl,
+                        select: (loaded) => loaded.pnl,
+                        contentBuilder: _buildPnlTab,
+                      ),
+                      _buildLazyDashboardSection<PlanFactReport>(
+                        section: DashboardSection.planFact,
+                        select: (loaded) => loaded.planFact,
+                        contentBuilder: _buildPlanFactTab,
+                      ),
+                      _buildLazyDashboardSection<BreakEvenAnalysis>(
+                        section: DashboardSection.breakEven,
+                        select: (loaded) => loaded.breakEven,
+                        contentBuilder: _buildBreakEvenTab,
+                      ),
+                      _buildLazyDashboardSection<AbcAnalysis>(
+                        section: DashboardSection.abc,
+                        select: (loaded) => loaded.abc,
+                        contentBuilder: _buildAbcTab,
+                      ),
+                      _buildLazyDashboardSection<_AccountsRatesData>(
+                        section: DashboardSection.accountsRates,
+                        select: (loaded) {
+                          final accounts = loaded.bankAccounts;
+                          final rates = loaded.rates;
+                          return accounts == null || rates == null
+                              ? null
+                              : _AccountsRatesData(accounts, rates);
+                        },
+                        contentBuilder: (context, data, currency) {
+                          return _buildAccountsRatesTab(
+                            context,
+                            data.accounts,
+                            data.rates,
+                            currency,
+                          );
+                        },
+                      ),
+                      _buildLazyDashboardSection<ClientAnalysisReport>(
+                        section: DashboardSection.clients,
+                        select: (loaded) => loaded.clients,
+                        contentBuilder: (context, data, currency) =>
+                            _buildClientsTab(context, data),
+                      ),
+                      _buildLazyDashboardSection<AiInsightsReport>(
+                        section: DashboardSection.aiInsights,
+                        select: (loaded) => loaded.aiInsights,
+                        contentBuilder: _buildAiInsightsTab,
+                      ),
+                    ],
                   ),
-                  _buildLazyDashboardSection<PlanFactReport>(
-                    section: DashboardSection.planFact,
-                    select: (loaded) => loaded.planFact,
-                    contentBuilder: _buildPlanFactTab,
-                  ),
-                  _buildLazyDashboardSection<BreakEvenAnalysis>(
-                    section: DashboardSection.breakEven,
-                    select: (loaded) => loaded.breakEven,
-                    contentBuilder: _buildBreakEvenTab,
-                  ),
-                  _buildLazyDashboardSection<AbcAnalysis>(
-                    section: DashboardSection.abc,
-                    select: (loaded) => loaded.abc,
-                    contentBuilder: _buildAbcTab,
-                  ),
-                  _buildLazyDashboardSection<_AccountsRatesData>(
-                    section: DashboardSection.accountsRates,
-                    select: (loaded) {
-                      final accounts = loaded.bankAccounts;
-                      final rates = loaded.rates;
-                      return accounts == null || rates == null
-                          ? null
-                          : _AccountsRatesData(accounts, rates);
-                    },
-                    contentBuilder: (context, data, currency) {
-                      return _buildAccountsRatesTab(
-                        context,
-                        data.accounts,
-                        data.rates,
-                        currency,
-                      );
-                    },
-                  ),
-                  _buildLazyDashboardSection<ClientAnalysisReport>(
-                    section: DashboardSection.clients,
-                    select: (loaded) => loaded.clients,
-                    contentBuilder: (context, data, currency) =>
-                        _buildClientsTab(context, data),
-                  ),
-                  _buildLazyDashboardSection<AiInsightsReport>(
-                    section: DashboardSection.aiInsights,
-                    select: (loaded) => loaded.aiInsights,
-                    contentBuilder: _buildAiInsightsTab,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
   }
 }

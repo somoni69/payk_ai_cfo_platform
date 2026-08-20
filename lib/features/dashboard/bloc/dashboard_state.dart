@@ -90,22 +90,22 @@ class DashboardLoaded extends DashboardState {
 
   @override
   List<Object?> get props => [
-        metrics,
-        history,
-        currency,
-        pnl,
-        breakEven,
-        abc,
-        bankAccounts,
-        rates,
-        aiInsights,
-        planFact,
-        clients,
-        loadingSections,
-        sectionErrors,
-        overviewError,
-        actionMessage,
-      ];
+    metrics,
+    history,
+    currency,
+    pnl,
+    breakEven,
+    abc,
+    bankAccounts,
+    rates,
+    aiInsights,
+    planFact,
+    clients,
+    loadingSections,
+    sectionErrors,
+    overviewError,
+    actionMessage,
+  ];
 }
 
 class DashboardError extends DashboardState {

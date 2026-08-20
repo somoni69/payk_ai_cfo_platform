@@ -238,40 +238,43 @@ void main() {
     }
   });
 
-  test('login persists both tokens without requiring rotation fields', () async {
-    FlutterSecureStorage.setMockInitialValues({});
-    final client = ApiClient();
-    await client.clearAccessToken();
-    await client.clearRefreshToken();
-    final access = _jwt({
-      'sub': 11,
-      'role': 'cashier',
-      'name': 'Кассир Тест',
-      'exp': 2000000000,
-    });
-    client.dio.httpClientAdapter = _JsonAdapter((options) {
-      expect(options.path, contains('auth/login'));
-      return {
-        'two_factor_required': false,
-        'challenge_id': null,
-        'access_token': access,
-        'refresh_token': 'refresh-stable',
-        'token_type': 'bearer',
-      };
-    });
+  test(
+    'login persists both tokens without requiring rotation fields',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({});
+      final client = ApiClient();
+      await client.clearAccessToken();
+      await client.clearRefreshToken();
+      final access = _jwt({
+        'sub': 11,
+        'role': 'cashier',
+        'name': 'Кассир Тест',
+        'exp': 2000000000,
+      });
+      client.dio.httpClientAdapter = _JsonAdapter((options) {
+        expect(options.path, contains('auth/login'));
+        return {
+          'two_factor_required': false,
+          'challenge_id': null,
+          'access_token': access,
+          'refresh_token': 'refresh-stable',
+          'token_type': 'bearer',
+        };
+      });
 
-    final repo = ApiAuthRepository(apiClient: client);
-    final result = await repo.login('cashier-1', 'secret');
-    expect(result, isA<LoginSuccess>());
-    final user = (result as LoginSuccess).user;
-    expect(user.id, 11);
-    expect(user.name, 'Кассир Тест');
-    expect(user.username, 'cashier-1');
-    expect(await client.getAccessToken(), access);
-    expect(await client.getRefreshToken(), 'refresh-stable');
-    await client.clearAccessToken();
-    await client.clearRefreshToken();
-  });
+      final repo = ApiAuthRepository(apiClient: client);
+      final result = await repo.login('cashier-1', 'secret');
+      expect(result, isA<LoginSuccess>());
+      final user = (result as LoginSuccess).user;
+      expect(user.id, 11);
+      expect(user.name, 'Кассир Тест');
+      expect(user.username, 'cashier-1');
+      expect(await client.getAccessToken(), access);
+      expect(await client.getRefreshToken(), 'refresh-stable');
+      await client.clearAccessToken();
+      await client.clearRefreshToken();
+    },
+  );
 
   test('login returns 2FA challenge without storing tokens', () async {
     FlutterSecureStorage.setMockInitialValues({});
@@ -402,12 +405,7 @@ void main() {
     final client = ApiClient();
     await client.bootstrap();
     await client.saveAccessToken(
-      _jwt({
-        'sub': 5,
-        'role': 'hr',
-        'name': 'JWT Name',
-        'exp': 2000000000,
-      }),
+      _jwt({'sub': 5, 'role': 'hr', 'name': 'JWT Name', 'exp': 2000000000}),
     );
     client.dio.httpClientAdapter = _JsonAdapter((options) {
       expect(options.path, contains('auth/me'));

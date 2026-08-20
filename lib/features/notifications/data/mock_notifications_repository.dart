@@ -79,6 +79,22 @@ class MockNotificationsRepository implements NotificationsRepository {
   }
 
   @override
+  Future<List<AppNotification>> getInbox({int limit = 30}) =>
+      getNotifications();
+
+  @override
+  Future<int> getUnreadCount() async {
+    return _notifications.where((n) => !n.isRead).length;
+  }
+
+  @override
+  Future<void> markAllRead() async {
+    for (var i = 0; i < _notifications.length; i++) {
+      _notifications[i] = _notifications[i].copyWith(isRead: true);
+    }
+  }
+
+  @override
   Future<void> markAsRead(String id) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final index = _notifications.indexWhere((n) => n.id == id);

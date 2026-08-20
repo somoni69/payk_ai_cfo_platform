@@ -45,6 +45,21 @@ class _NotificationsTestRepository implements NotificationsRepository {
   }
 
   @override
+  Future<List<AppNotification>> getInbox({int limit = 30}) =>
+      getNotifications();
+
+  @override
+  Future<int> getUnreadCount() async =>
+      notifications.where((n) => !n.isRead).length;
+
+  @override
+  Future<void> markAllRead() async {
+    for (var i = 0; i < notifications.length; i++) {
+      notifications[i] = notifications[i].copyWith(isRead: true);
+    }
+  }
+
+  @override
   Future<void> markAsRead(String id) async {
     if (failMarkAsRead) throw Exception('private backend detail');
     final gate = markGates[id];

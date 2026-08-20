@@ -8,7 +8,8 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
   final FinOpsRepository _repository;
   final BranchesRepository _branchesRepository;
 
-  FinOpsBloc(this._repository, this._branchesRepository) : super(FinOpsInitial()) {
+  FinOpsBloc(this._repository, this._branchesRepository)
+    : super(FinOpsInitial()) {
     on<LoadFinOpsData>(_onLoadFinOpsData);
     on<CreateEncashmentRequested>(_onCreateEncashmentRequested);
     on<CreateStoreTransferRequested>(_onCreateStoreTransferRequested);

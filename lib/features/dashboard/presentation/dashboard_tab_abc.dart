@@ -14,7 +14,14 @@ extension _DashboardAbcTab on _DashboardViewState {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final isCategory = report.dimension == 'category';
+    final loaded = context.watch<DashboardBloc>().state;
+    final isLoading =
+        loaded is DashboardLoaded &&
+        loaded.loadingSections.contains(DashboardSection.abc);
+    final error = loaded is DashboardLoaded
+        ? loaded.sectionErrors[DashboardSection.abc]
+        : null;
+    final isCategory = AbcDimensions.isCategory(report.dimension);
 
     return RefreshIndicator(
       onRefresh: () => _refreshDashboard(context),
@@ -34,13 +41,14 @@ extension _DashboardAbcTab on _DashboardViewState {
                   ),
                   checkmarkColor: Colors.white,
                   selected: isCategory,
-                  onSelected: (val) {
-                    if (val) {
-                      context.read<DashboardBloc>().add(
-                        const ChangeAbcDimension('category'),
-                      );
-                    }
-                  },
+                  onSelected: isLoading
+                      ? null
+                      : (val) {
+                          if (!val) return;
+                          context.read<DashboardBloc>().add(
+                            const ChangeAbcDimension(AbcDimensions.category),
+                          );
+                        },
                 ),
               ),
               const SizedBox(width: 8),
@@ -55,17 +63,37 @@ extension _DashboardAbcTab on _DashboardViewState {
                   ),
                   checkmarkColor: Colors.white,
                   selected: !isCategory,
-                  onSelected: (val) {
-                    if (val) {
-                      context.read<DashboardBloc>().add(
-                        const ChangeAbcDimension('client'),
-                      );
-                    }
-                  },
+                  onSelected: isLoading
+                      ? null
+                      : (val) {
+                          if (!val) return;
+                          context.read<DashboardBloc>().add(
+                            const ChangeAbcDimension(
+                              AbcDimensions.counterparty,
+                            ),
+                          );
+                        },
                 ),
               ),
             ],
           ),
+          if (isLoading) ...[
+            const SizedBox(height: 12),
+            const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ],
+          if (error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              languageCubit.translateMessage(error),
+              style: textStyles.captionSans.copyWith(color: colors.accentRed),
+            ),
+          ],
           const SizedBox(height: 20),
           Text(
             isCategory

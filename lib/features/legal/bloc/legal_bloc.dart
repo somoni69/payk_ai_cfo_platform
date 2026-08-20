@@ -220,7 +220,9 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
   ) async {
     if (state is! LegalLoaded) return;
     final current = state as LegalLoaded;
-    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
     try {
       final law = await _repository.createLaw(
         title: event.title,
@@ -241,10 +243,7 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
       emit(
         (state as LegalLoaded).copyWith(
           isMutating: false,
-          errorMessage: userFacingError(
-            error,
-            fallback: ErrorKeys.saveFailed,
-          ),
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
         ),
       );
     }
@@ -256,7 +255,9 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
   ) async {
     if (state is! LegalLoaded) return;
     final current = state as LegalLoaded;
-    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
     try {
       await _repository.deleteLaw(event.id);
       if (emit.isDone || state is! LegalLoaded) return;
@@ -272,10 +273,7 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
       emit(
         (state as LegalLoaded).copyWith(
           isMutating: false,
-          errorMessage: userFacingError(
-            error,
-            fallback: ErrorKeys.saveFailed,
-          ),
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
         ),
       );
     }
@@ -287,7 +285,9 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
   ) async {
     if (state is! LegalLoaded) return;
     final current = state as LegalLoaded;
-    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
     try {
       final deadline = await _repository.createDeadline(
         title: event.title,
@@ -310,10 +310,7 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
       emit(
         (state as LegalLoaded).copyWith(
           isMutating: false,
-          errorMessage: userFacingError(
-            error,
-            fallback: ErrorKeys.saveFailed,
-          ),
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
         ),
       );
     }
@@ -325,7 +322,9 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
   ) async {
     if (state is! LegalLoaded) return;
     final current = state as LegalLoaded;
-    emit(current.copyWith(isMutating: true, clearError: true, clearSuccess: true));
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
     try {
       final template = await _repository.createTemplate(
         name: event.name,
@@ -345,10 +344,7 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
       emit(
         (state as LegalLoaded).copyWith(
           isMutating: false,
-          errorMessage: userFacingError(
-            error,
-            fallback: ErrorKeys.saveFailed,
-          ),
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
         ),
       );
     }

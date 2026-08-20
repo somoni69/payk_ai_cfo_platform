@@ -34,8 +34,8 @@ class ChecklistEntry extends Equatable {
       createdAt: json['done_at'] != null
           ? DateTime.tryParse(json['done_at'].toString())
           : (json['created_at'] != null
-              ? DateTime.tryParse(json['created_at'].toString())
-              : null),
+                ? DateTime.tryParse(json['created_at'].toString())
+                : null),
     );
   }
 
@@ -103,14 +103,14 @@ class ChecklistRun extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        branchName,
-        responsiblePerson,
-        entries,
-        regulationText,
-        regulationName,
-      ];
+    id,
+    title,
+    branchName,
+    responsiblePerson,
+    entries,
+    regulationText,
+    regulationName,
+  ];
 }
 
 class ChecklistTemplateItem extends Equatable {
@@ -178,15 +178,15 @@ class ChecklistTemplate extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        description,
-        branchName,
-        isActive,
-        regulationText,
-        regulationName,
-        items,
-      ];
+    id,
+    name,
+    description,
+    branchName,
+    isActive,
+    regulationText,
+    regulationName,
+    items,
+  ];
 }
 
 class ChecklistSummaryRow extends Equatable {
@@ -220,6 +220,12 @@ class ChecklistSummaryRow extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [runDate, checklistName, branchName, doneCount, totalCount, percent];
+  List<Object?> get props => [
+    runDate,
+    checklistName,
+    branchName,
+    doneCount,
+    totalCount,
+    percent,
+  ];
 }

@@ -77,34 +77,9 @@ class ApiCashRepository implements CashRepository {
       final body = response.data as Map<String, dynamic>;
       final list = body['items'] as List<dynamic>? ?? [];
 
-      return list.map((item) {
-        final map = item as Map<String, dynamic>;
-        final String category = map['category'] ?? '';
-        final String description = map['description'] ?? '';
-        final String counterparty = map['counterparty'] ?? '';
-        final String title = counterparty.isNotEmpty
-            ? counterparty
-            : (description.isNotEmpty ? description : 'cash_operation_default');
-
-        return Transaction(
-          id: (map['id'] ?? '').toString(),
-          title: title,
-          category: category,
-          amount: _toDouble(map['amount']),
-          isIncome: (map['type'] ?? map['is_income'] ?? 'income') == 'income',
-          paymentMethod: PaymentMethod.fromLabel(
-            map['payment_method'] ?? map['paymentMethod'] ?? 'payment_cash',
-          ),
-          dateTime: DateTime.parse(
-            map['occurred_at'] ??
-                map['created_at'] ??
-                DateTime.now().toIso8601String(),
-          ),
-          cashierName: map['created_by'] != null
-              ? 'Кассир #${map['created_by']}'
-              : 'cash_system_user',
-        );
-      }).toList();
+      return list
+          .map((item) => _mapOperation(item as Map<String, dynamic>))
+          .toList();
     } catch (e) {
       return [
         Transaction(
@@ -146,16 +121,33 @@ class ApiCashRepository implements CashRepository {
     try {
       final registerId = await _resolveRegisterId(transaction.registerId);
 
-      final payload = {
+      final payload = <String, dynamic>{
         'register_id': registerId,
         'type': transaction.isIncome ? 'income' : 'expense',
         'amount': transaction.amount.toStringAsFixed(2),
         'currency': 'TJS',
         'payment_method': transaction.paymentMethod.apiValue,
+        if (transaction.paymentMethod == PaymentMethod.mixed) ...{
+          'cash_amount': transaction.cashAmount,
+          'cashless_amount': transaction.cashlessAmount,
+        },
+        if (transaction.bankId != null && transaction.bankId!.isNotEmpty)
+          'bank_id': int.tryParse(transaction.bankId!),
         'category': transaction.category,
         'counterparty': transaction.title,
-        'description': 'Создано с мобильного устройства',
+        'description':
+            transaction.description ?? 'Создано с мобильного устройства',
         'occurred_at': DateTime.now().toUtc().toIso8601String(),
+        if (transaction.saleItems.isNotEmpty)
+          'items': transaction.saleItems
+              .map(
+                (item) => {
+                  'product_id': int.tryParse(item.productId),
+                  'qty': item.qty,
+                  'price': item.price,
+                },
+              )
+              .toList(),
       };
 
       final response = await _dio.post(
@@ -163,32 +155,199 @@ class ApiCashRepository implements CashRepository {
         data: payload,
         options: _writeOptions(),
       );
-      final map = response.data as Map<String, dynamic>;
+      return _mapOperation(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      final detail = e.response?.data;
+      if (detail is Map && detail['detail'] is String) {
+        throw Exception(detail['detail'] as String);
+      }
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
 
-      final String category = map['category'] ?? '';
-      final String description = map['description'] ?? '';
-      final String counterparty = map['counterparty'] ?? '';
-      final String title = counterparty.isNotEmpty
-          ? counterparty
-          : (description.isNotEmpty ? description : 'cash_operation_default');
+  Transaction _mapOperation(Map<String, dynamic> map) {
+    final String category = map['category'] ?? '';
+    final String description = map['description'] ?? '';
+    final String counterparty = map['counterparty'] ?? '';
+    final String title = counterparty.isNotEmpty
+        ? counterparty
+        : (description.isNotEmpty ? description : 'cash_operation_default');
+    final itemsRaw = map['items'];
+    final lines = <SaleLine>[];
+    if (itemsRaw is List) {
+      for (final raw in itemsRaw) {
+        if (raw is! Map) continue;
+        final item = Map<String, dynamic>.from(raw);
+        lines.add(
+          SaleLine(
+            productId: (item['product_id'] ?? item['productId'] ?? '')
+                .toString(),
+            productName:
+                item['product_name']?.toString() ??
+                item['productName']?.toString(),
+            unit: item['unit']?.toString(),
+            qty: _toDouble(item['qty']),
+            price: _toDouble(item['price']),
+            amount: _toDouble(item['amount']),
+          ),
+        );
+      }
+    }
+    return Transaction(
+      id: (map['id'] ?? '').toString(),
+      title: title,
+      category: category,
+      amount: _toDouble(map['amount']),
+      isIncome: (map['type'] ?? map['is_income'] ?? 'income') == 'income',
+      paymentMethod: PaymentMethod.fromLabel(
+        map['payment_method'] ?? map['paymentMethod'] ?? 'payment_cash',
+      ),
+      dateTime: DateTime.parse(
+        map['occurred_at'] ??
+            map['created_at'] ??
+            DateTime.now().toIso8601String(),
+      ),
+      cashierName:
+          map['created_by_name']?.toString() ??
+          (map['created_by'] != null
+              ? 'Кассир #${map['created_by']}'
+              : 'cash_system_user'),
+      registerId: (map['register_id'] ?? map['registerId'])?.toString(),
+      registerName: map['register_name']?.toString(),
+      description: description.isEmpty ? null : description,
+      cashAmount: map['cash_amount'] == null && map['cashAmount'] == null
+          ? null
+          : _toDouble(map['cash_amount'] ?? map['cashAmount']),
+      cashlessAmount:
+          map['cashless_amount'] == null && map['cashlessAmount'] == null
+          ? null
+          : _toDouble(map['cashless_amount'] ?? map['cashlessAmount']),
+      bankId: (map['bank_id'] ?? map['bankId'])?.toString(),
+      bankName: map['bank_name']?.toString(),
+      source: map['source']?.toString(),
+      syncedTo1c: map['synced_to_1c'] == true || map['syncedTo1c'] == true,
+      lines: lines,
+    );
+  }
 
-      return Transaction(
-        id: (map['id'] ?? '').toString(),
-        title: title,
-        category: category,
-        amount: _toDouble(map['amount']),
-        isIncome: (map['type'] ?? 'income') == 'income',
-        paymentMethod: PaymentMethod.fromLabel(
-          map['payment_method'] ?? 'payment_cash',
-        ),
-        dateTime: DateTime.parse(
-          map['occurred_at'] ??
-              map['created_at'] ??
-              DateTime.now().toIso8601String(),
-        ),
-        cashierName: map['created_by'] != null
-            ? 'Кассир #${map['created_by']}'
-            : 'cash_system_user',
+  @override
+  Future<Transaction> getOperation(String id) async {
+    try {
+      final response = await _dio.get('/cash/operations/$id');
+      return _mapOperation(response.data as Map<String, dynamic>);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<Transaction> updateTransaction(Transaction transaction) async {
+    try {
+      final payload = <String, dynamic>{
+        'type': transaction.isIncome ? 'income' : 'expense',
+        'amount': transaction.amount.toStringAsFixed(2),
+        'payment_method': transaction.paymentMethod.apiValue,
+        if (transaction.paymentMethod == PaymentMethod.mixed) ...{
+          'cash_amount': transaction.cashAmount,
+          'cashless_amount': transaction.cashlessAmount,
+        },
+        if (transaction.bankId != null && transaction.bankId!.isNotEmpty)
+          'bank_id': int.tryParse(transaction.bankId!),
+        'category': transaction.category,
+        'counterparty': transaction.title,
+        'description': transaction.description,
+      };
+      final response = await _dio.patch(
+        '/cash/operations/${transaction.id}',
+        data: payload,
+        options: _writeOptions(),
+      );
+      return _mapOperation(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      final detail = e.response?.data;
+      if (detail is Map && detail['detail'] is String) {
+        throw Exception(detail['detail'] as String);
+      }
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteTransaction(String id) async {
+    try {
+      await _dio.delete('/cash/operations/$id', options: _writeOptions());
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<SaleProduct>> getSaleProducts({String? search}) async {
+    try {
+      final response = await _dio.get(
+        '/cash/sale-products',
+        queryParameters: {
+          if (search != null && search.trim().isNotEmpty)
+            'search': search.trim(),
+        },
+      );
+      final list = response.data is List
+          ? response.data as List
+          : const <dynamic>[];
+      return list.map((raw) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        return SaleProduct(
+          id: (map['id'] ?? '').toString(),
+          name: (map['name'] ?? '').toString(),
+          sku: map['sku']?.toString(),
+          unit: (map['unit'] ?? '').toString(),
+          price: _toDouble(map['price']),
+          stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<SalesProfit> getSalesProfit({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/cash/profit',
+        queryParameters: {
+          if (dateFrom != null) 'date_from': dateFrom.toIso8601String(),
+          if (dateTo != null) 'date_to': dateTo.toIso8601String(),
+        },
+      );
+      final map = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final missing = map['missing_cost'] ?? map['missingCost'];
+      return SalesProfit(
+        revenue: _toDouble(map['revenue']),
+        cost: _toDouble(map['cost']),
+        profit: _toDouble(map['profit']),
+        markupPercent:
+            map['markup_percent'] == null && map['markupPercent'] == null
+            ? null
+            : _toDouble(map['markup_percent'] ?? map['markupPercent']),
+        itemsSold: switch (map['items_sold'] ?? map['itemsSold']) {
+          int v => v,
+          num v => v.toInt(),
+          String v => int.tryParse(v) ?? 0,
+          _ => 0,
+        },
+        missingCost: missing is List
+            ? missing.map((e) => e.toString()).toList()
+            : const [],
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
@@ -299,13 +458,14 @@ class ApiCashRepository implements CashRepository {
   }
 
   @override
-  Future<CashShift> closeShift(double endingBalance) =>
-      closeShiftById(endingBalance);
+  Future<CashShift> closeShift(double endingBalance, {String? note}) =>
+      closeShiftById(endingBalance, note: note);
 
   @override
   Future<CashShift> closeShiftById(
     double endingBalance, {
     String? shiftId,
+    String? note,
   }) async {
     try {
       final normalizedShiftId = shiftId?.trim();
@@ -316,7 +476,9 @@ class ApiCashRepository implements CashRepository {
       final resolvedShiftId = normalizedShiftId ?? activeShift?.id ?? 'sh-1';
       final payload = {
         'actual_balance': endingBalance,
-        'note': 'Закрыто с мобильного устройства',
+        'note': (note == null || note.trim().isEmpty)
+            ? 'Закрыто с мобильного устройства'
+            : note.trim(),
       };
 
       final response = await _dio.post(

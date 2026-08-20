@@ -163,9 +163,7 @@ class LedgerTheme {
         selectedColor: colors.brand,
         disabledColor: colors.border,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         side: BorderSide(color: colors.border),
         labelStyle: textStyles.captionSans.copyWith(
           color: colors.textPrimary,

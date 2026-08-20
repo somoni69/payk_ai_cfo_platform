@@ -19,14 +19,32 @@ import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+import '../../assistant/presentation/ledger_advice_panel.dart';
 
-class WarehouseScreen extends StatelessWidget {
+class WarehouseScreen extends StatefulWidget {
   const WarehouseScreen({super.key});
+
+  @override
+  State<WarehouseScreen> createState() => _WarehouseScreenState();
+}
+
+class _WarehouseScreenState extends State<WarehouseScreen> {
+  var _activated = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_activated || !TickerMode.valuesOf(context).enabled) return;
+    _activated = true;
+    context.read<WarehouseBloc>().add(LoadWarehouseData());
+  }
 
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
-
+    if (!_activated && !TickerMode.valuesOf(context).enabled) {
+      return const SizedBox.shrink();
+    }
     try {
       context.read<WarehouseBloc>();
       return const WarehouseView();
@@ -55,7 +73,7 @@ class _WarehouseViewState extends State<WarehouseView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
   }
 
@@ -83,50 +101,72 @@ class _WarehouseViewState extends State<WarehouseView>
         authState.role.canManage(AppCapability.warehouse);
 
     return Scaffold(
-      floatingActionButton: canManage
-          ? (_tabController.index == 0
-                ? FloatingActionButton.extended(
-                    onPressed: () => _showAddProductDialog(context),
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.plus),
-                    label: Text(
-                      localeCubit.translate('warehouse_add_product_btn'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : FloatingActionButton.extended(
-                    onPressed: () => _showAddMovementDialog(context),
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.arrow_left_right),
-                    label: Text(
-                      localeCubit.translate('warehouse_movement_btn'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ))
+      floatingActionButton: canManage && _tabController.index < 3
+          ? switch (_tabController.index) {
+              0 => FloatingActionButton.extended(
+                onPressed: () => _showAddProductDialog(context),
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                highlightElevation: 0,
+                focusElevation: 0,
+                hoverElevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: colors.brand),
+                ),
+                icon: const Icon(TablerIcons.plus),
+                label: Text(
+                  localeCubit.translate('warehouse_add_product_btn'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              1 => FloatingActionButton.extended(
+                onPressed: () => _showAddMovementDialog(context),
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                highlightElevation: 0,
+                focusElevation: 0,
+                hoverElevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: colors.brand),
+                ),
+                icon: const Icon(TablerIcons.arrow_left_right),
+                label: Text(
+                  localeCubit.translate('warehouse_movement_btn'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              _ => FloatingActionButton.extended(
+                onPressed: () => _showAddBatchDialog(context),
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                highlightElevation: 0,
+                focusElevation: 0,
+                hoverElevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: colors.brand),
+                ),
+                icon: const Icon(TablerIcons.layers_linked),
+                label: Text(
+                  localeCubit.translate('warehouse_add_batch_btn'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            }
           : null,
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -136,19 +176,34 @@ class _WarehouseViewState extends State<WarehouseView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                isScrollable: true,
                 tabs: [
                   Tab(text: localeCubit.translate('warehouse_tab_products')),
                   Tab(text: localeCubit.translate('warehouse_tab_movements')),
+                  Tab(text: localeCubit.translate('warehouse_tab_batches')),
+                  Tab(text: localeCubit.translate('warehouse_tab_analysis')),
                 ],
               ),
+              actions: canManage
+                  ? [
+                      IconButton(
+                        tooltip: localeCubit.translate(
+                          'warehouse_expiry_check_tooltip',
+                        ),
+                        onPressed: () {
+                          context.read<WarehouseBloc>().add(
+                            const RunExpiryCheckRequested(),
+                          );
+                        },
+                        icon: Icon(
+                          TablerIcons.alert_triangle,
+                          color: colors.accentAmber,
+                        ),
+                      ),
+                    ]
+                  : null,
             ),
           ];
         },
@@ -165,11 +220,17 @@ class _WarehouseViewState extends State<WarehouseView>
                   ),
                 );
               } else if (state.successMessage != null) {
+                final raw = state.successMessage!;
+                final parts = raw.split('|');
+                final text = parts.length == 2
+                    ? localeCubit.translate(
+                        parts[0],
+                        params: {'count': parts[1]},
+                      )
+                    : localeCubit.translateMessage(raw);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      localeCubit.translateMessage(state.successMessage!),
-                    ),
+                    content: Text(text),
                     backgroundColor: colors.accentGreen,
                   ),
                 );
@@ -181,6 +242,12 @@ class _WarehouseViewState extends State<WarehouseView>
               if (previous is WarehouseLoaded && current is WarehouseLoaded) {
                 return previous.products != current.products ||
                     previous.movements != current.movements ||
+                    previous.batches != current.batches ||
+                    previous.batchesExpiringOnly !=
+                        current.batchesExpiringOnly ||
+                    previous.stockAnalysis != current.stockAnalysis ||
+                    previous.isAnalysisLoading != current.isAnalysisLoading ||
+                    previous.analysisError != current.analysisError ||
                     previous.summary != current.summary;
               }
               return previous.runtimeType != current.runtimeType ||
@@ -188,10 +255,7 @@ class _WarehouseViewState extends State<WarehouseView>
             },
             builder: (context, state) {
               if (state is WarehouseLoading) {
-                return const LedgerListShimmer(
-                  showStatsHeader: true,
-                  itemCount: 6,
-                );
+                return const WarehouseOverviewShimmer();
               }
 
               if (state is WarehouseError) {
@@ -231,6 +295,8 @@ class _WarehouseViewState extends State<WarehouseView>
                   children: [
                     _buildProductsTab(context, state),
                     _buildMovementsTab(context, state),
+                    _buildBatchesTab(context, state, canManage: canManage),
+                    _buildAnalysisTab(context, state),
                   ],
                 );
               }
@@ -347,10 +413,13 @@ class _WarehouseViewState extends State<WarehouseView>
 
           final product = state.products[index - 1];
           final auth = context.watch<AuthBloc>().state;
-          final canWrite = auth is AuthAuthenticated &&
+          final canWrite =
+              auth is AuthAuthenticated &&
               auth.role.canWrite(AppCapability.warehouse);
           return LedgerCard(
-            onTap: canWrite ? () => _showEditProductSheet(context, product) : null,
+            onTap: canWrite
+                ? () => _showEditProductSheet(context, product)
+                : null,
             padding: const EdgeInsets.all(14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -400,8 +469,7 @@ class _WarehouseViewState extends State<WarehouseView>
                             context,
                             product.stockQty,
                           ),
-                          'unit':
-                              localeCubit.translateMessage(product.unit),
+                          'unit': localeCubit.translateMessage(product.unit),
                         },
                       ),
                       backgroundColor: product.stockQty > 0
@@ -574,6 +642,891 @@ class _WarehouseViewState extends State<WarehouseView>
     );
   }
 
+  Widget _buildBatchesTab(
+    BuildContext context,
+    WarehouseLoaded state, {
+    required bool canManage,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<WarehouseBloc>().add(
+          LoadBatchesRequested(expiringOnly: state.batchesExpiringOnly),
+        );
+        await context.read<WarehouseBloc>().reload();
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          const LedgerAdvicePanel(module: 'warehouse'),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  localeCubit.translate('warehouse_batches_filter_expiring'),
+                  style: textStyles.captionSans,
+                ),
+              ),
+              Switch.adaptive(
+                value: state.batchesExpiringOnly,
+                activeThumbColor: colors.brand,
+                onChanged: (v) {
+                  context.read<WarehouseBloc>().add(
+                    LoadBatchesRequested(expiringOnly: v),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (state.batches.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Center(
+                child: Text(
+                  localeCubit.translate('warehouse_empty_batches'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textTooltip,
+                  ),
+                ),
+              ),
+            )
+          else
+            ...state.batches.map((batch) {
+              final tone = batch.isExpired
+                  ? colors.accentRed
+                  : batch.isUrgent
+                  ? colors.accentAmber
+                  : colors.textSecondary;
+              final riskLabel = batch.isExpired
+                  ? localeCubit.translate('warehouse_batch_expired')
+                  : batch.isUrgent
+                  ? localeCubit.translate('warehouse_batch_urgent')
+                  : (batch.daysLeft != null
+                        ? localeCubit.translate(
+                            'warehouse_batch_days_left',
+                            params: {'days': '${batch.daysLeft}'},
+                          )
+                        : localeCubit.translate('warehouse_batch_no_expiry'));
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: LedgerCard(
+                  onTap: canManage
+                      ? () => _showEditBatchDialog(context, batch)
+                      : null,
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              batch.productName,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          LedgerPill(
+                            text: riskLabel,
+                            backgroundColor: tone.withValues(alpha: 0.12),
+                            textColor: tone,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        localeCubit.translate(
+                          'warehouse_batch_qty',
+                          params: {
+                            'qty': formatLocalizedNumber(context, batch.qty),
+                            'unit': batch.unit ?? '',
+                          },
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      if (batch.expiryDate != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          localeCubit.translate(
+                            'warehouse_batch_expiry',
+                            params: {
+                              'date': formatLocalizedDateTime(
+                                context,
+                                batch.expiryDate!,
+                                style: LocalizedDateTimeStyle.date,
+                              ),
+                            },
+                          ),
+                          style: textStyles.smallSans.copyWith(color: tone),
+                        ),
+                      ],
+                      if (batch.code != null && batch.code!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          localeCubit.translate(
+                            'warehouse_batch_code',
+                            params: {'code': batch.code},
+                          ),
+                          style: textStyles.smallSans.copyWith(
+                            color: colors.textTooltip,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  /// Strip markdown markers from AI summary (web AnalysisTab parity).
+  String _plainAiText(String md) {
+    return md
+        .replaceAllMapped(RegExp(r'\*\*(.+?)\*\*'), (m) => m[1] ?? '')
+        .replaceAll(RegExp(r'^#{1,6}\s*', multiLine: true), '')
+        .replaceAll(RegExp(r'^\s*[-*]\s+', multiLine: true), '• ')
+        .trim();
+  }
+
+  Widget _buildAnalysisTab(BuildContext context, WarehouseLoaded state) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+    final analysis = state.stockAnalysis;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        LedgerCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    TablerIcons.sparkles,
+                    size: 20,
+                    color: colors.accentAmber,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      language.translate('warehouse_analysis_title'),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                language.translate('warehouse_analysis_subtitle'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 14),
+              ElevatedButton.icon(
+                onPressed: state.isAnalysisLoading
+                    ? null
+                    : () => context.read<WarehouseBloc>().add(
+                        const RunStockAnalysisRequested(),
+                      ),
+                icon: state.isAnalysisLoading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colors.surface,
+                        ),
+                      )
+                    : const Icon(TablerIcons.sparkles, size: 18),
+                label: Text(
+                  language.translate(
+                    analysis == null
+                        ? 'warehouse_analysis_run'
+                        : 'warehouse_analysis_rerun',
+                  ),
+                ),
+              ),
+              if (analysis == null && !state.isAnalysisLoading) ...[
+                const SizedBox(height: 10),
+                Text(
+                  language.translate('warehouse_analysis_idle'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textTooltip,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (state.isAnalysisLoading) ...[
+          const SizedBox(height: 16),
+          Text(
+            language.translate('warehouse_analysis_waiting'),
+            textAlign: TextAlign.center,
+            style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+          ),
+        ],
+        if (state.analysisError != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            language.resolveMessage(state.analysisError!),
+            style: textStyles.captionSans.copyWith(color: colors.accentRed),
+          ),
+        ],
+        if (analysis != null) ...[
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        language.translate('warehouse_analysis_stat_items'),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${analysis.totalItems}',
+                        style: textStyles.h2Sans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        language.translate('warehouse_analysis_stat_zero'),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${analysis.zeroItems}',
+                        style: textStyles.h2Sans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        language.translate('warehouse_analysis_stat_value'),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        oCcy.format(analysis.stockValue),
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: colors.brand,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  borderColor: analysis.atRiskAmount > 0
+                      ? colors.accentRed.withValues(alpha: 0.4)
+                      : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        language.translate('warehouse_analysis_stat_risk'),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        oCcy.format(analysis.atRiskAmount),
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: analysis.atRiskAmount > 0
+                              ? colors.accentRed
+                              : colors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        language.translate(
+                          'warehouse_analysis_stat_risk_hint',
+                          params: {
+                            'count': '${analysis.expiringCount}',
+                            'expired': '${analysis.expiredCount}',
+                          },
+                        ),
+                        style: textStyles.smallSans.copyWith(
+                          color: colors.textTooltip,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (analysis.summary.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            LedgerCard(
+              borderColor: colors.accentAmber.withValues(alpha: 0.45),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    language.translate('warehouse_analysis_summary_title'),
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _plainAiText(analysis.summary),
+                    style: textStyles.captionSans,
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (analysis.lowStock.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              language.translate('warehouse_analysis_low_stock'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            ...analysis.lowStock.map(
+              (row) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(row.name, style: textStyles.bodySans),
+                      ),
+                      Text(
+                        '${formatLocalizedNumber(context, row.qty)} ${row.unit}',
+                        style: textStyles.smallMono.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (analysis.expiring.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              language.translate('warehouse_analysis_risk_title'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              language.translate('warehouse_analysis_risk_subtitle'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...analysis.expiring.map((row) {
+              final tone = row.expired ? colors.accentRed : colors.accentAmber;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  borderColor: tone.withValues(alpha: 0.35),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              row.productName,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          LedgerPill(
+                            text: row.expired
+                                ? language.translate('warehouse_batch_expired')
+                                : language.translate(
+                                    'warehouse_batch_days_left',
+                                    params: {'days': '${row.daysLeft}'},
+                                  ),
+                            backgroundColor: tone.withValues(alpha: 0.12),
+                            textColor: tone,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        language.translate(
+                          'warehouse_batch_qty',
+                          params: {
+                            'qty': formatLocalizedNumber(context, row.qty),
+                            'unit': row.unit,
+                          },
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      if (row.expiryDate != null)
+                        Text(
+                          language.translate(
+                            'warehouse_batch_expiry',
+                            params: {
+                              'date': formatLocalizedDateTime(
+                                context,
+                                row.expiryDate!,
+                                style: LocalizedDateTimeStyle.date,
+                              ),
+                            },
+                          ),
+                          style: textStyles.smallSans.copyWith(color: tone),
+                        ),
+                      Text(
+                        language.translate(
+                          'warehouse_analysis_at_risk_amount',
+                          params: {'amount': oCcy.format(row.atRiskAmount)},
+                        ),
+                        style: textStyles.smallMono.copyWith(
+                          color: colors.accentRed,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Future<void> _showEditBatchDialog(
+    BuildContext context,
+    WarehouseBatch batch,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final bloc = context.read<WarehouseBloc>();
+    final state = bloc.state;
+    WarehouseProduct? product;
+    if (state is WarehouseLoaded) {
+      for (final p in state.products) {
+        if (p.id == batch.productId) {
+          product = p;
+          break;
+        }
+      }
+    }
+    final oldPrice = product?.price ?? 0;
+    final qtyController = TextEditingController(
+      text: formatLocalizedNumber(context, batch.qty),
+    );
+    final codeController = TextEditingController(text: batch.code ?? '');
+    final noteController = TextEditingController(text: batch.note ?? '');
+    final percentCtrl = TextEditingController(
+      text: (batch.suggestedDiscount != null && batch.suggestedDiscount! > 0)
+          ? '${batch.suggestedDiscount}'
+          : '',
+    );
+    DateTime? expiry = batch.expiryDate;
+    String? discountError;
+
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: language.translate('warehouse_edit_batch_title'),
+        builder: (sheetContext, setSheetState) {
+          final parsed = parseLocalizedNumber(sheetContext, percentCtrl.text);
+          final valid = parsed != null && parsed >= 1 && parsed <= 90;
+          final newPrice = valid ? (oldPrice * (100 - parsed) / 100) : oldPrice;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                controller: qtyController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_batch_qty_label'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: codeController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_batch_code_label'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: sheetContext,
+                    initialDate: expiry ?? DateTime.now(),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 3650),
+                    ),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) {
+                    setSheetState(() => expiry = picked);
+                  }
+                },
+                icon: const Icon(TablerIcons.calendar, size: 18),
+                label: Text(
+                  expiry == null
+                      ? language.translate('warehouse_batch_pick_expiry')
+                      : formatLocalizedDateTime(
+                          sheetContext,
+                          expiry!,
+                          style: LocalizedDateTimeStyle.date,
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_batch_note_label'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                language.translate('warehouse_discount_hint'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: percentCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: textStyles.bodyMono,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_discount_percent'),
+                ),
+                onChanged: (_) => setSheetState(() => discountError = null),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                language.translate(
+                  'warehouse_discount_preview',
+                  params: {
+                    'old': formatLocalizedNumber(sheetContext, oldPrice),
+                    'new': formatLocalizedNumber(sheetContext, newPrice),
+                  },
+                ),
+                style: textStyles.captionSans,
+              ),
+              if (discountError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  discountError!,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.accentRed,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final percent = parseLocalizedNumber(
+                      sheetContext,
+                      percentCtrl.text,
+                    );
+                    if (percent == null || percent < 1 || percent > 90) {
+                      setSheetState(() {
+                        discountError = language.translate(
+                          'warehouse_discount_err_percent',
+                        );
+                      });
+                      return;
+                    }
+                    bloc.add(
+                      ApplyBatchDiscountRequested(
+                        batchId: batch.id,
+                        percent: percent.round(),
+                      ),
+                    );
+                    Navigator.of(sheetContext).pop();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.accentAmber,
+                    side: BorderSide(
+                      color: colors.accentAmber.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(TablerIcons.tag, size: 18),
+                  label: Text(
+                    language.translate('warehouse_batch_discount_edit'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final didDelete = await _confirmDeleteBatch(
+                      this.context,
+                      batch,
+                    );
+                    if (didDelete == true && sheetContext.mounted) {
+                      Navigator.pop(sheetContext);
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.accentRed,
+                    side: BorderSide(
+                      color: colors.accentRed.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(TablerIcons.trash, size: 18),
+                  label: Text(language.translate('common_delete')),
+                ),
+              ),
+            ],
+          );
+        },
+        footerBuilder: (sheetContext, setSheetState) {
+          return SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                final qty = parseLocalizedNumber(
+                  sheetContext,
+                  qtyController.text,
+                );
+                if (qty == null || qty < 0) return;
+                bloc.add(
+                  UpdateBatchRequested(
+                    id: batch.id,
+                    qty: qty,
+                    expiryDate: expiry,
+                    code: codeController.text.trim(),
+                    note: noteController.text.trim(),
+                  ),
+                );
+                Navigator.of(sheetContext).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(language.translate('common_save')),
+            ),
+          );
+        },
+      );
+    } finally {
+      qtyController.dispose();
+      codeController.dispose();
+      noteController.dispose();
+      percentCtrl.dispose();
+    }
+  }
+
+  Future<void> _showAddBatchDialog(BuildContext context) async {
+    final language = context.read<LanguageCubit>();
+    final bloc = context.read<WarehouseBloc>();
+    final state = bloc.state;
+    if (state is! WarehouseLoaded || state.products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(language.translate('warehouse_empty_products'))),
+      );
+      return;
+    }
+
+    String? productId = state.products.first.id;
+    final qtyController = TextEditingController();
+    final codeController = TextEditingController();
+    final noteController = TextEditingController();
+    DateTime? expiry;
+
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: language.translate('warehouse_add_batch_title'),
+        builder: (sheetContext, setSheetState) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ExpansibleWidget<String>.selection(
+                title: Text(language.translate('warehouse_batch_product')),
+                items: state.products.map((p) => p.id).toList(),
+                selectedValue: productId,
+                itemLabelBuilder: (id) {
+                  final p = state.products.firstWhere((e) => e.id == id);
+                  return p.name;
+                },
+                onSelected: (id) => setSheetState(() => productId = id),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: qtyController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_batch_qty_label'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: codeController,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_batch_code_label'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: sheetContext,
+                    initialDate:
+                        expiry ?? DateTime.now().add(const Duration(days: 30)),
+                    firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) {
+                    setSheetState(() => expiry = picked);
+                  }
+                },
+                icon: const Icon(TablerIcons.calendar, size: 18),
+                label: Text(
+                  expiry == null
+                      ? language.translate('warehouse_batch_pick_expiry')
+                      : formatLocalizedDateTime(
+                          sheetContext,
+                          expiry!,
+                          style: LocalizedDateTimeStyle.date,
+                        ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteController,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_batch_note_label'),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  final qty = parseLocalizedNumber(
+                    sheetContext,
+                    qtyController.text,
+                  );
+                  if (productId == null || qty == null || qty <= 0) return;
+                  bloc.add(
+                    CreateBatchRequested(
+                      productId: productId!,
+                      qty: qty,
+                      expiryDate: expiry,
+                      code: codeController.text.trim().isEmpty
+                          ? null
+                          : codeController.text.trim(),
+                      note: noteController.text.trim().isEmpty
+                          ? null
+                          : noteController.text.trim(),
+                    ),
+                  );
+                  Navigator.of(sheetContext).pop();
+                },
+                child: Text(language.translate('common_save')),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      qtyController.dispose();
+      codeController.dispose();
+      noteController.dispose();
+    }
+  }
+
   Future<void> _showAddProductDialog(BuildContext context) async {
     final language = context.read<LanguageCubit>();
     final nameController = TextEditingController();
@@ -582,6 +1535,7 @@ class _WarehouseViewState extends State<WarehouseView>
       text: language.translate('warehouse_unit_pieces_short'),
     );
     final priceController = TextEditingController();
+    final costController = TextEditingController();
     final stockController = TextEditingController(text: '0');
 
     try {
@@ -632,6 +1586,17 @@ class _WarehouseViewState extends State<WarehouseView>
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: costController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_cost_price_label'),
+                  hintText: language.translate('warehouse_cost_price_hint'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: stockController,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
@@ -649,6 +1614,7 @@ class _WarehouseViewState extends State<WarehouseView>
               final name = nameController.text.trim();
               final price =
                   parseLocalizedNumber(context, priceController.text) ?? 0.0;
+              final cost = parseLocalizedNumber(context, costController.text);
               final stock =
                   parseLocalizedNumber(context, stockController.text) ?? 0.0;
 
@@ -662,6 +1628,7 @@ class _WarehouseViewState extends State<WarehouseView>
                     sku: skuController.text.trim(),
                     unit: unitController.text.trim(),
                     price: price,
+                    costPrice: cost,
                     stockQty: stock,
                   ),
                 ),
@@ -677,6 +1644,7 @@ class _WarehouseViewState extends State<WarehouseView>
       skuController.dispose();
       unitController.dispose();
       priceController.dispose();
+      costController.dispose();
       stockController.dispose();
     }
   }
@@ -689,7 +1657,8 @@ class _WarehouseViewState extends State<WarehouseView>
     final colors = context.colors;
     final textStyles = context.textStyles;
     final authState = context.read<AuthBloc>().state;
-    final canManage = authState is AuthAuthenticated &&
+    final canManage =
+        authState is AuthAuthenticated &&
         authState.role.canManage(AppCapability.warehouse);
 
     final nameController = TextEditingController(text: product.name);
@@ -697,6 +1666,11 @@ class _WarehouseViewState extends State<WarehouseView>
     final unitController = TextEditingController(text: product.unit);
     final priceController = TextEditingController(
       text: formatLocalizedNumber(context, product.price),
+    );
+    final costController = TextEditingController(
+      text: product.costPrice == null
+          ? ''
+          : formatLocalizedNumber(context, product.costPrice!),
     );
 
     try {
@@ -741,6 +1715,18 @@ class _WarehouseViewState extends State<WarehouseView>
                   labelText: language.translate('warehouse_price'),
                 ),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: costController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('warehouse_cost_price_label'),
+                  hintText: language.translate('warehouse_cost_price_hint'),
+                ),
+              ),
               const SizedBox(height: 20),
               if (canManage) ...[
                 SizedBox(
@@ -748,8 +1734,10 @@ class _WarehouseViewState extends State<WarehouseView>
                   height: 48,
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      final didZeroOut =
-                          await _confirmZeroOut(this.context, product);
+                      final didZeroOut = await _confirmZeroOut(
+                        this.context,
+                        product,
+                      );
                       if (didZeroOut == true && context.mounted) {
                         Navigator.pop(context);
                       }
@@ -773,8 +1761,10 @@ class _WarehouseViewState extends State<WarehouseView>
                   height: 48,
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      final didDelete =
-                          await _confirmDeleteProduct(this.context, product);
+                      final didDelete = await _confirmDeleteProduct(
+                        this.context,
+                        product,
+                      );
                       if (didDelete == true && context.mounted) {
                         Navigator.pop(context);
                       }
@@ -805,22 +1795,29 @@ class _WarehouseViewState extends State<WarehouseView>
                 final name = nameController.text.trim();
                 if (name.isEmpty) return;
                 final price =
-                    parseLocalizedNumber(context, priceController.text.trim()) ??
-                        product.price;
+                    parseLocalizedNumber(
+                      context,
+                      priceController.text.trim(),
+                    ) ??
+                    product.price;
                 this.context.read<WarehouseBloc>().add(
-                      UpdateProductRequested(
-                        product.copyWith(
-                          name: name,
-                          sku: skuController.text.trim().isEmpty
-                              ? null
-                              : skuController.text.trim(),
-                          unit: unitController.text.trim().isEmpty
-                              ? product.unit
-                              : unitController.text.trim(),
-                          price: price,
-                        ),
+                  UpdateProductRequested(
+                    product.copyWith(
+                      name: name,
+                      sku: skuController.text.trim().isEmpty
+                          ? null
+                          : skuController.text.trim(),
+                      unit: unitController.text.trim().isEmpty
+                          ? product.unit
+                          : unitController.text.trim(),
+                      price: price,
+                      costPrice: parseLocalizedNumber(
+                        context,
+                        costController.text,
                       ),
-                    );
+                    ),
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(
@@ -841,6 +1838,7 @@ class _WarehouseViewState extends State<WarehouseView>
       skuController.dispose();
       unitController.dispose();
       priceController.dispose();
+      costController.dispose();
     }
   }
 
@@ -865,9 +1863,7 @@ class _WarehouseViewState extends State<WarehouseView>
                 'warehouse_delete_msg',
                 params: {'name': product.name},
               ),
-              style: textStyles.bodySans.copyWith(
-                color: colors.textSecondary,
-              ),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -876,6 +1872,81 @@ class _WarehouseViewState extends State<WarehouseView>
               child: ElevatedButton(
                 onPressed: () {
                   bloc.add(DeleteProductRequested(product.id));
+                  Navigator.pop(ctx, true);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.accentRed,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  language.translate('common_delete'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: colors.surface,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  language.translate('common_cancel'),
+                  style: textStyles.bodySans,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<bool?> _confirmDeleteBatch(
+    BuildContext context,
+    WarehouseBatch batch,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final bloc = context.read<WarehouseBloc>();
+
+    return LedgerBottomSheet.show<bool>(
+      context: context,
+      title: language.translate('warehouse_delete_batch_title'),
+      builder: (ctx, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              language.translate(
+                'warehouse_delete_batch_msg',
+                params: {
+                  'product': batch.productName,
+                  'qty': formatLocalizedNumber(ctx, batch.qty),
+                },
+              ),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {
+                  bloc.add(DeleteBatchRequested(batch.id));
                   Navigator.pop(ctx, true);
                 },
                 style: ElevatedButton.styleFrom(
@@ -939,9 +2010,7 @@ class _WarehouseViewState extends State<WarehouseView>
                 'warehouse_zero_out_msg',
                 params: {'name': product.name},
               ),
-              style: textStyles.bodySans.copyWith(
-                color: colors.textSecondary,
-              ),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
             ),
             const SizedBox(height: 24),
             SizedBox(

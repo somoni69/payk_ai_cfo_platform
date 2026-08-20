@@ -189,7 +189,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     TwoFactorSubmitted event,
     Emitter<AuthState> emit,
   ) async {
-    final challenge = _pendingTwoFactor ??
+    final challenge =
+        _pendingTwoFactor ??
         (state is AuthTwoFactorRequired
             ? state as AuthTwoFactorRequired
             : null);

@@ -171,6 +171,80 @@ class ApiNotificationsRepository implements NotificationsRepository {
   }
 
   @override
+  Future<List<AppNotification>> getInbox({int limit = 30}) async {
+    try {
+      final response = await _dio.get(
+        '/notifications',
+        queryParameters: {'limit': limit},
+      );
+      final list = response.data is List
+          ? response.data as List
+          : const <dynamic>[];
+      return list
+          .map(_inboxFromJson)
+          .whereType<AppNotification>()
+          .toList(growable: false);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<int> getUnreadCount() async {
+    try {
+      final response = await _dio.get('/notifications/unread-count');
+      final body = response.data;
+      if (body is Map) {
+        final raw = body['count'];
+        if (raw is int) return raw;
+        if (raw is num) return raw.toInt();
+        return int.tryParse(raw?.toString() ?? '') ?? 0;
+      }
+      return 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  @override
+  Future<void> markAllRead() async {
+    try {
+      await _dio.post('/notifications/read-all');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  AppNotification? _inboxFromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final map = Map<String, dynamic>.from(raw);
+    final id = (map['id'] ?? '').toString();
+    if (id.isEmpty) return null;
+    final createdRaw = map['created_at'] ?? map['createdAt'];
+    final createdAt = createdRaw is String
+        ? (DateTime.tryParse(createdRaw) ?? DateTime.now())
+        : DateTime.now();
+    final typeRaw = (map['type'] ?? '').toString().toLowerCase();
+    final type = switch (typeRaw) {
+      'audit' => NotificationType.audit,
+      'forecast' || 'ai_forecast' => NotificationType.aiForecast,
+      'advice' || 'ai_advice' => NotificationType.aiAdvice,
+      'legal' || 'legal_calendar' => NotificationType.legalCalendar,
+      _ => NotificationType.aiAdvice,
+    };
+    return AppNotification(
+      id: id,
+      title: (map['title'] ?? '').toString(),
+      description: (map['message'] ?? map['description'] ?? '').toString(),
+      type: type,
+      severity: NotificationSeverity.info,
+      dateTime: createdAt.toLocal(),
+      isRead: map['is_read'] == true || map['isRead'] == true,
+      link: map['link']?.toString(),
+    );
+  }
+
+  @override
   Future<void> markAsRead(String id) async {
     try {
       // Игнорируем для локально генерируемых аномалий

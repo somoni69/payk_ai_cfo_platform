@@ -62,38 +62,101 @@ class LedgerCollapsingHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(child: titleChild),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: actions!,
+              Expanded(
+                child: DefaultTextStyle.merge(
+                  style: appBarTitleStyle,
+                  child: titleChild,
+                ),
+              ),
+              DefaultTextStyle.merge(
+                style: textStyles.captionSans.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: colors.brand,
+                ),
+                child: IconTheme.merge(
+                  data: IconThemeData(size: 18, color: colors.brand),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: actions!,
+                  ),
+                ),
               ),
             ],
           )
-        : titleChild;
+        : DefaultTextStyle.merge(style: appBarTitleStyle, child: titleChild);
 
     final bool canPop = ModalRoute.of(context)?.canPop ?? false;
 
     return MediaQuery(
       data: mediaQuery.copyWith(textScaler: clampedTextScaler),
-      child: DefaultTextStyle.merge(
-        style: appBarTitleStyle,
-        child: SliverAppBar(
-          pinned: pinned,
-          floating: floating,
-          snap: snap,
-          expandedHeight: expandedHeight,
-          backgroundColor: colors.surface,
-          surfaceTintColor: colors.surface,
-          elevation: 0,
-          scrolledUnderElevation: 1.0,
-          centerTitle: false,
-          titleSpacing: canPop ? 0 : 16,
-          title: headerTitle,
-          actions: null,
-          bottom: bottom,
-        ),
+      child: SliverAppBar(
+        pinned: pinned,
+        floating: floating,
+        snap: snap,
+        expandedHeight: expandedHeight,
+        backgroundColor: colors.surface,
+        surfaceTintColor: colors.surface,
+        elevation: 0,
+        scrolledUnderElevation: 1.0,
+        centerTitle: false,
+        titleSpacing: canPop ? 0 : 16,
+        title: headerTitle,
+        actions: null,
+        bottom: bottom,
       ),
+    );
+  }
+}
+
+/// Tabs under a screen title: always [captionSans] 14px (w500 selected / w400 idle).
+///
+/// Prevents header [h1Sans] from leaking into the tab row and keeps every
+/// module consistent with [design_language.md].
+class LedgerTabBar extends StatelessWidget implements PreferredSizeWidget {
+  final TabController? controller;
+  final List<Widget> tabs;
+  final bool isScrollable;
+  final TabAlignment? tabAlignment;
+  final ValueChanged<int>? onTap;
+
+  const LedgerTabBar({
+    super.key,
+    this.controller,
+    required this.tabs,
+    this.isScrollable = false,
+    this.tabAlignment,
+    this.onTap,
+  });
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kTextTabBarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    return TabBar(
+      controller: controller,
+      isScrollable: isScrollable,
+      tabAlignment:
+          tabAlignment ??
+          (isScrollable ? TabAlignment.start : TabAlignment.fill),
+      onTap: onTap,
+      labelColor: colors.brand,
+      unselectedLabelColor: colors.textSecondary,
+      indicatorColor: colors.brand,
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: colors.border,
+      labelStyle: textStyles.captionSans.copyWith(
+        fontWeight: FontWeight.w500,
+        color: colors.brand,
+      ),
+      unselectedLabelStyle: textStyles.captionSans.copyWith(
+        fontWeight: FontWeight.w400,
+        color: colors.textSecondary,
+      ),
+      tabs: tabs,
     );
   }
 }

@@ -17,6 +17,9 @@ enum UserRole {
   /// HR: кадры и задачи (SYS-06).
   hr,
 
+  /// Маркетолог: маркетинг, CRM, стратегия — без сводных финансов компании.
+  marketer,
+
   /// Только просмотр (SYS-07).
   viewer;
 
@@ -27,6 +30,7 @@ enum UserRole {
     UserRole.accountant => 'role_accountant',
     UserRole.cashier => 'role_cashier',
     UserRole.hr => 'role_hr',
+    UserRole.marketer => 'role_marketer',
     UserRole.viewer => 'role_viewer',
   };
 
@@ -37,6 +41,7 @@ enum UserRole {
     UserRole.accountant => 'Бухгалтер',
     UserRole.cashier => 'Кассир',
     UserRole.hr => 'HR-специалист',
+    UserRole.marketer => 'Маркетолог',
     UserRole.viewer => 'Наблюдатель',
   };
 

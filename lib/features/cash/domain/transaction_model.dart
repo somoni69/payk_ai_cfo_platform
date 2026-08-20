@@ -51,6 +51,78 @@ enum PaymentMethod {
   }
 }
 
+/// Товар для продажи без штрих-кода (`GET /cash/sale-products`).
+class SaleProduct {
+  final String id;
+  final String name;
+  final String? sku;
+  final String unit;
+  final double price;
+  final double stockQty;
+
+  const SaleProduct({
+    required this.id,
+    required this.name,
+    this.sku,
+    required this.unit,
+    required this.price,
+    required this.stockQty,
+  });
+}
+
+/// Строка продажи в приходе (склад спишется вместе с операцией).
+class SaleItemInput {
+  final String productId;
+  final double qty;
+  final double price;
+
+  const SaleItemInput({
+    required this.productId,
+    required this.qty,
+    required this.price,
+  });
+
+  double get amount => qty * price;
+}
+
+/// Состав продажи в карточке операции (`GET /cash/operations/{id}`).
+class SaleLine {
+  final String productId;
+  final String? productName;
+  final String? unit;
+  final double qty;
+  final double price;
+  final double amount;
+
+  const SaleLine({
+    required this.productId,
+    this.productName,
+    this.unit,
+    required this.qty,
+    required this.price,
+    required this.amount,
+  });
+}
+
+/// Чистая прибыль с продаж (`GET /cash/profit`).
+class SalesProfit {
+  final double revenue;
+  final double cost;
+  final double profit;
+  final double? markupPercent;
+  final int itemsSold;
+  final List<String> missingCost;
+
+  const SalesProfit({
+    required this.revenue,
+    required this.cost,
+    required this.profit,
+    this.markupPercent,
+    this.itemsSold = 0,
+    this.missingCost = const [],
+  });
+}
+
 /// Модель кассовой транзакции в Ledger.
 class Transaction {
   final String id;
@@ -62,6 +134,20 @@ class Transaction {
   final DateTime dateTime;
   final String cashierName;
   final String? registerId;
+  final String? registerName;
+  final String? description;
+  final double? cashAmount;
+  final double? cashlessAmount;
+  final String? bankId;
+  final String? bankName;
+  final String? source;
+  final bool syncedTo1c;
+
+  /// Продажа без штрих-кода; пусто = обычная операция.
+  final List<SaleItemInput> saleItems;
+
+  /// Состав из карточки операции.
+  final List<SaleLine> lines;
 
   const Transaction({
     required this.id,
@@ -73,7 +159,64 @@ class Transaction {
     required this.dateTime,
     required this.cashierName,
     this.registerId,
+    this.registerName,
+    this.description,
+    this.cashAmount,
+    this.cashlessAmount,
+    this.bankId,
+    this.bankName,
+    this.source,
+    this.syncedTo1c = false,
+    this.saleItems = const [],
+    this.lines = const [],
   });
+
+  bool get isManual =>
+      (source == null || source == 'manual' || source!.isEmpty) && !syncedTo1c;
+
+  Transaction copyWith({
+    String? id,
+    String? title,
+    String? category,
+    double? amount,
+    bool? isIncome,
+    PaymentMethod? paymentMethod,
+    DateTime? dateTime,
+    String? cashierName,
+    String? registerId,
+    String? registerName,
+    String? description,
+    double? cashAmount,
+    double? cashlessAmount,
+    String? bankId,
+    String? bankName,
+    String? source,
+    bool? syncedTo1c,
+    List<SaleItemInput>? saleItems,
+    List<SaleLine>? lines,
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      isIncome: isIncome ?? this.isIncome,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      dateTime: dateTime ?? this.dateTime,
+      cashierName: cashierName ?? this.cashierName,
+      registerId: registerId ?? this.registerId,
+      registerName: registerName ?? this.registerName,
+      description: description ?? this.description,
+      cashAmount: cashAmount ?? this.cashAmount,
+      cashlessAmount: cashlessAmount ?? this.cashlessAmount,
+      bankId: bankId ?? this.bankId,
+      bankName: bankName ?? this.bankName,
+      source: source ?? this.source,
+      syncedTo1c: syncedTo1c ?? this.syncedTo1c,
+      saleItems: saleItems ?? this.saleItems,
+      lines: lines ?? this.lines,
+    );
+  }
 }
 
 /// Модель кассовой смены согласно ТЗ (CASH-05 / CASH-06).

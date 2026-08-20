@@ -93,7 +93,10 @@ class _FinOpsViewState extends State<FinOpsView>
             onSelected: (val) {
               setSheetState(() => selectedBank = val);
             },
-            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            cardPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 2,
+            ),
             tilePadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 12),
@@ -176,7 +179,9 @@ class _FinOpsViewState extends State<FinOpsView>
     final textStyles = context.textStyles;
 
     Branch? selectedFromBranch = branches.isNotEmpty ? branches.first : null;
-    Branch? selectedToBranch = branches.length > 1 ? branches[1] : (branches.isNotEmpty ? branches.first : null);
+    Branch? selectedToBranch = branches.length > 1
+        ? branches[1]
+        : (branches.isNotEmpty ? branches.first : null);
     final amountCtrl = TextEditingController();
 
     LedgerBottomSheet.show(
@@ -195,7 +200,9 @@ class _FinOpsViewState extends State<FinOpsView>
             borderRadius: 8.0,
             title: Text(
               selectedFromBranch != null
-                  ? context.read<LanguageCubit>().translateMessage(selectedFromBranch!.name)
+                  ? context.read<LanguageCubit>().translateMessage(
+                      selectedFromBranch!.name,
+                    )
                   : locale.translate('common_select'),
               style: textStyles.bodySans,
             ),
@@ -206,7 +213,10 @@ class _FinOpsViewState extends State<FinOpsView>
             onSelected: (b) {
               setSheetState(() => selectedFromBranch = b);
             },
-            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            cardPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 2,
+            ),
             tilePadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 16),
@@ -219,7 +229,9 @@ class _FinOpsViewState extends State<FinOpsView>
             borderRadius: 8.0,
             title: Text(
               selectedToBranch != null
-                  ? context.read<LanguageCubit>().translateMessage(selectedToBranch!.name)
+                  ? context.read<LanguageCubit>().translateMessage(
+                      selectedToBranch!.name,
+                    )
                   : locale.translate('common_select'),
               style: textStyles.bodySans,
             ),
@@ -230,7 +242,10 @@ class _FinOpsViewState extends State<FinOpsView>
             onSelected: (b) {
               setSheetState(() => selectedToBranch = b);
             },
-            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            cardPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 2,
+            ),
             tilePadding: EdgeInsets.zero,
           ),
           const SizedBox(height: 16),
@@ -245,7 +260,10 @@ class _FinOpsViewState extends State<FinOpsView>
           ElevatedButton(
             onPressed: () {
               final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-              if (amt == null || amt <= 0 || selectedFromBranch == null || selectedToBranch == null) {
+              if (amt == null ||
+                  amt <= 0 ||
+                  selectedFromBranch == null ||
+                  selectedToBranch == null) {
                 return;
               }
               context.read<FinOpsBloc>().add(
@@ -314,7 +332,6 @@ class _FinOpsViewState extends State<FinOpsView>
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
     final locale = context.watch<LanguageCubit>();
     final authState = context.watch<AuthBloc>().state;
     final canManage =
@@ -330,11 +347,8 @@ class _FinOpsViewState extends State<FinOpsView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
                 tabs: [
                   Tab(text: locale.translate('fin_ops_tab_banks')),
                   Tab(text: locale.translate('fin_ops_tab_transfers')),
@@ -478,8 +492,8 @@ class _FinOpsViewState extends State<FinOpsView>
                     if (canManage && bank.isActive)
                       IconButton(
                         onPressed: () => context.read<FinOpsBloc>().add(
-                              DeleteBankRequested(bank.id),
-                            ),
+                          DeleteBankRequested(bank.id),
+                        ),
                         icon: Icon(
                           TablerIcons.power,
                           size: 18,
@@ -633,8 +647,8 @@ class _FinOpsViewState extends State<FinOpsView>
                       TextButton(
                         onPressed: () {
                           context.read<FinOpsBloc>().add(
-                                CancelStoreTransferRequested(tr.id),
-                              );
+                            CancelStoreTransferRequested(tr.id),
+                          );
                         },
                         style: TextButton.styleFrom(
                           foregroundColor: colors.accentRed,

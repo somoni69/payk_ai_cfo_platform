@@ -182,8 +182,7 @@ class MockCrmRepository implements CrmRepository {
   @override
   Future<List<LoyaltySummaryRow>> getLoyaltySummary({
     bool forceRefresh = false,
-  }) async =>
-      List.from(loyalty);
+  }) async => List.from(loyalty);
 
   @override
   Future<LoyaltyTxnsPage> getLoyaltyTxns({
@@ -227,8 +226,7 @@ class MockCrmRepository implements CrmRepository {
   Future<List<CrmClient>> getReactivation({
     int? days,
     bool forceRefresh = false,
-  }) async =>
-      List.from(reactivation);
+  }) async => List.from(reactivation);
 
   @override
   Future<bool> sendReactivation(String clientId, String text) async => true;
@@ -237,8 +235,7 @@ class MockCrmRepository implements CrmRepository {
   Future<List<CrmClient>> getChurn({
     int? days,
     bool forceRefresh = false,
-  }) async =>
-      List.from(churn);
+  }) async => List.from(churn);
 
   @override
   Future<ChurnAdvice> analyzeChurn(String clientId) async {
@@ -249,8 +246,7 @@ class MockCrmRepository implements CrmRepository {
   Future<List<BirthdayRow>> getBirthdays({
     int withinDays = 30,
     bool forceRefresh = false,
-  }) async =>
-      List.from(birthdays);
+  }) async => List.from(birthdays);
 }
 
 void main() {
@@ -345,9 +341,11 @@ void main() {
         ),
       );
 
-      final loaded = await bloc.stream.firstWhere(
-        (s) => s is CrmLoaded && s.clients.length == 2,
-      ) as CrmLoaded;
+      final loaded =
+          await bloc.stream.firstWhere(
+                (s) => s is CrmLoaded && s.clients.length == 2,
+              )
+              as CrmLoaded;
 
       expect(loaded.clients.last.fullName, 'Зоир Тошев');
       expect(loaded.stats.cacTotal, 250.0);
@@ -367,11 +365,13 @@ void main() {
         ),
       );
 
-      final loaded = await bloc.stream.firstWhere(
-        (s) =>
-            s is CrmLoaded &&
-            s.deals.any((d) => d.title == 'Укладка плитки'),
-      ) as CrmLoaded;
+      final loaded =
+          await bloc.stream.firstWhere(
+                (s) =>
+                    s is CrmLoaded &&
+                    s.deals.any((d) => d.title == 'Укладка плитки'),
+              )
+              as CrmLoaded;
 
       expect(
         loaded.deals.firstWhere((d) => d.title == 'Укладка плитки').amount,

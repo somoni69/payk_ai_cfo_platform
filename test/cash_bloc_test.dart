@@ -16,8 +16,11 @@ class MockCashTestRepository implements CashRepository {
   }) => openShift(startingBalance);
 
   @override
-  Future<CashShift> closeShiftById(double endingBalance, {String? shiftId}) =>
-      closeShift(endingBalance);
+  Future<CashShift> closeShiftById(
+    double endingBalance, {
+    String? shiftId,
+    String? note,
+  }) => closeShift(endingBalance, note: note);
 
   List<Transaction> transactions = [];
   CashShift? activeShift;
@@ -39,6 +42,38 @@ class MockCashTestRepository implements CashRepository {
     final gate = transactionGate;
     if (gate != null) return gate.future;
     return List.from(transactions);
+  }
+
+  @override
+  Future<List<SaleProduct>> getSaleProducts({String? search}) async {
+    return const [];
+  }
+
+  @override
+  Future<SalesProfit> getSalesProfit({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    return const SalesProfit(revenue: 0, cost: 0, profit: 0);
+  }
+
+  @override
+  Future<Transaction> getOperation(String id) async {
+    return transactions.firstWhere((t) => t.id == id);
+  }
+
+  @override
+  Future<Transaction> updateTransaction(Transaction transaction) async {
+    if (shouldFail) throw Exception('Update tx error');
+    final index = transactions.indexWhere((t) => t.id == transaction.id);
+    if (index >= 0) transactions[index] = transaction;
+    return transaction;
+  }
+
+  @override
+  Future<void> deleteTransaction(String id) async {
+    if (shouldFail) throw Exception('Delete tx error');
+    transactions.removeWhere((t) => t.id == id);
   }
 
   @override
@@ -67,7 +102,7 @@ class MockCashTestRepository implements CashRepository {
   }
 
   @override
-  Future<CashShift> closeShift(double endingBalance) async {
+  Future<CashShift> closeShift(double endingBalance, {String? note}) async {
     if (shouldFail) throw Exception('Close shift error');
     final closed = CashShift(
       openedAt: activeShift!.openedAt,

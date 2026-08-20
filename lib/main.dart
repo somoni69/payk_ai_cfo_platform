@@ -16,7 +16,10 @@ import 'package:payk_ai_cfo_platform/core/routing/go_router_refresh_stream.dart'
 import 'package:payk_ai_cfo_platform/core/theme/app_theme.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_event.dart';
+import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_state.dart';
 import 'package:payk_ai_cfo_platform/core/network/api_client.dart';
+import 'package:payk_ai_cfo_platform/features/permissions/cubit/permissions_cubit.dart';
+import 'package:payk_ai_cfo_platform/features/permissions/data/api_permissions_repository.dart';
 
 void main() {
   runZonedGuarded(
@@ -62,26 +65,51 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final AuthBloc _authBloc;
+  late final PermissionsCubit _permissionsCubit;
   late final GoRouterRefreshStream _routerRefresh;
   late final GoRouter _router;
+  StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
     _authBloc = AuthBloc();
-    _routerRefresh = GoRouterRefreshStream(_authBloc.stream);
-    _router = createRouter(_authBloc, refreshListenable: _routerRefresh);
+    _permissionsCubit = PermissionsCubit(ApiPermissionsRepository());
+    _routerRefresh = GoRouterRefreshStream.merge([
+      _authBloc.stream,
+      _permissionsCubit.stream,
+    ]);
+    _router = createRouter(
+      _authBloc,
+      refreshListenable: _routerRefresh,
+      permissions: _permissionsCubit,
+    );
     ApiClient().onUnauthorized = () {
       _authBloc.add(LogoutRequested());
     };
+    _authSub = _authBloc.stream.listen((state) {
+      if (state is AuthAuthenticated) {
+        unawaited(
+          _permissionsCubit.load().then((_) {
+            _permissionsCubit.startPolling();
+          }),
+        );
+      } else if (state is AuthUnauthenticated ||
+          state is AuthInitial ||
+          state is AuthTwoFactorRequired) {
+        _permissionsCubit.clear();
+      }
+    });
     _authBloc.add(CheckAuthStatus());
   }
 
   @override
   void dispose() {
     ApiClient().onUnauthorized = null;
+    unawaited(_authSub?.cancel() ?? Future<void>.value());
     _router.dispose();
     _routerRefresh.dispose();
+    unawaited(_permissionsCubit.close());
     unawaited(_authBloc.close());
     super.dispose();
   }
@@ -92,6 +120,7 @@ class _MyAppState extends State<MyApp> {
       child: MultiBlocProvider(
         providers: [
           BlocProvider<AuthBloc>.value(value: _authBloc),
+          BlocProvider<PermissionsCubit>.value(value: _permissionsCubit),
           BlocProvider<LanguageCubit>(
             create: (context) => LanguageCubit(
               storage: const FlutterSecureStorage(),

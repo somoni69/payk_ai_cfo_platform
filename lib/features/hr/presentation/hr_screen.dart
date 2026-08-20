@@ -195,8 +195,9 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                       setState(() {
                         _isMonthPickerExpanded = !_isMonthPickerExpanded;
                         if (_isMonthPickerExpanded) {
-                          _pickerYear =
-                              int.parse(_selectedPeriod.split('-')[0]);
+                          _pickerYear = int.parse(
+                            _selectedPeriod.split('-')[0],
+                          );
                         }
                       });
                     },
@@ -209,7 +210,7 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                         children: [
                           Text(
                             _formatPeriod(_selectedPeriod, localeCubit),
-                            style: textStyles.bodySans.copyWith(
+                            style: textStyles.captionSans.copyWith(
                               fontWeight: FontWeight.w500,
                               color: colors.brand,
                             ),
@@ -234,21 +235,9 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                       onPressed: () => _showAddEmployeeBottomSheet(context),
                     ),
                 ],
-                bottom: TabBar(
+                bottom: LedgerTabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  indicatorColor: colors.brand,
-                  labelColor: colors.brand,
-                  unselectedLabelColor: colors.textSecondary,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: colors.border,
-                  labelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                  unselectedLabelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w400,
-                  ),
                   tabs: [
                     Tab(text: localeCubit.translate('hr_tab_staff')),
                     Tab(text: localeCubit.translate('hr_tab_org')),
@@ -277,66 +266,66 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
               ),
               Expanded(
                 child: BlocBuilder<HrBloc, HrState>(
-                builder: (context, state) {
-                  if (state is HrLoading) {
-                    return const HrOverviewShimmer();
-                  }
+                  builder: (context, state) {
+                    if (state is HrLoading) {
+                      return const HrOverviewShimmer();
+                    }
 
-                  if (state is HrError) {
-                    return Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              TablerIcons.alert_circle,
-                              size: 48,
-                              color: colors.accentRed,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              localeCubit.translateMessage(state.message),
-                              style: textStyles.bodySans,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => context.read<HrBloc>().add(
-                                LoadHrData(_selectedPeriod),
+                    if (state is HrError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                TablerIcons.alert_circle,
+                                size: 48,
+                                color: colors.accentRed,
                               ),
-                              child: Text(
-                                localeCubit.translate('common_retry'),
+                              const SizedBox(height: 16),
+                              Text(
+                                localeCubit.translateMessage(state.message),
+                                style: textStyles.bodySans,
+                                textAlign: TextAlign.center,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () => context.read<HrBloc>().add(
+                                  LoadHrData(_selectedPeriod),
+                                ),
+                                child: Text(
+                                  localeCubit.translate('common_retry'),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }
+                      );
+                    }
 
-                  if (state is HrLoaded) {
-                    return TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildStaffTab(context, state),
-                        _buildOrgTab(context, state),
-                        _buildAttendanceTab(context, state),
-                        _buildKpiTab(context, state),
-                        _buildSalaryTab(context, state),
-                        _buildRecruitmentTab(context, state),
-                        _buildNineBoxTab(context, state),
-                        _buildContractsTab(context, state),
-                        _buildMovementTab(context, state),
-                      ],
-                    );
-                  }
+                    if (state is HrLoaded) {
+                      return TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildStaffTab(context, state),
+                          _buildOrgTab(context, state),
+                          _buildAttendanceTab(context, state),
+                          _buildKpiTab(context, state),
+                          _buildSalaryTab(context, state),
+                          _buildRecruitmentTab(context, state),
+                          _buildNineBoxTab(context, state),
+                          _buildContractsTab(context, state),
+                          _buildMovementTab(context, state),
+                        ],
+                      );
+                    }
 
-                  return const SizedBox();
-                },
+                    return const SizedBox();
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
           ),
         ),
       ),

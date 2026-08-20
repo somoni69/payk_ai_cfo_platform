@@ -586,7 +586,8 @@ class ApiHrRepository implements HrRepository {
             id: (m['id'] ?? '').toString(),
             fullName: m['full_name']?.toString() ?? '',
             position: m['position']?.toString(),
-            date: _parseDate(isHire ? m['hire_date'] : m['terminated_at']) ??
+            date:
+                _parseDate(isHire ? m['hire_date'] : m['terminated_at']) ??
                 _parseDate(m['date']),
             isHire: isHire,
           );

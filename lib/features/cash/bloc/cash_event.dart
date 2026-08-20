@@ -22,7 +22,11 @@ class LoadCashData extends CashEvent {
 class AddTransactionRequested extends CashEvent {
   final Transaction transaction;
 
-  const AddTransactionRequested(this.transaction);
+  /// Completes with `null` on success, or a user-facing error key/message.
+  /// The new-operation sheet stays open until this finishes when items are set.
+  final Completer<String?>? result;
+
+  const AddTransactionRequested(this.transaction, {this.result});
 
   @override
   List<Object?> get props => [transaction];
@@ -30,20 +34,42 @@ class AddTransactionRequested extends CashEvent {
 
 class OpenShiftRequested extends CashEvent {
   final double startingBalance;
+  final String? registerId;
 
-  const OpenShiftRequested(this.startingBalance);
+  const OpenShiftRequested(this.startingBalance, {this.registerId});
 
   @override
-  List<Object?> get props => [startingBalance];
+  List<Object?> get props => [startingBalance, registerId];
 }
 
 class CloseShiftRequested extends CashEvent {
   final double endingBalance;
+  final String? shiftId;
+  final String? note;
 
-  const CloseShiftRequested(this.endingBalance);
+  const CloseShiftRequested(this.endingBalance, {this.shiftId, this.note});
 
   @override
-  List<Object?> get props => [endingBalance];
+  List<Object?> get props => [endingBalance, shiftId, note];
+}
+
+class UpdateTransactionRequested extends CashEvent {
+  final Transaction transaction;
+  final Completer<String?>? result;
+
+  const UpdateTransactionRequested(this.transaction, {this.result});
+
+  @override
+  List<Object?> get props => [transaction];
+}
+
+class DeleteTransactionRequested extends CashEvent {
+  final String id;
+
+  const DeleteTransactionRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
 }
 
 class SearchFilterChanged extends CashEvent {

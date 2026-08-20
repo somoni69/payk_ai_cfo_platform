@@ -23,14 +23,7 @@ class LoadHrData extends HrEvent {
 }
 
 /// Lazy-load for optional HR sections (web-parity tabs).
-enum HrSection {
-  org,
-  attendance,
-  recruitment,
-  nineBox,
-  contracts,
-  movement,
-}
+enum HrSection { org, attendance, recruitment, nineBox, contracts, movement }
 
 class LoadHrSection extends HrEvent {
   final HrSection section;
@@ -73,12 +66,12 @@ class RecalcSalaryRequested extends HrEvent {
 
   @override
   List<Object?> get props => [
-        employeeId,
-        period,
-        baseAmount,
-        deductions,
-        bonusFormula,
-      ];
+    employeeId,
+    period,
+    baseAmount,
+    deductions,
+    bonusFormula,
+  ];
 }
 
 class CreateAttendanceRequested extends HrEvent {
@@ -157,8 +150,7 @@ class CreateEvaluationRequested extends HrEvent {
   });
 
   @override
-  List<Object?> get props =>
-      [employeeId, period, performance, potential, note];
+  List<Object?> get props => [employeeId, period, performance, potential, note];
 }
 
 class CreateContractRequested extends HrEvent {

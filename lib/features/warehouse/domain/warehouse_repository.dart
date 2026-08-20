@@ -29,4 +29,36 @@ abstract class WarehouseRepository {
     double amount,
     String? note,
   );
+
+  /// Партии завоза (сроки годности). [expiringOnly] — только «горящие».
+  Future<List<WarehouseBatch>> getBatches({bool expiringOnly = false});
+
+  Future<WarehouseBatch> createBatch({
+    required String productId,
+    required double qty,
+    DateTime? expiryDate,
+    String? code,
+    String? note,
+  });
+
+  Future<WarehouseBatch> updateBatch({
+    required String id,
+    double? qty,
+    DateTime? expiryDate,
+    DateTime? receivedAt,
+    String? code,
+    String? note,
+  });
+
+  Future<void> deleteBatch(String id);
+
+  /// Уценка товара по партии (меняет цену продукта).
+  Future<void> applyBatchDiscount(String batchId, int percent);
+
+  /// AI-разбор остатков и сроков (5–10 с, long timeout).
+  Future<WarehouseStockAnalysis> getStockAnalysis();
+
+  /// Run expiry detectors now (`POST /warehouse/run-expiry-check`).
+  /// Returns number of new alerts created.
+  Future<int> runExpiryCheck();
 }

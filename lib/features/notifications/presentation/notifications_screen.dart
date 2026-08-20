@@ -116,7 +116,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                   snap: true,
                 ),
               ],
-              body: const LedgerListShimmer(showStatsHeader: false, itemCount: 5),
+              body: const InboxOverviewShimmer(),
             ),
           );
         }

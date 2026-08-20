@@ -134,51 +134,52 @@ class CrmLoaded extends CrmState {
           loyaltyTxnsLoadingMore ?? this.loyaltyTxnsLoadingMore,
       detailClient: clearDetail ? null : (detailClient ?? this.detailClient),
       detailDeals: clearDetail ? const [] : (detailDeals ?? this.detailDeals),
-      detailLoyalty:
-          clearDetail ? const [] : (detailLoyalty ?? this.detailLoyalty),
+      detailLoyalty: clearDetail
+          ? const []
+          : (detailLoyalty ?? this.detailLoyalty),
       detailLoading: detailLoading ?? this.detailLoading,
-      churnAdvice:
-          clearChurnAdvice ? null : (churnAdvice ?? this.churnAdvice),
+      churnAdvice: clearChurnAdvice ? null : (churnAdvice ?? this.churnAdvice),
       churnAnalyzing: churnAnalyzing ?? this.churnAnalyzing,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      successMessage:
-          clearSuccess ? null : (successMessage ?? this.successMessage),
+      successMessage: clearSuccess
+          ? null
+          : (successMessage ?? this.successMessage),
       isRefreshing: isRefreshing ?? this.isRefreshing,
     );
   }
 
   @override
   List<Object?> get props => [
-        clients,
-        clientsTotal,
-        clientsPage,
-        clientsSize,
-        clientFilters.query,
-        clientFilters.level,
-        clientFilters.page,
-        deals,
-        stats,
-        loyaltySummary,
-        reactivation,
-        churn,
-        birthdays,
-        pickClients,
-        loyaltyTxns,
-        loyaltyFilterClientId,
-        loyaltyTxnsLoading,
-        loyaltyTxnPage,
-        loyaltyTxnTotal,
-        loyaltyTxnsLoadingMore,
-        detailClient,
-        detailDeals,
-        detailLoyalty,
-        detailLoading,
-        churnAdvice,
-        churnAnalyzing,
-        errorMessage,
-        successMessage,
-        isRefreshing,
-      ];
+    clients,
+    clientsTotal,
+    clientsPage,
+    clientsSize,
+    clientFilters.query,
+    clientFilters.level,
+    clientFilters.page,
+    deals,
+    stats,
+    loyaltySummary,
+    reactivation,
+    churn,
+    birthdays,
+    pickClients,
+    loyaltyTxns,
+    loyaltyFilterClientId,
+    loyaltyTxnsLoading,
+    loyaltyTxnPage,
+    loyaltyTxnTotal,
+    loyaltyTxnsLoadingMore,
+    detailClient,
+    detailDeals,
+    detailLoyalty,
+    detailLoading,
+    churnAdvice,
+    churnAnalyzing,
+    errorMessage,
+    successMessage,
+    isRefreshing,
+  ];
 }
 
 class CrmError extends CrmState {

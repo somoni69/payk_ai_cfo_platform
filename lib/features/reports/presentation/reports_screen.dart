@@ -611,7 +611,7 @@ class _ReportsViewState extends State<ReportsView> {
           },
           builder: (context, state) {
             if (state is ReportsLoading || state is ReportsInitial) {
-              return const LedgerListShimmer(showStatsHeader: true, itemCount: 5);
+              return const ReportsOverviewShimmer();
             }
             if (state is ReportsError) {
               return Center(

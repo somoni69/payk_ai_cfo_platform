@@ -22,6 +22,7 @@ class AppNotification {
   final NotificationSeverity severity;
   final DateTime dateTime;
   final bool isRead;
+  final String? link;
 
   const AppNotification({
     required this.id,
@@ -31,6 +32,7 @@ class AppNotification {
     required this.severity,
     required this.dateTime,
     this.isRead = false,
+    this.link,
   });
 
   AppNotification copyWith({
@@ -41,6 +43,7 @@ class AppNotification {
     NotificationSeverity? severity,
     DateTime? dateTime,
     bool? isRead,
+    String? link,
   }) {
     return AppNotification(
       id: id ?? this.id,
@@ -50,6 +53,7 @@ class AppNotification {
       severity: severity ?? this.severity,
       dateTime: dateTime ?? this.dateTime,
       isRead: isRead ?? this.isRead,
+      link: link ?? this.link,
     );
   }
 }

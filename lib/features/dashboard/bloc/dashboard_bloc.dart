@@ -65,11 +65,6 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedBaseMetrics = overview.metrics;
       _cachedBaseHistory = overview.history;
       _emitCurrentState(emit);
-
-      // Pre-fetch all dashboard sections in parallel background requests so sub-tabs open instantly!
-      for (final s in DashboardSection.values) {
-        add(LoadDashboardSection(s, forceRefresh: event.forceRefresh));
-      }
     } catch (_) {
       if (emit.isDone) return;
       if (_cachedBaseMetrics != null && _cachedBaseHistory != null) {
@@ -149,7 +144,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           break;
         case DashboardSection.abc:
           final abc = await _repository.getAbcAnalysis(
-            _cachedAbc?.dimension ?? 'category',
+            AbcDimensions.toApi(
+              _cachedAbc?.dimension ?? AbcDimensions.category,
+            ),
           );
           if (abcRevision == _abcRevision) {
             _cachedAbc = abc;
@@ -268,16 +265,30 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (_cachedBaseMetrics == null || _cachedBaseHistory == null) return;
 
+    final dimension = AbcDimensions.toApi(event.dimension);
+    final previous = _cachedAbc;
     final revision = ++_abcRevision;
     _loadingSections.add(DashboardSection.abc);
     _sectionErrors.remove(DashboardSection.abc);
+    if (previous != null) {
+      _cachedAbc = AbcAnalysis(
+        dimension: dimension,
+        rows: previous.rows,
+        total: previous.total,
+      );
+    }
     _emitCurrentState(emit);
     try {
-      final abc = await _repository.getAbcAnalysis(event.dimension);
+      final abc = await _repository.getAbcAnalysis(dimension);
       if (revision != _abcRevision || emit.isDone) return;
-      _cachedAbc = abc;
+      _cachedAbc = AbcAnalysis(
+        dimension: dimension,
+        rows: abc.rows,
+        total: abc.total,
+      );
     } catch (error) {
       if (revision == _abcRevision && !emit.isDone) {
+        _cachedAbc = previous;
         _sectionErrors[DashboardSection.abc] = ErrorKeys.loadFailed;
       }
     } finally {
@@ -341,9 +352,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -373,9 +382,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -399,9 +406,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -425,9 +430,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }
@@ -451,9 +454,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       }
     } catch (e) {
       if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(actionMessage: e.toString()),
-        );
+        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }

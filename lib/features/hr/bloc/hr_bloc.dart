@@ -85,8 +85,9 @@ class HrBloc extends Bloc<HrEvent, HrState> {
           candidates: canKeepCurrent ? previous!.candidates : const [],
           candidatesLoaded: canKeepCurrent ? previous!.candidatesLoaded : false,
           evaluations: canKeepCurrent ? previous!.evaluations : const [],
-          evaluationsLoaded:
-              canKeepCurrent ? previous!.evaluationsLoaded : false,
+          evaluationsLoaded: canKeepCurrent
+              ? previous!.evaluationsLoaded
+              : false,
           contracts: canKeepCurrent ? previous!.contracts : const [],
           contractsLoaded: canKeepCurrent ? previous!.contractsLoaded : false,
           movement: canKeepCurrent ? previous!.movement : null,
@@ -273,9 +274,7 @@ class HrBloc extends Bloc<HrEvent, HrState> {
         ),
       );
     } catch (e) {
-      emit(
-        currentState.copyWith(errorMessage: e.toString()),
-      );
+      emit(currentState.copyWith(errorMessage: e.toString()));
     }
   }
 
@@ -358,8 +357,9 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       final current = state as HrLoaded;
       emit(
         current.copyWith(
-          attendance:
-              current.attendance.where((a) => a.id != event.id).toList(),
+          attendance: current.attendance
+              .where((a) => a.id != event.id)
+              .toList(),
           successMessage: 'hr_toast_attendance_deleted',
         ),
       );
@@ -433,8 +433,9 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       final current = state as HrLoaded;
       emit(
         current.copyWith(
-          candidates:
-              current.candidates.where((c) => c.id != event.id).toList(),
+          candidates: current.candidates
+              .where((c) => c.id != event.id)
+              .toList(),
           successMessage: 'hr_toast_candidate_deleted',
         ),
       );

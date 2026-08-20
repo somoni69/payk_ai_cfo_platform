@@ -110,7 +110,6 @@ class _MarketingViewState extends State<MarketingView>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final textStyles = context.textStyles;
     final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
@@ -122,14 +121,8 @@ class _MarketingViewState extends State<MarketingView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
-                labelStyle: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
                 tabs: [
                   Tab(text: localeCubit.translate('marketing_tab_ai_writer')),
                   Tab(text: localeCubit.translate('marketing_tab_campaigns')),
@@ -196,8 +189,12 @@ class _MarketingViewState extends State<MarketingView>
                       localeCubit.translate('marketing_mode_ad_ideas'),
                     ),
                     labelStyle: textStyles.captionSans.copyWith(
-                      color: !_generatePostTextMode ? Colors.white : colors.textPrimary,
-                      fontWeight: !_generatePostTextMode ? FontWeight.w500 : FontWeight.w400,
+                      color: !_generatePostTextMode
+                          ? Colors.white
+                          : colors.textPrimary,
+                      fontWeight: !_generatePostTextMode
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                     ),
                     checkmarkColor: Colors.white,
                     selected: !_generatePostTextMode,
@@ -217,8 +214,12 @@ class _MarketingViewState extends State<MarketingView>
                       localeCubit.translate('marketing_mode_ready_post'),
                     ),
                     labelStyle: textStyles.captionSans.copyWith(
-                      color: _generatePostTextMode ? Colors.white : colors.textPrimary,
-                      fontWeight: _generatePostTextMode ? FontWeight.w500 : FontWeight.w400,
+                      color: _generatePostTextMode
+                          ? Colors.white
+                          : colors.textPrimary,
+                      fontWeight: _generatePostTextMode
+                          ? FontWeight.w500
+                          : FontWeight.w400,
                     ),
                     checkmarkColor: Colors.white,
                     selected: _generatePostTextMode,
@@ -402,7 +403,7 @@ class _MarketingViewState extends State<MarketingView>
           previous.isCampaignsLoading != current.isCampaignsLoading,
       builder: (context, state) {
         if (state.isCampaignsLoading && state.campaigns.isEmpty) {
-          return const LedgerListShimmer(showStatsHeader: false, itemCount: 5);
+          return const MarketingCampaignsShimmer();
         }
 
         final visibleCount = _visibleCampaigns < state.campaigns.length
@@ -510,7 +511,7 @@ class _MarketingViewState extends State<MarketingView>
           previous.isPostsLoading != current.isPostsLoading,
       builder: (context, state) {
         if (state.isPostsLoading && state.posts.isEmpty) {
-          return const LedgerListShimmer(showStatsHeader: false, itemCount: 5);
+          return const MarketingPostsShimmer();
         }
 
         final visibleCount = _visiblePosts < state.posts.length

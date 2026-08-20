@@ -131,7 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 8),
                       InkWell(
                         onTap: () => launchUrl(
-                          Uri.parse('https://payk-ecosystem.vercel.app/privacy'),
+                          Uri.parse(
+                            'https://payk-ecosystem.vercel.app/privacy',
+                          ),
                           mode: LaunchMode.externalApplication,
                         ),
                         child: Padding(
@@ -170,9 +172,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Text(
               language.translate('login_title'),
-              style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -240,9 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Text(
               language.translate('login_2fa_title'),
-              style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
             Text(

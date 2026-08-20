@@ -1,3 +1,4 @@
+import '../../permissions/domain/my_permissions.dart';
 import 'user_role.dart';
 
 /// Application modules that can be protected at navigation boundaries.
@@ -58,6 +59,15 @@ extension UserRoleAccess on UserRole {
       AppCapability.reports,
     },
     UserRole.hr => const <AppCapability>{AppCapability.tasks, AppCapability.hr},
+    // No company finance summary (dashboard/cash/finOps/reports) — web parity.
+    UserRole.marketer => const <AppCapability>{
+      AppCapability.tasks,
+      AppCapability.crm,
+      AppCapability.marketing,
+      AppCapability.strategy,
+      AppCapability.notifications,
+      AppCapability.checklists,
+    },
     UserRole.viewer => const <AppCapability>{
       AppCapability.dashboard,
       AppCapability.cash,
@@ -94,6 +104,12 @@ extension UserRoleAccess on UserRole {
             capability == AppCapability.checklists,
       UserRole.hr =>
         capability == AppCapability.tasks || capability == AppCapability.hr,
+      UserRole.marketer =>
+        capability == AppCapability.marketing ||
+            capability == AppCapability.crm ||
+            capability == AppCapability.strategy ||
+            capability == AppCapability.tasks ||
+            capability == AppCapability.checklists,
       UserRole.viewer => false,
     };
   }
@@ -108,6 +124,8 @@ extension UserRoleAccess on UserRole {
   String get landingLocation => switch (this) {
     UserRole.cashier => '/cash',
     UserRole.hr => '/tasks',
+    // Dashboard shows revenue — marketer starts in marketing (web parity).
+    UserRole.marketer => '/marketing',
     UserRole.director ||
     UserRole.manager ||
     UserRole.accountant ||
@@ -122,8 +140,11 @@ abstract final class AppAccess {
     '/tasks': AppCapability.tasks,
     '/warehouse': AppCapability.warehouse,
     '/notifications': AppCapability.notifications,
+    '/inbox': AppCapability.notifications,
     '/hr': AppCapability.hr,
     '/crm': AppCapability.crm,
+    // Meta chats share CRM rights (web MODULE_NAV).
+    '/meta': AppCapability.crm,
     '/strategy': AppCapability.strategy,
     '/legal': AppCapability.legal,
     '/marketing': AppCapability.marketing,
@@ -150,5 +171,25 @@ abstract final class AppAccess {
   static bool canOpen(UserRole role, String location) {
     final capability = capabilityForLocation(location);
     return capability == null || role.can(capability);
+  }
+
+  /// Prefer server [MyPermissions] when loaded; otherwise static [role] matrix.
+  static bool canOpenEffective(
+    UserRole role,
+    String location, {
+    MyPermissions? effective,
+  }) {
+    final capability = capabilityForLocation(location);
+    if (capability == null) return true;
+    if (effective == null) return role.can(capability);
+    if (effective.isDirector) return true;
+    if (capability == AppCapability.users ||
+        capability == AppCapability.backups) {
+      return effective.isDirector;
+    }
+    if (capability == AppCapability.notifications) return true;
+    final key = PermissionModules.keyFor(capability);
+    if (key == null) return true;
+    return effective.can(key, PermAction.view);
   }
 }

@@ -136,9 +136,9 @@ class MockFinanceRepository implements FinanceRepository {
   @override
   Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
     await Future.delayed(const Duration(milliseconds: 150));
-    if (dimension == 'client') {
+    if (AbcDimensions.toApi(dimension) == AbcDimensions.counterparty) {
       return const AbcAnalysis(
-        dimension: 'client',
+        dimension: AbcDimensions.counterparty,
         rows: [
           AbcRow(
             name: 'ООО «Сомон Кофе»',
@@ -243,6 +243,17 @@ class MockFinanceRepository implements FinanceRepository {
         RateRow(code: 'USD', rate: 11.0, rateDate: DateTime.now()),
         RateRow(code: 'RUB', rate: 0.125, rateDate: DateTime.now()),
         RateRow(code: 'EUR', rate: 12.0, rateDate: DateTime.now()),
+      ],
+    );
+  }
+
+  @override
+  Future<CurrencyBoard> getCurrencyBoard() async {
+    return CurrencyBoard(
+      official: [
+        RateRow(code: 'USD', rate: 11.0, rateDate: DateTime.now()),
+        RateRow(code: 'EUR', rate: 12.0, rateDate: DateTime.now()),
+        RateRow(code: 'RUB', rate: 0.125, rateDate: DateTime.now()),
       ],
     );
   }

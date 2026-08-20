@@ -77,10 +77,7 @@ class ApiAuthRepository {
         ),
       );
 
-      return _parseLoginBody(
-        response.data,
-        fallbackUsername: username,
-      );
+      return _parseLoginBody(response.data, fallbackUsername: username);
     } on DioException catch (error) {
       throw Exception(_loginErrorKey(error));
     } catch (_) {
@@ -97,10 +94,7 @@ class ApiAuthRepository {
     try {
       final response = await _apiClient.dio.post(
         '/auth/verify-2fa',
-        data: {
-          'challenge_id': challengeId,
-          'code': code.trim(),
-        },
+        data: {'challenge_id': challengeId, 'code': code.trim()},
         options: Options(
           extra: const <String, dynamic>{'skipUnauthorizedHandler': true},
         ),
@@ -483,12 +477,18 @@ class ApiAuthRepository {
         return UserRole.cashier;
       case 'hr':
         return UserRole.hr;
+      case 'marketer':
+      case 'marketing':
+        return UserRole.marketer;
       case 'viewer':
         return UserRole.viewer;
     }
     // Loose aliases for older tokens / combined scopes.
     if (cleanRole.contains('director') || cleanRole.contains('admin')) {
       return UserRole.director;
+    }
+    if (cleanRole.contains('marketer') || cleanRole.contains('marketolog')) {
+      return UserRole.marketer;
     }
     if (cleanRole.contains('manager')) {
       return UserRole.manager;

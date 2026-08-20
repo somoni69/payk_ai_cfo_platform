@@ -28,6 +28,8 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   CashBloc(this._repository) : super(CashLoading()) {
     on<LoadCashData>(_onLoadCashData);
     on<AddTransactionRequested>(_onAddTransactionRequested);
+    on<UpdateTransactionRequested>(_onUpdateTransactionRequested);
+    on<DeleteTransactionRequested>(_onDeleteTransactionRequested);
     on<OpenShiftRequested>(_onOpenShiftRequested);
     on<CloseShiftRequested>(_onCloseShiftRequested);
     on<SearchFilterChanged>(_onSearchFilterChanged);
@@ -132,9 +134,16 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     try {
       newTx = await _repository.addTransaction(event.transaction);
     } catch (e) {
+      final message = e.toString().replaceAll('Exception: ', '');
+      if (event.result != null && !event.result!.isCompleted) {
+        event.result!.complete(message);
+      }
       if (emit.isDone) return;
-      _emitCurrentState(emit, errorMessage: ErrorKeys.saveFailed);
+      _emitCurrentState(emit, errorMessage: message);
       return;
+    }
+    if (event.result != null && !event.result!.isCompleted) {
+      event.result!.complete(null);
     }
 
     _cachedTransactions = List<Transaction>.from(_cachedTransactions)
@@ -152,6 +161,57 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     _emitCurrentState(emit, errorMessage: refreshWarning);
   }
 
+  void _onUpdateTransactionRequested(
+    UpdateTransactionRequested event,
+    Emitter<CashState> emit,
+  ) async {
+    if (state is! CashLoaded) return;
+    late final Transaction updated;
+    try {
+      updated = await _repository.updateTransaction(event.transaction);
+    } catch (e) {
+      final message = e.toString().replaceAll('Exception: ', '');
+      if (event.result != null && !event.result!.isCompleted) {
+        event.result!.complete(message);
+      }
+      if (emit.isDone) return;
+      _emitCurrentState(emit, errorMessage: message);
+      return;
+    }
+    if (event.result != null && !event.result!.isCompleted) {
+      event.result!.complete(null);
+    }
+    _cachedTransactions = [
+      for (final tx in _cachedTransactions) tx.id == updated.id ? updated : tx,
+    ];
+    if (emit.isDone) return;
+    _emitCurrentState(emit);
+  }
+
+  void _onDeleteTransactionRequested(
+    DeleteTransactionRequested event,
+    Emitter<CashState> emit,
+  ) async {
+    if (state is! CashLoaded) return;
+    try {
+      await _repository.deleteTransaction(event.id);
+      _cachedTransactions = _cachedTransactions
+          .where((tx) => tx.id != event.id)
+          .toList(growable: false);
+      try {
+        _cachedSummaries = await _repository.getSummary();
+      } catch (_) {}
+      if (emit.isDone) return;
+      _emitCurrentState(emit);
+    } catch (e) {
+      if (emit.isDone) return;
+      _emitCurrentState(
+        emit,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
   void _onOpenShiftRequested(
     OpenShiftRequested event,
     Emitter<CashState> emit,
@@ -162,7 +222,9 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     try {
       _cachedActiveShift = await _repository.openShiftForRegister(
         event.startingBalance,
-        registerId: _cachedRegisters.isEmpty ? null : _cachedRegisters.first.id,
+        registerId:
+            event.registerId ??
+            (_cachedRegisters.isEmpty ? null : _cachedRegisters.first.id),
       );
       final refreshed = await Future.wait([
         _repository.getSummary(),
@@ -182,7 +244,15 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   ) async {
     if (state is! CashLoaded) return;
     final currentState = state as CashLoaded;
-    final currentShift = _cachedActiveShift;
+    CashShift? currentShift = _cachedActiveShift;
+    if (event.shiftId != null) {
+      for (final shift in _cachedShifts) {
+        if (shift.id == event.shiftId) {
+          currentShift = shift;
+          break;
+        }
+      }
+    }
 
     if (currentShift == null) return;
 
@@ -190,6 +260,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
       final closedShift = await _repository.closeShiftById(
         event.endingBalance,
         shiftId: currentShift.id,
+        note: event.note,
       );
 
       // CASH-06: Автоматический подсчет разницы

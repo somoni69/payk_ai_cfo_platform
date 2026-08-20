@@ -114,8 +114,8 @@ class _StrategyViewState extends State<StrategyView>
     final locale = context.read<LanguageCubit>();
     return FloatingActionButton.extended(
       onPressed: () => context.read<StrategyBloc>().add(
-            GenerateScenariosRequested(_currentQuarter),
-          ),
+        GenerateScenariosRequested(_currentQuarter),
+      ),
       backgroundColor: colors.brand,
       foregroundColor: colors.surface,
       elevation: 0,
@@ -123,9 +123,9 @@ class _StrategyViewState extends State<StrategyView>
       focusElevation: 0,
       hoverElevation: 0,
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: colors.brand),
-        ),
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: colors.brand),
+      ),
       icon: const Icon(TablerIcons.sparkles),
       label: Text(
         locale.translate('strategy_scenarios_generate'),
@@ -161,7 +161,6 @@ class _StrategyViewState extends State<StrategyView>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final textStyles = context.textStyles;
     final localeCubit = context.watch<LanguageCubit>();
 
     return Scaffold(
@@ -188,21 +187,9 @@ class _StrategyViewState extends State<StrategyView>
                 pinned: true,
                 floating: true,
                 snap: true,
-                bottom: TabBar(
+                bottom: LedgerTabBar(
                   controller: _tabController,
                   isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  indicatorColor: colors.brand,
-                  labelColor: colors.brand,
-                  unselectedLabelColor: colors.textSecondary,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  dividerColor: colors.border,
-                  labelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                  unselectedLabelStyle: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w400,
-                  ),
                   tabs: [
                     Tab(text: localeCubit.translate('strategy_tab_whatif')),
                     Tab(text: localeCubit.translate('strategy_tab_marketing')),
@@ -962,8 +949,8 @@ class _StrategyViewState extends State<StrategyView>
         return RefreshIndicator(
           onRefresh: () async {
             context.read<StrategyBloc>().add(
-                  const LoadMacroIndicators(forceRefresh: true),
-                );
+              const LoadMacroIndicators(forceRefresh: true),
+            );
           },
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -1034,7 +1021,9 @@ class _StrategyViewState extends State<StrategyView>
         }
         return RefreshIndicator(
           onRefresh: () async {
-            context.read<StrategyBloc>().add(const LoadNews(forceRefresh: true));
+            context.read<StrategyBloc>().add(
+              const LoadNews(forceRefresh: true),
+            );
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
@@ -1061,7 +1050,9 @@ class _StrategyViewState extends State<StrategyView>
                         ),
                       )
                     else
-                      ...source.items.take(5).map(
+                      ...source.items
+                          .take(5)
+                          .map(
                             (item) => Padding(
                               padding: const EdgeInsets.only(bottom: 8),
                               child: LedgerCard(
@@ -1095,11 +1086,8 @@ class _StrategyViewState extends State<StrategyView>
         return RefreshIndicator(
           onRefresh: () async {
             context.read<StrategyBloc>().add(
-                  LoadScenarios(
-                    quarter: _currentQuarter,
-                    forceRefresh: true,
-                  ),
-                );
+              LoadScenarios(quarter: _currentQuarter, forceRefresh: true),
+            );
           },
           child: state.scenarios.isEmpty
               ? ListView(
@@ -1165,8 +1153,8 @@ class _StrategyViewState extends State<StrategyView>
         return RefreshIndicator(
           onRefresh: () async {
             context.read<StrategyBloc>().add(
-                  const LoadDailySummary(forceRefresh: true),
-                );
+              const LoadDailySummary(forceRefresh: true),
+            );
           },
           child: ListView(
             padding: const EdgeInsets.all(16),

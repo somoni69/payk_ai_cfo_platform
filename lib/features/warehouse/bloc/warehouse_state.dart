@@ -13,14 +13,24 @@ class WarehouseLoading extends WarehouseState {}
 class WarehouseLoaded extends WarehouseState {
   final List<WarehouseProduct> products;
   final List<WarehouseMovement> movements;
+  final List<WarehouseBatch> batches;
+  final bool batchesExpiringOnly;
   final WarehouseSummaryData summary;
+  final WarehouseStockAnalysis? stockAnalysis;
+  final bool isAnalysisLoading;
+  final String? analysisError;
   final String? errorMessage;
   final String? successMessage;
 
   const WarehouseLoaded({
     required this.products,
     required this.movements,
+    this.batches = const [],
+    this.batchesExpiringOnly = false,
     required this.summary,
+    this.stockAnalysis,
+    this.isAnalysisLoading = false,
+    this.analysisError,
     this.errorMessage,
     this.successMessage,
   });
@@ -28,16 +38,32 @@ class WarehouseLoaded extends WarehouseState {
   WarehouseLoaded copyWith({
     List<WarehouseProduct>? products,
     List<WarehouseMovement>? movements,
+    List<WarehouseBatch>? batches,
+    bool? batchesExpiringOnly,
     WarehouseSummaryData? summary,
+    WarehouseStockAnalysis? stockAnalysis,
+    bool? isAnalysisLoading,
+    String? analysisError,
     String? errorMessage,
     String? successMessage,
     bool clearError = false,
     bool clearSuccess = false,
+    bool clearAnalysis = false,
+    bool clearAnalysisError = false,
   }) {
     return WarehouseLoaded(
       products: products ?? this.products,
       movements: movements ?? this.movements,
+      batches: batches ?? this.batches,
+      batchesExpiringOnly: batchesExpiringOnly ?? this.batchesExpiringOnly,
       summary: summary ?? this.summary,
+      stockAnalysis: clearAnalysis
+          ? null
+          : (stockAnalysis ?? this.stockAnalysis),
+      isAnalysisLoading: isAnalysisLoading ?? this.isAnalysisLoading,
+      analysisError: clearAnalysisError
+          ? null
+          : (analysisError ?? this.analysisError),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       successMessage: clearSuccess
           ? null
@@ -49,7 +75,12 @@ class WarehouseLoaded extends WarehouseState {
   List<Object?> get props => [
     products,
     movements,
+    batches,
+    batchesExpiringOnly,
     summary,
+    stockAnalysis,
+    isAnalysisLoading,
+    analysisError,
     errorMessage,
     successMessage,
   ];

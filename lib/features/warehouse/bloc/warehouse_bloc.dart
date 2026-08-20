@@ -13,6 +13,9 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
 
   List<WarehouseProduct> _cachedProducts = [];
   List<WarehouseMovement> _cachedMovements = [];
+  List<WarehouseBatch> _cachedBatches = [];
+  bool _batchesExpiringOnly = false;
+  WarehouseStockAnalysis? _cachedAnalysis;
   Future<List<Object>>? _loadRequest;
   Completer<void>? _reloadCompleter;
   WarehouseSummaryData _cachedSummary = const WarehouseSummaryData(
@@ -27,6 +30,13 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     on<UpdateProductRequested>(_onUpdateProductRequested);
     on<DeleteProductRequested>(_onDeleteProductRequested);
     on<ZeroOutProductRequested>(_onZeroOutProductRequested);
+    on<LoadBatchesRequested>(_onLoadBatchesRequested);
+    on<CreateBatchRequested>(_onCreateBatchRequested);
+    on<UpdateBatchRequested>(_onUpdateBatchRequested);
+    on<DeleteBatchRequested>(_onDeleteBatchRequested);
+    on<ApplyBatchDiscountRequested>(_onApplyBatchDiscountRequested);
+    on<RunStockAnalysisRequested>(_onRunStockAnalysisRequested);
+    on<RunExpiryCheckRequested>(_onRunExpiryCheckRequested);
   }
 
   Future<void> reload() {
@@ -56,6 +66,7 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
         _repository.getProducts(),
         _repository.getMovements(),
         _repository.getSummary(),
+        _repository.getBatches(expiringOnly: _batchesExpiringOnly),
       ]);
       _loadRequest = request;
     }
@@ -66,6 +77,7 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
       _cachedProducts = (results[0] as List).cast<WarehouseProduct>();
       _cachedMovements = (results[1] as List).cast<WarehouseMovement>();
       _cachedSummary = results[2] as WarehouseSummaryData;
+      _cachedBatches = (results[3] as List).cast<WarehouseBatch>();
       _emitLoaded(emit);
     } catch (error) {
       if (emit.isDone) return;
@@ -211,9 +223,7 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
       _emitLoaded(emit, successMessage: 'warehouse_toast_product_updated');
     } catch (e) {
       if (state is WarehouseLoaded) {
-        emit(
-          (state as WarehouseLoaded).copyWith(errorMessage: e.toString()),
-        );
+        emit((state as WarehouseLoaded).copyWith(errorMessage: e.toString()));
       }
     }
   }
@@ -230,9 +240,7 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
       _emitLoaded(emit, successMessage: 'warehouse_toast_product_deleted');
     } catch (e) {
       if (state is WarehouseLoaded) {
-        emit(
-          (state as WarehouseLoaded).copyWith(errorMessage: e.toString()),
-        );
+        emit((state as WarehouseLoaded).copyWith(errorMessage: e.toString()));
       }
     }
   }
@@ -251,10 +259,190 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
       _emitLoaded(emit, successMessage: 'warehouse_toast_product_zeroed');
     } catch (e) {
       if (state is WarehouseLoaded) {
-        emit(
-          (state as WarehouseLoaded).copyWith(errorMessage: e.toString()),
-        );
+        emit((state as WarehouseLoaded).copyWith(errorMessage: e.toString()));
       }
+    }
+  }
+
+  Future<void> _onLoadBatchesRequested(
+    LoadBatchesRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    _batchesExpiringOnly = event.expiringOnly;
+    try {
+      _cachedBatches = await _repository.getBatches(
+        expiringOnly: _batchesExpiringOnly,
+      );
+      _emitLoaded(emit);
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateBatchRequested(
+    CreateBatchRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      await _repository.createBatch(
+        productId: event.productId,
+        qty: event.qty,
+        expiryDate: event.expiryDate,
+        code: event.code,
+        note: event.note,
+      );
+      final refreshed = await Future.wait([
+        _repository.getBatches(expiringOnly: _batchesExpiringOnly),
+        _repository.getProducts(),
+        _repository.getSummary(),
+      ]);
+      _cachedBatches = refreshed[0] as List<WarehouseBatch>;
+      _cachedProducts = refreshed[1] as List<WarehouseProduct>;
+      _cachedSummary = refreshed[2] as WarehouseSummaryData;
+      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_created');
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onUpdateBatchRequested(
+    UpdateBatchRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      await _repository.updateBatch(
+        id: event.id,
+        qty: event.qty,
+        expiryDate: event.expiryDate,
+        receivedAt: event.receivedAt,
+        code: event.code,
+        note: event.note,
+      );
+      _cachedBatches = await _repository.getBatches(
+        expiringOnly: _batchesExpiringOnly,
+      );
+      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_updated');
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteBatchRequested(
+    DeleteBatchRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      await _repository.deleteBatch(event.id);
+      _cachedBatches = _cachedBatches
+          .where((b) => b.id != event.id)
+          .toList(growable: false);
+      final synced = await Future.wait([
+        _repository.getProducts(),
+        _repository.getSummary(),
+      ]);
+      _cachedProducts = synced[0] as List<WarehouseProduct>;
+      _cachedSummary = synced[1] as WarehouseSummaryData;
+      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_deleted');
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onApplyBatchDiscountRequested(
+    ApplyBatchDiscountRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      await _repository.applyBatchDiscount(event.batchId, event.percent);
+      final synced = await Future.wait([
+        _repository.getProducts(),
+        _repository.getBatches(expiringOnly: _batchesExpiringOnly),
+      ]);
+      _cachedProducts = synced[0] as List<WarehouseProduct>;
+      _cachedBatches = synced[1] as List<WarehouseBatch>;
+      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_discount');
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRunExpiryCheckRequested(
+    RunExpiryCheckRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      final created = await _repository.runExpiryCheck();
+      _cachedBatches = await _repository.getBatches(
+        expiringOnly: _batchesExpiringOnly,
+      );
+      // Encode count for UI toast: key|count
+      _emitLoaded(
+        emit,
+        successMessage: created > 0
+            ? 'warehouse_expiry_check_created|$created'
+            : 'warehouse_expiry_check_none',
+      );
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRunStockAnalysisRequested(
+    RunStockAnalysisRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
+    emit(
+      current.copyWith(
+        isAnalysisLoading: true,
+        clearAnalysisError: true,
+        clearError: true,
+      ),
+    );
+    try {
+      _cachedAnalysis = await _repository.getStockAnalysis();
+      if (emit.isDone) return;
+      _emitLoaded(emit, isAnalysisLoading: false);
+    } catch (e) {
+      if (emit.isDone) return;
+      emit(
+        (state is WarehouseLoaded ? state as WarehouseLoaded : current)
+            .copyWith(
+              isAnalysisLoading: false,
+              analysisError: userFacingError(e, fallback: ErrorKeys.loadFailed),
+            ),
+      );
     }
   }
 
@@ -262,12 +450,20 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit, {
     String? errorMessage,
     String? successMessage,
+    bool? isAnalysisLoading,
   }) {
+    final previous = state is WarehouseLoaded ? state as WarehouseLoaded : null;
     emit(
       WarehouseLoaded(
         products: _cachedProducts,
         movements: _cachedMovements,
+        batches: _cachedBatches,
+        batchesExpiringOnly: _batchesExpiringOnly,
         summary: _cachedSummary,
+        stockAnalysis: _cachedAnalysis,
+        isAnalysisLoading:
+            isAnalysisLoading ?? previous?.isAnalysisLoading ?? false,
+        analysisError: previous?.analysisError,
         errorMessage: errorMessage,
         successMessage: successMessage,
       ),

@@ -76,8 +76,7 @@ class MockHrRepository implements HrRepository {
     String? dateFrom,
     String? dateTo,
     bool forceRefresh = false,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<AttendanceRecord> createAttendance({
@@ -139,8 +138,7 @@ class MockHrRepository implements HrRepository {
   Future<List<HrEvaluation>> getEvaluations({
     String? period,
     bool forceRefresh = false,
-  }) async =>
-      const [];
+  }) async => const [];
 
   @override
   Future<HrEvaluation> createEvaluation({
@@ -189,8 +187,7 @@ class MockHrRepository implements HrRepository {
     required String dateFrom,
     required String dateTo,
     bool forceRefresh = false,
-  }) async =>
-      const MovementReport();
+  }) async => const MovementReport();
 }
 
 void main() {

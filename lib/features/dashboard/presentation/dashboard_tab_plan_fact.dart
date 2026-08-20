@@ -80,7 +80,8 @@ extension _DashboardPlanFactTab on _DashboardViewState {
           ),
           const SizedBox(height: 8),
           ...report.rows.map((row) {
-            final isIncome = row.type == 'INFLOW' ||
+            final isIncome =
+                row.type == 'INFLOW' ||
                 row.type == 'income' ||
                 row.type.toLowerCase() == 'income';
             final compVal = row.completion;
@@ -206,10 +207,7 @@ extension _DashboardPlanFactTab on _DashboardViewState {
     );
   }
 
-  Future<void> _showCreatePlanSheet(
-    BuildContext context,
-    String period,
-  ) async {
+  Future<void> _showCreatePlanSheet(BuildContext context, String period) async {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
@@ -277,15 +275,13 @@ extension _DashboardPlanFactTab on _DashboardViewState {
                     parseLocalizedNumber(context, amountCtrl.text.trim()) ?? 0;
                 if (category.isEmpty || amount <= 0) return;
                 this.context.read<DashboardBloc>().add(
-                      CreatePlanRequested(
-                        period: period.isEmpty
-                            ? _defaultPlanPeriod()
-                            : period,
-                        category: category,
-                        type: type,
-                        plannedAmount: amount,
-                      ),
-                    );
+                  CreatePlanRequested(
+                    period: period.isEmpty ? _defaultPlanPeriod() : period,
+                    category: category,
+                    type: type,
+                    plannedAmount: amount,
+                  ),
+                );
                 Navigator.pop(context);
               },
               style: ElevatedButton.styleFrom(

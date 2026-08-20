@@ -101,6 +101,110 @@ class MockWarehouseRepository implements WarehouseRepository {
       products[index] = products[index].copyWith(stockQty: 0);
     }
   }
+
+  List<WarehouseBatch> batches = [];
+
+  @override
+  Future<List<WarehouseBatch>> getBatches({bool expiringOnly = false}) async {
+    if (shouldFail) throw Exception('Get batches error');
+    if (expiringOnly) {
+      return batches
+          .where((b) => b.daysLeft != null && b.daysLeft! < 14)
+          .toList();
+    }
+    return List.from(batches);
+  }
+
+  @override
+  Future<WarehouseBatch> createBatch({
+    required String productId,
+    required double qty,
+    DateTime? expiryDate,
+    String? code,
+    String? note,
+  }) async {
+    if (shouldFail) throw Exception('Create batch error');
+    final batch = WarehouseBatch(
+      id: '${batches.length + 1}',
+      productId: productId,
+      productName: 'Test Product',
+      qty: qty,
+      expiryDate: expiryDate,
+      code: code,
+      note: note,
+      daysLeft: expiryDate?.difference(DateTime.now()).inDays,
+    );
+    batches.add(batch);
+    return batch;
+  }
+
+  @override
+  Future<WarehouseBatch> updateBatch({
+    required String id,
+    double? qty,
+    DateTime? expiryDate,
+    DateTime? receivedAt,
+    String? code,
+    String? note,
+  }) async {
+    if (shouldFail) throw Exception('Update batch error');
+    final index = batches.indexWhere((b) => b.id == id);
+    if (index < 0) {
+      return WarehouseBatch(
+        id: id,
+        productId: '1',
+        productName: 'x',
+        qty: qty ?? 0,
+      );
+    }
+    final current = batches[index];
+    final updated = WarehouseBatch(
+      id: current.id,
+      productId: current.productId,
+      productName: current.productName,
+      unit: current.unit,
+      code: code ?? current.code,
+      qty: qty ?? current.qty,
+      expiryDate: expiryDate ?? current.expiryDate,
+      receivedAt: receivedAt ?? current.receivedAt,
+      note: note ?? current.note,
+      daysLeft: current.daysLeft,
+      suggestedDiscount: current.suggestedDiscount,
+    );
+    batches[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deleteBatch(String id) async {
+    if (shouldFail) throw Exception('Delete batch error');
+    batches.removeWhere((b) => b.id == id);
+  }
+
+  @override
+  Future<void> applyBatchDiscount(String batchId, int percent) async {
+    if (shouldFail) throw Exception('Discount error');
+  }
+
+  @override
+  Future<WarehouseStockAnalysis> getStockAnalysis() async {
+    if (shouldFail) throw Exception('Analysis error');
+    return const WarehouseStockAnalysis(
+      totalItems: 1,
+      zeroItems: 0,
+      stockValue: 1000,
+      expiringCount: 0,
+      expiredCount: 0,
+      atRiskAmount: 0,
+      summary: 'OK',
+    );
+  }
+
+  @override
+  Future<int> runExpiryCheck() async {
+    if (shouldFail) throw Exception('Expiry check error');
+    return 0;
+  }
 }
 
 void main() {

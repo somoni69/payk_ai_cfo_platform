@@ -59,8 +59,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
     final colors = context.colors;
     final locale = context.read<LanguageCubit>();
     final titleCtrl = TextEditingController(text: template?.name ?? '');
-    final regCtrl =
-        TextEditingController(text: template?.regulationText ?? '');
+    final regCtrl = TextEditingController(text: template?.regulationText ?? '');
     final itemCtrl = TextEditingController();
     final List<String> items = List<String>.from(
       template?.items.map((i) => i.text) ?? [],
@@ -228,11 +227,8 @@ class _ChecklistsViewState extends State<ChecklistsView>
               pinned: true,
               floating: true,
               snap: true,
-              bottom: TabBar(
+              bottom: LedgerTabBar(
                 controller: _tabController,
-                indicatorColor: colors.brand,
-                labelColor: colors.brand,
-                unselectedLabelColor: colors.textSecondary,
                 tabs: [
                   Tab(text: locale.translate('checklists_tab_runs')),
                   Tab(text: locale.translate('checklists_tab_templates')),
@@ -245,7 +241,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
         body: BlocBuilder<ChecklistsBloc, ChecklistsState>(
           builder: (context, state) {
             if (state is ChecklistsLoading) {
-              return const LedgerListShimmer(showStatsHeader: false, itemCount: 6);
+              return const ChecklistsOverviewShimmer();
             }
             if (state is ChecklistsError) {
               return Center(child: Text(state.message));
@@ -442,8 +438,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
                   ),
                 ],
               ),
-              if (t.regulationText != null &&
-                  t.regulationText!.isNotEmpty) ...[
+              if (t.regulationText != null && t.regulationText!.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
                   t.regulationText!,

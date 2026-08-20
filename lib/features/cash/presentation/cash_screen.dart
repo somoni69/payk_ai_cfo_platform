@@ -19,6 +19,11 @@ import '../../../features/cash/bloc/cash_event.dart';
 import '../../../features/cash/bloc/cash_state.dart';
 import '../../../features/cash/domain/transaction_model.dart';
 import '../../../features/cash/domain/cash_repository.dart';
+import '../../../features/fin_ops/domain/fin_ops_models.dart';
+import '../../../features/fin_ops/domain/fin_ops_repository.dart';
+import '../../../features/permissions/cubit/permissions_cubit.dart';
+import '../../../features/permissions/domain/my_permissions.dart';
+import '../../../features/assistant/presentation/ledger_advice_panel.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
@@ -26,25 +31,43 @@ import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import 'cash_transaction_tile.dart';
+import 'sales_profit_card.dart';
 
 part 'cash_tabs.dart';
 part 'cash_sheets.dart';
 
 /// Точка входа в кассовый модуль с внедрением CashBloc.
-class CashScreen extends StatelessWidget {
+class CashScreen extends StatefulWidget {
   const CashScreen({super.key});
+
+  @override
+  State<CashScreen> createState() => _CashScreenState();
+}
+
+class _CashScreenState extends State<CashScreen> {
+  var _activated = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_activated || !TickerMode.valuesOf(context).enabled) return;
+    _activated = true;
+    context.read<CashBloc>().add(const LoadCashData());
+  }
 
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
-
+    if (!_activated && !TickerMode.valuesOf(context).enabled) {
+      return const SizedBox.shrink();
+    }
     try {
       context.read<CashBloc>();
       return const CashView();
     } catch (_) {
       return BlocProvider<CashBloc>(
         create: (context) =>
-            CashBloc(context.read<CashRepository>())..add(LoadCashData()),
+            CashBloc(context.read<CashRepository>())..add(const LoadCashData()),
         child: const CashView(),
       );
     }
@@ -384,120 +407,104 @@ class _CashViewState extends State<CashView>
         final loadedState = state is CashLoaded ? state : null;
 
         return Scaffold(
-          floatingActionButton: (!isViewer && _tabController.index == 0 && loadedState != null)
+          floatingActionButton:
+              (!isViewer && _tabController.index == 0 && loadedState != null)
               ? FloatingActionButton.extended(
                   onPressed: () => _showAddTransactionBottomSheet(
                     context,
                     authState,
                     loadedState.registers,
                   ),
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.brand),
+                  ),
+                  icon: const Icon(TablerIcons.plus),
+                  label: Text(
+                    language.translate('cash_new_operation_btn'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
                     ),
-                    icon: const Icon(TablerIcons.plus),
-                    label: Text(
-                      language.translate('cash_new_operation_btn'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  )
-                : (!isViewer && _tabController.index == 1 && loadedState != null
-                      ? FloatingActionButton.extended(
-                          onPressed: () => _showOpenShiftBottomSheet(
-                            context,
-                            loadedState.registers,
-                          ),
-                          backgroundColor: colors.brand,
-                          foregroundColor: colors.surface,
-                          elevation: 0,
-                          highlightElevation: 0,
-                          focusElevation: 0,
-                          hoverElevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: colors.brand),
-                          ),
-                          icon: const Icon(TablerIcons.plus),
-                          label: Text(
-                            language.translate('cash_open_shift_btn'),
-                            style: textStyles.bodySans.copyWith(
-                              color: colors.surface,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        )
-                      : null),
-            body: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  LedgerCollapsingHeader(
-                    title: language.translate('cash_title'),
-                    pinned: true,
-                    floating: true,
-                    snap: true,
-                    actions: [
-                      OutlinedButton.icon(
-                        onPressed: () =>
-                            _showReportDownloadBottomSheet(context),
-                        icon: const Icon(TablerIcons.download, size: 16),
+                  ),
+                )
+              : (!isViewer && _tabController.index == 1 && loadedState != null
+                    ? FloatingActionButton.extended(
+                        onPressed: () => _showOpenShiftBottomSheet(
+                          context,
+                          loadedState.registers,
+                        ),
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.surface,
+                        elevation: 0,
+                        highlightElevation: 0,
+                        focusElevation: 0,
+                        hoverElevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: colors.brand),
+                        ),
+                        icon: const Icon(TablerIcons.plus),
                         label: Text(
-                          language.translate('cash_download_report'),
+                          language.translate('cash_open_shift_btn'),
                           style: textStyles.bodySans.copyWith(
+                            color: colors.surface,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                      )
+                    : null),
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                LedgerCollapsingHeader(
+                  title: language.translate('cash_title'),
+                  pinned: true,
+                  floating: true,
+                  snap: true,
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () => _showReportDownloadBottomSheet(context),
+                      icon: const Icon(TablerIcons.download, size: 16),
+                      label: Text(language.translate('cash_download_report')),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
                       ),
+                    ),
+                  ],
+                  bottom: LedgerTabBar(
+                    controller: _tabController,
+                    tabs: [
+                      Tab(text: language.translate('cash_tab_operations')),
+                      Tab(text: language.translate('cash_tab_shifts')),
+                      Tab(text: language.translate('cash_tab_summary')),
                     ],
-                    bottom: TabBar(
-                      controller: _tabController,
-                      labelColor: colors.brand,
-                      unselectedLabelColor: colors.textSecondary,
-                      indicatorColor: colors.brand,
-                      indicatorSize: TabBarIndicatorSize.tab,
-                      dividerColor: colors.border,
-                      labelStyle: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      unselectedLabelStyle: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w400,
-                      ),
-                      tabs: [
-                        Tab(text: language.translate('cash_tab_operations')),
-                        Tab(text: language.translate('cash_tab_shifts')),
-                        Tab(text: language.translate('cash_tab_summary')),
-                      ],
-                    ),
                   ),
-                ];
-              },
-              body: loadedState == null
-                  ? const CashOverviewShimmer()
-                  : TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildOperationsTab(context, loadedState),
-                        _buildShiftsTab(context, loadedState, isViewer),
-                        _buildSummaryTab(context, loadedState.summaries),
-                      ],
-                    ),
-            ),
-          );
-        },
-      );
+                ),
+              ];
+            },
+            body: loadedState == null
+                ? const CashOverviewShimmer()
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildOperationsTab(context, loadedState),
+                      _buildShiftsTab(context, loadedState, isViewer),
+                      _buildSummaryTab(context, loadedState.summaries),
+                    ],
+                  ),
+          ),
+        );
+      },
+    );
   }
 }

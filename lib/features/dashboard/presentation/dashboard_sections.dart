@@ -28,7 +28,7 @@ extension _DashboardSectionBuilders on _DashboardViewState {
 
         final error = state.sectionErrors[section];
         if (error == null) {
-          return const DashboardOverviewShimmer();
+          return const DashboardSectionShimmer();
         }
 
         final language = context.read<LanguageCubit>();
@@ -95,10 +95,7 @@ extension _DashboardSectionBuilders on _DashboardViewState {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  flag,
-                  style: textStyles.bodySans.copyWith(fontSize: 18),
-                ),
+                Text(flag, style: textStyles.bodySans.copyWith(fontSize: 18)),
                 const SizedBox(width: 10),
                 Text(
                   c,

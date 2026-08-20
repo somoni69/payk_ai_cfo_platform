@@ -41,8 +41,14 @@ class BankAccount extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, bankName, isActive, accountNumber, balance, currency];
+  List<Object?> get props => [
+    id,
+    bankName,
+    isActive,
+    accountNumber,
+    balance,
+    currency,
+  ];
 }
 
 class Encashment extends Equatable {
@@ -68,7 +74,8 @@ class Encashment extends Equatable {
       responsiblePerson:
           (json['responsible_name'] ?? json['responsible_person'] ?? '')
               .toString(),
-      date: DateTime.tryParse(
+      date:
+          DateTime.tryParse(
             (json['occurred_at'] ?? json['date'] ?? '').toString(),
           ) ??
           DateTime.now(),
@@ -110,11 +117,11 @@ class StoreTransfer extends Equatable {
       id: (json['id'] ?? '').toString(),
       fromBranch: (json['from_branch_name'] ?? json['from_branch'] ?? '')
           .toString(),
-      toBranch:
-          (json['to_branch_name'] ?? json['to_branch'] ?? '').toString(),
+      toBranch: (json['to_branch_name'] ?? json['to_branch'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       status: (json['status'] ?? 'pending').toString(),
-      date: DateTime.tryParse(
+      date:
+          DateTime.tryParse(
             (json['created_at'] ?? json['date'] ?? '').toString(),
           ) ??
           DateTime.now(),
@@ -132,8 +139,7 @@ class StoreTransfer extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, fromBranch, toBranch, amount, status, date];
+  List<Object?> get props => [id, fromBranch, toBranch, amount, status, date];
 }
 
 class FinancialAid extends Equatable {
@@ -164,10 +170,12 @@ class FinancialAid extends Equatable {
       employeeName: (json['employee_name'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       repaidAmount: (json['repaid_amount'] as num?)?.toDouble() ?? 0.0,
-      status: (json['status'] ??
-              (json['deducted_in_period'] != null ? 'repaid' : 'active'))
-          .toString(),
-      date: DateTime.tryParse(
+      status:
+          (json['status'] ??
+                  (json['deducted_in_period'] != null ? 'repaid' : 'active'))
+              .toString(),
+      date:
+          DateTime.tryParse(
             (json['issued_at'] ?? json['date'] ?? json['created_at'] ?? '')
                 .toString(),
           ) ??
@@ -186,6 +194,12 @@ class FinancialAid extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, employeeName, amount, repaidAmount, status, date];
+  List<Object?> get props => [
+    id,
+    employeeName,
+    amount,
+    repaidAmount,
+    status,
+    date,
+  ];
 }

@@ -114,9 +114,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
           ),
         );
       } else {
-        emit(
-          CrmError(key.startsWith('error_') ? key : 'crm_error_load'),
-        );
+        emit(CrmError(key.startsWith('error_') ? key : 'crm_error_load'));
       }
     } finally {
       if (event.completion?.isCompleted == false) {
@@ -138,7 +136,8 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
     final nextLevel = event.level != null
         ? (event.level!.isEmpty ? null : event.level)
         : _filters.level;
-    final nextPage = event.page ??
+    final nextPage =
+        event.page ??
         ((event.query != null || event.level != null) ? 1 : _filters.page);
 
     _filters = ClientListFilters(
@@ -454,11 +453,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         points: event.points,
         reason: event.reason,
       );
-      await _reloadCore(
-        emit,
-        current,
-        successMessage: 'crm_success_bonus',
-      );
+      await _reloadCore(emit, current, successMessage: 'crm_success_bonus');
       if (current.detailClient?.id == event.clientId) {
         add(LoadClientDetailRequested(event.clientId));
       }
@@ -504,7 +499,13 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
   ) async {
     if (state is! CrmLoaded) return;
     final current = state as CrmLoaded;
-    emit(current.copyWith(churnAnalyzing: true, clearChurnAdvice: true, clearError: true));
+    emit(
+      current.copyWith(
+        churnAnalyzing: true,
+        clearChurnAdvice: true,
+        clearError: true,
+      ),
+    );
     try {
       final advice = await _repository.analyzeChurn(event.clientId);
       emit(
@@ -564,9 +565,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
 
   void _onClearFeedback(ClearCrmFeedback event, Emitter<CrmState> emit) {
     if (state is! CrmLoaded) return;
-    emit(
-      (state as CrmLoaded).copyWith(clearError: true, clearSuccess: true),
-    );
+    emit((state as CrmLoaded).copyWith(clearError: true, clearSuccess: true));
   }
 
   Future<void> _onLoyaltyHistoryFilter(
