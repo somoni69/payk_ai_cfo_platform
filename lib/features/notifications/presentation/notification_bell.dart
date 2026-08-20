@@ -42,7 +42,7 @@ class _NotificationBellState extends State<NotificationBell> {
       final count = await context
           .read<NotificationsRepository>()
           .getUnreadCount();
-      if (!mounted) return;
+      if (!mounted || count == _unread) return;
       setState(() => _unread = count);
     } catch (_) {}
   }

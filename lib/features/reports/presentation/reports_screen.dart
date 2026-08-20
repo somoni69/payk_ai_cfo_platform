@@ -588,8 +588,8 @@ class _ReportsViewState extends State<ReportsView> {
             LedgerCollapsingHeader(
               title: locale.translate('reports_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
             ),
           ];
         },

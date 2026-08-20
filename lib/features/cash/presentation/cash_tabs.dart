@@ -1,15 +1,24 @@
 part of 'cash_screen.dart';
 
 extension _CashTabBuilders on _CashViewState {
-  Widget _buildOperationsTab(BuildContext context, CashLoaded state) {
+  bool get _hasActiveFilters =>
+      _selectedType != 'all' ||
+      _selectedPaymentMethod != 'all' ||
+      _selectedRegister != 'all' ||
+      _dateFrom != null ||
+      _dateTo != null;
+
+  Widget _buildOperationsTab(
+    BuildContext context,
+    CashLoaded state,
+    bool isViewer,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
 
-    final registerIds = ['all', ...state.registers.map((r) => r.id)];
-
     final isEmpty = state.filteredTransactions.isEmpty;
-    final totalItems = isEmpty ? 2 : state.filteredTransactions.length + 1;
+    final grouped = _groupedOperationItems(state.filteredTransactions);
     final auth = context.watch<AuthBloc>().state;
     final role = auth is AuthAuthenticated ? auth.role : UserRole.viewer;
     final perms = context.watch<PermissionsCubit>();
@@ -28,322 +37,68 @@ extension _CashTabBuilders on _CashViewState {
       onRefresh: () => _refreshCash(context),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: totalItems,
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
+        itemCount: 2 + (isEmpty ? 1 : grouped.length),
         separatorBuilder: (context, index) =>
-            SizedBox(height: index == 0 ? 8 : 6),
+            SizedBox(height: index == 0 ? 14 : 8),
         itemBuilder: (context, index) {
           if (index == 0) {
-            // Системный блок фильтров, который прокручивается вместе со списком операций
-            return Container(
-              color: colors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    style: textStyles.bodySans,
-                    onChanged: (val) {
-                      context.read<CashBloc>().add(
-                        SearchFilterChanged(
-                          query: val,
-                          filterType: state.filterType,
-                          paymentMethod: _selectedPaymentMethod,
-                          registerId: _selectedRegister,
-                          dateFrom: _dateFrom,
-                          dateTo: _dateTo,
-                        ),
-                      );
-                    },
-                    decoration: InputDecoration(
-                      hintText: language.translate(
-                        'cash_search_counterparty_hint',
-                      ),
-                      prefixIcon: Icon(
-                        TablerIcons.search,
-                        size: 18,
-                        color: colors.textSecondary,
-                      ),
-                    ),
+            return _buildShiftHero(context, state, isViewer);
+          }
+          if (index == 1) {
+            return TextField(
+              controller: _searchController,
+              style: textStyles.bodySans,
+              onChanged: (val) {
+                context.read<CashBloc>().add(
+                  SearchFilterChanged(
+                    query: val,
+                    filterType: state.filterType,
+                    paymentMethod: _selectedPaymentMethod,
+                    registerId: _selectedRegister,
+                    dateFrom: _dateFrom,
+                    dateTo: _dateTo,
                   ),
-                  const SizedBox(height: 10),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        // Фильтр ТИПЫ
-                        SizedBox(
-                          width: 145,
-                          child: ExpansibleWidget<String>.selection(
-                            cardPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 2,
-                            ),
-                            tilePadding: EdgeInsets.zero,
-                            title: Text(
-                              _selectedType == 'all'
-                                  ? language.translate('cash_filter_all_types')
-                                  : (_selectedType == 'income'
-                                        ? language.translate('cash_income')
-                                        : language.translate('cash_expense')),
-                              style: textStyles.captionSans.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            items: const ['all', 'income', 'expense'],
-                            selectedValue: _selectedType,
-                            itemLabelBuilder: (item) {
-                              if (item == 'income') {
-                                return language.translate('cash_income');
-                              }
-                              if (item == 'expense') {
-                                return language.translate('cash_expense');
-                              }
-                              return language.translate(
-                                'cash_filter_all_types',
-                              );
-                            },
-                            onSelected: (val) {
-                              _rebuild(() => _selectedType = val);
-                              context.read<CashBloc>().add(
-                                SearchFilterChanged(
-                                  query: state.query,
-                                  filterType: val,
-                                  paymentMethod: _selectedPaymentMethod,
-                                  registerId: _selectedRegister,
-                                  dateFrom: _dateFrom,
-                                  dateTo: _dateTo,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Фильтр СПОСОБЫ ОПЛАТЫ
-                        SizedBox(
-                          width: 180,
-                          child: ExpansibleWidget<String>.selection(
-                            cardPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 2,
-                            ),
-                            tilePadding: EdgeInsets.zero,
-                            title: Text(
-                              _selectedPaymentMethod == 'all'
-                                  ? language.translate(
-                                      'cash_filter_all_payment_methods',
-                                    )
-                                  : language.translate(
-                                      'cash_pm_$_selectedPaymentMethod',
-                                    ),
-                              style: textStyles.captionSans.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            items: [
-                              'all',
-                              ...PaymentMethod.values.map((pm) => pm.name),
-                            ],
-                            selectedValue: _selectedPaymentMethod,
-                            itemLabelBuilder: (item) {
-                              if (item == 'all') {
-                                return language.translate(
-                                  'cash_filter_all_payment_methods',
-                                );
-                              }
-                              return language.translate('cash_pm_$item');
-                            },
-                            onSelected: (val) {
-                              _rebuild(() => _selectedPaymentMethod = val);
-                              context.read<CashBloc>().add(
-                                SearchFilterChanged(
-                                  query: state.query,
-                                  filterType: _selectedType,
-                                  paymentMethod: val,
-                                  registerId: _selectedRegister,
-                                  dateFrom: _dateFrom,
-                                  dateTo: _dateTo,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-
-                        // Фильтр КАССЫ
-                        SizedBox(
-                          width: 155,
-                          child: ExpansibleWidget<String>.selection(
-                            cardPadding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 2,
-                            ),
-                            tilePadding: EdgeInsets.zero,
-                            title: Text(
-                              _selectedRegister == 'all'
-                                  ? language.translate(
-                                      'cash_filter_all_registers',
-                                    )
-                                  : (state.registers
-                                        .firstWhere(
-                                          (r) => r.id == _selectedRegister,
-                                          orElse: () => CashRegister(
-                                            id: '',
-                                            name: language.translate('cash'),
-                                          ),
-                                        )
-                                        .name),
-                              style: textStyles.captionSans.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            items: registerIds,
-                            selectedValue: _selectedRegister,
-                            itemLabelBuilder: (id) {
-                              if (id == 'all') {
-                                return language.translate(
-                                  'cash_filter_all_registers',
-                                );
-                              }
-                              final reg = state.registers.firstWhere(
-                                (r) => r.id == id,
-                                orElse: () => CashRegister(id: id, name: id),
-                              );
-                              return reg.name;
-                            },
-                            onSelected: (val) {
-                              _rebuild(() => _selectedRegister = val);
-                              context.read<CashBloc>().add(
-                                SearchFilterChanged(
-                                  query: state.query,
-                                  filterType: _selectedType,
-                                  paymentMethod: _selectedPaymentMethod,
-                                  registerId: val,
-                                  dateFrom: _dateFrom,
-                                  dateTo: _dateTo,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _dateFrom ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now().add(
-                                const Duration(days: 1),
-                              ),
-                            );
-                            if (picked == null || !context.mounted) return;
-                            _rebuild(() => _dateFrom = picked);
-                            context.read<CashBloc>().add(
-                              SearchFilterChanged(
-                                query: state.query,
-                                filterType: _selectedType,
-                                paymentMethod: _selectedPaymentMethod,
-                                registerId: _selectedRegister,
-                                dateFrom: _dateFrom,
-                                dateTo: _dateTo,
-                              ),
-                            );
-                          },
-                          icon: const Icon(TablerIcons.calendar, size: 14),
-                          label: Text(
-                            _dateFrom == null
-                                ? language.translate('cash_filter_date_from')
-                                : '${_dateFrom!.day}.${_dateFrom!.month}.${_dateFrom!.year}',
-                            style: textStyles.captionSans,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: _dateTo ?? DateTime.now(),
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now().add(
-                                const Duration(days: 1),
-                              ),
-                            );
-                            if (picked == null || !context.mounted) return;
-                            _dateTo = picked;
-                            context.read<CashBloc>().add(
-                              SearchFilterChanged(
-                                query: state.query,
-                                filterType: _selectedType,
-                                paymentMethod: _selectedPaymentMethod,
-                                registerId: _selectedRegister,
-                                dateFrom: _dateFrom,
-                                dateTo: _dateTo,
-                              ),
-                            );
-                          },
-                          icon: const Icon(TablerIcons.calendar, size: 14),
-                          label: Text(
-                            _dateTo == null
-                                ? language.translate('cash_filter_date_to')
-                                : '${_dateTo!.day}.${_dateTo!.month}.${_dateTo!.year}',
-                            style: textStyles.captionSans,
-                          ),
-                        ),
-                        if (_dateFrom != null || _dateTo != null) ...[
-                          const SizedBox(width: 4),
-                          IconButton(
-                            onPressed: () {
-                              _rebuild(() {
-                                _dateFrom = null;
-                                _dateTo = null;
-                              });
-                              context.read<CashBloc>().add(
-                                SearchFilterChanged(
-                                  query: state.query,
-                                  filterType: _selectedType,
-                                  paymentMethod: _selectedPaymentMethod,
-                                  registerId: _selectedRegister,
-                                ),
-                              );
-                            },
-                            icon: Icon(
-                              TablerIcons.x,
-                              size: 16,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+                );
+              },
+              decoration: InputDecoration(
+                hintText: language.translate('cash_search_counterparty_hint'),
+                prefixIcon: Icon(
+                  TablerIcons.search,
+                  size: 18,
+                  color: colors.textSecondary,
+                ),
               ),
             );
           }
-
           if (isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 48),
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Center(
                 child: Text(
                   language.translate('cash_operations_empty'),
                   style: textStyles.bodySans.copyWith(
                     color: colors.textSecondary,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             );
           }
-
-          final tx = state.filteredTransactions[index - 1];
+          final item = grouped[index - 2];
+          if (item.$1 != null) {
+            return Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 2),
+              child: Text(
+                _operationDayLabel(context, item.$1!),
+                style: textStyles.captionSans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colors.textSecondary,
+                ),
+              ),
+            );
+          }
+          final tx = item.$2!;
           return CashTransactionTile(
             transaction: tx,
             onEdit: canEdit && tx.isManual
@@ -378,6 +133,232 @@ extension _CashTabBuilders on _CashViewState {
           );
         },
       ),
+    );
+  }
+
+  List<(DateTime? day, Transaction? tx)> _groupedOperationItems(
+    List<Transaction> transactions,
+  ) {
+    final items = <(DateTime? day, Transaction? tx)>[];
+    DateTime? lastDay;
+    for (final tx in transactions) {
+      final day = DateTime(
+        tx.dateTime.year,
+        tx.dateTime.month,
+        tx.dateTime.day,
+      );
+      if (lastDay != day) {
+        items.add((day, null));
+        lastDay = day;
+      }
+      items.add((null, tx));
+    }
+    return items;
+  }
+
+  String _operationDayLabel(BuildContext context, DateTime day) {
+    final language = context.read<LanguageCubit>();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final key = DateTime(day.year, day.month, day.day);
+    if (key == today) return language.translate('cash_group_today');
+    if (key == yesterday) return language.translate('cash_group_yesterday');
+    return formatLocalizedDateTime(
+      context,
+      day,
+      style: LocalizedDateTimeStyle.date,
+    );
+  }
+
+  Widget _buildShiftHero(
+    BuildContext context,
+    CashLoaded state,
+    bool isViewer,
+  ) {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final oCcy = localizedDecimalFormat(context);
+    final suffix = language.translate('cash_currency_suffix');
+    final shift = state.activeShift;
+    final summary = state.summaries.isEmpty ? null : state.summaries.first;
+    final net = summary?.net;
+
+    if (shift == null || !shift.isOpen) {
+      return LedgerHero(
+        label: language.translate('cash_title'),
+        value: net == null ? '—' : '${oCcy.format(net)} $suffix',
+        caption: language.translate('cash_shift_hero_closed'),
+        captionColor: colors.textSecondary,
+        trailing: LedgerIconBadge(
+          icon: TablerIcons.cash,
+          color: colors.textSecondary,
+          size: 48,
+          iconSize: 24,
+        ),
+        footer: isViewer
+            ? null
+            : SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () =>
+                      _showOpenShiftBottomSheet(context, state.registers),
+                  child: Text(language.translate('cash_open_shift_btn')),
+                ),
+              ),
+      );
+    }
+
+    return LedgerHero(
+      label: shift.registerName ?? language.translate('cash_tab_shifts'),
+      value: net == null
+          ? '${oCcy.format(shift.startingBalance)} $suffix'
+          : '${oCcy.format(net)} $suffix',
+      caption: language.translate(
+        'cash_shift_hero_open',
+        params: {
+          'time': formatLocalizedDateTime(
+            context,
+            shift.openedAt,
+            style: LocalizedDateTimeStyle.time,
+          ),
+        },
+      ),
+      captionColor: colors.accentGreen,
+      trailing: LedgerIconBadge(
+        icon: TablerIcons.cash,
+        color: colors.accentGreen,
+        size: 48,
+        iconSize: 24,
+      ),
+      footer: isViewer
+          ? null
+          : SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => _showCloseShiftBottomSheet(context, shift),
+                child: Text(language.translate('cash_close_shift_action')),
+              ),
+            ),
+    );
+  }
+
+  void _showFiltersSheet(BuildContext context, CashLoaded state) {
+    final language = context.read<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final registerIds = ['all', ...state.registers.map((r) => r.id)];
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('cash_filters'),
+      builder: (context, setSheetState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ExpansibleWidget<String>.selection(
+              title: Text(
+                _selectedType == 'all'
+                    ? language.translate('cash_filter_all_types')
+                    : (_selectedType == 'income'
+                          ? language.translate('cash_income')
+                          : language.translate('cash_expense')),
+                style: textStyles.bodySans,
+              ),
+              items: const ['all', 'income', 'expense'],
+              selectedValue: _selectedType,
+              itemLabelBuilder: (item) {
+                if (item == 'income') return language.translate('cash_income');
+                if (item == 'expense') {
+                  return language.translate('cash_expense');
+                }
+                return language.translate('cash_filter_all_types');
+              },
+              onSelected: (val) {
+                setSheetState(() => _selectedType = val);
+                _rebuild();
+                context.read<CashBloc>().add(
+                  SearchFilterChanged(
+                    query: state.query,
+                    filterType: val,
+                    paymentMethod: _selectedPaymentMethod,
+                    registerId: _selectedRegister,
+                    dateFrom: _dateFrom,
+                    dateTo: _dateTo,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            ExpansibleWidget<String>.selection(
+              title: Text(
+                _selectedPaymentMethod == 'all'
+                    ? language.translate('cash_filter_all_payment_methods')
+                    : language.translate('cash_pm_$_selectedPaymentMethod'),
+                style: textStyles.bodySans,
+              ),
+              items: ['all', ...PaymentMethod.values.map((pm) => pm.name)],
+              selectedValue: _selectedPaymentMethod,
+              itemLabelBuilder: (item) => item == 'all'
+                  ? language.translate('cash_filter_all_payment_methods')
+                  : language.translate('cash_pm_$item'),
+              onSelected: (val) {
+                setSheetState(() => _selectedPaymentMethod = val);
+                _rebuild();
+                context.read<CashBloc>().add(
+                  SearchFilterChanged(
+                    query: state.query,
+                    filterType: _selectedType,
+                    paymentMethod: val,
+                    registerId: _selectedRegister,
+                    dateFrom: _dateFrom,
+                    dateTo: _dateTo,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            ExpansibleWidget<String>.selection(
+              title: Text(
+                _selectedRegister == 'all'
+                    ? language.translate('cash_filter_all_registers')
+                    : (state.registers
+                              .where((r) => r.id == _selectedRegister)
+                              .map((r) => r.name)
+                              .firstOrNull ??
+                          language.translate('cash_filter_all_registers')),
+                style: textStyles.bodySans,
+              ),
+              items: registerIds,
+              selectedValue: _selectedRegister,
+              itemLabelBuilder: (item) {
+                if (item == 'all') {
+                  return language.translate('cash_filter_all_registers');
+                }
+                return state.registers
+                        .where((r) => r.id == item)
+                        .map((r) => r.name)
+                        .firstOrNull ??
+                    item;
+              },
+              onSelected: (val) {
+                setSheetState(() => _selectedRegister = val);
+                _rebuild();
+                context.read<CashBloc>().add(
+                  SearchFilterChanged(
+                    query: state.query,
+                    filterType: _selectedType,
+                    paymentMethod: _selectedPaymentMethod,
+                    registerId: val,
+                    dateFrom: _dateFrom,
+                    dateTo: _dateTo,
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
     );
   }
 

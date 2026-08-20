@@ -347,8 +347,8 @@ class _TasksViewState extends State<TasksView>
             LedgerCollapsingHeader(
               title: language.translate('tasks_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               bottom: LedgerTabBar(
                 controller: _tabController,
                 isScrollable: true,

@@ -69,6 +69,7 @@ class WarehouseView extends StatefulWidget {
 class _WarehouseViewState extends State<WarehouseView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  var _askedStockAnalysis = false;
 
   @override
   void initState() {
@@ -174,8 +175,8 @@ class _WarehouseViewState extends State<WarehouseView>
             LedgerCollapsingHeader(
               title: localeCubit.translate('warehouse_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               bottom: LedgerTabBar(
                 controller: _tabController,
                 isScrollable: true,
@@ -309,6 +310,59 @@ class _WarehouseViewState extends State<WarehouseView>
     );
   }
 
+  Widget _buildWarehouseAttention(BuildContext context, WarehouseLoaded state) {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final analysis = state.stockAnalysis;
+    if (analysis == null) {
+      return const SizedBox.shrink();
+    }
+    final low = analysis.lowStock.length;
+    final risk = analysis.expiringCount + analysis.expiredCount;
+    final hasRisk = low > 0 || risk > 0;
+    return LedgerCard(
+      borderColor: hasRisk ? colors.accentAmber : colors.border,
+      onTap: () => _tabController.animateTo(3),
+      child: Row(
+        children: [
+          Icon(
+            hasRisk ? TablerIcons.alert_triangle : TablerIcons.circle_check,
+            color: hasRisk ? colors.accentAmber : colors.accentGreen,
+            size: 22,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  language.translate('warehouse_attention_title'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  hasRisk
+                      ? language.translate(
+                          'warehouse_attention_risk',
+                          params: {'low': low, 'expiring': risk},
+                        )
+                      : language.translate('warehouse_attention_ok'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(TablerIcons.chevron_right, size: 18, color: colors.textTooltip),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -319,79 +373,98 @@ class _WarehouseViewState extends State<WarehouseView>
       onRefresh: context.read<WarehouseBloc>().reload,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
         itemCount: state.products.isEmpty ? 2 : state.products.length + 1,
         separatorBuilder: (context, index) =>
             SizedBox(height: index == 0 ? 16 : 12),
         itemBuilder: (context, index) {
           if (index == 0) {
+            if (!_askedStockAnalysis &&
+                state.stockAnalysis == null &&
+                !state.isAnalysisLoading &&
+                state.analysisError == null) {
+              _askedStockAnalysis = true;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!context.mounted) return;
+                context.read<WarehouseBloc>().add(
+                  const RunStockAnalysisRequested(),
+                );
+              });
+            }
             // Сводные метрики склада
-            return Row(
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: LedgerCard(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          localeCubit.translate('warehouse_stats_count'),
-                          style: textStyles.smallSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '${state.summary.productsCount}',
-                            style: textStyles.h1Mono.copyWith(
-                              fontWeight: FontWeight.w500,
+                _buildWarehouseAttention(context, state),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: LedgerCard(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              localeCubit.translate('warehouse_stats_count'),
+                              style: textStyles.smallSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 3,
-                  child: LedgerCard(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          localeCubit.translate('warehouse_stats_value'),
-                          style: textStyles.smallSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            localeCubit.translate(
-                              'warehouse_amount_tjs',
-                              params: {
-                                'amount': oCcy.format(
-                                  state.summary.totalStockValue,
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                '${state.summary.productsCount}',
+                                style: textStyles.h1Sans.copyWith(
+                                  fontWeight: FontWeight.w600,
                                 ),
-                              },
+                              ),
                             ),
-                            style: textStyles.h1Mono.copyWith(
-                              color: colors.accentGreen,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 3,
+                      child: LedgerCard(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              localeCubit.translate('warehouse_stats_value'),
+                              style: textStyles.smallSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                localeCubit.translate(
+                                  'warehouse_amount_tjs',
+                                  params: {
+                                    'amount': oCcy.format(
+                                      state.summary.totalStockValue,
+                                    ),
+                                  },
+                                ),
+                                style: textStyles.h1Sans.copyWith(
+                                  color: colors.accentGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
@@ -513,7 +586,7 @@ class _WarehouseViewState extends State<WarehouseView>
       onRefresh: context.read<WarehouseBloc>().reload,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
         itemCount: state.movements.isEmpty ? 1 : state.movements.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
@@ -660,7 +733,7 @@ class _WarehouseViewState extends State<WarehouseView>
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
         children: [
           const LedgerAdvicePanel(module: 'warehouse'),
           Row(
@@ -816,11 +889,7 @@ class _WarehouseViewState extends State<WarehouseView>
             children: [
               Row(
                 children: [
-                  Icon(
-                    TablerIcons.sparkles,
-                    size: 20,
-                    color: colors.accentAmber,
-                  ),
+                  Icon(TablerIcons.chart_bar, size: 20, color: colors.brand),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -855,7 +924,7 @@ class _WarehouseViewState extends State<WarehouseView>
                           color: colors.surface,
                         ),
                       )
-                    : const Icon(TablerIcons.sparkles, size: 18),
+                    : const Icon(TablerIcons.refresh, size: 18),
                 label: Text(
                   language.translate(
                     analysis == null

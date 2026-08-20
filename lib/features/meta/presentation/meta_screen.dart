@@ -368,8 +368,8 @@ class _MetaScreenState extends State<MetaScreen> {
                 ? language.translate('meta_title')
                 : _selected!.displayName,
             pinned: true,
-            floating: true,
-            snap: true,
+            floating: false,
+            snap: false,
             actions: _selected != null
                 ? [
                     IconButton(
@@ -663,7 +663,7 @@ class _MetaScreenState extends State<MetaScreen> {
               IconButton(
                 tooltip: language.translate('meta_suggest'),
                 onPressed: _sending ? null : _suggest,
-                icon: Icon(TablerIcons.sparkles, color: colors.accentAmber),
+                icon: Icon(TablerIcons.pencil, color: colors.brand),
               ),
               Expanded(
                 child: TextField(

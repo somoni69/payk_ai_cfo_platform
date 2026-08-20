@@ -8,13 +8,20 @@ import '../../../core/theme/theme_extensions.dart';
 import '../domain/assistant_models.dart';
 import '../domain/assistant_repository.dart';
 
-/// Floating AI helper (web parity) in Ledger style: flat FAB + bordered panel.
-///
-/// No shadows, no pulse animations — brand fill + 1px border only.
+/// Host for the full-screen assistant on More. Open via [LedgerAiAssistantHost.open].
 class LedgerAiAssistantHost extends StatefulWidget {
   const LedgerAiAssistantHost({super.key, required this.child});
 
   final Widget child;
+
+  static void open(BuildContext context) {
+    final host = context.findAncestorStateOfType<_LedgerAiAssistantHostState>();
+    assert(
+      host != null,
+      'LedgerAiAssistantHost.open must be called below the host',
+    );
+    host?._openPanel();
+  }
 
   @override
   State<LedgerAiAssistantHost> createState() => _LedgerAiAssistantHostState();
@@ -23,40 +30,13 @@ class LedgerAiAssistantHost extends StatefulWidget {
 class _LedgerAiAssistantHostState extends State<LedgerAiAssistantHost> {
   bool _open = false;
 
+  void _openPanel() => setState(() => _open = true);
+
   @override
   Widget build(BuildContext context) {
-    final colors = context.colors;
-    // Leave room for bottom navigation (~56) + safe area.
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-
     return Stack(
       children: [
         widget.child,
-        if (!_open)
-          Positioned(
-            right: 16,
-            bottom: 72 + bottomInset,
-            child: Material(
-              color: colors.brand,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: colors.brand),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () => setState(() => _open = true),
-                child: SizedBox(
-                  width: 52,
-                  height: 52,
-                  child: Icon(
-                    TablerIcons.robot,
-                    color: colors.surface,
-                    size: 24,
-                  ),
-                ),
-              ),
-            ),
-          ),
         if (_open)
           Positioned.fill(
             child: PopScope(
@@ -295,7 +275,11 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
                 child: Row(
                   children: [
-                    Icon(TablerIcons.robot, size: 20, color: colors.brand),
+                    Icon(
+                      TablerIcons.message_circle,
+                      size: 20,
+                      color: colors.brand,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(

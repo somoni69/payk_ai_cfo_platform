@@ -186,8 +186,8 @@ class BranchesView extends StatelessWidget {
             LedgerCollapsingHeader(
               title: locale.translate('branches_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
             ),
           ];
         },

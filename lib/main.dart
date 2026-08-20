@@ -100,6 +100,7 @@ class _MyAppState extends State<MyApp> {
         _permissionsCubit.clear();
       }
     });
+
     _authBloc.add(CheckAuthStatus());
   }
 

@@ -137,7 +137,8 @@ class LedgerTheme {
 
       // Нижняя панель навигации (5 табов)
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: colors.surface,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         selectedItemColor: colors.brand,
         unselectedItemColor: colors.textSecondary,
         selectedLabelStyle: textStyles.smallSans.copyWith(
@@ -147,7 +148,6 @@ class LedgerTheme {
           fontWeight: FontWeight.w400,
         ),
         type: BottomNavigationBarType.fixed,
-        elevation: 0,
       ),
 
       // Разделители

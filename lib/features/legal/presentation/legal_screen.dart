@@ -181,8 +181,8 @@ class _LegalScreenState extends State<LegalScreen>
                     LedgerCollapsingHeader(
                       title: localeCubit.translate('legal_loading_title'),
                       pinned: true,
-                      floating: true,
-                      snap: true,
+                      floating: false,
+                      snap: false,
                     ),
                   ],
                   body: const LegalOverviewShimmer(),
@@ -198,8 +198,8 @@ class _LegalScreenState extends State<LegalScreen>
                     LedgerCollapsingHeader(
                       title: localeCubit.translate('legal_error_title'),
                       pinned: true,
-                      floating: true,
-                      snap: true,
+                      floating: false,
+                      snap: false,
                     ),
                   ],
                   body: Center(
@@ -246,8 +246,8 @@ class _LegalScreenState extends State<LegalScreen>
                       LedgerCollapsingHeader(
                         title: localeCubit.translate('legal_title'),
                         pinned: true,
-                        floating: true,
-                        snap: true,
+                        floating: false,
+                        snap: false,
                         bottom: LedgerTabBar(
                           controller: _tabController,
                           isScrollable: true,

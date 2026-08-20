@@ -23,7 +23,7 @@ class LedgerAICard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: colors.surface,
-        border: Border.all(color: colors.accentAmber, width: 1),
+        border: Border.all(color: colors.border, width: 1),
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.all(16),
@@ -32,20 +32,10 @@ class LedgerAICard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Container(
-                width: 4,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: colors.accentAmber,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   title,
                   style: textStyles.bodySans.copyWith(
-                    color: colors.accentAmber,
                     fontWeight: FontWeight.w500,
                   ),
                 ),

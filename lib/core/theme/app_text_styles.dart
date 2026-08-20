@@ -143,4 +143,44 @@ class LedgerTextStyles extends ThemeExtension<LedgerTextStyles> {
       smallMono: TextStyle.lerp(smallMono, other.smallMono, t)!,
     );
   }
+
+  static LedgerTextStyles? _cached;
+  static LedgerTextStyles? _cachedBase;
+  static double _cachedFactor = 0;
+
+  /// Reuses the last scaled instance when the theme and factor did not change.
+  static LedgerTextStyles cachedScaled(LedgerTextStyles base, double factor) {
+    if (identical(_cachedBase, base) &&
+        _cached != null &&
+        (_cachedFactor - factor).abs() < 0.005) {
+      return _cached!;
+    }
+    _cachedBase = base;
+    _cachedFactor = factor;
+    _cached = (factor - 1.0).abs() < 0.005 ? base : base.scaled(factor);
+    return _cached!;
+  }
+
+  /// Width-based scale for 6.1" → Pro Max. Does not replace accessibility textScaler.
+  LedgerTextStyles scaled(double factor) {
+    if ((factor - 1.0).abs() < 0.005) return this;
+    TextStyle scale(TextStyle style) {
+      final size = style.fontSize;
+      if (size == null) return style;
+      return style.copyWith(fontSize: size * factor);
+    }
+
+    return copyWith(
+          displayMono: scale(displayMono),
+          h1Sans: scale(h1Sans),
+          h1Mono: scale(h1Mono),
+          h2Sans: scale(h2Sans),
+          bodySans: scale(bodySans),
+          bodyMono: scale(bodyMono),
+          captionSans: scale(captionSans),
+          smallSans: scale(smallSans),
+          smallMono: scale(smallMono),
+        )
+        as LedgerTextStyles;
+  }
 }

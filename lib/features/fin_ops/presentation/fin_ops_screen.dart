@@ -345,8 +345,8 @@ class _FinOpsViewState extends State<FinOpsView>
             LedgerCollapsingHeader(
               title: locale.translate('fin_ops_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               bottom: LedgerTabBar(
                 controller: _tabController,
                 tabs: [

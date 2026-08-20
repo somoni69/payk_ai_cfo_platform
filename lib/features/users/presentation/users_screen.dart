@@ -122,8 +122,8 @@ class _UsersViewState extends State<UsersView>
             LedgerCollapsingHeader(
               title: language.translate('users_title'),
               pinned: true,
-              floating: true,
-              snap: true,
+              floating: false,
+              snap: false,
               bottom: LedgerTabBar(
                 controller: _tabController,
                 tabs: [

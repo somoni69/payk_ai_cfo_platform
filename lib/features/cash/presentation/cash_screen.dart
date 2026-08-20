@@ -29,6 +29,7 @@ import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+import '../../../presentation/widgets/ledger_spotlight.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import 'cash_transaction_tile.dart';
 import 'sales_profit_card.dart';
@@ -466,18 +467,30 @@ class _CashViewState extends State<CashView>
                 LedgerCollapsingHeader(
                   title: language.translate('cash_title'),
                   pinned: true,
-                  floating: true,
-                  snap: true,
+                  floating: false,
+                  snap: false,
                   actions: [
-                    OutlinedButton.icon(
-                      onPressed: () => _showReportDownloadBottomSheet(context),
-                      icon: const Icon(TablerIcons.download, size: 16),
-                      label: Text(language.translate('cash_download_report')),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                    IconButton(
+                      tooltip: language.translate('cash_filters'),
+                      onPressed: loadedState == null
+                          ? null
+                          : () => _showFiltersSheet(context, loadedState),
+                      icon: Badge(
+                        isLabelVisible: _hasActiveFilters,
+                        smallSize: 8,
+                        backgroundColor: colors.brand,
+                        child: Icon(
+                          TablerIcons.adjustments_horizontal,
+                          color: colors.brand,
                         ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: language.translate('cash_download_report'),
+                      onPressed: () => _showReportDownloadBottomSheet(context),
+                      icon: Icon(
+                        TablerIcons.dots_vertical,
+                        color: colors.brand,
                       ),
                     ),
                   ],
@@ -497,7 +510,7 @@ class _CashViewState extends State<CashView>
                 : TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildOperationsTab(context, loadedState),
+                      _buildOperationsTab(context, loadedState, isViewer),
                       _buildShiftsTab(context, loadedState, isViewer),
                       _buildSummaryTab(context, loadedState.summaries),
                     ],

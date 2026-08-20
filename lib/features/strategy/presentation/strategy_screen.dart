@@ -126,7 +126,7 @@ class _StrategyViewState extends State<StrategyView>
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: colors.brand),
       ),
-      icon: const Icon(TablerIcons.sparkles),
+      icon: const Icon(TablerIcons.plus),
       label: Text(
         locale.translate('strategy_scenarios_generate'),
         style: textStyles.bodySans.copyWith(
@@ -185,8 +185,8 @@ class _StrategyViewState extends State<StrategyView>
               LedgerCollapsingHeader(
                 title: localeCubit.translate('strategy_title'),
                 pinned: true,
-                floating: true,
-                snap: true,
+                floating: false,
+                snap: false,
                 bottom: LedgerTabBar(
                   controller: _tabController,
                   isScrollable: true,
@@ -601,7 +601,7 @@ class _StrategyViewState extends State<StrategyView>
                           ),
                         );
                       },
-                icon: const Icon(TablerIcons.sparkles),
+                icon: const Icon(TablerIcons.plus),
                 label: Text(
                   localeCubit.translate(
                     state.isGeneratingAnalysis
