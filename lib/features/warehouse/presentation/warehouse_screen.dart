@@ -533,11 +533,7 @@ class _WarehouseViewState extends State<WarehouseView>
                     borderRadius: BorderRadius.circular(12),
                   ),
                   alignment: Alignment.center,
-                  child: Icon(
-                    TablerIcons.box,
-                    size: 22,
-                    color: colors.brand,
-                  ),
+                  child: Icon(TablerIcons.box, size: 22, color: colors.brand),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -556,7 +552,8 @@ class _WarehouseViewState extends State<WarehouseView>
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          if (product.sku != null && product.sku!.isNotEmpty) ...[
+                          if (product.sku != null &&
+                              product.sku!.isNotEmpty) ...[
                             LedgerPill(
                               text: product.sku!,
                               backgroundColor: colors.surfaceNested,

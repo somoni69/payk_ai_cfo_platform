@@ -136,12 +136,16 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
                     style: textStyles.bodySans.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
-                      color: tx.isIncome ? colors.accentGreen : colors.textPrimary,
+                      color: tx.isIncome
+                          ? colors.accentGreen
+                          : colors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Icon(
-                    _expanded ? TablerIcons.chevron_up : TablerIcons.chevron_down,
+                    _expanded
+                        ? TablerIcons.chevron_up
+                        : TablerIcons.chevron_down,
                     size: 16,
                     color: colors.textTooltip,
                   ),

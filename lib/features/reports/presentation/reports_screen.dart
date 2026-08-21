@@ -926,11 +926,11 @@ class _ReportsViewState extends State<ReportsView> {
                                         const SizedBox(width: 4),
                                         Text(
                                           '${locale.translate('reports_field_cash')}: ${oCcy.format(rep.cashAmount)}',
-                                          style:
-                                              textStyles.captionSans.copyWith(
-                                            color: colors.textPrimary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.textPrimary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -955,11 +955,11 @@ class _ReportsViewState extends State<ReportsView> {
                                         const SizedBox(width: 4),
                                         Text(
                                           '${locale.translate('reports_field_cashless')}: ${oCcy.format(rep.cashlessAmount)}',
-                                          style:
-                                              textStyles.captionSans.copyWith(
-                                            color: colors.textPrimary,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.textPrimary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -988,11 +988,11 @@ class _ReportsViewState extends State<ReportsView> {
                                           const SizedBox(width: 4),
                                           Text(
                                             '${locale.translate('reports_field_returns')}: ${rep.returnsCount} (${oCcy.format(rep.returnsAmount)} TJS)',
-                                            style:
-                                                textStyles.captionSans.copyWith(
-                                              color: colors.accentRed,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                            style: textStyles.captionSans
+                                                .copyWith(
+                                                  color: colors.accentRed,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                           ),
                                         ],
                                       ),

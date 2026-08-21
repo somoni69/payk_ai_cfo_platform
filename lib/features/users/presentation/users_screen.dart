@@ -249,8 +249,8 @@ class _UsersViewState extends State<UsersView>
                           final initial = user.fullName.isNotEmpty
                               ? user.fullName[0].toUpperCase()
                               : (user.username.isNotEmpty
-                                  ? user.username[0].toUpperCase()
-                                  : '?');
+                                    ? user.username[0].toUpperCase()
+                                    : '?');
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10.0),
@@ -290,9 +290,9 @@ class _UsersViewState extends State<UsersView>
                                               user.fullName,
                                               style: textStyles.bodySans
                                                   .copyWith(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 15,
-                                              ),
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 15,
+                                                  ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -301,8 +301,8 @@ class _UsersViewState extends State<UsersView>
                                               '@${user.username}',
                                               style: textStyles.captionSans
                                                   .copyWith(
-                                                color: colors.textSecondary,
-                                              ),
+                                                    color: colors.textSecondary,
+                                                  ),
                                             ),
                                           ],
                                         ),
@@ -339,8 +339,9 @@ class _UsersViewState extends State<UsersView>
                                                 user.email!,
                                                 style: textStyles.captionSans
                                                     .copyWith(
-                                                  color: colors.textSecondary,
-                                                ),
+                                                      color:
+                                                          colors.textSecondary,
+                                                    ),
                                               ),
                                             ],
                                           ),
@@ -359,8 +360,9 @@ class _UsersViewState extends State<UsersView>
                                                 user.phone!,
                                                 style: textStyles.captionSans
                                                     .copyWith(
-                                                  color: colors.textSecondary,
-                                                ),
+                                                      color:
+                                                          colors.textSecondary,
+                                                    ),
                                               ),
                                             ],
                                           ),
@@ -395,9 +397,9 @@ class _UsersViewState extends State<UsersView>
                                             ),
                                             style: textStyles.captionSans
                                                 .copyWith(
-                                              color: colors.textSecondary,
-                                              fontWeight: FontWeight.w500,
-                                            ),
+                                                  color: colors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                           ),
                                         ],
                                       ),

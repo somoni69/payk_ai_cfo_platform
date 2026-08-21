@@ -42,11 +42,7 @@ class LedgerAiAssistantHost extends StatefulWidget {
 
 /// Compact AI Assistant Floating Action Button matching the square cube design (44x44, 12px radius).
 class LedgerAiFloatingButton extends StatelessWidget {
-  const LedgerAiFloatingButton({
-    super.key,
-    this.onPressed,
-    this.heroTag,
-  });
+  const LedgerAiFloatingButton({super.key, this.onPressed, this.heroTag});
 
   final VoidCallback? onPressed;
   final Object? heroTag;
@@ -79,11 +75,7 @@ class LedgerAiFloatingButton extends StatelessWidget {
               ],
             ),
             child: Center(
-              child: Icon(
-                TablerIcons.sparkles,
-                color: colors.brand,
-                size: 20,
-              ),
+              child: Icon(TablerIcons.sparkles, color: colors.brand, size: 20),
             ),
           ),
         ),

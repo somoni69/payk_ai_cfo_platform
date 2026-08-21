@@ -590,8 +590,7 @@ class _ClientsTab extends StatelessWidget {
                                     Expanded(
                                       child: Text(
                                         'LTV ${oCcy.format(client.totalSpent)} TJS',
-                                        style:
-                                            textStyles.captionSans.copyWith(
+                                        style: textStyles.captionSans.copyWith(
                                           color: colors.accentGreen,
                                           fontWeight: FontWeight.w600,
                                         ),
@@ -600,8 +599,7 @@ class _ClientsTab extends StatelessWidget {
                                     Expanded(
                                       child: Text(
                                         '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
-                                        style:
-                                            textStyles.captionSans.copyWith(
+                                        style: textStyles.captionSans.copyWith(
                                           color: colors.textSecondary,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -613,8 +611,7 @@ class _ClientsTab extends StatelessWidget {
                                         client.roi == null
                                             ? 'ROI —'
                                             : 'ROI ${oCcy.format(client.roi!)}×',
-                                        style:
-                                            textStyles.captionSans.copyWith(
+                                        style: textStyles.captionSans.copyWith(
                                           color: colors.textSecondary,
                                           fontWeight: FontWeight.w500,
                                         ),

@@ -430,10 +430,8 @@ class _CashViewState extends State<CashView>
             loadedState != null) {
           mainFab = FloatingActionButton.extended(
             heroTag: null,
-            onPressed: () => _showOpenShiftBottomSheet(
-              context,
-              loadedState.registers,
-            ),
+            onPressed: () =>
+                _showOpenShiftBottomSheet(context, loadedState.registers),
             backgroundColor: colors.brand,
             foregroundColor: colors.surface,
             elevation: 0,
@@ -462,10 +460,7 @@ class _CashViewState extends State<CashView>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               const LedgerAiFloatingButton(),
-              if (mainFab != null) ...[
-                const SizedBox(height: 10),
-                mainFab,
-              ],
+              if (mainFab != null) ...[const SizedBox(height: 10), mainFab],
             ],
           ),
           body: NestedScrollView(

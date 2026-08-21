@@ -93,9 +93,7 @@ extension _TasksMyTab on _TasksViewState {
             Padding(
               padding: const EdgeInsets.only(top: 2, right: 10),
               child: Icon(
-                isDone
-                    ? TablerIcons.circle_check_filled
-                    : TablerIcons.circle,
+                isDone ? TablerIcons.circle_check_filled : TablerIcons.circle,
                 size: 20,
                 color: isDone ? colors.accentGreen : colors.textTooltip,
               ),
@@ -112,8 +110,9 @@ extension _TasksMyTab on _TasksViewState {
                           style: textStyles.bodySans.copyWith(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
-                            decoration:
-                                isDone ? TextDecoration.lineThrough : null,
+                            decoration: isDone
+                                ? TextDecoration.lineThrough
+                                : null,
                             color: isDone
                                 ? colors.textSecondary
                                 : colors.textPrimary,
@@ -148,8 +147,9 @@ extension _TasksMyTab on _TasksViewState {
                       Icon(
                         TablerIcons.calendar,
                         size: 13,
-                        color:
-                            isOverdue ? colors.accentRed : colors.textTooltip,
+                        color: isOverdue
+                            ? colors.accentRed
+                            : colors.textTooltip,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -159,8 +159,9 @@ extension _TasksMyTab on _TasksViewState {
                           style: LocalizedDateTimeStyle.date,
                         ),
                         style: textStyles.captionSans.copyWith(
-                          color:
-                              isOverdue ? colors.accentRed : colors.textTooltip,
+                          color: isOverdue
+                              ? colors.accentRed
+                              : colors.textTooltip,
                           fontWeight: isOverdue
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -206,14 +207,14 @@ extension _TasksMyTab on _TasksViewState {
                     isDone
                         ? TablerIcons.circle_check_filled
                         : (isSubmitted
-                            ? TablerIcons.clock_hour_4
-                            : TablerIcons.circle),
+                              ? TablerIcons.clock_hour_4
+                              : TablerIcons.circle),
                     size: 20,
                     color: isDone
                         ? colors.accentGreen
                         : (isSubmitted
-                            ? colors.accentAmber
-                            : colors.textTooltip),
+                              ? colors.accentAmber
+                              : colors.textTooltip),
                   ),
                 ),
                 Expanded(
@@ -228,8 +229,9 @@ extension _TasksMyTab on _TasksViewState {
                               style: textStyles.bodySans.copyWith(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15,
-                                decoration:
-                                    isDone ? TextDecoration.lineThrough : null,
+                                decoration: isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
                                 color: isDone
                                     ? colors.textSecondary
                                     : colors.textPrimary,
@@ -243,13 +245,15 @@ extension _TasksMyTab on _TasksViewState {
                             backgroundColor: isDone
                                 ? colors.accentGreen.withValues(alpha: 0.12)
                                 : (isSubmitted
-                                    ? colors.accentAmber.withValues(alpha: 0.12)
-                                    : colors.surfaceNested),
+                                      ? colors.accentAmber.withValues(
+                                          alpha: 0.12,
+                                        )
+                                      : colors.surfaceNested),
                             textColor: isDone
                                 ? colors.accentGreen
                                 : (isSubmitted
-                                    ? colors.accentAmber
-                                    : colors.textSecondary),
+                                      ? colors.accentAmber
+                                      : colors.textSecondary),
                           ),
                         ],
                       ),
@@ -289,8 +293,9 @@ extension _TasksMyTab on _TasksViewState {
                       Icon(
                         TablerIcons.calendar,
                         size: 13,
-                        color:
-                            isOverdue ? colors.accentRed : colors.textTooltip,
+                        color: isOverdue
+                            ? colors.accentRed
+                            : colors.textTooltip,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -300,8 +305,9 @@ extension _TasksMyTab on _TasksViewState {
                           style: LocalizedDateTimeStyle.date,
                         ),
                         style: textStyles.captionSans.copyWith(
-                          color:
-                              isOverdue ? colors.accentRed : colors.textTooltip,
+                          color: isOverdue
+                              ? colors.accentRed
+                              : colors.textTooltip,
                           fontWeight: isOverdue
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -310,8 +316,7 @@ extension _TasksMyTab on _TasksViewState {
                     ],
                   ),
                 ),
-                if (task.assigneeName != null &&
-                    task.assigneeName!.isNotEmpty)
+                if (task.assigneeName != null && task.assigneeName!.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8,

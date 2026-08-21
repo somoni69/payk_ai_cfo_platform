@@ -118,7 +118,9 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
 
     String fmt(double? v, {String? code, int? minDecimals, int? maxDecimals}) {
       if (v == null) return '—';
-      final decimals = code != null ? decimalsForCode(code) : (minDecimals ?? 2);
+      final decimals = code != null
+          ? decimalsForCode(code)
+          : (minDecimals ?? 2);
       return formatLocalizedNumber(
         context,
         v,
@@ -183,21 +185,20 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
               tooltip: language.translate('dashboard_rates_refresh'),
               onPressed: _loading ? null : _load,
               splashRadius: 18,
-              icon:
-                  _loading
-                      ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: colors.brand,
-                        ),
-                      )
-                      : Icon(
-                        TablerIcons.refresh,
-                        size: 18,
-                        color: colors.textSecondary,
+              icon: _loading
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: colors.brand,
                       ),
+                    )
+                  : Icon(
+                      TablerIcons.refresh,
+                      size: 18,
+                      color: colors.textSecondary,
+                    ),
             ),
           ],
         ),
@@ -372,11 +373,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Column(
                 children: [
-                  for (
-                    var idx = 0;
-                    idx < byBank.entries.length;
-                    idx++
-                  ) ...[
+                  for (var idx = 0; idx < byBank.entries.length; idx++) ...[
                     if (idx > 0)
                       Divider(
                         height: 1,
@@ -389,10 +386,9 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
                       bankName:
                           names[byBank.entries.elementAt(idx).key] ??
                           byBank.entries.elementAt(idx).key,
-                      quote:
-                          byBank.entries.elementAt(idx).value[
-                            _selectedCurrency
-                          ],
+                      quote: byBank.entries
+                          .elementAt(idx)
+                          .value[_selectedCurrency],
                       maxBuy: maxBuy,
                       minSell: minSell,
                       fmt: fmt,
@@ -421,7 +417,13 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
     required double? rate,
     required bool isSelected,
     required VoidCallback onTap,
-    required String Function(double?, {String? code, int? minDecimals, int? maxDecimals}) fmt,
+    required String Function(
+      double?, {
+      String? code,
+      int? minDecimals,
+      int? maxDecimals,
+    })
+    fmt,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -434,10 +436,9 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? colors.brand.withValues(alpha: 0.05)
-                  : colors.surface,
+          color: isSelected
+              ? colors.brand.withValues(alpha: 0.05)
+              : colors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? colors.brand : colors.border,
@@ -498,7 +499,13 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
     required BankRateQuote? quote,
     required double? maxBuy,
     required double? minSell,
-    required String Function(double?, {String? code, int? minDecimals, int? maxDecimals}) fmt,
+    required String Function(
+      double?, {
+      String? code,
+      int? minDecimals,
+      int? maxDecimals,
+    })
+    fmt,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;

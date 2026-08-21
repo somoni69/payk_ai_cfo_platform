@@ -280,7 +280,9 @@ class BranchesView extends StatelessWidget {
                                       children: [
                                         Flexible(
                                           child: Text(
-                                            locale.translateMessage(branch.name),
+                                            locale.translateMessage(
+                                              branch.name,
+                                            ),
                                             style: textStyles.bodySans.copyWith(
                                               fontWeight: FontWeight.w600,
                                               fontSize: 16,
@@ -294,7 +296,8 @@ class BranchesView extends StatelessWidget {
                                           const SizedBox(width: 6),
                                           LedgerPill(
                                             text: branch.code!,
-                                            backgroundColor: colors.surfaceNested,
+                                            backgroundColor:
+                                                colors.surfaceNested,
                                             textColor: colors.textSecondary,
                                           ),
                                         ],
@@ -312,10 +315,13 @@ class BranchesView extends StatelessWidget {
                                           const SizedBox(width: 4),
                                           Expanded(
                                             child: Text(
-                                              locale.translateMessage(branch.address),
-                                              style: textStyles.captionSans.copyWith(
-                                                color: colors.textSecondary,
+                                              locale.translateMessage(
+                                                branch.address,
                                               ),
+                                              style: textStyles.captionSans
+                                                  .copyWith(
+                                                    color: colors.textSecondary,
+                                                  ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),

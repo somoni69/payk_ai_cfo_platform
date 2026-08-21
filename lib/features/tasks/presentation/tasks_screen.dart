@@ -332,10 +332,7 @@ class _TasksViewState extends State<TasksView>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               const LedgerAiFloatingButton(),
-              if (tasksFab != null) ...[
-                const SizedBox(height: 10),
-                tasksFab,
-              ],
+              if (tasksFab != null) ...[const SizedBox(height: 10), tasksFab],
             ],
           );
         },
