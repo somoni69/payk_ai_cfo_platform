@@ -17,6 +17,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     on<PublishPostRequested>(_onPublishPostRequested);
     on<GenerateIdeasRequested>(_onGenerateIdeasRequested);
     on<GenerateTextRequested>(_onGenerateTextRequested);
+    on<UpdateBrandGuideRequested>(_onUpdateBrandGuideRequested);
   }
 
   final MarketingRepository _repository;
@@ -41,6 +42,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       state.copyWith(
         isCampaignsLoading: true,
         isPostsLoading: true,
+        isBrandLoading: true,
         clearError: true,
       ),
     );
@@ -50,6 +52,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       request = Future.wait<Object>([
         _repository.getCampaigns(forceRefresh: event.forceRefresh),
         _repository.getPosts(forceRefresh: event.forceRefresh),
+        _repository.getBrandGuide(forceRefresh: event.forceRefresh),
       ]);
       _dataRequest = request;
     }
@@ -61,8 +64,10 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
         state.copyWith(
           isCampaignsLoading: false,
           isPostsLoading: false,
+          isBrandLoading: false,
           campaigns: (results[0] as List).cast<MarketingCampaign>(),
           posts: (results[1] as List).cast<SocialPost>(),
+          brandGuide: results[2] as BrandGuide,
         ),
       );
     } catch (error) {
@@ -209,6 +214,29 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           errorMessage: userFacingError(
             error,
             fallback: 'Не удалось сгенерировать текст. Повторите попытку.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onUpdateBrandGuideRequested(
+    UpdateBrandGuideRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isSavingBrand: true, clearError: true));
+    try {
+      final updated = await _repository.updateBrandGuide(event.brandGuide);
+      if (emit.isDone) return;
+      emit(state.copyWith(isSavingBrand: false, brandGuide: updated));
+    } catch (error) {
+      if (_isCancelled(error) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isSavingBrand: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось сохранить бренд-гайд.',
           ),
         ),
       );

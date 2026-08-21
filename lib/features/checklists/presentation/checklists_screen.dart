@@ -198,6 +198,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () => _showTemplateModal(context),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,

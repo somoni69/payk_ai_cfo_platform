@@ -14,6 +14,9 @@ extension _TasksAnalysisBuilders on _TasksViewState {
     final language = context.watch<LanguageCubit>();
 
     if (!isLoaded) {
+      if (isLoading || error == null) {
+        return const TasksOverviewShimmer();
+      }
       return RefreshIndicator(
         onRefresh: () => _refreshTasks(context),
         child: ListView(
@@ -22,26 +25,24 @@ extension _TasksAnalysisBuilders on _TasksViewState {
             SizedBox(
               height: 320,
               child: Center(
-                child: isLoading || error == null
-                    ? const CircularProgressIndicator()
-                    : Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            language.translateMessage(error),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: () {
-                              context.read<TasksBloc>().add(
-                                const LoadTaskAnalytics(forceRefresh: true),
-                              );
-                            },
-                            child: Text(language.translate('tasks_retry')),
-                          ),
-                        ],
-                      ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      language.translateMessage(error),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<TasksBloc>().add(
+                          const LoadTaskAnalytics(forceRefresh: true),
+                        );
+                      },
+                      child: Text(language.translate('tasks_retry')),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

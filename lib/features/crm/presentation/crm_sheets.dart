@@ -13,6 +13,7 @@ import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../bloc/crm_bloc.dart';
 import '../bloc/crm_event.dart';
 import '../bloc/crm_state.dart';
@@ -682,18 +683,15 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
         value: crmBloc,
         child: BlocBuilder<CrmBloc, CrmState>(
           builder: (context, state) {
-            if (state is! CrmLoaded) {
-              return const Center(child: CircularProgressIndicator());
+            if (state is! CrmLoaded ||
+                (state.detailLoading && state.detailClient == null)) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: LedgerNamedListShimmer(itemCount: 4),
+              );
             }
             final detail = state.detailClient ?? client;
             final loyalty = crmLoyaltyColors(colors, detail.loyaltyLevel);
-
-            if (state.detailLoading && state.detailClient == null) {
-              return const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
 
             if (isEditing) {
               return Column(

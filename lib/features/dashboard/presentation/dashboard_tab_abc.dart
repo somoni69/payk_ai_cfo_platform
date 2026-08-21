@@ -10,7 +10,7 @@ Widget _buildAbcTab(
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const Center(child: CircularProgressIndicator());
+    return const DashboardSectionShimmer();
   }
 
   final loaded = context.watch<DashboardBloc>().state;

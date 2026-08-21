@@ -16,7 +16,7 @@ Widget _buildAccountsRatesTab(
       auth is AuthAuthenticated && auth.role == UserRole.director;
 
   if (accountsReport == null || ratesReport == null) {
-    return const Center(child: CircularProgressIndicator());
+    return const DashboardSectionShimmer();
   }
 
   return ListView(

@@ -151,7 +151,9 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           ),
         );
       }
-      event.completion?.complete(false);
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(false);
+      }
     }
   }
 
@@ -184,6 +186,9 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
             actionMessage: () => e.toString().replaceAll('Exception: ', ''),
           ),
         );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.completeError(e);
       }
     }
   }
@@ -218,7 +223,9 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           ),
         );
       }
-      event.completion?.complete();
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete();
+      }
     }
   }
 }

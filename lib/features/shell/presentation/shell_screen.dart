@@ -7,6 +7,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -15,13 +16,18 @@ import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 
 import '../../../features/dashboard/bloc/dashboard_bloc.dart';
+import '../../../features/dashboard/bloc/dashboard_event.dart';
 import '../../../features/dashboard/domain/finance_repository.dart';
 import '../../../features/cash/bloc/cash_bloc.dart';
+import '../../../features/cash/bloc/cash_event.dart';
 import '../../../features/cash/domain/cash_repository.dart';
 import '../../../features/tasks/bloc/tasks_bloc.dart';
+import '../../../features/tasks/bloc/tasks_event.dart';
 import '../../../features/tasks/domain/tasks_repository.dart';
 import '../../../features/warehouse/bloc/warehouse_bloc.dart';
+import '../../../features/warehouse/bloc/warehouse_event.dart';
 import '../../../features/warehouse/domain/warehouse_repository.dart';
+import '../../../features/assistant/presentation/ledger_ai_assistant.dart';
 
 class TabItem {
   const TabItem({
@@ -100,15 +106,47 @@ class _ShellScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      body: RepaintBoundary(child: navigationShell),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.only(bottom: 8),
-          child: _ShellNavOverlay(navigationShell: navigationShell),
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) {
+        if (previous is AuthAuthenticated && current is AuthAuthenticated) {
+          return previous.storeId != current.storeId ||
+              previous.storeName != current.storeName;
+        }
+        return false;
+      },
+      listener: (context, state) {
+        // Auto-refresh all module BLoCs and permissions on branch/store switch
+        ExpiringRequestCache.invalidateAll();
+        try {
+          context.read<DashboardBloc>().add(
+            const LoadDashboardData(forceRefresh: true, clearCache: true),
+          );
+        } catch (_) {}
+        try {
+          context.read<CashBloc>().add(const LoadCashData());
+        } catch (_) {}
+        try {
+          context.read<WarehouseBloc>().add(LoadWarehouseData());
+        } catch (_) {}
+        try {
+          context.read<TasksBloc>().add(const LoadTasks(forceRefresh: true));
+        } catch (_) {}
+        try {
+          context.read<PermissionsCubit>().load();
+        } catch (_) {}
+      },
+      child: LedgerAiAssistantHost(
+        child: Scaffold(
+          extendBody: true,
+          body: RepaintBoundary(child: navigationShell),
+          bottomNavigationBar: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SafeArea(
+              top: false,
+              minimum: const EdgeInsets.only(bottom: 8),
+              child: _ShellNavOverlay(navigationShell: navigationShell),
+            ),
+          ),
         ),
       ),
     );

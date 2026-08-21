@@ -95,6 +95,7 @@ class _UsersViewState extends State<UsersView>
     return Scaffold(
       floatingActionButton: _tabController.index == 0
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () => _showUserDialog(context),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,
@@ -245,8 +246,14 @@ class _UsersViewState extends State<UsersView>
                           }
 
                           final user = state.users[index];
+                          final initial = user.fullName.isNotEmpty
+                              ? user.fullName[0].toUpperCase()
+                              : (user.username.isNotEmpty
+                                  ? user.username[0].toUpperCase()
+                                  : '?');
+
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
+                            padding: const EdgeInsets.only(bottom: 10.0),
                             child: LedgerCard(
                               onTap: () => _showUserDialog(context, user: user),
                               padding: const EdgeInsets.all(14),
@@ -254,17 +261,53 @@ class _UsersViewState extends State<UsersView>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Expanded(
+                                      // User avatar
+                                      Container(
+                                        width: 42,
+                                        height: 42,
+                                        decoration: BoxDecoration(
+                                          color: colors.surfaceNested,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        alignment: Alignment.center,
                                         child: Text(
-                                          user.fullName,
+                                          initial,
                                           style: textStyles.bodySans.copyWith(
-                                            fontWeight: FontWeight.w500,
+                                            fontWeight: FontWeight.w700,
+                                            color: colors.brand,
+                                            fontSize: 16,
                                           ),
                                         ),
                                       ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              user.fullName,
+                                              style: textStyles.bodySans
+                                                  .copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 15,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              '@${user.username}',
+                                              style: textStyles.captionSans
+                                                  .copyWith(
+                                                color: colors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
                                       _buildRolePill(
                                         context,
                                         user.role,
@@ -272,43 +315,61 @@ class _UsersViewState extends State<UsersView>
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    language.translate(
-                                      'users_login_value',
-                                      params: {'value': user.username},
-                                    ),
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                  if (user.email != null &&
-                                      user.email!.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      language.translate(
-                                        'users_email_value',
-                                        params: {'value': user.email},
-                                      ),
-                                      style: textStyles.captionSans.copyWith(
-                                        color: colors.textSecondary,
-                                      ),
+                                  if ((user.email != null &&
+                                          user.email!.isNotEmpty) ||
+                                      (user.phone != null &&
+                                          user.phone!.isNotEmpty)) ...[
+                                    const SizedBox(height: 10),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 4,
+                                      children: [
+                                        if (user.email != null &&
+                                            user.email!.isNotEmpty)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                TablerIcons.mail,
+                                                size: 13,
+                                                color: colors.textTooltip,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                user.email!,
+                                                style: textStyles.captionSans
+                                                    .copyWith(
+                                                  color: colors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        if (user.phone != null &&
+                                            user.phone!.isNotEmpty)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                TablerIcons.phone,
+                                                size: 13,
+                                                color: colors.textTooltip,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                user.phone!,
+                                                style: textStyles.captionSans
+                                                    .copyWith(
+                                                  color: colors.textSecondary,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
                                     ),
                                   ],
-                                  if (user.phone != null &&
-                                      user.phone!.isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      language.translate(
-                                        'users_phone_value',
-                                        params: {'value': user.phone},
-                                      ),
-                                      style: textStyles.captionSans.copyWith(
-                                        color: colors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                  const Divider(height: 16),
+                                  const SizedBox(height: 10),
+                                  const Divider(height: 1),
+                                  const SizedBox(height: 8),
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
@@ -334,8 +395,9 @@ class _UsersViewState extends State<UsersView>
                                             ),
                                             style: textStyles.captionSans
                                                 .copyWith(
-                                                  color: colors.textSecondary,
-                                                ),
+                                              color: colors.textSecondary,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -388,7 +450,7 @@ class _UsersViewState extends State<UsersView>
           p.permissionsError != c.permissionsError,
       builder: (context, state) {
         if (state.isPermissionsLoading && state.permissionMatrix == null) {
-          return const Center(child: CircularProgressIndicator());
+          return const UsersOverviewShimmer();
         }
 
         if (state.permissionMatrix == null) {

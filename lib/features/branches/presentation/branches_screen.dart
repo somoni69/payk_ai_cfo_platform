@@ -40,6 +40,7 @@ class BranchesView extends StatelessWidget {
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
     final nameCtrl = TextEditingController(text: editing?.name ?? '');
+    final codeCtrl = TextEditingController(text: editing?.code ?? '');
     final addressCtrl = TextEditingController(text: editing?.address ?? '');
     final phoneCtrl = TextEditingController(text: editing?.phone ?? '');
     bool isActive = editing?.isActive ?? true;
@@ -55,6 +56,13 @@ class BranchesView extends StatelessWidget {
             controller: nameCtrl,
             decoration: InputDecoration(
               labelText: locale.translate('branches_name'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: codeCtrl,
+            decoration: InputDecoration(
+              labelText: locale.translate('branches_code'),
             ),
           ),
           const SizedBox(height: 12),
@@ -97,6 +105,9 @@ class BranchesView extends StatelessWidget {
                   branchesBloc.add(
                     CreateBranchRequested(
                       name: nameCtrl.text.trim(),
+                      code: codeCtrl.text.trim().isNotEmpty
+                          ? codeCtrl.text.trim()
+                          : null,
                       address: addressCtrl.text.trim(),
                       phone: phoneCtrl.text.trim(),
                     ),
@@ -106,6 +117,9 @@ class BranchesView extends StatelessWidget {
                     UpdateBranchRequested(
                       id: editing.id,
                       name: nameCtrl.text.trim(),
+                      code: codeCtrl.text.trim().isNotEmpty
+                          ? codeCtrl.text.trim()
+                          : null,
                       address: addressCtrl.text.trim(),
                       phone: phoneCtrl.text.trim(),
                       isActive: isActive,
@@ -159,6 +173,7 @@ class BranchesView extends StatelessWidget {
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () => _showBranchModal(context),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,
@@ -236,87 +251,140 @@ class BranchesView extends StatelessWidget {
                       onTap: canManage
                           ? () => _showBranchModal(context, editing: branch)
                           : null,
+                      padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  locale.translateMessage(branch.name),
-                                  style: textStyles.h2Sans.copyWith(
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: colors.brand.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignment: Alignment.center,
+                                child: Icon(
+                                  TablerIcons.building_store,
+                                  size: 22,
+                                  color: colors.brand,
                                 ),
                               ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            locale.translateMessage(branch.name),
+                                            style: textStyles.bodySans.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 16,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (branch.code != null &&
+                                            branch.code!.isNotEmpty) ...[
+                                          const SizedBox(width: 6),
+                                          LedgerPill(
+                                            text: branch.code!,
+                                            backgroundColor: colors.surfaceNested,
+                                            textColor: colors.textSecondary,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    if (branch.address.isNotEmpty) ...[
+                                      const SizedBox(height: 3),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            TablerIcons.map_pin,
+                                            size: 13,
+                                            color: colors.textTooltip,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Expanded(
+                                            child: Text(
+                                              locale.translateMessage(branch.address),
+                                              style: textStyles.captionSans.copyWith(
+                                                color: colors.textSecondary,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               LedgerPill(
                                 text: branch.isActive
                                     ? locale.translate('branches_active')
                                     : locale.translate('branches_inactive'),
                                 backgroundColor: branch.isActive
-                                    ? colors.accentGreen.withValues(alpha: 0.1)
-                                    : colors.accentRed.withValues(alpha: 0.1),
+                                    ? colors.accentGreen.withValues(alpha: 0.12)
+                                    : colors.accentRed.withValues(alpha: 0.12),
                                 textColor: branch.isActive
                                     ? colors.accentGreen
                                     : colors.accentRed,
                               ),
                             ],
                           ),
+                          const SizedBox(height: 10),
+                          const Divider(height: 1),
                           const SizedBox(height: 8),
-                          if (branch.address.isNotEmpty) ...[
-                            Row(
-                              children: [
-                                Icon(
-                                  TablerIcons.map_pin,
-                                  size: 16,
-                                  color: colors.textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    locale.translateMessage(branch.address),
-                                    style: textStyles.bodySans.copyWith(
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                          ],
-                          if (branch.phone.isNotEmpty) ...[
-                            Row(
-                              children: [
-                                Icon(
-                                  TablerIcons.phone,
-                                  size: 16,
-                                  color: colors.textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  branch.phone,
-                                  style: textStyles.bodySans.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                          ],
-                          const Divider(),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                locale
-                                    .translate('branches_registers')
-                                    .replaceAll(
-                                      '{count}',
-                                      branch.registersCount.toString(),
+                              if (branch.phone.isNotEmpty)
+                                Row(
+                                  children: [
+                                    Icon(
+                                      TablerIcons.phone,
+                                      size: 13,
+                                      color: colors.textTooltip,
                                     ),
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      branch.phone,
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              else
+                                const SizedBox(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceNested,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  locale
+                                      .translate('branches_registers')
+                                      .replaceAll(
+                                        '{count}',
+                                        branch.registersCount.toString(),
+                                      ),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textPrimary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
                             ],

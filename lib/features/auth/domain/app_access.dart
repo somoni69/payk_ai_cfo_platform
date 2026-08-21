@@ -34,6 +34,7 @@ extension UserRoleAccess on UserRole {
     UserRole.owner ||
     UserRole.director => const <AppCapability>{...AppCapability.values},
     UserRole.manager => const <AppCapability>{
+      AppCapability.network,
       AppCapability.dashboard,
       AppCapability.cash,
       AppCapability.tasks,
@@ -50,19 +51,26 @@ extension UserRoleAccess on UserRole {
       AppCapability.reports,
     },
     UserRole.accountant => const <AppCapability>{
+      AppCapability.network,
       AppCapability.dashboard,
       AppCapability.cash,
       AppCapability.finOps,
       AppCapability.reports,
     },
     UserRole.cashier => const <AppCapability>{
+      AppCapability.network,
       AppCapability.cash,
       AppCapability.checklists,
       AppCapability.reports,
     },
-    UserRole.hr => const <AppCapability>{AppCapability.tasks, AppCapability.hr},
+    UserRole.hr => const <AppCapability>{
+      AppCapability.network,
+      AppCapability.tasks,
+      AppCapability.hr,
+    },
     // No company finance summary (dashboard/cash/finOps/reports) — web parity.
     UserRole.marketer => const <AppCapability>{
+      AppCapability.network,
       AppCapability.tasks,
       AppCapability.crm,
       AppCapability.marketing,
@@ -71,6 +79,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.checklists,
     },
     UserRole.viewer => const <AppCapability>{
+      AppCapability.network,
       AppCapability.dashboard,
       AppCapability.cash,
       AppCapability.tasks,
@@ -124,7 +133,7 @@ extension UserRoleAccess on UserRole {
   bool canDelete(AppCapability capability) => canManage(capability);
 
   String get landingLocation => switch (this) {
-    UserRole.owner => '/network',
+    UserRole.owner => '/dashboard',
     UserRole.cashier => '/cash',
     UserRole.hr => '/tasks',
     // Dashboard shows revenue — marketer starts in marketing (web parity).
@@ -185,13 +194,16 @@ abstract final class AppAccess {
   }) {
     final capability = capabilityForLocation(location);
     if (capability == null) return true;
+    if (capability == AppCapability.notifications ||
+        capability == AppCapability.network) {
+      return true;
+    }
     if (effective == null) return role.can(capability);
     if (effective.isDirector) return true;
     if (capability == AppCapability.users ||
         capability == AppCapability.backups) {
       return effective.isDirector;
     }
-    if (capability == AppCapability.notifications) return true;
     final key = PermissionModules.keyFor(capability);
     if (key == null) return true;
     return effective.can(key, PermAction.view);

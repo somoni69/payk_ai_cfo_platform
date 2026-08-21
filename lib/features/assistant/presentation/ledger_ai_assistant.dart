@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/assistant_models.dart';
 import '../domain/assistant_repository.dart';
 
@@ -16,15 +17,79 @@ class LedgerAiAssistantHost extends StatefulWidget {
 
   static void open(BuildContext context) {
     final host = context.findAncestorStateOfType<_LedgerAiAssistantHostState>();
-    assert(
-      host != null,
-      'LedgerAiAssistantHost.open must be called below the host',
+    if (host != null) {
+      host._openPanel();
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        child: SizedBox(
+          height: MediaQuery.of(ctx).size.height * 0.85,
+          child: _AssistantPanel(onClose: () => Navigator.of(ctx).pop()),
+        ),
+      ),
     );
-    host?._openPanel();
   }
 
   @override
   State<LedgerAiAssistantHost> createState() => _LedgerAiAssistantHostState();
+}
+
+/// Compact AI Assistant Floating Action Button matching the square cube design (44x44, 12px radius).
+class LedgerAiFloatingButton extends StatelessWidget {
+  const LedgerAiFloatingButton({
+    super.key,
+    this.onPressed,
+    this.heroTag,
+  });
+
+  final VoidCallback? onPressed;
+  final Object? heroTag;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final language = context.watch<LanguageCubit>();
+
+    return Tooltip(
+      message: language.translate('assistant_title'),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed ?? () => LedgerAiAssistantHost.open(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Ink(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Icon(
+                TablerIcons.sparkles,
+                color: colors.brand,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LedgerAiAssistantHostState extends State<LedgerAiAssistantHost> {
@@ -321,11 +386,34 @@ class _AssistantPanelState extends State<_AssistantPanel> {
               Divider(height: 1, color: colors.border),
               Expanded(
                 child: _loadingHistory
-                    ? const Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                    ? const LedgerShimmer(
+                        child: Padding(
+                          padding: EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ShimmerBox(
+                                width: 220,
+                                height: 44,
+                                borderRadius: 12,
+                              ),
+                              SizedBox(height: 10),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ShimmerBox(
+                                  width: 180,
+                                  height: 36,
+                                  borderRadius: 12,
+                                ),
+                              ),
+                              SizedBox(height: 10),
+                              ShimmerBox(
+                                width: 260,
+                                height: 56,
+                                borderRadius: 12,
+                              ),
+                            ],
+                          ),
                         ),
                       )
                     : ListView(

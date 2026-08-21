@@ -400,7 +400,7 @@ class _FinOpsViewState extends State<FinOpsView>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 FloatingActionButton.extended(
-                  heroTag: 'fin_ops_add_bank',
+                  heroTag: null,
                   onPressed: () => _showCreateBankSheet(context),
                   backgroundColor: colors.surface,
                   foregroundColor: colors.brand,
@@ -423,7 +423,7 @@ class _FinOpsViewState extends State<FinOpsView>
                 ),
                 const SizedBox(height: 10),
                 FloatingActionButton.extended(
-                  heroTag: 'fin_ops_encashment',
+                  heroTag: null,
                   onPressed: () =>
                       _showEncashmentModal(context, state.bankAccounts),
                   backgroundColor: colors.brand,
@@ -574,6 +574,7 @@ class _FinOpsViewState extends State<FinOpsView>
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () => _showTransferModal(context, state.branches),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,
@@ -697,6 +698,7 @@ class _FinOpsViewState extends State<FinOpsView>
     return Scaffold(
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () => _showAidModal(context),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,

@@ -9,8 +9,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -561,6 +559,7 @@ class _ReportsViewState extends State<ReportsView> {
     return Scaffold(
       floatingActionButton: _canWrite
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () => _showReportForm(),
               backgroundColor: colors.brand,
               foregroundColor: colors.surface,
@@ -819,8 +818,9 @@ class _ReportsViewState extends State<ReportsView> {
                   else
                     ...state.dailyReports.map(
                       (rep) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.only(bottom: 12),
                         child: LedgerCard(
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -838,7 +838,8 @@ class _ReportsViewState extends State<ReportsView> {
                                             style: LocalizedDateTimeStyle.date,
                                           ),
                                           style: textStyles.bodySans.copyWith(
-                                            fontWeight: FontWeight.w500,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
                                           ),
                                         ),
                                         if (_isManagement &&
@@ -850,6 +851,7 @@ class _ReportsViewState extends State<ReportsView> {
                                             style: textStyles.captionSans
                                                 .copyWith(
                                                   color: colors.textSecondary,
+                                                  fontWeight: FontWeight.w500,
                                                 ),
                                           ),
                                         ],
@@ -866,7 +868,7 @@ class _ReportsViewState extends State<ReportsView> {
                                           ),
                                     backgroundColor: rep.hasInvoices
                                         ? colors.accentGreen.withValues(
-                                            alpha: 0.1,
+                                            alpha: 0.12,
                                           )
                                         : colors.surfaceNested,
                                     textColor: rep.hasInvoices
@@ -875,34 +877,130 @@ class _ReportsViewState extends State<ReportsView> {
                                   ),
                                 ],
                               ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    locale.translate(
+                                      'reports_field_total_sales',
+                                    ),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${oCcy.format(rep.totalSales)} TJS',
+                                    style: textStyles.h2Sans.copyWith(
+                                      color: colors.brand,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 17,
+                                    ),
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 10),
-                              _metricRow(
-                                locale.translate('reports_field_total_sales'),
-                                '${oCcy.format(rep.totalSales)} TJS',
-                                textStyles,
-                                colors,
-                                emphasize: true,
-                              ),
-                              _metricRow(
-                                locale.translate('reports_field_cash'),
-                                '${oCcy.format(rep.cashAmount)} TJS',
-                                textStyles,
-                                colors,
-                              ),
-                              _metricRow(
-                                locale.translate('reports_field_cashless'),
-                                '${oCcy.format(rep.cashlessAmount)} TJS',
-                                textStyles,
-                                colors,
-                              ),
-                              _metricRow(
-                                locale.translate('reports_field_returns'),
-                                '${rep.returnsCount} · ${oCcy.format(rep.returnsAmount)} TJS',
-                                textStyles,
-                                colors,
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.surfaceNested,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          TablerIcons.cash,
+                                          size: 14,
+                                          color: colors.accentGreen,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${locale.translate('reports_field_cash')}: ${oCcy.format(rep.cashAmount)}',
+                                          style:
+                                              textStyles.captionSans.copyWith(
+                                            color: colors.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.surfaceNested,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          TablerIcons.credit_card,
+                                          size: 14,
+                                          color: colors.brand,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${locale.translate('reports_field_cashless')}: ${oCcy.format(rep.cashlessAmount)}',
+                                          style:
+                                              textStyles.captionSans.copyWith(
+                                            color: colors.textPrimary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (rep.returnsCount > 0 ||
+                                      rep.returnsAmount > 0)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colors.accentRed.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            TablerIcons.rotate_rectangle,
+                                            size: 14,
+                                            color: colors.accentRed,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${locale.translate('reports_field_returns')}: ${rep.returnsCount} (${oCcy.format(rep.returnsAmount)} TJS)',
+                                            style:
+                                                textStyles.captionSans.copyWith(
+                                              color: colors.accentRed,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
                               if (rep.note != null && rep.note!.isNotEmpty) ...[
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
                                 Text(
                                   rep.note!,
                                   style: textStyles.captionSans.copyWith(
@@ -910,7 +1008,9 @@ class _ReportsViewState extends State<ReportsView> {
                                   ),
                                 ),
                               ],
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
+                              const Divider(height: 1),
+                              const SizedBox(height: 6),
                               Row(
                                 children: [
                                   if (_canWrite)
@@ -924,28 +1024,36 @@ class _ReportsViewState extends State<ReportsView> {
                                         color: colors.textSecondary,
                                       ),
                                     ),
-                                  IconButton(
-                                    tooltip: 'PDF',
+                                  TextButton.icon(
                                     onPressed: _exporting
                                         ? null
                                         : () => _export(rep, 'pdf'),
                                     icon: Icon(
                                       TablerIcons.file_type_pdf,
-                                      size: 18,
+                                      size: 16,
                                       color: colors.brand,
                                     ),
+                                    label: Text(
+                                      'PDF',
+                                      style: TextStyle(color: colors.brand),
+                                    ),
                                   ),
-                                  IconButton(
-                                    tooltip: 'Word',
+                                  const SizedBox(width: 4),
+                                  TextButton.icon(
                                     onPressed: _exporting
                                         ? null
                                         : () => _export(rep, 'docx'),
                                     icon: Icon(
                                       TablerIcons.file_type_doc,
-                                      size: 18,
+                                      size: 16,
                                       color: colors.brand,
                                     ),
+                                    label: Text(
+                                      'Word',
+                                      style: TextStyle(color: colors.brand),
+                                    ),
                                   ),
+                                  const Spacer(),
                                   if (_canDelete)
                                     IconButton(
                                       tooltip: locale.translate(
@@ -970,35 +1078,6 @@ class _ReportsViewState extends State<ReportsView> {
             );
           },
         ),
-      ),
-    );
-  }
-
-  Widget _metricRow(
-    String label,
-    String value,
-    LedgerTextStyles textStyles,
-    LedgerColors colors, {
-    bool emphasize = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
-          ),
-          Text(
-            value,
-            style: (emphasize ? textStyles.bodyMono : textStyles.smallMono)
-                .copyWith(
-                  fontWeight: emphasize ? FontWeight.w500 : FontWeight.w400,
-                  color: emphasize ? colors.textPrimary : colors.textSecondary,
-                ),
-          ),
-        ],
       ),
     );
   }

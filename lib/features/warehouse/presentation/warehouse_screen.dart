@@ -20,6 +20,7 @@ import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../assistant/presentation/ledger_advice_panel.dart';
+import '../../assistant/presentation/ledger_ai_assistant.dart';
 
 class WarehouseScreen extends StatefulWidget {
   const WarehouseScreen({super.key});
@@ -29,22 +30,9 @@ class WarehouseScreen extends StatefulWidget {
 }
 
 class _WarehouseScreenState extends State<WarehouseScreen> {
-  var _activated = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_activated || !TickerMode.valuesOf(context).enabled) return;
-    _activated = true;
-    context.read<WarehouseBloc>().add(LoadWarehouseData());
-  }
-
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
-    if (!_activated && !TickerMode.valuesOf(context).enabled) {
-      return const SizedBox.shrink();
-    }
     try {
       context.read<WarehouseBloc>();
       return const WarehouseView();
@@ -76,6 +64,13 @@ class _WarehouseViewState extends State<WarehouseView>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(_handleTabChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bloc = context.read<WarehouseBloc>();
+      if (bloc.state is! WarehouseLoaded) {
+        bloc.add(LoadWarehouseData());
+      }
+    });
   }
 
   void _handleTabChange() {
@@ -103,73 +98,92 @@ class _WarehouseViewState extends State<WarehouseView>
 
     return Scaffold(
       floatingActionButtonLocation: kLedgerShellFabLocation,
-      floatingActionButton: canManage && _tabController.index < 3
-          ? switch (_tabController.index) {
-              0 => FloatingActionButton.extended(
-                onPressed: () => _showAddProductDialog(context),
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                highlightElevation: 0,
-                focusElevation: 0,
-                hoverElevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: colors.brand),
-                ),
-                icon: const Icon(TablerIcons.plus),
-                label: Text(
-                  localeCubit.translate('warehouse_add_product_btn'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w500,
+      floatingActionButton: Builder(
+        builder: (context) {
+          final warehouseFab = canManage && _tabController.index < 3
+              ? switch (_tabController.index) {
+                  0 => FloatingActionButton.extended(
+                    heroTag: null,
+                    onPressed: () => _showAddProductDialog(context),
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
+                    icon: const Icon(TablerIcons.plus),
+                    label: Text(
+                      localeCubit.translate('warehouse_add_product_btn'),
+                      style: textStyles.bodySans.copyWith(
+                        color: colors.surface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              1 => FloatingActionButton.extended(
-                onPressed: () => _showAddMovementDialog(context),
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                highlightElevation: 0,
-                focusElevation: 0,
-                hoverElevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: colors.brand),
-                ),
-                icon: const Icon(TablerIcons.arrow_left_right),
-                label: Text(
-                  localeCubit.translate('warehouse_movement_btn'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w500,
+                  1 => FloatingActionButton.extended(
+                    heroTag: null,
+                    onPressed: () => _showAddMovementDialog(context),
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
+                    icon: const Icon(TablerIcons.arrow_left_right),
+                    label: Text(
+                      localeCubit.translate('warehouse_movement_btn'),
+                      style: textStyles.bodySans.copyWith(
+                        color: colors.surface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              _ => FloatingActionButton.extended(
-                onPressed: () => _showAddBatchDialog(context),
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                highlightElevation: 0,
-                focusElevation: 0,
-                hoverElevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: colors.brand),
-                ),
-                icon: const Icon(TablerIcons.layers_linked),
-                label: Text(
-                  localeCubit.translate('warehouse_add_batch_btn'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w500,
+                  _ => FloatingActionButton.extended(
+                    heroTag: null,
+                    onPressed: () => _showAddBatchDialog(context),
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    focusElevation: 0,
+                    hoverElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: colors.brand),
+                    ),
+                    icon: const Icon(TablerIcons.layers_linked),
+                    label: Text(
+                      localeCubit.translate('warehouse_add_batch_btn'),
+                      style: textStyles.bodySans.copyWith(
+                        color: colors.surface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            }
-          : null,
+                }
+              : null;
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const LedgerAiFloatingButton(),
+              if (warehouseFab != null) ...[
+                const SizedBox(height: 10),
+                warehouseFab,
+              ],
+            ],
+          );
+        },
+      ),
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
@@ -495,14 +509,37 @@ class _WarehouseViewState extends State<WarehouseView>
           final canWrite =
               auth is AuthAuthenticated &&
               auth.role.canWrite(AppCapability.warehouse);
+
+          final isOutOfStock = product.stockQty <= 0;
+          final isLowStock = !isOutOfStock && product.stockQty <= 5;
+
+          final stockStatusColor = isOutOfStock
+              ? colors.accentRed
+              : (isLowStock ? colors.accentAmber : colors.accentGreen);
+
           return LedgerCard(
             onTap: canWrite
                 ? () => _showEditProductSheet(context, product)
                 : null,
             padding: const EdgeInsets.all(14),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Product icon container
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: colors.brand.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    TablerIcons.box,
+                    size: 22,
+                    color: colors.brand,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,33 +547,39 @@ class _WarehouseViewState extends State<WarehouseView>
                       Text(
                         localeCubit.translateMessage(product.name),
                         style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      if (product.sku != null && product.sku!.isNotEmpty)
-                        Text(
-                          localeCubit.translate(
-                            'warehouse_product_sku',
-                            params: {'sku': product.sku},
+                      Row(
+                        children: [
+                          if (product.sku != null && product.sku!.isNotEmpty) ...[
+                            LedgerPill(
+                              text: product.sku!,
+                              backgroundColor: colors.surfaceNested,
+                              textColor: colors.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            localeCubit.translate(
+                              'warehouse_product_price',
+                              params: {'price': oCcy.format(product.price)},
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          style: textStyles.smallSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      const SizedBox(height: 2),
-                      Text(
-                        localeCubit.translate(
-                          'warehouse_product_price',
-                          params: {'price': oCcy.format(product.price)},
-                        ),
-                        style: textStyles.smallMono.copyWith(
-                          color: colors.textSecondary,
-                        ),
+                        ],
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -551,12 +594,8 @@ class _WarehouseViewState extends State<WarehouseView>
                           'unit': localeCubit.translateMessage(product.unit),
                         },
                       ),
-                      backgroundColor: product.stockQty > 0
-                          ? colors.brand.withValues(alpha: 0.08)
-                          : colors.accentRed.withValues(alpha: 0.08),
-                      textColor: product.stockQty > 0
-                          ? colors.brand
-                          : colors.accentRed,
+                      backgroundColor: stockStatusColor.withValues(alpha: 0.12),
+                      textColor: stockStatusColor,
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -568,8 +607,9 @@ class _WarehouseViewState extends State<WarehouseView>
                           ),
                         },
                       ),
-                      style: textStyles.smallMono.copyWith(
-                        fontWeight: FontWeight.w500,
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -963,11 +1003,7 @@ class _WarehouseViewState extends State<WarehouseView>
         ),
         if (state.isAnalysisLoading) ...[
           const SizedBox(height: 16),
-          Text(
-            language.translate('warehouse_analysis_waiting'),
-            textAlign: TextAlign.center,
-            style: textStyles.captionSans.copyWith(color: colors.textTooltip),
-          ),
+          const LedgerNamedListShimmer(itemCount: 3),
         ],
         if (state.analysisError != null) ...[
           const SizedBox(height: 12),

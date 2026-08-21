@@ -259,26 +259,51 @@ Widget _buildOverviewHome(
             delta: deltaLabel(m.revenueDelta),
             deltaColor: deltaColor(m.revenueDelta),
           ),
-          const SizedBox(height: 20),
-          const SalesProfitCard(hideOnError: true),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
+          const SalesProfitCard(hideOnError: true, wrapCard: false),
+          const SizedBox(height: 24),
           const CurrencyBoardCard(),
-          const SizedBox(height: 20),
-          Text(
-            language.translate('dashboard_cash_flow_30_days_title'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 24),
           _buildChart(context, loaded.history, currency),
           const SizedBox(height: 24),
-          Text(
-            language.translate('dashboard_reports_title'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            language.translate('dashboard_reports_subtitle'),
-            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  TablerIcons.file_analytics,
+                  size: 18,
+                  color: colors.brand,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      language.translate('dashboard_reports_title'),
+                      style: textStyles.h2Sans.copyWith(
+                        fontSize: context.fontSize(16),
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      language.translate('dashboard_reports_subtitle'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: context.fontSize(11),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           for (var i = 0; i < reports.length; i += 2)
@@ -379,82 +404,118 @@ Widget _buildChart(
       '${languageCubit.translate('dashboard_expense')}: '
       '${formatLocalizedNumber(context, peakExpense)} $currency';
 
-  return LedgerCard(
-    padding: const EdgeInsets.all(16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          languageCubit.translate('dashboard_cash_flow'),
-          style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          languageCubit.translate(
-            'dashboard_cash_flow_subtitle',
-            params: {'period': periodText, 'currency': currency},
-          ),
-          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 180,
-          child: Semantics(
-            image: true,
-            label: chartSemanticsLabel,
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: CashFlowChartPainter(
-                points: points,
-                greenColor: colors.accentGreen,
-                redColor: colors.accentRed,
-                gridColor: colors.border,
-                surfaceColor: colors.surface,
-                textStyle: textStyles.smallMono.copyWith(
-                  color: colors.textTooltip,
-                  fontSize: 10,
-                ),
-                thousandSuffix: languageCubit.translate(
-                  'dashboard_thousands_short',
-                ),
-                locale: Localizations.localeOf(context),
-              ),
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              TablerIcons.chart_area_line,
+              size: 18,
+              color: colors.brand,
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Row(
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  languageCubit.translate('dashboard_cash_flow'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontSize: context.fontSize(16),
+                  ),
+                ),
+                if (periodText.isNotEmpty) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    languageCubit.translate(
+                      'dashboard_cash_flow_subtitle',
+                      params: {'period': periodText, 'currency': currency},
+                    ),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                      fontSize: context.fontSize(11),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      LedgerCard(
+        padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+        child: Column(
           children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colors.accentGreen,
+            SizedBox(
+              height: 180,
+              child: Semantics(
+                image: true,
+                label: chartSemanticsLabel,
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: CashFlowChartPainter(
+                    points: points,
+                    greenColor: colors.accentGreen,
+                    redColor: colors.accentRed,
+                    gridColor: colors.border,
+                    surfaceColor: colors.surface,
+                    textStyle: textStyles.smallMono.copyWith(
+                      color: colors.textTooltip,
+                      fontSize: 10,
+                    ),
+                    thousandSuffix: languageCubit.translate(
+                      'dashboard_thousands_short',
+                    ),
+                    locale: Localizations.localeOf(context),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 6),
-            Text(
-              languageCubit.translate('dashboard_income'),
-              style: textStyles.captionSans,
-            ),
-            const SizedBox(width: 20),
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: colors.accentRed,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              languageCubit.translate('dashboard_expense'),
-              style: textStyles.captionSans,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.accentGreen,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  languageCubit.translate('dashboard_income'),
+                  style: textStyles.captionSans,
+                ),
+                const SizedBox(width: 20),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: colors.accentRed,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  languageCubit.translate('dashboard_expense'),
+                  style: textStyles.captionSans,
+                ),
+              ],
             ),
           ],
         ),
-      ],
-    ),
+      ),
+    ],
   );
 }

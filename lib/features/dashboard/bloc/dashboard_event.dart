@@ -79,12 +79,17 @@ class RefreshRatesRequested extends DashboardEvent {
 
 class LoadDashboardData extends DashboardEvent {
   final bool forceRefresh;
+  final bool clearCache;
   final Completer<void>? completion;
 
-  const LoadDashboardData({this.forceRefresh = false, this.completion});
+  const LoadDashboardData({
+    this.forceRefresh = false,
+    this.clearCache = false,
+    this.completion,
+  });
 
   @override
-  List<Object?> get props => [forceRefresh];
+  List<Object?> get props => [forceRefresh, clearCache];
 }
 
 class ChangeCurrency extends DashboardEvent {

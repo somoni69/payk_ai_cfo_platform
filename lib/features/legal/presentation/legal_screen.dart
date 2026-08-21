@@ -91,6 +91,7 @@ class _LegalScreenState extends State<LegalScreen>
     if (labelKey == null) return null;
 
     return FloatingActionButton.extended(
+      heroTag: null,
       onPressed: () {
         if (index == 1) {
           _showCreateLawSheet(context);
@@ -758,16 +759,7 @@ class _LegalScreenState extends State<LegalScreen>
     }
 
     return state.isGenerating
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                Text(localeCubit.translate('legal_generating_document')),
-              ],
-            ),
-          )
+        ? const LedgerNamedListShimmer(itemCount: 4)
         : ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: state.templates.length,

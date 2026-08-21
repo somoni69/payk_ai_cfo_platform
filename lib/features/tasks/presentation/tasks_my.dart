@@ -17,7 +17,7 @@ extension _TasksMyTab on _TasksViewState {
     final language = context.watch<LanguageCubit>();
 
     if (state.isMyTasksLoading && !state.myTasksLoaded) {
-      return const Center(child: CircularProgressIndicator());
+      return const TasksOverviewShimmer();
     }
 
     final personal = state.myTasks.where((t) => t.isPersonal).toList();
@@ -82,50 +82,93 @@ extension _TasksMyTab on _TasksViewState {
     final isOverdue = !isDone && task.dueDate.isBefore(DateTime.now());
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: LedgerCard(
         onTap: () => _showPersonalTaskSheet(context, editing: task),
-        child: Column(
+        padding: const EdgeInsets.all(12),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
-                      decoration: isDone ? TextDecoration.lineThrough : null,
-                    ),
-                  ),
-                ),
-                LedgerPill(
-                  text: language.translate(task.status.localizationKey),
-                  backgroundColor: colors.surfaceNested,
-                  textColor: colors.textSecondary,
-                ),
-              ],
+            // Checkbox icon
+            Padding(
+              padding: const EdgeInsets.only(top: 2, right: 10),
+              child: Icon(
+                isDone
+                    ? TablerIcons.circle_check_filled
+                    : TablerIcons.circle,
+                size: 20,
+                color: isDone ? colors.accentGreen : colors.textTooltip,
+              ),
             ),
-            if (task.description.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                task.description,
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              formatLocalizedDateTime(
-                context,
-                task.dueDate,
-                style: LocalizedDateTimeStyle.date,
-              ),
-              style: textStyles.smallSans.copyWith(
-                color: isOverdue ? colors.accentRed : colors.textTooltip,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          task.title,
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            decoration:
+                                isDone ? TextDecoration.lineThrough : null,
+                            color: isDone
+                                ? colors.textSecondary
+                                : colors.textPrimary,
+                          ),
+                        ),
+                      ),
+                      LedgerPill(
+                        text: language.translate(task.status.localizationKey),
+                        backgroundColor: isDone
+                            ? colors.accentGreen.withValues(alpha: 0.12)
+                            : colors.surfaceNested,
+                        textColor: isDone
+                            ? colors.accentGreen
+                            : colors.textSecondary,
+                      ),
+                    ],
+                  ),
+                  if (task.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      task.description,
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(
+                        TablerIcons.calendar,
+                        size: 13,
+                        color:
+                            isOverdue ? colors.accentRed : colors.textTooltip,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        formatLocalizedDateTime(
+                          context,
+                          task.dueDate,
+                          style: LocalizedDateTimeStyle.date,
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color:
+                              isOverdue ? colors.accentRed : colors.textTooltip,
+                          fontWeight: isOverdue
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
@@ -145,48 +188,157 @@ extension _TasksMyTab on _TasksViewState {
         (userId != null && task.createdBy != null && task.createdBy == userId);
     final isDone = task.status == TaskStatus.done;
     final isSubmitted = task.status == TaskStatus.review;
+    final isOverdue = !isDone && task.dueDate.isBefore(DateTime.now());
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: LedgerCard(
+        padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    task.title,
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, right: 10),
+                  child: Icon(
+                    isDone
+                        ? TablerIcons.circle_check_filled
+                        : (isSubmitted
+                            ? TablerIcons.clock_hour_4
+                            : TablerIcons.circle),
+                    size: 20,
+                    color: isDone
+                        ? colors.accentGreen
+                        : (isSubmitted
+                            ? colors.accentAmber
+                            : colors.textTooltip),
                   ),
                 ),
-                LedgerPill(
-                  text: language.translate(task.status.localizationKey),
-                  backgroundColor: isDone
-                      ? colors.accentGreen.withValues(alpha: 0.1)
-                      : colors.surfaceNested,
-                  textColor: isDone ? colors.accentGreen : colors.textSecondary,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                decoration:
+                                    isDone ? TextDecoration.lineThrough : null,
+                                color: isDone
+                                    ? colors.textSecondary
+                                    : colors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          LedgerPill(
+                            text: language.translate(
+                              task.status.localizationKey,
+                            ),
+                            backgroundColor: isDone
+                                ? colors.accentGreen.withValues(alpha: 0.12)
+                                : (isSubmitted
+                                    ? colors.accentAmber.withValues(alpha: 0.12)
+                                    : colors.surfaceNested),
+                            textColor: isDone
+                                ? colors.accentGreen
+                                : (isSubmitted
+                                    ? colors.accentAmber
+                                    : colors.textSecondary),
+                          ),
+                        ],
+                      ),
+                      if (task.description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          task.description,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),
-            if (task.description.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                task.description,
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        TablerIcons.calendar,
+                        size: 13,
+                        color:
+                            isOverdue ? colors.accentRed : colors.textTooltip,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        formatLocalizedDateTime(
+                          context,
+                          task.dueDate,
+                          style: LocalizedDateTimeStyle.date,
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color:
+                              isOverdue ? colors.accentRed : colors.textTooltip,
+                          fontWeight: isOverdue
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (task.assigneeName != null &&
+                    task.assigneeName!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceNested,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          TablerIcons.user,
+                          size: 13,
+                          color: colors.textTooltip,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          task.assigneeName!,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 if (task.acknowledgedAt != null)
                   LedgerPill(
                     text: language.translate('tasks_review_acknowledged'),

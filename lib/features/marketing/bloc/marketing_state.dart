@@ -11,6 +11,9 @@ class MarketingState extends Equatable {
   final bool isGenerating;
   final List<String> generatedIdeas;
   final String? generatedText;
+  final BrandGuide? brandGuide;
+  final bool isBrandLoading;
+  final bool isSavingBrand;
   final String? errorMessage;
 
   const MarketingState({
@@ -23,6 +26,9 @@ class MarketingState extends Equatable {
     this.isGenerating = false,
     this.generatedIdeas = const [],
     this.generatedText,
+    this.brandGuide,
+    this.isBrandLoading = false,
+    this.isSavingBrand = false,
     this.errorMessage,
   });
 
@@ -36,6 +42,9 @@ class MarketingState extends Equatable {
     bool? isGenerating,
     List<String>? generatedIdeas,
     String? generatedText,
+    BrandGuide? brandGuide,
+    bool? isBrandLoading,
+    bool? isSavingBrand,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -49,6 +58,9 @@ class MarketingState extends Equatable {
       isGenerating: isGenerating ?? this.isGenerating,
       generatedIdeas: generatedIdeas ?? this.generatedIdeas,
       generatedText: generatedText ?? this.generatedText,
+      brandGuide: brandGuide ?? this.brandGuide,
+      isBrandLoading: isBrandLoading ?? this.isBrandLoading,
+      isSavingBrand: isSavingBrand ?? this.isSavingBrand,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -64,6 +76,9 @@ class MarketingState extends Equatable {
     isGenerating,
     generatedIdeas,
     generatedText,
+    brandGuide,
+    isBrandLoading,
+    isSavingBrand,
     errorMessage,
   ];
 }

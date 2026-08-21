@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 class Branch extends Equatable {
   final String id;
   final String name;
+  final String? code;
   final String address;
   final String phone;
   final bool isActive;
@@ -12,6 +13,7 @@ class Branch extends Equatable {
   const Branch({
     required this.id,
     required this.name,
+    this.code,
     required this.address,
     required this.phone,
     this.isActive = true,
@@ -23,6 +25,7 @@ class Branch extends Equatable {
     return Branch(
       id: (json['id'] ?? '').toString(),
       name: json['name']?.toString() ?? '',
+      code: json['code']?.toString(),
       address: json['address']?.toString() ?? '',
       phone: json['phone']?.toString() ?? '',
       isActive: json['is_active'] as bool? ?? true,
@@ -35,6 +38,7 @@ class Branch extends Equatable {
     return {
       'id': id,
       'name': name,
+      if (code != null) 'code': code,
       'address': address,
       'phone': phone,
       'is_active': isActive,
@@ -47,6 +51,7 @@ class Branch extends Equatable {
   List<Object?> get props => [
     id,
     name,
+    code,
     address,
     phone,
     isActive,

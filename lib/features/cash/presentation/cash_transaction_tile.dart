@@ -6,12 +6,12 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_operation_row.dart';
+import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_pill.dart';
 import '../domain/transaction_model.dart';
 
-/// Ledger-styled cash operation row with expandable detail footer.
-class CashTransactionTile extends StatelessWidget {
+/// Modern fintech transaction card with visual category icon and clean detail drawer.
+class CashTransactionTile extends StatefulWidget {
   const CashTransactionTile({
     super.key,
     required this.transaction,
@@ -24,133 +24,231 @@ class CashTransactionTile extends StatelessWidget {
   final VoidCallback? onDelete;
 
   @override
+  State<CashTransactionTile> createState() => _CashTransactionTileState();
+}
+
+class _CashTransactionTileState extends State<CashTransactionTile> {
+  bool _expanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final language = context.watch<LanguageCubit>();
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final oCcy = localizedDecimalFormat(context);
-    final amount =
-        '${transaction.isIncome ? '+' : '-'}${oCcy.format(transaction.amount)}';
-    final title = language.translateMessage(transaction.title);
-    final category =
-        '${language.translateMessage(transaction.category)} • ${language.translate(transaction.paymentMethod.labelKey)}';
+    final tx = widget.transaction;
+
+    final amountFormatted =
+        '${tx.isIncome ? '+' : '-'}${oCcy.format(tx.amount)}';
+    final title = language.translateMessage(tx.title);
     final cashier =
-        transaction.cashierName == 'cash_system_user' ||
-            transaction.cashierName.toLowerCase() == 'system'
+        tx.cashierName == 'cash_system_user' ||
+            tx.cashierName.toLowerCase() == 'system'
         ? language.translate('cash_system_user')
-        : language.translateMessage(transaction.cashierName);
+        : language.translateMessage(tx.cashierName);
     final registerLabel =
-        transaction.registerName ??
-        (transaction.registerId != null
+        tx.registerName ??
+        (tx.registerId != null
             ? language.translate(
                 'cash_register_n',
-                params: {'id': transaction.registerId!},
+                params: {'id': tx.registerId!},
               )
             : language.translate('cash_register_main'));
 
-    return ExpansibleWidget(
-      cardPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-      title: LedgerOperationRow(
-        title: title,
-        category: category,
-        amount: amount,
-        isIncome: transaction.isIncome,
-        pillText: formatLocalizedDateTime(
-          context,
-          transaction.dateTime,
-          style: LocalizedDateTimeStyle.time,
-        ),
-        pillColor: colors.surfaceNested,
-        pillTextColor: colors.textSecondary,
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Column(
+    final iconColor = tx.isIncome ? colors.accentGreen : colors.accentRed;
+    final iconBg = iconColor.withValues(alpha: 0.12);
+
+    return LedgerCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              _DetailRow(
-                label: language.translate('cash_detail_cashier'),
-                value: cashier,
+              // Pastel circular category icon
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  tx.isIncome
+                      ? TablerIcons.arrow_down_left
+                      : TablerIcons.arrow_up_right,
+                  size: 20,
+                  color: iconColor,
+                ),
               ),
-              const SizedBox(height: 6),
-              _DetailRow(
-                label: language.translate('cash_detail_payment'),
-                value: language.translate(transaction.paymentMethod.labelKey),
-              ),
-              const SizedBox(height: 6),
-              _DetailRow(
-                label: language.translate('cash_detail_category'),
-                value: language.translateMessage(transaction.category),
-              ),
-              const SizedBox(height: 6),
-              _DetailRow(
-                label: language.translate('cash_detail_register'),
-                value: registerLabel,
-              ),
-              if (transaction.paymentMethod == PaymentMethod.mixed &&
-                  (transaction.cashAmount != null ||
-                      transaction.cashlessAmount != null)) ...[
-                const SizedBox(height: 6),
-                _DetailRow(
-                  label: language.translate('cash_mixed_cash'),
-                  value: oCcy.format(transaction.cashAmount ?? 0),
-                ),
-                const SizedBox(height: 6),
-                _DetailRow(
-                  label: language.translate('cash_mixed_cashless'),
-                  value: oCcy.format(transaction.cashlessAmount ?? 0),
-                ),
-              ],
-              if (transaction.bankName != null &&
-                  transaction.bankName!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _DetailRow(
-                  label: language.translate('cash_bank'),
-                  value: transaction.bankName!,
-                ),
-              ],
-              if (transaction.description != null &&
-                  transaction.description!.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                _DetailRow(
-                  label: language.translate('cash_description'),
-                  value: transaction.description!,
-                ),
-              ],
-              for (final line in transaction.lines) ...[
-                const SizedBox(height: 6),
-                _DetailRow(
-                  label: line.productName ?? line.productId,
-                  value:
-                      '${oCcy.format(line.qty)} × ${oCcy.format(line.price)}',
-                ),
-              ],
-              if (onEdit != null || onDelete != null) ...[
-                const SizedBox(height: 10),
-                Row(
+              const SizedBox(width: 12),
+              // Main content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (onEdit != null)
-                      TextButton(
-                        onPressed: onEdit,
-                        child: Text(language.translate('cash_edit_operation')),
+                    Text(
+                      title,
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
-                    const Spacer(),
-                    if (onDelete != null)
-                      IconButton(
-                        tooltip: language.translate('common_delete'),
-                        onPressed: onDelete,
-                        icon: Icon(
-                          TablerIcons.trash,
-                          size: 20,
-                          color: colors.accentRed,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        LedgerPill(
+                          text: formatLocalizedDateTime(
+                            context,
+                            tx.dateTime,
+                            style: LocalizedDateTimeStyle.time,
+                          ),
+                          backgroundColor: colors.surfaceNested,
+                          textColor: colors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${language.translateMessage(tx.category)} • ${language.translate(tx.paymentMethod.labelKey)}',
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Amount and chevron
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    amountFormatted,
+                    style: textStyles.bodySans.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: tx.isIncome ? colors.accentGreen : colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Icon(
+                    _expanded ? TablerIcons.chevron_up : TablerIcons.chevron_down,
+                    size: 16,
+                    color: colors.textTooltip,
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.surfaceNested,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  _DetailRow(
+                    label: language.translate('cash_detail_cashier'),
+                    value: cashier,
+                  ),
+                  const SizedBox(height: 6),
+                  _DetailRow(
+                    label: language.translate('cash_detail_payment'),
+                    value: language.translate(tx.paymentMethod.labelKey),
+                  ),
+                  const SizedBox(height: 6),
+                  _DetailRow(
+                    label: language.translate('cash_detail_category'),
+                    value: language.translateMessage(tx.category),
+                  ),
+                  const SizedBox(height: 6),
+                  _DetailRow(
+                    label: language.translate('cash_detail_register'),
+                    value: registerLabel,
+                  ),
+                  if (tx.paymentMethod == PaymentMethod.mixed &&
+                      (tx.cashAmount != null || tx.cashlessAmount != null)) ...[
+                    const SizedBox(height: 6),
+                    _DetailRow(
+                      label: language.translate('cash_mixed_cash'),
+                      value: oCcy.format(tx.cashAmount ?? 0),
+                    ),
+                    const SizedBox(height: 6),
+                    _DetailRow(
+                      label: language.translate('cash_mixed_cashless'),
+                      value: oCcy.format(tx.cashlessAmount ?? 0),
+                    ),
+                  ],
+                  if (tx.bankName != null && tx.bankName!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _DetailRow(
+                      label: language.translate('cash_bank'),
+                      value: tx.bankName!,
+                    ),
+                  ],
+                  if (tx.description != null && tx.description!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _DetailRow(
+                      label: language.translate('cash_description'),
+                      value: tx.description!,
+                    ),
+                  ],
+                  if (tx.lines.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    const Divider(height: 1),
+                    const SizedBox(height: 8),
+                    for (final line in tx.lines)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: _DetailRow(
+                          label: line.productName ?? line.productId,
+                          value:
+                              '${oCcy.format(line.qty)} × ${oCcy.format(line.price)}',
                         ),
                       ),
                   ],
-                ),
-              ],
+                ],
+              ),
+            ),
+            if (widget.onEdit != null || widget.onDelete != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  if (widget.onEdit != null)
+                    TextButton.icon(
+                      onPressed: widget.onEdit,
+                      icon: const Icon(TablerIcons.pencil, size: 16),
+                      label: Text(language.translate('cash_edit_operation')),
+                    ),
+                  const Spacer(),
+                  if (widget.onDelete != null)
+                    IconButton(
+                      tooltip: language.translate('common_delete'),
+                      onPressed: widget.onDelete,
+                      icon: Icon(
+                        TablerIcons.trash,
+                        size: 18,
+                        color: colors.accentRed,
+                      ),
+                    ),
+                ],
+              ),
             ],
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }
@@ -177,7 +275,10 @@ class _DetailRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: textStyles.captionSans.copyWith(color: colors.textPrimary),
+            style: textStyles.captionSans.copyWith(
+              color: colors.textPrimary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],

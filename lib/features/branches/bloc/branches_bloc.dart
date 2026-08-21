@@ -35,6 +35,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
     try {
       await _repository.createBranch(
         name: event.name,
+        code: event.code,
         address: event.address,
         phone: event.phone,
       );
@@ -53,6 +54,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
       await _repository.updateBranch(
         id: event.id,
         name: event.name,
+        code: event.code,
         address: event.address,
         phone: event.phone,
         isActive: event.isActive,

@@ -9,10 +9,11 @@ import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/finance_model.dart';
 import '../domain/finance_repository.dart';
 
-/// Доска курсов: НБТ + покупка/продажа банков.
+/// Доска курсов валют: Официальный курс НБТ + сравнительная таблица банков.
 class CurrencyBoardCard extends StatefulWidget {
   const CurrencyBoardCard({super.key});
 
@@ -22,6 +23,7 @@ class CurrencyBoardCard extends StatefulWidget {
 
 class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
   static const _codes = ['USD', 'EUR', 'RUB'];
+  String _selectedCurrency = 'USD';
   CurrencyBoard? _board;
   var _loading = true;
   var _failed = false;
@@ -32,7 +34,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
     super.initState();
     _load();
     _poll = Timer.periodic(const Duration(minutes: 30), (_) {
-      if (!mounted || !TickerMode.valuesOf(context).enabled) return;
+      if (!mounted) return;
       _load();
     });
   }
@@ -87,6 +89,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
     final byBank = <String, Map<String, BankRateQuote>>{};
     final names = <String, String>{};
     DateTime? freshest;
+
     for (final row in _board?.banks ?? const <BankRateQuote>[]) {
       names[row.bank] = row.bankName;
       byBank.putIfAbsent(row.bank, () => {})[row.currency] = row;
@@ -96,69 +99,93 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
       }
     }
 
-    String fmt(double? v, {int minDecimals = 2}) => v == null
-        ? '—'
-        : formatLocalizedNumber(context, v, minimumFractionDigits: minDecimals);
+    // Find best rates for the selected currency
+    double? maxBuy;
+    double? minSell;
+    for (final bankQuotes in byBank.values) {
+      final quote = bankQuotes[_selectedCurrency];
+      if (quote != null) {
+        if (quote.buy != null && (maxBuy == null || quote.buy! > maxBuy)) {
+          maxBuy = quote.buy;
+        }
+        if (quote.sell != null && (minSell == null || quote.sell! < minSell)) {
+          minSell = quote.sell;
+        }
+      }
+    }
 
-    return LedgerCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: colors.brand.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  TablerIcons.building_bank,
-                  size: 18,
-                  color: colors.brand,
-                ),
+    int decimalsForCode(String code) => code.toUpperCase() == 'RUB' ? 4 : 2;
+
+    String fmt(double? v, {String? code, int? minDecimals, int? maxDecimals}) {
+      if (v == null) return '—';
+      final decimals = code != null ? decimalsForCode(code) : (minDecimals ?? 2);
+      return formatLocalizedNumber(
+        context,
+        v,
+        minimumFractionDigits: minDecimals ?? decimals,
+        maximumFractionDigits: maxDecimals ?? decimals,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Заголовок виджета
+        Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: colors.brand.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              child: Icon(
+                TablerIcons.building_bank,
+                size: 18,
+                color: colors.brand,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    language.translate('dashboard_rates_title'),
+                    style: textStyles.h2Sans.copyWith(
+                      fontSize: context.fontSize(16),
+                    ),
+                  ),
+                  if (freshest != null) ...[
+                    const SizedBox(height: 1),
                     Text(
-                      language.translate('dashboard_rates_title'),
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: context.fontSize(15),
+                      language.translate(
+                        'dashboard_rates_updated',
+                        params: {
+                          'time': formatLocalizedDateTime(
+                            context,
+                            freshest,
+                            style: LocalizedDateTimeStyle.dateTime,
+                          ),
+                        },
+                      ),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: context.fontSize(11),
                       ),
                     ),
-                    if (freshest != null) ...[
-                      const SizedBox(height: 1),
-                      Text(
-                        language.translate(
-                          'dashboard_rates_updated',
-                          params: {
-                            'time': formatLocalizedDateTime(
-                              context,
-                              freshest,
-                              style: LocalizedDateTimeStyle.dateTime,
-                            ),
-                          },
-                        ),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                          fontSize: context.fontSize(11),
-                        ),
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-              IconButton(
-                tooltip: language.translate('dashboard_rates_refresh'),
-                onPressed: _loading ? null : _load,
-                splashRadius: 18,
-                icon: _loading
-                    ? SizedBox(
+            ),
+            IconButton(
+              tooltip: language.translate('dashboard_rates_refresh'),
+              onPressed: _loading ? null : _load,
+              splashRadius: 18,
+              icon:
+                  _loading
+                      ? SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
@@ -166,272 +193,459 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
                           color: colors.brand,
                         ),
                       )
-                    : Icon(
+                      : Icon(
                         TablerIcons.refresh,
                         size: 18,
                         color: colors.textSecondary,
                       ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (_loading && _board == null)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else ...[
-            // Верхний ряд: Официальные курсы НБТ с крупными цифрами
-            Row(
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Shimmer состояние
+        if (_loading && _board == null)
+          const LedgerShimmer(
+            child: Column(
               children: [
-                for (var i = 0; i < _codes.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 8),
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.surfaceNested,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: colors.border.withValues(alpha: 0.5),
+                Row(
+                  children: [
+                    Expanded(
+                      child: LedgerCard(
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 32, height: 12, borderRadius: 4),
+                            SizedBox(height: 6),
+                            ShimmerBox(width: 60, height: 18, borderRadius: 4),
+                          ],
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                _codes[i],
-                                style: textStyles.captionSans.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: colors.textPrimary,
-                                  fontSize: context.fontSize(12),
-                                ),
-                              ),
-                              Text(
-                                _getCurrencyFlag(_codes[i]),
-                                style: TextStyle(
-                                  fontSize: context.fontSize(14),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            fmt(
-                              official[_codes[i]]?.rate,
-                              minDecimals: _codes[i] == 'RUB' ? 2 : 2,
-                            ),
-                            style: textStyles.bodyMono.copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: context.fontSize(17),
-                              color: colors.brand,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            language.translate('dashboard_rates_nbt'),
-                            style: textStyles.captionSans.copyWith(
-                              color: colors.textSecondary,
-                              fontSize: context.fontSize(10),
-                            ),
-                          ),
-                        ],
-                      ),
                     ),
-                  ),
-                ],
-              ],
-            ),
-
-            // Блок курсов коммерческих банков
-            if (byBank.isNotEmpty) ...[
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    language.translate('dashboard_rates_commercial_banks'),
-                    style: textStyles.captionSans.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: context.fontSize(12),
-                      color: colors.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    language.translate('dashboard_rates_buy_sell_legend'),
-                    style: textStyles.captionSans.copyWith(
-                      color: colors.textTooltip,
-                      fontSize: context.fontSize(10),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ...byBank.entries.map((entry) {
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceNested,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: colors.border.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            TablerIcons.building_bank,
-                            size: 14,
-                            color: colors.textSecondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              names[entry.key] ?? entry.key,
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: context.fontSize(13),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          for (var i = 0; i < _codes.length; i++) ...[
-                            if (i > 0) const SizedBox(width: 6),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colors.surface,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: colors.border.withValues(alpha: 0.4),
-                                  ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _codes[i],
-                                      style: textStyles.captionSans.copyWith(
-                                        color: colors.textSecondary,
-                                        fontSize: context.fontSize(10),
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    _buildBuySellRow(
-                                      context,
-                                      entry.value[_codes[i]],
-                                      _codes[i],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: LedgerCard(
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 32, height: 12, borderRadius: 4),
+                            SizedBox(height: 6),
+                            ShimmerBox(width: 60, height: 18, borderRadius: 4),
                           ],
-                        ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: LedgerCard(
+                        padding: EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 32, height: 12, borderRadius: 4),
+                            SizedBox(height: 6),
+                            ShimmerBox(width: 60, height: 18, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Column(
+                    children: [
+                      ShimmerBox(
+                        width: double.infinity,
+                        height: 24,
+                        borderRadius: 4,
+                      ),
+                      SizedBox(height: 12),
+                      ShimmerBox(
+                        width: double.infinity,
+                        height: 48,
+                        borderRadius: 6,
+                      ),
+                      SizedBox(height: 8),
+                      ShimmerBox(
+                        width: double.infinity,
+                        height: 48,
+                        borderRadius: 6,
                       ),
                     ],
                   ),
-                );
-              }),
+                ),
+              ],
+            ),
+          )
+        else ...[
+          // Верхний ряд: Интерактивные карточки НБТ (переключатели валют)
+          Row(
+            children: [
+              for (var i = 0; i < _codes.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: _buildNbtCurrencyCard(
+                    context,
+                    code: _codes[i],
+                    rate: official[_codes[i]]?.rate,
+                    isSelected: _selectedCurrency == _codes[i],
+                    onTap: () {
+                      if (_selectedCurrency != _codes[i]) {
+                        setState(() => _selectedCurrency = _codes[i]);
+                      }
+                    },
+                    fmt: fmt,
+                  ),
+                ),
+              ],
             ],
-            if (byBank.isEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                language.translate('dashboard_rates_banks_pending'),
-                style: textStyles.smallSans.copyWith(color: colors.textTooltip),
+          ),
+
+          const SizedBox(height: 14),
+
+          // Сравнение курсов в банках
+          if (byBank.isNotEmpty) ...[
+            // Подзаголовок с легендой
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  language.translate(
+                    'dashboard_rates_for_currency',
+                    params: {'currency': _selectedCurrency},
+                  ),
+                  style: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: context.fontSize(13),
+                    color: colors.textSecondary,
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: colors.accentGreen,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      language.translate('dashboard_rates_buy'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: context.fontSize(11),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: colors.accentRed,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      language.translate('dashboard_rates_sell'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: context.fontSize(11),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Единая, чистая карточка-таблица со всеми банками
+            LedgerCard(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              child: Column(
+                children: [
+                  for (
+                    var idx = 0;
+                    idx < byBank.entries.length;
+                    idx++
+                  ) ...[
+                    if (idx > 0)
+                      Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: colors.border.withValues(alpha: 0.6),
+                      ),
+                    _buildBankRow(
+                      context,
+                      currencyCode: _selectedCurrency,
+                      bankName:
+                          names[byBank.entries.elementAt(idx).key] ??
+                          byBank.entries.elementAt(idx).key,
+                      quote:
+                          byBank.entries.elementAt(idx).value[
+                            _selectedCurrency
+                          ],
+                      maxBuy: maxBuy,
+                      minSell: minSell,
+                      fmt: fmt,
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
+          ],
+
+          if (byBank.isEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              language.translate('dashboard_rates_banks_pending'),
+              style: textStyles.smallSans.copyWith(color: colors.textTooltip),
+            ),
           ],
         ],
+      ],
+    );
+  }
+
+  Widget _buildNbtCurrencyCard(
+    BuildContext context, {
+    required String code,
+    required double? rate,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required String Function(double?, {String? code, int? minDecimals, int? maxDecimals}) fmt,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+        decoration: BoxDecoration(
+          color:
+              isSelected
+                  ? colors.brand.withValues(alpha: 0.05)
+                  : colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? colors.brand : colors.border,
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  code,
+                  style: textStyles.captionSans.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? colors.brand : colors.textPrimary,
+                    fontSize: context.fontSize(13),
+                  ),
+                ),
+                Text(
+                  _getCurrencyFlag(code),
+                  style: TextStyle(fontSize: context.fontSize(15)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                fmt(rate, code: code),
+                style: textStyles.bodyMono.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: context.fontSize(18),
+                  color: isSelected ? colors.brand : colors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${language.translate('dashboard_rates_nbt')} · TJS',
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+                fontSize: context.fontSize(10),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBuySellRow(
-    BuildContext context,
-    BankRateQuote? quote,
-    String code,
-  ) {
+  Widget _buildBankRow(
+    BuildContext context, {
+    required String currencyCode,
+    required String bankName,
+    required BankRateQuote? quote,
+    required double? maxBuy,
+    required double? minSell,
+    required String Function(double?, {String? code, int? minDecimals, int? maxDecimals}) fmt,
+  }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    if (quote == null || (quote.buy == null && quote.sell == null)) {
-      return Text(
-        '—',
-        style: textStyles.smallMono.copyWith(color: colors.textSecondary),
-      );
-    }
-    String fmt(double? v) => v == null
-        ? '—'
-        : formatLocalizedNumber(context, v, minimumFractionDigits: 2);
+    final language = context.read<LanguageCubit>();
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Flexible(
-          child: Text(
-            fmt(quote.buy),
-            style: textStyles.smallMono.copyWith(
-              color: colors.accentGreen,
-              fontWeight: FontWeight.w700,
-              fontSize: context.fontSize(12.5),
+    final isBestBuy =
+        quote?.buy != null &&
+        maxBuy != null &&
+        (quote!.buy! - maxBuy).abs() < 0.0001;
+    final isBestSell =
+        quote?.sell != null &&
+        minSell != null &&
+        (quote!.sell! - minSell).abs() < 0.0001;
+    final isBest = isBestBuy || isBestSell;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          // Название банка и бейдж выгоды
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: colors.brand.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(
+                    TablerIcons.building_bank,
+                    size: 15,
+                    color: colors.brand,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        bankName,
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: context.fontSize(13.5),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (isBest) ...[
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.accentGreen.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '★ ${language.translate('dashboard_rates_best_badge')}',
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.accentGreen,
+                              fontSize: context.fontSize(9.5),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Text(
-            '/',
-            style: textStyles.smallMono.copyWith(
-              color: colors.textTooltip,
-              fontSize: context.fontSize(10),
+          const SizedBox(width: 8),
+
+          // Колонка Покупка
+          SizedBox(
+            width: 78,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    fmt(quote?.buy, code: currencyCode),
+                    style: textStyles.bodyMono.copyWith(
+                      color: colors.accentGreen,
+                      fontWeight: FontWeight.w700,
+                      fontSize: context.fontSize(15),
+                    ),
+                  ),
+                ),
+                Text(
+                  language.translate('dashboard_rates_buy').toLowerCase(),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: context.fontSize(10),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        Flexible(
-          child: Text(
-            fmt(quote.sell),
-            style: textStyles.smallMono.copyWith(
-              color: colors.accentRed,
-              fontWeight: FontWeight.w700,
-              fontSize: context.fontSize(12.5),
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+
+          // Разделитель
+          Container(
+            height: 24,
+            width: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            color: colors.border.withValues(alpha: 0.7),
           ),
-        ),
-      ],
+
+          // Колонка Продажа
+          SizedBox(
+            width: 78,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    fmt(quote?.sell, code: currencyCode),
+                    style: textStyles.bodyMono.copyWith(
+                      color: colors.accentRed,
+                      fontWeight: FontWeight.w700,
+                      fontSize: context.fontSize(15),
+                    ),
+                  ),
+                ),
+                Text(
+                  language.translate('dashboard_rates_sell').toLowerCase(),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: context.fontSize(10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

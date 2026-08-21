@@ -49,3 +49,51 @@ class SocialPost {
     required this.createdAt,
   });
 }
+
+class BrandGuide {
+  final String? brandName;
+  final String? logoUrl;
+  final String? colors;
+  final String? tone;
+  final String? forbidden;
+  final String? audience;
+  final int videoLimitMonth;
+  final int learnedRounds;
+
+  const BrandGuide({
+    this.brandName,
+    this.logoUrl,
+    this.colors,
+    this.tone,
+    this.forbidden,
+    this.audience,
+    this.videoLimitMonth = 10,
+    this.learnedRounds = 0,
+  });
+
+  factory BrandGuide.fromJson(Map<String, dynamic> json) {
+    return BrandGuide(
+      brandName: json['brand_name']?.toString(),
+      logoUrl: json['logo_url']?.toString(),
+      colors: json['colors']?.toString(),
+      tone: json['tone']?.toString(),
+      forbidden: json['forbidden']?.toString(),
+      audience: json['audience']?.toString(),
+      videoLimitMonth: (json['video_limit_month'] as num?)?.toInt() ?? 10,
+      learnedRounds: (json['learned_rounds'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'brand_name': brandName,
+      'logo_url': logoUrl,
+      'colors': colors,
+      'tone': tone,
+      'forbidden': forbidden,
+      'audience': audience,
+      'video_limit_month': videoLimitMonth,
+      'learned_rounds': learnedRounds,
+    };
+  }
+}

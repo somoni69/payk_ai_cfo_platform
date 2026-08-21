@@ -349,11 +349,15 @@ extension _CashSheetBuilders on _CashViewState {
                 if (saleProductsLoading)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    child: LedgerShimmer(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: ShimmerBox(height: 38, borderRadius: 8),
+                          ),
+                          SizedBox(width: 8),
+                          ShimmerBox(width: 70, height: 38, borderRadius: 8),
+                        ],
                       ),
                     ),
                   ),

@@ -7,6 +7,7 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../permissions/cubit/permissions_cubit.dart';
 import '../domain/assistant_models.dart';
 import '../domain/assistant_repository.dart';
@@ -184,28 +185,21 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
             if (!_collapsed) ...[
               const SizedBox(height: 8),
               if (_generating)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: colors.brand,
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: LedgerShimmer(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerBox(
+                          width: double.infinity,
+                          height: 14,
+                          borderRadius: 4,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          language.translate('advice_generating'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
+                        SizedBox(height: 6),
+                        ShimmerBox(width: 220, height: 14, borderRadius: 4),
+                      ],
+                    ),
                   ),
                 )
               else if (content == null)

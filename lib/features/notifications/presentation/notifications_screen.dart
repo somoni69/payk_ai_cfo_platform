@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -323,6 +324,63 @@ class _NotificationsViewState extends State<NotificationsView> {
     );
   }
 
+  void _handleNotificationTap(BuildContext context, AppNotification alert) {
+    context.read<NotificationsBloc>().add(MarkNotificationAsRead(alert.id));
+
+    String destination = '/dashboard';
+    final link = alert.link;
+    if (link != null && link.startsWith('/')) {
+      destination = link;
+    } else {
+      final id = alert.id.toLowerCase();
+      final title = alert.title.toLowerCase();
+      final desc = alert.description.toLowerCase();
+
+      if (id.startsWith('anomaly_task') ||
+          title.contains('задач') ||
+          desc.contains('задач') ||
+          title.contains('task')) {
+        destination = '/tasks';
+      } else if (id.startsWith('anomaly_night') ||
+          id.startsWith('cash_') ||
+          title.contains('касс') ||
+          desc.contains('касс') ||
+          title.contains('aud-05')) {
+        destination = '/cash';
+      } else if (id.startsWith('audit_') ||
+          title.contains('аудит') ||
+          alert.type == NotificationType.audit) {
+        destination = '/audit';
+      } else if (alert.type == NotificationType.legalCalendar ||
+          title.contains('налог') ||
+          title.contains('закон')) {
+        destination = '/legal';
+      } else if (alert.type == NotificationType.aiForecast ||
+          alert.type == NotificationType.aiAdvice ||
+          title.contains('стратег')) {
+        destination = '/strategy';
+      } else if (title.contains('склад') || desc.contains('товар')) {
+        destination = '/warehouse';
+      } else if (title.contains('отчет') || desc.contains('выручк')) {
+        destination = '/reports';
+      } else if (title.contains('клиент') || title.contains('crm')) {
+        destination = '/crm';
+      } else if (title.contains('сотрудник') || title.contains('кадр')) {
+        destination = '/hr';
+      }
+    }
+
+    if (destination == '/tasks' ||
+        destination == '/cash' ||
+        destination == '/warehouse' ||
+        destination == '/dashboard' ||
+        destination == '/more') {
+      context.go(destination);
+    } else {
+      context.push(destination);
+    }
+  }
+
   Widget _buildCriticalCard(BuildContext context, AppNotification alert) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -331,6 +389,7 @@ class _NotificationsViewState extends State<NotificationsView> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: LedgerCard(
+        onTap: () => _handleNotificationTap(context, alert),
         borderColor: colors.accentRed,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -371,8 +430,25 @@ class _NotificationsViewState extends State<NotificationsView> {
             ),
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Row(
+                  children: [
+                    Text(
+                      language.translate('common_open'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.accentRed,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      TablerIcons.arrow_right,
+                      size: 14,
+                      color: colors.accentRed,
+                    ),
+                  ],
+                ),
                 Text(
                   formatLocalizedDateTime(
                     context,
@@ -395,20 +471,23 @@ class _NotificationsViewState extends State<NotificationsView> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: LedgerAICard(
-        title: language.translateMessage(alert.title),
-        content: language.translateMessage(alert.description),
-        trailing: IconButton(
-          tooltip: language.translate('notifications_mark_read'),
-          onPressed: () {
-            context.read<NotificationsBloc>().add(
-              MarkNotificationAsRead(alert.id),
-            );
-          },
-          icon: Icon(
-            TablerIcons.circle_check,
-            color: colors.accentAmber,
-            size: 18,
+      child: GestureDetector(
+        onTap: () => _handleNotificationTap(context, alert),
+        child: LedgerAICard(
+          title: language.translateMessage(alert.title),
+          content: language.translateMessage(alert.description),
+          trailing: IconButton(
+            tooltip: language.translate('notifications_mark_read'),
+            onPressed: () {
+              context.read<NotificationsBloc>().add(
+                MarkNotificationAsRead(alert.id),
+              );
+            },
+            icon: Icon(
+              TablerIcons.circle_check,
+              color: colors.accentAmber,
+              size: 18,
+            ),
           ),
         ),
       ),
@@ -423,6 +502,7 @@ class _NotificationsViewState extends State<NotificationsView> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: LedgerCard(
+        onTap: () => _handleNotificationTap(context, alert),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -462,8 +542,25 @@ class _NotificationsViewState extends State<NotificationsView> {
             ),
             const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Row(
+                  children: [
+                    Text(
+                      language.translate('common_open'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      TablerIcons.arrow_right,
+                      size: 14,
+                      color: colors.brand,
+                    ),
+                  ],
+                ),
                 Text(
                   MaterialLocalizations.of(
                     context,

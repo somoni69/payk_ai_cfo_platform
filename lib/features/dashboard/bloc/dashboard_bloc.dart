@@ -45,6 +45,34 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     LoadDashboardData event,
     Emitter<DashboardState> emit,
   ) async {
+    if (event.clearCache) {
+      _cachedBaseMetrics = null;
+      _cachedBaseHistory = null;
+      _cachedPnl = null;
+      _cachedBreakEven = null;
+      _cachedAbc = null;
+      _cachedBankAccounts = null;
+      _cachedRates = null;
+      _cachedAiInsights = null;
+      _cachedPlanFact = null;
+      _cachedClients = null;
+      _overviewRequest = null;
+      _sectionRequests.clear();
+      _loadingSections.clear();
+      _sectionErrors.clear();
+    } else if (event.forceRefresh) {
+      _cachedPnl = null;
+      _cachedBreakEven = null;
+      _cachedAbc = null;
+      _cachedBankAccounts = null;
+      _cachedRates = null;
+      _cachedAiInsights = null;
+      _cachedPlanFact = null;
+      _cachedClients = null;
+      _overviewRequest = null;
+      _sectionRequests.clear();
+    }
+
     final hasCachedOverview =
         _cachedBaseMetrics != null && _cachedBaseHistory != null;
     if (hasCachedOverview) {
@@ -55,7 +83,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
     var request = _overviewRequest;
     if (request == null) {
-      request = _repository.getOverview(forceRefresh: event.forceRefresh);
+      request = _repository.getOverview(
+        forceRefresh: event.forceRefresh || event.clearCache,
+      );
       _overviewRequest = request;
     }
 

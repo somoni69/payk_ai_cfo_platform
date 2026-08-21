@@ -146,4 +146,26 @@ class MockMarketingRepository implements MarketingRepository {
     await Future.delayed(const Duration(milliseconds: 500));
     return '🔥 Спецпредложение от PAYK! Только в этом месяце при заказе от 50 кубов бетона — бесплатная лабораторная проверка прочности на сжатие. Заказывайте прямо сейчас! 📞 +992 93 123 4567';
   }
+
+  BrandGuide _brandGuide = const BrandGuide(
+    brandName: 'PAYK Shop',
+    tone: 'Дружелюбный, профессиональный, надежный',
+    audience: 'Строительные компании, прорабы, частные застройщики',
+    forbidden: 'Скидки более 50%, недостоверные гарантии',
+    videoLimitMonth: 10,
+    learnedRounds: 3,
+  );
+
+  @override
+  Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return _brandGuide;
+  }
+
+  @override
+  Future<BrandGuide> updateBrandGuide(BrandGuide brandGuide) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    _brandGuide = brandGuide;
+    return _brandGuide;
+  }
 }

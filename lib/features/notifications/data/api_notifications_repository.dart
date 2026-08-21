@@ -73,6 +73,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
             map['created_at'] ?? DateTime.now().toIso8601String(),
           ),
           isRead: false,
+          link: '/audit',
         );
       }).toList();
 
@@ -105,6 +106,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
                   type: NotificationType.audit,
                   severity: NotificationSeverity.critical,
                   dateTime: dt,
+                  link: '/cash',
                 ),
               );
             }
@@ -141,6 +143,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
                   type: NotificationType.audit,
                   severity: NotificationSeverity.critical,
                   dateTime: due,
+                  link: '/tasks',
                 ),
               );
             }

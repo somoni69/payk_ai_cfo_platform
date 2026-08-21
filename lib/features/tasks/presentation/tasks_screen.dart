@@ -23,6 +23,7 @@ import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../assistant/presentation/ledger_advice_panel.dart';
+import '../../assistant/presentation/ledger_ai_assistant.dart';
 
 part 'tasks_list.dart';
 part 'tasks_forms.dart';
@@ -32,36 +33,18 @@ part 'tasks_widgets.dart';
 part 'tasks_my.dart';
 
 /// Входная точка планировщика задач с внедрением TasksBloc.
-class TasksScreen extends StatefulWidget {
+class TasksScreen extends StatelessWidget {
   const TasksScreen({super.key});
 
   @override
-  State<TasksScreen> createState() => _TasksScreenState();
-}
-
-class _TasksScreenState extends State<TasksScreen> {
-  var _activated = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_activated || !TickerMode.valuesOf(context).enabled) return;
-    _activated = true;
-    context.read<TasksBloc>().add(LoadTasks());
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!_activated && !TickerMode.valuesOf(context).enabled) {
-      return const SizedBox.shrink();
-    }
     try {
       context.read<TasksBloc>();
       return const TasksView();
     } catch (_) {
       return BlocProvider<TasksBloc>(
         create: (context) =>
-            TasksBloc(context.read<TasksRepository>())..add(LoadTasks()),
+            TasksBloc(context.read<TasksRepository>())..add(const LoadTasks()),
         child: const TasksView(),
       );
     }
@@ -97,7 +80,11 @@ class _TasksViewState extends State<TasksView>
     // Prefetch personal / assigned queues for the default «Мои» tab.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<TasksBloc>().add(const LoadMyTasks());
+      final bloc = context.read<TasksBloc>();
+      if (bloc.state is! TasksLoaded) {
+        bloc.add(const LoadTasks());
+      }
+      bloc.add(const LoadMyTasks());
     });
   }
 
@@ -146,6 +133,7 @@ class _TasksViewState extends State<TasksView>
     final language = context.read<LanguageCubit>();
     final isPersonal = _tabController.index == 0;
     return FloatingActionButton.extended(
+      heroTag: null,
       onPressed: () => _onCreateFabPressed(
         context,
         projects: projects,
@@ -331,13 +319,25 @@ class _TasksViewState extends State<TasksView>
           return previous.runtimeType != current.runtimeType;
         },
         builder: (context, state) {
-          if (state is! TasksLoaded) return const SizedBox.shrink();
-          return _buildTasksFab(
-                context,
-                projects: state.projects,
-                assignees: state.assignees,
-              ) ??
-              const SizedBox.shrink();
+          final tasksFab = state is TasksLoaded
+              ? _buildTasksFab(
+                  context,
+                  projects: state.projects,
+                  assignees: state.assignees,
+                )
+              : null;
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const LedgerAiFloatingButton(),
+              if (tasksFab != null) ...[
+                const SizedBox(height: 10),
+                tasksFab,
+              ],
+            ],
+          );
         },
       ),
       body: NestedScrollView(

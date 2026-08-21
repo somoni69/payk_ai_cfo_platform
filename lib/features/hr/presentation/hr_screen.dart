@@ -468,11 +468,33 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
             statusLabel = localeCubit.translate('hr_status_fired');
           }
 
+          final initial = emp.fullName.isNotEmpty
+              ? emp.fullName[0].toUpperCase()
+              : '?';
+
           return LedgerCard(
             padding: const EdgeInsets.all(14),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Employee avatar
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initial,
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colors.brand,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,10 +502,13 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                       Text(
                         emp.fullName,
                         style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         localeCubit.translate(
                           'hr_employee_details',
@@ -500,17 +525,29 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                           color: colors.textSecondary,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      if (emp.phone != null)
-                        Text(
-                          emp.phone!,
-                          style: textStyles.smallSans.copyWith(
-                            color: colors.textTooltip,
-                          ),
+                      if (emp.phone != null) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              TablerIcons.phone,
+                              size: 12,
+                              color: colors.textTooltip,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              emp.phone!,
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
+                      ],
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -519,14 +556,16 @@ class _HrViewState extends State<HrView> with SingleTickerProviderStateMixin {
                       backgroundColor: statusBg,
                       textColor: statusText,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       localeCubit.translate(
                         'hr_amount_tjs',
                         params: {'amount': oCcy.format(emp.baseSalary)},
                       ),
-                      style: textStyles.bodyMono.copyWith(
-                        fontWeight: FontWeight.w500,
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ],

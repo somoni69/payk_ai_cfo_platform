@@ -94,9 +94,60 @@ class _InboxScreenState extends State<InboxScreen> {
         });
       } catch (_) {}
     }
+
+    String destination = '/dashboard';
     final link = item.link;
-    if (link != null && link.startsWith('/') && mounted) {
-      context.push(link);
+    if (link != null && link.startsWith('/')) {
+      destination = link;
+    } else {
+      final id = item.id.toLowerCase();
+      final title = item.title.toLowerCase();
+      final desc = item.description.toLowerCase();
+
+      if (id.startsWith('anomaly_task') ||
+          title.contains('задач') ||
+          desc.contains('задач') ||
+          title.contains('task')) {
+        destination = '/tasks';
+      } else if (id.startsWith('anomaly_night') ||
+          id.startsWith('cash_') ||
+          title.contains('касс') ||
+          desc.contains('касс') ||
+          title.contains('aud-05')) {
+        destination = '/cash';
+      } else if (id.startsWith('audit_') ||
+          title.contains('аудит') ||
+          item.type == NotificationType.audit) {
+        destination = '/audit';
+      } else if (item.type == NotificationType.legalCalendar ||
+          title.contains('налог') ||
+          title.contains('закон')) {
+        destination = '/legal';
+      } else if (item.type == NotificationType.aiForecast ||
+          item.type == NotificationType.aiAdvice ||
+          title.contains('стратег')) {
+        destination = '/strategy';
+      } else if (title.contains('склад') || desc.contains('товар')) {
+        destination = '/warehouse';
+      } else if (title.contains('отчет') || desc.contains('выручк')) {
+        destination = '/reports';
+      } else if (title.contains('клиент') || title.contains('crm')) {
+        destination = '/crm';
+      } else if (title.contains('сотрудник') || title.contains('кадр')) {
+        destination = '/hr';
+      }
+    }
+
+    if (mounted) {
+      if (destination == '/tasks' ||
+          destination == '/cash' ||
+          destination == '/warehouse' ||
+          destination == '/dashboard' ||
+          destination == '/more') {
+        context.go(destination);
+      } else {
+        context.push(destination);
+      }
     }
   }
 

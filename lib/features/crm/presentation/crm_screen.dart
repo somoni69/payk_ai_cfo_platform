@@ -94,6 +94,7 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     return Scaffold(
       floatingActionButton: canWrite && (_tabs.index == 0 || _tabs.index == 1)
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: () {
                 final state = context.read<CrmBloc>().state;
                 if (state is! CrmLoaded) return;
@@ -486,6 +487,9 @@ class _ClientsTab extends StatelessWidget {
                 else
                   ...state.clients.map((client) {
                     final lc = crmLoyaltyColors(colors, client.loyaltyLevel);
+                    final initial = client.fullName.isNotEmpty
+                        ? client.fullName[0].toUpperCase()
+                        : '?';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: InkWell(
@@ -498,78 +502,127 @@ class _ClientsTab extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  Expanded(
+                                  // User avatar
+                                  Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: colors.surfaceNested,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
                                     child: Text(
-                                      client.fullName,
+                                      initial,
                                       style: textStyles.bodySans.copyWith(
-                                        fontWeight: FontWeight.w500,
+                                        fontWeight: FontWeight.w700,
+                                        color: colors.brand,
                                       ),
                                     ),
                                   ),
-                                  LedgerPill(
-                                    text: crmLoyaltyLabel(
-                                      language,
-                                      client.loyaltyLevel,
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          client.fullName,
+                                          style: textStyles.bodySans.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        if (client.phone != null ||
+                                            client.email != null) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            client.phone ?? client.email!,
+                                            style: textStyles.captionSans
+                                                .copyWith(
+                                                  color: colors.textSecondary,
+                                                ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                    backgroundColor: lc.bg,
-                                    textColor: lc.fg,
                                   ),
-                                  if (client.churnRisk) ...[
-                                    const SizedBox(width: 6),
-                                    LedgerPill(
-                                      text: language.translate(
-                                        'crm_churn_risk',
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      LedgerPill(
+                                        text: crmLoyaltyLabel(
+                                          language,
+                                          client.loyaltyLevel,
+                                        ),
+                                        backgroundColor: lc.bg,
+                                        textColor: lc.fg,
                                       ),
-                                      backgroundColor: colors.accentRed
-                                          .withValues(alpha: 0.08),
-                                      textColor: colors.accentRed,
-                                    ),
-                                  ],
+                                      if (client.churnRisk) ...[
+                                        const SizedBox(height: 4),
+                                        LedgerPill(
+                                          text: language.translate(
+                                            'crm_churn_risk',
+                                          ),
+                                          backgroundColor: colors.accentRed
+                                              .withValues(alpha: 0.12),
+                                          textColor: colors.accentRed,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
-                              if (client.phone != null ||
-                                  client.email != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  client.phone ?? client.email!,
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.textSecondary,
-                                  ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
                                 ),
-                              ],
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      'LTV ${oCcy.format(client.totalSpent)}',
-                                      style: textStyles.smallMono.copyWith(
-                                        color: colors.accentGreen,
-                                        fontWeight: FontWeight.w500,
+                                decoration: BoxDecoration(
+                                  color: colors.surfaceNested,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'LTV ${oCcy.format(client.totalSpent)} TJS',
+                                        style:
+                                            textStyles.captionSans.copyWith(
+                                          color: colors.accentGreen,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
-                                      style: textStyles.smallMono.copyWith(
-                                        color: colors.textSecondary,
+                                    Expanded(
+                                      child: Text(
+                                        '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
+                                        style:
+                                            textStyles.captionSans.copyWith(
+                                          color: colors.textSecondary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
                                       ),
-                                      textAlign: TextAlign.center,
                                     ),
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      client.roi == null
-                                          ? 'ROI —'
-                                          : 'ROI ${oCcy.format(client.roi!)}×',
-                                      style: textStyles.smallMono.copyWith(
-                                        color: colors.textSecondary,
+                                    Expanded(
+                                      child: Text(
+                                        client.roi == null
+                                            ? 'ROI —'
+                                            : 'ROI ${oCcy.format(client.roi!)}×',
+                                        style:
+                                            textStyles.captionSans.copyWith(
+                                          color: colors.textSecondary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.end,
                                       ),
-                                      textAlign: TextAlign.end,
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -783,7 +836,7 @@ class _LoyaltyTab extends StatelessWidget {
           if (state.loyaltyTxnsLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(child: CircularProgressIndicator()),
+              child: LedgerListShimmer(itemCount: 4),
             )
           else if (state.loyaltyTxns.isEmpty)
             Text(

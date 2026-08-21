@@ -22,6 +22,7 @@ import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_spotlight.dart';
 import '../../cash/presentation/sales_profit_card.dart';
 import '../../assistant/presentation/ledger_advice_panel.dart';
+import '../../assistant/presentation/ledger_ai_assistant.dart';
 import '../../notifications/presentation/notification_bell.dart';
 import 'currency_board_card.dart';
 
@@ -44,21 +45,20 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  var _activated = false;
-
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_activated || !TickerMode.valuesOf(context).enabled) return;
-    _activated = true;
-    context.read<DashboardBloc>().add(LoadDashboardData());
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bloc = context.read<DashboardBloc>();
+      if (bloc.state is! DashboardLoaded) {
+        bloc.add(LoadDashboardData());
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_activated && !TickerMode.valuesOf(context).enabled) {
-      return const SizedBox.shrink();
-    }
     try {
       context.read<DashboardBloc>();
       return const DashboardView();
@@ -192,12 +192,12 @@ class DashboardReportScreen extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: colors.background,
-          floatingActionButtonLocation: kLedgerShellFabLocation,
           floatingActionButton:
               (section == DashboardSection.planFact &&
                   canWrite &&
                   loadedState != null)
               ? FloatingActionButton.extended(
+                  heroTag: null,
                   onPressed: () {
                     final period =
                         loadedState.planFact?.period ?? _defaultPlanPeriod();
@@ -328,6 +328,8 @@ class _DashboardViewState extends State<DashboardView> {
         final currency = loadedState?.currency ?? 'TJS';
 
         return Scaffold(
+          floatingActionButtonLocation: kLedgerShellFabLocation,
+          floatingActionButton: const LedgerAiFloatingButton(),
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [

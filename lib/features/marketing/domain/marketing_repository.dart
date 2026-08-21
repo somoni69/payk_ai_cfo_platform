@@ -25,6 +25,10 @@ abstract class MarketingRepository {
   Future<List<String>> generateAiIdeas(String prompt);
 
   Future<String> generateAiText(String prompt);
+
+  Future<BrandGuide> getBrandGuide({bool forceRefresh = false});
+
+  Future<BrandGuide> updateBrandGuide(BrandGuide brandGuide);
 }
 
 abstract interface class CancellableMarketingRepository {

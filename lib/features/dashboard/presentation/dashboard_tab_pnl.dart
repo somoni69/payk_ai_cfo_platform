@@ -6,7 +6,7 @@ Widget _buildPnlTab(BuildContext context, PnlReport? report, String currency) {
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const Center(child: CircularProgressIndicator());
+    return const DashboardSectionShimmer();
   }
 
   Widget buildPnlList(

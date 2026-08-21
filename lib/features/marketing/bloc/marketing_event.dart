@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../domain/marketing_models.dart';
 
 abstract class MarketingEvent extends Equatable {
   const MarketingEvent();
@@ -82,4 +83,13 @@ class GenerateTextRequested extends MarketingEvent {
 
   @override
   List<Object?> get props => [prompt];
+}
+
+class UpdateBrandGuideRequested extends MarketingEvent {
+  final BrandGuide brandGuide;
+
+  const UpdateBrandGuideRequested(this.brandGuide);
+
+  @override
+  List<Object?> get props => [brandGuide];
 }

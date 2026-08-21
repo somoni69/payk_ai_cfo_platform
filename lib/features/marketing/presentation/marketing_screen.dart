@@ -52,6 +52,12 @@ class _MarketingViewState extends State<MarketingView>
   final ScrollController _postsController = ScrollController();
   final TextEditingController _promptController = TextEditingController();
   final TextEditingController _postController = TextEditingController();
+  final TextEditingController _brandNameController = TextEditingController();
+  final TextEditingController _toneController = TextEditingController();
+  final TextEditingController _audienceController = TextEditingController();
+  final TextEditingController _forbiddenController = TextEditingController();
+  final TextEditingController _videoLimitController = TextEditingController();
+  bool _brandInitialized = false;
   String _selectedChannel = 'telegram';
   bool _generatePostTextMode = false;
   int _visibleCampaigns = _pageSize;
@@ -60,7 +66,7 @@ class _MarketingViewState extends State<MarketingView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _campaignsController.addListener(_revealMoreCampaigns);
     _postsController.addListener(_revealMorePosts);
   }
@@ -98,6 +104,11 @@ class _MarketingViewState extends State<MarketingView>
       ..dispose();
     _promptController.dispose();
     _postController.dispose();
+    _brandNameController.dispose();
+    _toneController.dispose();
+    _audienceController.dispose();
+    _forbiddenController.dispose();
+    _videoLimitController.dispose();
     super.dispose();
   }
 
@@ -127,6 +138,7 @@ class _MarketingViewState extends State<MarketingView>
                   Tab(text: localeCubit.translate('marketing_tab_ai_writer')),
                   Tab(text: localeCubit.translate('marketing_tab_campaigns')),
                   Tab(text: localeCubit.translate('marketing_tab_posts')),
+                  Tab(text: localeCubit.translate('marketing_tab_brand_guide')),
                 ],
               ),
             ),
@@ -151,6 +163,7 @@ class _MarketingViewState extends State<MarketingView>
               _buildAiWriterTab(context),
               _buildCampaignsTab(context),
               _buildPostsTab(context),
+              _buildBrandGuideTab(context),
             ],
           ),
         ),
@@ -279,7 +292,10 @@ class _MarketingViewState extends State<MarketingView>
             const SizedBox(height: 24),
 
             if (state.isGenerating)
-              const Center(child: CircularProgressIndicator())
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: LedgerNamedListShimmer(itemCount: 3),
+              )
             else ...[
               if (!_generatePostTextMode &&
                   state.generatedIdeas.isNotEmpty) ...[
@@ -412,6 +428,7 @@ class _MarketingViewState extends State<MarketingView>
         return Scaffold(
           floatingActionButton: _canManageMarketing(context)
               ? FloatingActionButton.extended(
+                  heroTag: null,
                   tooltip: localeCubit.translate('marketing_new_campaign'),
                   backgroundColor: colors.brand,
                   foregroundColor: colors.surface,
@@ -520,6 +537,7 @@ class _MarketingViewState extends State<MarketingView>
         return Scaffold(
           floatingActionButton: _canManageMarketing(context)
               ? FloatingActionButton.extended(
+                  heroTag: null,
                   tooltip: localeCubit.translate('marketing_new_publication'),
                   backgroundColor: colors.brand,
                   foregroundColor: colors.surface,
@@ -1024,6 +1042,210 @@ class _MarketingViewState extends State<MarketingView>
             Navigator.pop(context);
           },
           child: Text(localeCubit.translate('marketing_save_draft')),
+        );
+      },
+    );
+  }
+
+  Widget _buildBrandGuideTab(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
+    final canManage = _canManageMarketing(context);
+
+    return BlocConsumer<MarketingBloc, MarketingState>(
+      listenWhen: (previous, current) =>
+          previous.brandGuide != current.brandGuide &&
+          current.brandGuide != null,
+      listener: (context, state) {
+        final guide = state.brandGuide;
+        if (guide != null && !_brandInitialized) {
+          _brandInitialized = true;
+          _brandNameController.text = guide.brandName ?? '';
+          _toneController.text = guide.tone ?? '';
+          _audienceController.text = guide.audience ?? '';
+          _forbiddenController.text = guide.forbidden ?? '';
+          _videoLimitController.text = guide.videoLimitMonth.toString();
+        }
+      },
+      builder: (context, state) {
+        if (state.isBrandLoading && state.brandGuide == null) {
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: LedgerListShimmer(itemCount: 4),
+          );
+        }
+
+        final guide = state.brandGuide;
+        if (guide != null && !_brandInitialized) {
+          _brandInitialized = true;
+          _brandNameController.text = guide.brandName ?? '';
+          _toneController.text = guide.tone ?? '';
+          _audienceController.text = guide.audience ?? '';
+          _forbiddenController.text = guide.forbidden ?? '';
+          _videoLimitController.text = guide.videoLimitMonth.toString();
+        }
+
+        final learnedRounds = guide?.learnedRounds ?? 0;
+
+        return ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            LedgerCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          localeCubit.translate('marketing_brand_title'),
+                          style: textStyles.h2Sans.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (learnedRounds > 0)
+                        LedgerPill(
+                          text: localeCubit.translate(
+                            'marketing_brand_learned',
+                            params: {'count': learnedRounds.toString()},
+                          ),
+                          backgroundColor: colors.surfaceNested,
+                          textColor: colors.textPrimary,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    localeCubit.translate('marketing_brand_desc'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            LedgerCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _brandNameController,
+                    enabled: canManage && !state.isSavingBrand,
+                    style: textStyles.bodySans,
+                    decoration: InputDecoration(
+                      labelText: localeCubit.translate('marketing_brand_name'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _toneController,
+                    enabled: canManage && !state.isSavingBrand,
+                    maxLines: 2,
+                    style: textStyles.bodySans,
+                    decoration: InputDecoration(
+                      labelText: localeCubit.translate('marketing_brand_tone'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _audienceController,
+                    enabled: canManage && !state.isSavingBrand,
+                    maxLines: 2,
+                    style: textStyles.bodySans,
+                    decoration: InputDecoration(
+                      labelText: localeCubit.translate(
+                        'marketing_brand_audience',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _forbiddenController,
+                    enabled: canManage && !state.isSavingBrand,
+                    maxLines: 2,
+                    style: textStyles.bodySans,
+                    decoration: InputDecoration(
+                      labelText: localeCubit.translate(
+                        'marketing_brand_forbidden',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _videoLimitController,
+                    enabled: canManage && !state.isSavingBrand,
+                    keyboardType: TextInputType.number,
+                    style: textStyles.bodySans,
+                    decoration: InputDecoration(
+                      labelText: localeCubit.translate(
+                        'marketing_brand_video_limit',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: (!canManage || state.isSavingBrand)
+                          ? null
+                          : () {
+                              final updatedGuide = BrandGuide(
+                                brandName:
+                                    _brandNameController.text.trim().isNotEmpty
+                                    ? _brandNameController.text.trim()
+                                    : null,
+                                tone: _toneController.text.trim().isNotEmpty
+                                    ? _toneController.text.trim()
+                                    : null,
+                                audience:
+                                    _audienceController.text.trim().isNotEmpty
+                                    ? _audienceController.text.trim()
+                                    : null,
+                                forbidden:
+                                    _forbiddenController.text.trim().isNotEmpty
+                                    ? _forbiddenController.text.trim()
+                                    : null,
+                                videoLimitMonth:
+                                    int.tryParse(
+                                      _videoLimitController.text.trim(),
+                                    ) ??
+                                    10,
+                                learnedRounds: learnedRounds,
+                              );
+                              context.read<MarketingBloc>().add(
+                                UpdateBrandGuideRequested(updatedGuide),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    localeCubit.translate(
+                                      'marketing_brand_save',
+                                    ),
+                                  ),
+                                  backgroundColor: colors.accentGreen,
+                                ),
+                              );
+                            },
+                      child: state.isSavingBrand
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: colors.surface,
+                              ),
+                            )
+                          : Text(localeCubit.translate('marketing_brand_save')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         );
       },
     );

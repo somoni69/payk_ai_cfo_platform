@@ -247,14 +247,8 @@ class _MetaScreenState extends State<MetaScreen> {
               const SizedBox(height: 12),
               if (searching)
                 const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  ),
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: LedgerListShimmer(itemCount: 3),
                 )
               else if (results.isEmpty)
                 Text(
@@ -589,11 +583,26 @@ class _MetaScreenState extends State<MetaScreen> {
       children: [
         Expanded(
           child: _loadingMessages
-              ? const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+              ? const LedgerShimmer(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerBox(width: 240, height: 52, borderRadius: 12),
+                        SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ShimmerBox(
+                            width: 180,
+                            height: 40,
+                            borderRadius: 12,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        ShimmerBox(width: 200, height: 44, borderRadius: 12),
+                      ],
+                    ),
                   ),
                 )
               : ListView.builder(

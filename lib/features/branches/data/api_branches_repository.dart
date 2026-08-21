@@ -55,12 +55,14 @@ class ApiBranchesRepository implements BranchesRepository {
   @override
   Future<Branch> createBranch({
     required String name,
+    String? code,
     required String address,
     required String phone,
   }) async {
     final newBranch = Branch(
       id: 'br-${DateTime.now().millisecondsSinceEpoch}',
       name: name,
+      code: code,
       address: address,
       phone: phone,
       isActive: true,
@@ -70,7 +72,7 @@ class ApiBranchesRepository implements BranchesRepository {
     try {
       final response = await _client.dio.post(
         '/branches',
-        data: {'name': name, 'address': address, 'phone': phone},
+        data: {'name': name, 'code': ?code, 'address': address, 'phone': phone},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
         return Branch.fromJson(response.data as Map<String, dynamic>);
@@ -84,6 +86,7 @@ class ApiBranchesRepository implements BranchesRepository {
   Future<Branch> updateBranch({
     required String id,
     required String name,
+    String? code,
     required String address,
     required String phone,
     required bool isActive,
@@ -95,6 +98,7 @@ class ApiBranchesRepository implements BranchesRepository {
     final updated = Branch(
       id: id,
       name: name,
+      code: code ?? existing?.code,
       address: address,
       phone: phone,
       isActive: isActive,
@@ -106,6 +110,7 @@ class ApiBranchesRepository implements BranchesRepository {
         '/branches/$id',
         data: {
           'name': name,
+          'code': ?code,
           'address': address,
           'phone': phone,
           'is_active': isActive,

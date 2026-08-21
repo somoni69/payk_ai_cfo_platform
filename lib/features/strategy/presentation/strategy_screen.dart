@@ -113,6 +113,7 @@ class _StrategyViewState extends State<StrategyView>
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
     return FloatingActionButton.extended(
+      heroTag: null,
       onPressed: () => context.read<StrategyBloc>().add(
         GenerateScenariosRequested(_currentQuarter),
       ),

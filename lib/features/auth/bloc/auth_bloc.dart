@@ -116,7 +116,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (state is AuthAuthenticated) {
       final current = state as AuthAuthenticated;
       emit(
-        current.copyWith(storeId: event.storeId, storeName: event.storeName),
+        current.copyWith(
+          storeId: event.storeId,
+          storeName: event.storeName,
+          clearStore: event.storeId == null,
+        ),
       );
     }
   }

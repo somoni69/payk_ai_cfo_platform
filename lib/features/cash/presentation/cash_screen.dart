@@ -23,6 +23,7 @@ import '../../../features/fin_ops/domain/fin_ops_models.dart';
 import '../../../features/fin_ops/domain/fin_ops_repository.dart';
 import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
+import '../../assistant/presentation/ledger_ai_assistant.dart';
 import '../../../features/assistant/presentation/ledger_advice_panel.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_pill.dart';
@@ -38,30 +39,12 @@ part 'cash_tabs.dart';
 part 'cash_sheets.dart';
 
 /// Точка входа в кассовый модуль с внедрением CashBloc.
-class CashScreen extends StatefulWidget {
+class CashScreen extends StatelessWidget {
   const CashScreen({super.key});
-
-  @override
-  State<CashScreen> createState() => _CashScreenState();
-}
-
-class _CashScreenState extends State<CashScreen> {
-  var _activated = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_activated || !TickerMode.valuesOf(context).enabled) return;
-    _activated = true;
-    context.read<CashBloc>().add(const LoadCashData());
-  }
 
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
-    if (!_activated && !TickerMode.valuesOf(context).enabled) {
-      return const SizedBox.shrink();
-    }
     try {
       context.read<CashBloc>();
       return const CashView();
@@ -99,6 +82,13 @@ class _CashViewState extends State<CashView>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(_handleTabChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bloc = context.read<CashBloc>();
+      if (bloc.state is! CashLoaded) {
+        bloc.add(const LoadCashData());
+      }
+    });
   }
 
   void _handleTabChange() {
@@ -407,61 +397,77 @@ class _CashViewState extends State<CashView>
 
         final loadedState = state is CashLoaded ? state : null;
 
+        Widget? mainFab;
+        if (!isViewer && _tabController.index == 0 && loadedState != null) {
+          mainFab = FloatingActionButton.extended(
+            heroTag: null,
+            onPressed: () => _showAddTransactionBottomSheet(
+              context,
+              authState,
+              loadedState.registers,
+            ),
+            backgroundColor: colors.brand,
+            foregroundColor: colors.surface,
+            elevation: 0,
+            highlightElevation: 0,
+            focusElevation: 0,
+            hoverElevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: colors.brand),
+            ),
+            icon: const Icon(TablerIcons.plus),
+            label: Text(
+              language.translate('cash_new_operation_btn'),
+              style: textStyles.bodySans.copyWith(
+                color: colors.surface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        } else if (!isViewer &&
+            _tabController.index == 1 &&
+            loadedState != null) {
+          mainFab = FloatingActionButton.extended(
+            heroTag: null,
+            onPressed: () => _showOpenShiftBottomSheet(
+              context,
+              loadedState.registers,
+            ),
+            backgroundColor: colors.brand,
+            foregroundColor: colors.surface,
+            elevation: 0,
+            highlightElevation: 0,
+            focusElevation: 0,
+            hoverElevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: colors.brand),
+            ),
+            icon: const Icon(TablerIcons.plus),
+            label: Text(
+              language.translate('cash_open_shift_btn'),
+              style: textStyles.bodySans.copyWith(
+                color: colors.surface,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }
+
         return Scaffold(
           floatingActionButtonLocation: kLedgerShellFabLocation,
-          floatingActionButton:
-              (!isViewer && _tabController.index == 0 && loadedState != null)
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showAddTransactionBottomSheet(
-                    context,
-                    authState,
-                    loadedState.registers,
-                  ),
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  highlightElevation: 0,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: colors.brand),
-                  ),
-                  icon: const Icon(TablerIcons.plus),
-                  label: Text(
-                    language.translate('cash_new_operation_btn'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                )
-              : (!isViewer && _tabController.index == 1 && loadedState != null
-                    ? FloatingActionButton.extended(
-                        onPressed: () => _showOpenShiftBottomSheet(
-                          context,
-                          loadedState.registers,
-                        ),
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.surface,
-                        elevation: 0,
-                        highlightElevation: 0,
-                        focusElevation: 0,
-                        hoverElevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: colors.brand),
-                        ),
-                        icon: const Icon(TablerIcons.plus),
-                        label: Text(
-                          language.translate('cash_open_shift_btn'),
-                          style: textStyles.bodySans.copyWith(
-                            color: colors.surface,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      )
-                    : null),
+          floatingActionButton: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const LedgerAiFloatingButton(),
+              if (mainFab != null) ...[
+                const SizedBox(height: 10),
+                mainFab,
+              ],
+            ],
+          ),
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [

@@ -17,22 +17,25 @@ class LoadBranches extends BranchesEvent {
 
 class CreateBranchRequested extends BranchesEvent {
   final String name;
+  final String? code;
   final String address;
   final String phone;
 
   const CreateBranchRequested({
     required this.name,
+    this.code,
     required this.address,
     required this.phone,
   });
 
   @override
-  List<Object?> get props => [name, address, phone];
+  List<Object?> get props => [name, code, address, phone];
 }
 
 class UpdateBranchRequested extends BranchesEvent {
   final String id;
   final String name;
+  final String? code;
   final String address;
   final String phone;
   final bool isActive;
@@ -40,13 +43,14 @@ class UpdateBranchRequested extends BranchesEvent {
   const UpdateBranchRequested({
     required this.id,
     required this.name,
+    this.code,
     required this.address,
     required this.phone,
     required this.isActive,
   });
 
   @override
-  List<Object?> get props => [id, name, address, phone, isActive];
+  List<Object?> get props => [id, name, code, address, phone, isActive];
 }
 
 class DeleteBranchRequested extends BranchesEvent {

@@ -3,7 +3,7 @@ part of 'hr_screen.dart';
 extension _HrExtraTabs on _HrViewState {
   Widget _sectionLoader(HrLoaded state, bool loaded, Widget child) {
     if (!loaded && state.sectionLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const HrOverviewShimmer();
     }
     return child;
   }
@@ -129,6 +129,7 @@ extension _HrExtraTabs on _HrViewState {
       Scaffold(
         floatingActionButton: canWrite
             ? FloatingActionButton.extended(
+                heroTag: null,
                 onPressed: () => _showAttendanceSheet(context, state),
                 backgroundColor: colors.brand,
                 foregroundColor: colors.surface,
@@ -378,6 +379,7 @@ extension _HrExtraTabs on _HrViewState {
       Scaffold(
         floatingActionButton: canWrite
             ? FloatingActionButton.extended(
+                heroTag: null,
                 onPressed: () => _showCandidateSheet(context),
                 backgroundColor: colors.brand,
                 foregroundColor: colors.surface,
@@ -610,6 +612,7 @@ extension _HrExtraTabs on _HrViewState {
       Scaffold(
         floatingActionButton: canWrite && state.employees.isNotEmpty
             ? FloatingActionButton.extended(
+                heroTag: null,
                 onPressed: () => _showEvaluationSheet(context, state),
                 backgroundColor: colors.brand,
                 foregroundColor: colors.surface,
@@ -829,6 +832,7 @@ extension _HrExtraTabs on _HrViewState {
       Scaffold(
         floatingActionButton: canWrite && state.employees.isNotEmpty
             ? FloatingActionButton.extended(
+                heroTag: null,
                 onPressed: () => _showContractSheet(context, state),
                 backgroundColor: colors.brand,
                 foregroundColor: colors.surface,

@@ -58,6 +58,7 @@ class _AuditViewState extends State<AuditView>
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: null,
         onPressed: () {
           context.read<AuditBloc>().add(const RunAnomalyDetectorsRequested());
         },
@@ -151,52 +152,94 @@ class _AuditViewState extends State<AuditView>
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: logs.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final log = logs[index];
           final language = context.read<LanguageCubit>();
           return LedgerCard(
-            child: Column(
+            padding: const EdgeInsets.all(14),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        language.translateMessage(log.action),
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}',
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${language.translateMessage(log.userName)} • ${log.entityType}',
-                  style: textStyles.captionSans.copyWith(
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: colors.brand.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    TablerIcons.shield,
+                    size: 18,
                     color: colors.brand,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (log.details.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    language.translateMessage(log.details),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.textSecondary,
-                    ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              language.translateMessage(log.action),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          LedgerPill(
+                            text:
+                                '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}',
+                            backgroundColor: colors.surfaceNested,
+                            textColor: colors.textSecondary,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            TablerIcons.user,
+                            size: 13,
+                            color: colors.textTooltip,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            language.translateMessage(log.userName),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.brand,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if (log.entityType.isNotEmpty) ...[
+                            Text(
+                              ' • ${log.entityType}',
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (log.details.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          language.translateMessage(log.details),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           );
@@ -227,43 +270,70 @@ class _AuditViewState extends State<AuditView>
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final alt = alerts[index];
-        Color badgeBg = colors.accentGreen.withValues(alpha: 0.1);
+        Color badgeBg = colors.accentGreen.withValues(alpha: 0.12);
         Color badgeColor = colors.accentGreen;
 
         if (alt.severity == 'high') {
-          badgeBg = colors.accentRed.withValues(alpha: 0.1);
+          badgeBg = colors.accentRed.withValues(alpha: 0.12);
           badgeColor = colors.accentRed;
         } else if (alt.severity == 'medium') {
-          badgeBg = colors.accentAmber.withValues(alpha: 0.1);
+          badgeBg = colors.accentAmber.withValues(alpha: 0.12);
           badgeColor = colors.accentAmber;
         }
 
         return LedgerCard(
-          child: Column(
+          padding: const EdgeInsets.all(14),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      language.translateMessage(alt.type),
-                      style: textStyles.h2Sans.copyWith(
-                        fontWeight: FontWeight.w500,
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  alt.severity == 'high'
+                      ? TablerIcons.alert_triangle
+                      : TablerIcons.alert_circle,
+                  size: 18,
+                  color: badgeColor,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            language.translateMessage(alt.type),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        LedgerPill(
+                          text: alt.severity.toUpperCase(),
+                          backgroundColor: badgeBg,
+                          textColor: badgeColor,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      language.translateMessage(alt.message),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
                       ),
                     ),
-                  ),
-                  LedgerPill(
-                    text: alt.severity.toUpperCase(),
-                    backgroundColor: badgeBg,
-                    textColor: badgeColor,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                language.translateMessage(alt.message),
-                style: textStyles.bodySans,
+                  ],
+                ),
               ),
             ],
           ),

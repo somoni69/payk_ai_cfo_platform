@@ -10,7 +10,7 @@ Widget _buildAiInsightsTab(
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const Center(child: CircularProgressIndicator());
+    return const DashboardSectionShimmer();
   }
 
   final isRisk = report.forecast.atRisk;

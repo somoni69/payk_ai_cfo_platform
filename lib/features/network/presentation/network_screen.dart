@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
@@ -53,6 +54,8 @@ class _NetworkView extends StatefulWidget {
 }
 
 class _NetworkViewState extends State<_NetworkView> {
+  int? _enteringStoreId;
+
   String _formatMoney(BuildContext context, double amount) {
     return '${formatLocalizedNumber(context, amount)} TJS';
   }
@@ -125,7 +128,7 @@ class _NetworkViewState extends State<_NetworkView> {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (state is NetworkLoading) ...[
-                      const LedgerListShimmer(itemCount: 3),
+                      const NetworkOverviewShimmer(),
                     ] else if (state is NetworkError) ...[
                       _buildErrorState(context, state.message),
                     ] else if (state is NetworkLoaded) ...[
@@ -209,7 +212,9 @@ class _NetworkViewState extends State<_NetworkView> {
               );
               await done.future;
               if (!context.mounted) return;
+              ExpiringRequestCache.invalidateAll();
               context.read<AuthBloc>().add(const ActingStoreUpdated());
+              context.go('/dashboard');
             },
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -454,22 +459,45 @@ class _NetworkViewState extends State<_NetworkView> {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
+    final isEntering = _enteringStoreId == store.id;
 
     Future<void> enterStore() async {
-      final done = Completer<ActingStore>();
-      context.read<NetworkBloc>().add(
-        EnterStoreRequested(storeId: store.id, completion: done),
-      );
-      final acting = await done.future;
-      if (!context.mounted) return;
-      context.read<AuthBloc>().add(
-        ActingStoreUpdated(storeId: acting.id, storeName: acting.name),
-      );
+      if (_enteringStoreId != null) return;
+      setState(() => _enteringStoreId = store.id);
+      try {
+        final done = Completer<ActingStore>();
+        context.read<NetworkBloc>().add(
+          EnterStoreRequested(storeId: store.id, completion: done),
+        );
+        final acting = await done.future;
+        if (!context.mounted) return;
+        ExpiringRequestCache.invalidateAll();
+        context.read<AuthBloc>().add(
+          ActingStoreUpdated(storeId: acting.id, storeName: acting.name),
+        );
+        context.go('/dashboard');
+      } catch (e) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: colors.accentRed,
+          ),
+        );
+      } finally {
+        if (mounted) {
+          setState(() => _enteringStoreId = null);
+        }
+      }
+    }
+
+    void openCurrentStore() {
+      ExpiringRequestCache.invalidateAll();
       context.go('/dashboard');
     }
 
     return LedgerCard(
-      onTap: isCurrent ? null : enterStore,
+      onTap: isCurrent ? openCurrentStore : enterStore,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -629,37 +657,54 @@ class _NetworkViewState extends State<_NetworkView> {
           const SizedBox(height: 12),
 
           if (isCurrent)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.accentGreen.withValues(alpha: 0.08),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: openCurrentStore,
                 borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(TablerIcons.check, size: 16, color: colors.accentGreen),
-                  const SizedBox(width: 6),
-                  Text(
-                    language.translate('network_current_store_btn'),
-                    style: textStyles.captionSans.copyWith(
-                      color: colors.accentGreen,
-                      fontWeight: FontWeight.w600,
+                child: Ink(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  decoration: BoxDecoration(
+                    color: colors.accentGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: colors.accentGreen.withValues(alpha: 0.25),
                     ),
                   ),
-                ],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        TablerIcons.circle_check_filled,
+                        size: 16,
+                        color: colors.accentGreen,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${language.translate('network_current_store_btn')} • ${language.translate('common_open')}',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.accentGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        TablerIcons.arrow_right,
+                        size: 14,
+                        color: colors.accentGreen,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             )
           else
             SizedBox(
               width: double.infinity,
               height: 38,
-              child: ElevatedButton.icon(
-                onPressed: enterStore,
-                icon: const Icon(TablerIcons.arrow_right, size: 16),
-                label: Text(language.translate('network_enter_store_btn')),
+              child: ElevatedButton(
+                onPressed: _enteringStoreId != null ? null : enterStore,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.brand,
                   foregroundColor: colors.surface,
@@ -669,6 +714,33 @@ class _NetworkViewState extends State<_NetworkView> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
+                child: isEntering
+                    ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: colors.surface,
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            language.translate('network_enter_store_btn'),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.surface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            TablerIcons.arrow_right,
+                            size: 16,
+                            color: colors.surface,
+                          ),
+                        ],
+                      ),
               ),
             ),
         ],

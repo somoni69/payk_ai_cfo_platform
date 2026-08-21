@@ -114,6 +114,25 @@ class MockMarketingTestRepository implements MarketingRepository {
     if (shouldFail) throw Exception('AI Text failed');
     return 'Copied Copy text';
   }
+
+  BrandGuide brandGuide = const BrandGuide(
+    brandName: 'Test Brand',
+    tone: 'Friendly',
+    videoLimitMonth: 10,
+  );
+
+  @override
+  Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
+    if (shouldFail) throw Exception('Brand failed');
+    return brandGuide;
+  }
+
+  @override
+  Future<BrandGuide> updateBrandGuide(BrandGuide updated) async {
+    if (shouldFail) throw Exception('Update brand failed');
+    brandGuide = updated;
+    return brandGuide;
+  }
 }
 
 void main() {

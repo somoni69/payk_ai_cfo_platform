@@ -63,6 +63,7 @@ class AuthAuthenticated extends AuthState {
     UserRole? role,
     int? storeId,
     String? storeName,
+    bool clearStore = false,
     DateTime? accessTokenExpiresAt,
   }) {
     return AuthAuthenticated(
@@ -70,8 +71,8 @@ class AuthAuthenticated extends AuthState {
       username: username ?? this.username,
       name: name ?? this.name,
       role: role ?? this.role,
-      storeId: storeId ?? this.storeId,
-      storeName: storeName ?? this.storeName,
+      storeId: clearStore ? null : (storeId ?? this.storeId),
+      storeName: clearStore ? null : (storeName ?? this.storeName),
       accessTokenExpiresAt: accessTokenExpiresAt ?? this.accessTokenExpiresAt,
     );
   }
