@@ -31,6 +31,7 @@ part 'tasks_calendar.dart';
 part 'tasks_analysis.dart';
 part 'tasks_widgets.dart';
 part 'tasks_my.dart';
+part 'unified_task_card.dart';
 
 /// Входная точка планировщика задач с внедрением TasksBloc.
 class TasksScreen extends StatelessWidget {

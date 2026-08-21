@@ -15,6 +15,7 @@ extension _TasksMyTab on _TasksViewState {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
+    final userId = _currentUserId;
 
     if (state.isMyTasksLoading && !state.myTasksLoaded) {
       return const TasksOverviewShimmer();
@@ -32,437 +33,222 @@ extension _TasksMyTab on _TasksViewState {
     return RefreshIndicator(
       onRefresh: () => _refreshTasks(context),
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
-          Text(
-            language.translate('tasks_my_personal_section'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          // Section 1: Личные задачи
+          _buildMySectionHeader(
+            context,
+            title: language.translate('tasks_my_personal_section'),
+            count: personal.length,
+            icon: TablerIcons.checkbox,
           ),
-          const SizedBox(height: 8),
           if (personal.isEmpty)
-            LedgerCard(
-              child: Text(
-                language.translate('tasks_my_personal_empty'),
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-            )
-          else
-            ...personal.map((t) => _personalTaskCard(context, t)),
-          const SizedBox(height: 20),
-          Text(
-            language.translate('tasks_my_assigned_section'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          if (assigned.isEmpty && mineOther.isEmpty)
-            LedgerCard(
-              child: Text(
-                language.translate('tasks_my_assigned_empty'),
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: LedgerCard(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    language.translate('tasks_my_personal_empty'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
                 ),
               ),
             )
           else ...[
-            ...assigned.map((t) => _assignedTaskCard(context, t)),
-            ...mineOther.map((t) => _assignedTaskCard(context, t)),
+            ...personal.map((task) {
+              return UnifiedTaskCard(
+                key: ValueKey('personal-${task.id}'),
+                task: task,
+                isPersonal: true,
+                canManage: true,
+                isPending: state.pendingStatusTaskIds.contains(task.id),
+                onTap: () => _showPersonalTaskSheet(context, editing: task),
+                onStatusChanged: (val) {
+                  final nextStatus = val ? TaskStatus.done : TaskStatus.todo;
+                  context.read<TasksBloc>().add(
+                    UpdateTaskStatusRequested(
+                      taskId: task.id,
+                      status: nextStatus,
+                    ),
+                  );
+                },
+              );
+            }),
+            const SizedBox(height: 14),
+          ],
+
+          // Section 2: Назначенные мне
+          _buildMySectionHeader(
+            context,
+            title: language.translate('tasks_my_assigned_section'),
+            count: assigned.length + mineOther.length,
+            icon: TablerIcons.user_check,
+          ),
+          if (assigned.isEmpty && mineOther.isEmpty)
+            LedgerCard(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  language.translate('tasks_my_assigned_empty'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+              ),
+            )
+          else ...[
+            ...assigned.map((task) {
+              final isAssignee =
+                  userId != null && task.assigneeId == userId.toString();
+              final isReviewer =
+                  _isDirector ||
+                  (userId != null &&
+                      task.createdBy != null &&
+                      task.createdBy == userId);
+
+              return UnifiedTaskCard(
+                key: ValueKey('assigned-${task.id}'),
+                task: task,
+                isPersonal: false,
+                isAssignee: isAssignee,
+                isReviewer: isReviewer,
+                canManage: isAssignee || _canManageTasks(context),
+                isPending: state.pendingStatusTaskIds.contains(task.id),
+                onTap: _canManageTasks(context)
+                    ? () => _showEditTaskBottomSheet(
+                        context,
+                        task,
+                        state.projects,
+                        state.assignees,
+                      )
+                    : null,
+                onStatusChanged: (isAssignee || _canManageTasks(context))
+                    ? (val) {
+                        final nextStatus = val
+                            ? TaskStatus.done
+                            : TaskStatus.todo;
+                        context.read<TasksBloc>().add(
+                          UpdateTaskStatusRequested(
+                            taskId: task.id,
+                            status: nextStatus,
+                          ),
+                        );
+                      }
+                    : null,
+                onAccept: (isAssignee && task.acknowledgedAt == null)
+                    ? () => context.read<TasksBloc>().add(
+                        AcknowledgeTaskRequested(task.id),
+                      )
+                    : null,
+                onSubmit: (isAssignee && task.acknowledgedAt != null)
+                    ? () => context.read<TasksBloc>().add(
+                        SubmitTaskRequested(task.id),
+                      )
+                    : null,
+                onApprove: (isReviewer && task.status == TaskStatus.review)
+                    ? () => context.read<TasksBloc>().add(
+                        AcceptTaskRequested(task.id),
+                      )
+                    : null,
+                onReject: (isReviewer && task.status == TaskStatus.review)
+                    ? () => _showRejectSheet(context, task)
+                    : null,
+              );
+            }),
+            ...mineOther.map((task) {
+              final isReviewer =
+                  _isDirector ||
+                  (userId != null &&
+                      task.createdBy != null &&
+                      task.createdBy == userId);
+
+              return UnifiedTaskCard(
+                key: ValueKey('mine-other-${task.id}'),
+                task: task,
+                isPersonal: false,
+                isAssignee: false,
+                isReviewer: isReviewer,
+                canManage: _canManageTasks(context),
+                isPending: state.pendingStatusTaskIds.contains(task.id),
+                onTap: _canManageTasks(context)
+                    ? () => _showEditTaskBottomSheet(
+                        context,
+                        task,
+                        state.projects,
+                        state.assignees,
+                      )
+                    : null,
+                onStatusChanged: _canManageTasks(context)
+                    ? (val) {
+                        final nextStatus = val
+                            ? TaskStatus.done
+                            : TaskStatus.todo;
+                        context.read<TasksBloc>().add(
+                          UpdateTaskStatusRequested(
+                            taskId: task.id,
+                            status: nextStatus,
+                          ),
+                        );
+                      }
+                    : null,
+                onApprove: (isReviewer && task.status == TaskStatus.review)
+                    ? () => context.read<TasksBloc>().add(
+                        AcceptTaskRequested(task.id),
+                      )
+                    : null,
+                onReject: (isReviewer && task.status == TaskStatus.review)
+                    ? () => _showRejectSheet(context, task)
+                    : null,
+              );
+            }),
           ],
         ],
       ),
     );
   }
 
-  Widget _personalTaskCard(BuildContext context, Task task) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final language = context.read<LanguageCubit>();
-    final isDone = task.status == TaskStatus.done;
-    final isOverdue = !isDone && task.dueDate.isBefore(DateTime.now());
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: LedgerCard(
-        onTap: () => _showPersonalTaskSheet(context, editing: task),
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Checkbox icon
-            Padding(
-              padding: const EdgeInsets.only(top: 2, right: 10),
-              child: Icon(
-                isDone ? TablerIcons.circle_check_filled : TablerIcons.circle,
-                size: 20,
-                color: isDone ? colors.accentGreen : colors.textTooltip,
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          task.title,
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
-                            decoration: isDone
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: isDone
-                                ? colors.textSecondary
-                                : colors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      LedgerPill(
-                        text: language.translate(task.status.localizationKey),
-                        backgroundColor: isDone
-                            ? colors.accentGreen.withValues(alpha: 0.12)
-                            : colors.surfaceNested,
-                        textColor: isDone
-                            ? colors.accentGreen
-                            : colors.textSecondary,
-                      ),
-                    ],
-                  ),
-                  if (task.description.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      task.description,
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        TablerIcons.calendar,
-                        size: 13,
-                        color: isOverdue
-                            ? colors.accentRed
-                            : colors.textTooltip,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formatLocalizedDateTime(
-                          context,
-                          task.dueDate,
-                          style: LocalizedDateTimeStyle.date,
-                        ),
-                        style: textStyles.captionSans.copyWith(
-                          color: isOverdue
-                              ? colors.accentRed
-                              : colors.textTooltip,
-                          fontWeight: isOverdue
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _assignedTaskCard(BuildContext context, Task task) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final language = context.read<LanguageCubit>();
-    final userId = _currentUserId;
-    final isAssignee = userId != null && task.assigneeId == userId.toString();
-    final isReviewer =
-        _isDirector ||
-        (userId != null && task.createdBy != null && task.createdBy == userId);
-    final isDone = task.status == TaskStatus.done;
-    final isSubmitted = task.status == TaskStatus.review;
-    final isOverdue = !isDone && task.dueDate.isBefore(DateTime.now());
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: LedgerCard(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2, right: 10),
-                  child: Icon(
-                    isDone
-                        ? TablerIcons.circle_check_filled
-                        : (isSubmitted
-                              ? TablerIcons.clock_hour_4
-                              : TablerIcons.circle),
-                    size: 20,
-                    color: isDone
-                        ? colors.accentGreen
-                        : (isSubmitted
-                              ? colors.accentAmber
-                              : colors.textTooltip),
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              task.title,
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                decoration: isDone
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                color: isDone
-                                    ? colors.textSecondary
-                                    : colors.textPrimary,
-                              ),
-                            ),
-                          ),
-                          LedgerPill(
-                            text: language.translate(
-                              task.status.localizationKey,
-                            ),
-                            backgroundColor: isDone
-                                ? colors.accentGreen.withValues(alpha: 0.12)
-                                : (isSubmitted
-                                      ? colors.accentAmber.withValues(
-                                          alpha: 0.12,
-                                        )
-                                      : colors.surfaceNested),
-                            textColor: isDone
-                                ? colors.accentGreen
-                                : (isSubmitted
-                                      ? colors.accentAmber
-                                      : colors.textSecondary),
-                          ),
-                        ],
-                      ),
-                      if (task.description.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          task.description,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceNested,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        TablerIcons.calendar,
-                        size: 13,
-                        color: isOverdue
-                            ? colors.accentRed
-                            : colors.textTooltip,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        formatLocalizedDateTime(
-                          context,
-                          task.dueDate,
-                          style: LocalizedDateTimeStyle.date,
-                        ),
-                        style: textStyles.captionSans.copyWith(
-                          color: isOverdue
-                              ? colors.accentRed
-                              : colors.textTooltip,
-                          fontWeight: isOverdue
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (task.assigneeName != null && task.assigneeName!.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.surfaceNested,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          TablerIcons.user,
-                          size: 13,
-                          color: colors.textTooltip,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          task.assigneeName!,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (task.acknowledgedAt != null)
-                  LedgerPill(
-                    text: language.translate('tasks_review_acknowledged'),
-                    backgroundColor: colors.accentGreen.withValues(alpha: 0.1),
-                    textColor: colors.accentGreen,
-                  )
-                else if (!isDone)
-                  LedgerPill(
-                    text: language.translate('tasks_review_waiting_ack'),
-                    backgroundColor: colors.surfaceNested,
-                    textColor: colors.textSecondary,
-                  ),
-                if (task.acceptedAt != null)
-                  LedgerPill(
-                    text: language.translate('tasks_review_accepted'),
-                    backgroundColor: colors.accentGreen.withValues(alpha: 0.1),
-                    textColor: colors.accentGreen,
-                  ),
-              ],
-            ),
-            if (task.rejectReason != null &&
-                task.rejectReason!.isNotEmpty &&
-                !isDone) ...[
-              const SizedBox(height: 6),
-              Text(
-                '${language.translate('tasks_review_rejected_reason')}: ${task.rejectReason}',
-                style: textStyles.captionSans.copyWith(color: colors.accentRed),
-              ),
-            ],
-            if (!task.isPersonal) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  if (isAssignee && task.acknowledgedAt == null && !isDone)
-                    _actionChip(
-                      context,
-                      label: language.translate('tasks_review_acknowledge'),
-                      icon: TablerIcons.check,
-                      onTap: () => context.read<TasksBloc>().add(
-                        AcknowledgeTaskRequested(task.id),
-                      ),
-                    ),
-                  if (isAssignee && !isSubmitted && !isDone)
-                    _actionChip(
-                      context,
-                      label: language.translate('tasks_review_submit'),
-                      icon: TablerIcons.send,
-                      filled: true,
-                      onTap: () => context.read<TasksBloc>().add(
-                        SubmitTaskRequested(task.id),
-                      ),
-                    ),
-                  if (isReviewer && !isDone) ...[
-                    _actionChip(
-                      context,
-                      label: language.translate('tasks_review_accept'),
-                      icon: TablerIcons.checks,
-                      filled: true,
-                      onTap: () => context.read<TasksBloc>().add(
-                        AcceptTaskRequested(task.id),
-                      ),
-                    ),
-                    _actionChip(
-                      context,
-                      label: language.translate('tasks_review_reject'),
-                      icon: TablerIcons.arrow_back_up,
-                      onTap: () => _showRejectSheet(context, task),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _actionChip(
+  Widget _buildMySectionHeader(
     BuildContext context, {
-    required String label,
+    required String title,
+    required int count,
     required IconData icon,
-    required VoidCallback onTap,
-    bool filled = false,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    return Material(
-      color: filled ? colors.brand : colors.surface,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: filled ? null : Border.all(color: colors.border),
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: colors.brand),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: textStyles.bodySans.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                size: 16,
-                color: filled ? colors.surface : colors.textPrimary,
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: textStyles.captionSans.copyWith(
+                color: colors.brand,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: textStyles.smallSans.copyWith(
-                  color: filled ? colors.surface : colors.textPrimary,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

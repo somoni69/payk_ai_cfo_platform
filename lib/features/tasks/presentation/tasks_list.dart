@@ -1,28 +1,6 @@
 part of 'tasks_screen.dart';
 
 extension _TasksListBuilders on _TasksViewState {
-  Widget _buildCheckbox(
-    BuildContext context,
-    Task task,
-    bool isDone,
-    bool isPending,
-  ) {
-    return AnimatedCheckbox(
-      value: isDone,
-      isPending: isPending,
-      isEnabled: _canManageTasks(context),
-      semanticLabel: task.title,
-      pendingSemanticLabel: context.translate('common_loading'),
-      onChanged: (newValue) {
-        if (isPending) return;
-        final nextStatus = newValue ? TaskStatus.done : TaskStatus.todo;
-        context.read<TasksBloc>().add(
-          UpdateTaskStatusRequested(taskId: task.id, status: nextStatus),
-        );
-      },
-    );
-  }
-
   Widget _buildTaskListHeader(
     BuildContext context,
     List<Task> tasks,
@@ -74,49 +52,51 @@ extension _TasksListBuilders on _TasksViewState {
 
     return Container(
       decoration: BoxDecoration(
-        color: colors.brand.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.brand.withValues(alpha: 0.05)),
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 titleText,
                 style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: colors.brand.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  _taskCountLabel(language, count),
+              if (priorityText.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  priorityText,
                   style: textStyles.captionSans.copyWith(
-                    color: colors.brand,
-                    fontWeight: FontWeight.w500,
+                    color: colors.textSecondary,
+                    fontSize: 12,
                   ),
                 ),
-              ),
+              ],
             ],
           ),
-          if (priorityText.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              priorityText,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              _taskCountLabel(language, count),
               style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
+                color: colors.brand,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -130,44 +110,52 @@ extension _TasksListBuilders on _TasksViewState {
     List<TaskAssignee> assignees,
     Set<String> pendingTaskIds,
   ) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final language = context.watch<LanguageCubit>();
+    final canManage = _canManageTasks(context);
 
-    final tasks = allTasks.where((t) => t.status == status).toList();
+    // Apply active project filter or search query if any
+    final tasks = allTasks.where((t) {
+      if (t.status != status) return false;
+      if (_selectedProjectId != null &&
+          _selectedProjectId!.isNotEmpty &&
+          t.projectId != _selectedProjectId) {
+        return false;
+      }
+      if (_searchQuery.isNotEmpty &&
+          !t.title.toLowerCase().contains(_searchQuery.toLowerCase()) &&
+          !t.description.toLowerCase().contains(_searchQuery.toLowerCase())) {
+        return false;
+      }
+      if (_onlyOverdue &&
+          (!t.dueDate.isBefore(DateTime.now()) ||
+              t.status == TaskStatus.done)) {
+        return false;
+      }
+      return true;
+    }).toList();
 
     return RefreshIndicator(
       onRefresh: () => _refreshTasks(context),
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         itemCount: tasks.length + 1,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index == 0) {
-            return _buildTaskListHeader(context, tasks, status);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _buildTaskListHeader(context, tasks, status),
+            );
           }
 
           final task = tasks[index - 1];
-          final isDone = status == TaskStatus.done;
+          final isPending = pendingTaskIds.contains(task.id);
 
-          Color pColor = colors.surfaceNested;
-          Color pTextColor = colors.textSecondary;
-          if (task.priority == TaskPriority.urgent) {
-            pColor = colors.accentRed.withValues(alpha: 0.1);
-            pTextColor = colors.accentRed;
-          } else if (task.priority == TaskPriority.high) {
-            pColor = colors.accentAmber.withValues(alpha: 0.1);
-            pTextColor = colors.accentAmber;
-          } else if (task.priority == TaskPriority.medium) {
-            pColor = colors.brand.withValues(alpha: 0.1);
-            pTextColor = colors.brand;
-          } else if (task.priority == TaskPriority.low) {
-            pColor = colors.accentGreen.withValues(alpha: 0.1);
-            pTextColor = colors.accentGreen;
-          }
-
-          return GestureDetector(
-            onTap: _canManageTasks(context)
+          return UnifiedTaskCard(
+            key: ValueKey(task.id),
+            task: task,
+            isPersonal: false,
+            canManage: canManage,
+            isPending: isPending,
+            onTap: canManage
                 ? () => _showEditTaskBottomSheet(
                     context,
                     task,
@@ -175,138 +163,18 @@ extension _TasksListBuilders on _TasksViewState {
                     assignees,
                   )
                 : null,
-            child: Container(
-              key: ValueKey(task.id),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: colors.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          task.title,
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w500,
-                            decoration: isDone
-                                ? TextDecoration.lineThrough
-                                : null,
-                            color: isDone
-                                ? colors.textTooltip
-                                : colors.textPrimary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            if (task.projectName != null) ...[
-                              Flexible(
-                                child: Text(
-                                  task.projectName!,
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.brand,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 3,
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: colors.textSecondary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Icon(
-                              TablerIcons.calendar,
-                              size: 12,
-                              color: colors.textTooltip,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatLocalizedCompactDate(
-                                language,
-                                task.dueDate,
-                              ),
-                              style: textStyles.captionSans.copyWith(
-                                color:
-                                    task.dueDate.isBefore(DateTime.now()) &&
-                                        !isDone
-                                    ? colors.accentRed
-                                    : colors.textTooltip,
-                              ),
-                            ),
-                            if (task.assigneeName != null &&
-                                task.assigneeName!.trim().isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 3,
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  color: colors.textSecondary.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                TablerIcons.user,
-                                size: 12,
-                                color: colors.textTooltip,
-                              ),
-                              const SizedBox(width: 4),
-                              Flexible(
-                                child: Text(
-                                  language.translateMessage(task.assigneeName!),
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.textTooltip,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  LedgerPill(
-                    text: language.translate(task.priority.localizationKey),
-                    backgroundColor: pColor,
-                    textColor: pTextColor,
-                    fontSize: 13,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildCheckbox(
-                    context,
-                    task,
-                    isDone,
-                    pendingTaskIds.contains(task.id),
-                  ),
-                ],
-              ),
-            ),
+            onStatusChanged: canManage
+                ? (val) {
+                    if (isPending) return;
+                    final nextStatus = val ? TaskStatus.done : TaskStatus.todo;
+                    context.read<TasksBloc>().add(
+                      UpdateTaskStatusRequested(
+                        taskId: task.id,
+                        status: nextStatus,
+                      ),
+                    );
+                  }
+                : null,
           );
         },
       ),
