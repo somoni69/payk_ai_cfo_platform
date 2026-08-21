@@ -449,7 +449,7 @@ class _FinOpsViewState extends State<FinOpsView>
             )
           : null,
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
         children: [
           Text(
             locale.translate('fin_ops_bank_balances'),
@@ -596,7 +596,7 @@ class _FinOpsViewState extends State<FinOpsView>
             )
           : null,
       body: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
         itemCount: state.storeTransfers.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
@@ -719,7 +719,7 @@ class _FinOpsViewState extends State<FinOpsView>
             )
           : null,
       body: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
         itemCount: state.financialAids.length,
         separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {

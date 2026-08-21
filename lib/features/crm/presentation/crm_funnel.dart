@@ -64,7 +64,7 @@ class CrmFunnelBoard extends StatelessWidget {
           final colWidth = (constraints.maxWidth * 0.78).clamp(240.0, 300.0);
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

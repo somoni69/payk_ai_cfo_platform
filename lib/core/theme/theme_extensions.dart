@@ -5,6 +5,23 @@ import 'app_text_styles.dart';
 /// Height of the floating liquid pill plus gap, excluding the system inset.
 const kLiquidNavClearance = 80.0;
 
+/// Floating Action Button location that offsets the button above the floating liquid nav bar.
+class LedgerShellFabLocation extends FloatingActionButtonLocation {
+  const LedgerShellFabLocation({this.offsetY = kLiquidNavClearance});
+
+  final double offsetY;
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final defaultOffset = FloatingActionButtonLocation.endFloat.getOffset(
+      scaffoldGeometry,
+    );
+    return Offset(defaultOffset.dx, defaultOffset.dy - offsetY);
+  }
+}
+
+const kLedgerShellFabLocation = LedgerShellFabLocation();
+
 /// Расширение [BuildContext] для простого и лаконичного доступа
 /// к токенам дизайн-системы Ledger в виджетах.
 extension LedgerThemeExtensions on BuildContext {

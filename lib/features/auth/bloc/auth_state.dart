@@ -27,6 +27,12 @@ class AuthAuthenticated extends AuthState {
 
   final UserRole role;
 
+  /// ID действующего магазина (если выбран или привязан).
+  final int? storeId;
+
+  /// Название действующего магазина (если известно).
+  final String? storeName;
+
   /// UTC expiry of the access JWT when available.
   final DateTime? accessTokenExpiresAt;
 
@@ -35,6 +41,8 @@ class AuthAuthenticated extends AuthState {
     required this.username,
     this.name = '',
     required this.role,
+    this.storeId,
+    this.storeName,
     this.accessTokenExpiresAt,
   });
 
@@ -48,8 +56,36 @@ class AuthAuthenticated extends AuthState {
     return username;
   }
 
+  AuthAuthenticated copyWith({
+    int? id,
+    String? username,
+    String? name,
+    UserRole? role,
+    int? storeId,
+    String? storeName,
+    DateTime? accessTokenExpiresAt,
+  }) {
+    return AuthAuthenticated(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
+      accessTokenExpiresAt: accessTokenExpiresAt ?? this.accessTokenExpiresAt,
+    );
+  }
+
   @override
-  List<Object?> get props => [id, username, name, role, accessTokenExpiresAt];
+  List<Object?> get props => [
+    id,
+    username,
+    name,
+    role,
+    storeId,
+    storeName,
+    accessTokenExpiresAt,
+  ];
 }
 
 /// Password accepted; waiting for SMS 2FA code.

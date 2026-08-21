@@ -4,9 +4,11 @@ import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
+import '../../network/domain/network_models.dart';
 import '../domain/auth_user.dart';
 import '../domain/user_role.dart';
 
+export '../../network/domain/network_models.dart';
 export '../domain/auth_user.dart';
 export '../domain/user_role.dart';
 
@@ -64,20 +66,42 @@ class ApiAuthRepository {
   ApiAuthRepository({ApiClient? apiClient})
     : _apiClient = apiClient ?? ApiClient();
 
-  /// Login with username/password.
+  /// Fetches the public list of active stores for login screen.
+  Future<List<LoginStore>> fetchLoginStores() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/auth/stores');
+      final list = response.data is List ? response.data as List : const [];
+      return list
+          .whereType<Map>()
+          .map((m) => LoginStore.fromJson(Map<String, dynamic>.from(m)))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Login with username/password and optional storeId.
   ///
   /// May return [LoginTwoFactorRequired] when SMS 2FA is enabled for the user.
-  Future<LoginResult> login(String username, String password) async {
+  Future<LoginResult> login(
+    String username,
+    String password, {
+    int? storeId,
+  }) async {
     try {
       final response = await _apiClient.dio.post(
         '/auth/login',
-        data: {'username': username, 'password': password},
+        data: {
+          'username': username,
+          'password': password,
+          'store_id': ?storeId,
+        },
         options: Options(
           extra: const <String, dynamic>{'skipUnauthorizedHandler': true},
         ),
       );
 
-      return _parseLoginBody(response.data, fallbackUsername: username);
+      return await _parseLoginBody(response.data, fallbackUsername: username);
     } on DioException catch (error) {
       throw Exception(_loginErrorKey(error));
     } catch (_) {
@@ -279,6 +303,16 @@ class ApiAuthRepository {
         ? (body['full_name'] as String).trim()
         : '';
     final roleClaim = _stringRoleClaim(body['role']);
+    final storeIdRaw = body['store_id'] ?? body['store'];
+    final storeId = switch (storeIdRaw) {
+      int v => v,
+      num v => v.toInt(),
+      String v => int.tryParse(v),
+      _ => null,
+    };
+    final storeName = (body['store_name'] is String)
+        ? (body['store_name'] as String).trim()
+        : null;
 
     if (username.isEmpty && id == null) {
       throw const FormatException('auth/me has no user identity');
@@ -289,6 +323,8 @@ class ApiAuthRepository {
       username: username.isNotEmpty ? username : (id != null ? 'user-$id' : ''),
       name: fullName,
       role: _mapRole(roleClaim),
+      storeId: storeId,
+      storeName: storeName,
       accessTokenExpiresAt: accessTokenExpiresAt,
     );
   }
@@ -318,8 +354,9 @@ class ApiAuthRepository {
   ///
   /// Production tokens carry:
   /// - `sub` — user id (numeric string or number)
-  /// - `role` — director | manager | accountant | cashier | hr | viewer
+  /// - `role` — owner | director | manager | accountant | cashier | hr | viewer
   /// - `name` — display name
+  /// - `store` — store id when entered/scoped
   /// - `exp` — access lifetime (~30 min)
   static AuthUser decodeUserFromToken(
     String token, {
@@ -372,11 +409,20 @@ class ApiAuthRepository {
       claims['role'] ?? claims['user_role'] ?? claims['scope'],
     );
 
+    final storeClaim = claims['store'] ?? claims['store_id'];
+    final storeId = switch (storeClaim) {
+      int v => v,
+      num v => v.toInt(),
+      String v => int.tryParse(v),
+      _ => null,
+    };
+
     return AuthUser(
       id: id,
       username: username,
       name: name,
       role: _mapRole(roleClaim),
+      storeId: storeId,
       accessTokenExpiresAt: expiresAt,
     );
   }
@@ -467,6 +513,8 @@ class ApiAuthRepository {
     final cleanRole = roleClaim.toLowerCase().trim();
     // Exact OpenAPI Role enum first.
     switch (cleanRole) {
+      case 'owner':
+        return UserRole.owner;
       case 'director':
         return UserRole.director;
       case 'manager':
@@ -484,6 +532,9 @@ class ApiAuthRepository {
         return UserRole.viewer;
     }
     // Loose aliases for older tokens / combined scopes.
+    if (cleanRole.contains('owner')) {
+      return UserRole.owner;
+    }
     if (cleanRole.contains('director') || cleanRole.contains('admin')) {
       return UserRole.director;
     }

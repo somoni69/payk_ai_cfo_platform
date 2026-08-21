@@ -1011,8 +1011,13 @@ extension _CashSheetBuilders on _CashViewState {
     final amountController = TextEditingController(
       text: formatLocalizedNumber(context, transaction.amount),
     );
+    final initialCounterparty =
+        transaction.title == 'cash_operation_default' ||
+            transaction.title.startsWith('cash_operation_')
+        ? ''
+        : transaction.title;
     final counterpartyController = TextEditingController(
-      text: transaction.title,
+      text: initialCounterparty,
     );
     final descriptionController = TextEditingController(
       text: transaction.description ?? '',
@@ -1042,49 +1047,144 @@ extension _CashSheetBuilders on _CashViewState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (!hasSale)
+              // 1. Выбор "Приход" / "Расход" (Фирменный сегментный переключатель)
+              if (!hasSale) ...[
                 Row(
                   children: [
                     Expanded(
-                      child: ChoiceChip(
-                        label: Text(language.translate('cash_income')),
-                        selected: isIncome,
-                        onSelected: (v) {
-                          if (v) setSheetState(() => isIncome = true);
-                        },
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => setSheetState(() => isIncome = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isIncome
+                                ? colors.accentGreen.withValues(alpha: 0.1)
+                                : colors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isIncome
+                                  ? colors.accentGreen
+                                  : colors.border,
+                              width: isIncome ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              language.translate('cash_income'),
+                              style: textStyles.bodySans.copyWith(
+                                color: isIncome
+                                    ? colors.accentGreen
+                                    : colors.textSecondary,
+                                fontWeight: isIncome
+                                    ? FontWeight.w500
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: ChoiceChip(
-                        label: Text(language.translate('cash_expense')),
-                        selected: !isIncome,
-                        onSelected: (v) {
-                          if (v) setSheetState(() => isIncome = false);
-                        },
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => setSheetState(() => isIncome = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: !isIncome
+                                ? colors.accentRed.withValues(alpha: 0.1)
+                                : colors.surface,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: !isIncome
+                                  ? colors.accentRed
+                                  : colors.border,
+                              width: !isIncome ? 1.5 : 1.0,
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              language.translate('cash_expense'),
+                              style: textStyles.bodySans.copyWith(
+                                color: !isIncome
+                                    ? colors.accentRed
+                                    : colors.textSecondary,
+                                fontWeight: !isIncome
+                                    ? FontWeight.w500
+                                    : FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 16),
+              ],
+
+              // 2. Сумма операции
               TextFormField(
                 controller: amountController,
                 enabled: !hasSale,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                style: textStyles.bodyMono,
+                style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: language.translate('cash_operation_amount'),
+                  hintText: language.translate('cash_operation_amount'),
+                  prefixIcon: Icon(
+                    TablerIcons.currency_dollar,
+                    color: colors.textSecondary,
+                    size: 20,
+                  ),
+                ),
+                validator: (val) {
+                  final parsed = parseLocalizedNumber(context, val ?? '');
+                  if (parsed == null || parsed <= 0) {
+                    return language.translate('cash_amount_required');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // 3. Способ оплаты
+              Text(
+                language.translate('cash_payment_method'),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
+                runSpacing: 8,
                 children: PaymentMethod.values.map((pm) {
+                  final isSelected = method == pm;
+                  final Color selectedColor = switch (pm) {
+                    PaymentMethod.alif => colors.accentGreen,
+                    PaymentMethod.dushanbeCity => const Color(0xFFFF6B22),
+                    _ => colors.brand,
+                  };
+
                   return ChoiceChip(
                     label: Text(language.translate(pm.labelKey)),
-                    selected: method == pm,
+                    selected: isSelected,
+                    selectedColor: selectedColor,
+                    backgroundColor: colors.surface,
+                    checkmarkColor: Colors.white,
+                    labelStyle: textStyles.captionSans.copyWith(
+                      color: isSelected ? Colors.white : colors.textPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w500
+                          : FontWeight.w400,
+                    ),
+                    side: BorderSide(
+                      color: isSelected ? selectedColor : colors.border,
+                    ),
                     onSelected: (v) {
                       if (v) setSheetState(() => method = pm);
                     },
@@ -1101,6 +1201,7 @@ extension _CashSheetBuilders on _CashViewState {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        style: textStyles.bodyMono,
                         decoration: InputDecoration(
                           labelText: language.translate('cash_mixed_cash'),
                         ),
@@ -1113,6 +1214,7 @@ extension _CashSheetBuilders on _CashViewState {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        style: textStyles.bodyMono,
                         decoration: InputDecoration(
                           labelText: language.translate('cash_mixed_cashless'),
                         ),
@@ -1121,18 +1223,40 @@ extension _CashSheetBuilders on _CashViewState {
                   ],
                 ),
               ],
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // 4. Контрагент
               TextFormField(
                 controller: counterpartyController,
+                style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: language.translate('cash_counterparty'),
+                  hintText: language.translate('cash_counterparty'),
+                  prefixIcon: Icon(
+                    TablerIcons.user,
+                    color: colors.textSecondary,
+                    size: 20,
+                  ),
                 ),
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return language.translate('cash_counterparty_required');
+                  }
+                  return null;
+                },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
+
+              // 5. Описание
               TextField(
                 controller: descriptionController,
+                style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: language.translate('cash_description'),
+                  hintText: language.translate('cash_description'),
+                  prefixIcon: Icon(
+                    TablerIcons.file_text,
+                    color: colors.textSecondary,
+                    size: 20,
+                  ),
                 ),
               ),
               if (error != null) ...[
@@ -1156,6 +1280,7 @@ extension _CashSheetBuilders on _CashViewState {
             onPressed: submitting
                 ? null
                 : () async {
+                    if (!formKey.currentState!.validate()) return;
                     final amt = parseLocalizedNumber(
                       context,
                       amountController.text,
@@ -1177,6 +1302,8 @@ extension _CashSheetBuilders on _CashViewState {
                       );
                       if (cashPart == null ||
                           cashlessPart == null ||
+                          cashPart < 0 ||
+                          cashlessPart < 0 ||
                           (cashPart + cashlessPart - amt).abs() > 0.01) {
                         setSheetState(() => error = 'cash_mixed_err_sum');
                         return;
@@ -1212,7 +1339,20 @@ extension _CashSheetBuilders on _CashViewState {
                     }
                     Navigator.pop(context);
                   },
-            child: Text(language.translate('common_save')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text(
+              language.translate('common_save'),
+              style: textStyles.bodySans.copyWith(
+                color: colors.surface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         );
       },

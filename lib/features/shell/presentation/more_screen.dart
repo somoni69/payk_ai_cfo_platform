@@ -359,8 +359,14 @@ class _MoreScreenState extends State<MoreScreen> {
         titleKey: 'more_group_system',
         modules: [
           (
-            capability: AppCapability.branches,
+            capability: AppCapability.network,
             icon: TablerIcons.building_store,
+            titleKey: 'more_network',
+            route: '/network',
+          ),
+          (
+            capability: AppCapability.branches,
+            icon: TablerIcons.map_pin,
             titleKey: 'more_branches',
             route: '/branches',
           ),
@@ -415,32 +421,34 @@ class _MoreScreenState extends State<MoreScreen> {
             padding: EdgeInsets.only(
               bottom: i + 2 < allowedModules.length ? 8 : 0,
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _buildModuleTile(
-                    icon: allowedModules[i].icon,
-                    title: context.translate(allowedModules[i].titleKey),
-                    onTap: () =>
-                        GoRouter.of(context).push(allowedModules[i].route),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildModuleTile(
+                      icon: allowedModules[i].icon,
+                      title: context.translate(allowedModules[i].titleKey),
+                      onTap: () =>
+                          GoRouter.of(context).push(allowedModules[i].route),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: i + 1 < allowedModules.length
-                      ? _buildModuleTile(
-                          icon: allowedModules[i + 1].icon,
-                          title: context.translate(
-                            allowedModules[i + 1].titleKey,
-                          ),
-                          onTap: () => GoRouter.of(
-                            context,
-                          ).push(allowedModules[i + 1].route),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: i + 1 < allowedModules.length
+                        ? _buildModuleTile(
+                            icon: allowedModules[i + 1].icon,
+                            title: context.translate(
+                              allowedModules[i + 1].titleKey,
+                            ),
+                            onTap: () => GoRouter.of(
+                              context,
+                            ).push(allowedModules[i + 1].route),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -460,7 +468,8 @@ class _MoreScreenState extends State<MoreScreen> {
     final textStyles = context.textStyles;
     return LedgerCard(
       onTap: onTap,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(minHeight: 84),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -468,8 +477,11 @@ class _MoreScreenState extends State<MoreScreen> {
           const SizedBox(height: 8),
           Text(
             title,
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-            maxLines: 3,
+            style: textStyles.bodySans.copyWith(
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+            ),
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],
@@ -497,6 +509,10 @@ class _MoreScreenState extends State<MoreScreen> {
       );
     }
 
+    final storeName = authState is AuthAuthenticated
+        ? authState.storeName
+        : null;
+
     return LedgerCard(
       child: Row(
         children: [
@@ -513,6 +529,29 @@ class _MoreScreenState extends State<MoreScreen> {
                 Text(profileName, style: textStyles.h2Sans),
                 const SizedBox(height: 2),
                 Text(roleLabel, style: textStyles.captionSans),
+                if (storeName != null && storeName.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        TablerIcons.building_store,
+                        size: 14,
+                        color: colors.brand,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          storeName,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.brand,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -523,6 +562,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   String _roleTranslationKey(UserRole role) {
     return switch (role) {
+      UserRole.owner => 'role_owner',
       UserRole.director => 'role_director',
       UserRole.manager => 'role_manager',
       UserRole.accountant => 'role_accountant',

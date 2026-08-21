@@ -196,6 +196,7 @@ class LedgerReportTile extends StatelessWidget {
       style: LedgerCardStyle.outlined,
       onTap: onTap,
       padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minHeight: 88),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -203,7 +204,10 @@ class LedgerReportTile extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             title,
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            style: textStyles.bodySans.copyWith(
+              fontWeight: FontWeight.w500,
+              height: 1.25,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),

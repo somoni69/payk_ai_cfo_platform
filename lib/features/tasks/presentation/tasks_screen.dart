@@ -82,7 +82,6 @@ class _TasksViewState extends State<TasksView>
 
   // Filters state
   String _searchQuery = '';
-  Timer? _searchDebounce;
   String? _selectedProjectId;
   bool _onlyOverdue = false;
 
@@ -177,7 +176,6 @@ class _TasksViewState extends State<TasksView>
 
   @override
   void dispose() {
-    _searchDebounce?.cancel();
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
@@ -323,6 +321,7 @@ class _TasksViewState extends State<TasksView>
 
     return Scaffold(
       backgroundColor: colors.background,
+      floatingActionButtonLocation: kLedgerShellFabLocation,
       floatingActionButton: BlocBuilder<TasksBloc, TasksState>(
         buildWhen: (previous, current) {
           if (previous is TasksLoaded && current is TasksLoaded) {
@@ -443,86 +442,17 @@ class _TasksViewState extends State<TasksView>
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            style: textStyles.bodySans,
-                            decoration: InputDecoration(
-                              hintText: language.translate('tasks_search_hint'),
-                              prefixIcon: Icon(
-                                TablerIcons.search,
-                                size: 18,
-                                color: colors.textSecondary,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                            ),
-                            onChanged: (value) {
-                              _searchDebounce?.cancel();
-                              _searchDebounce = Timer(
-                                const Duration(milliseconds: 300),
-                                () {
-                                  if (!mounted || _searchQuery == value) return;
-                                  setState(() => _searchQuery = value);
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _onlyOverdue = !_onlyOverdue;
-                            });
-                          },
-                          child: Container(
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            decoration: BoxDecoration(
-                              color: _onlyOverdue
-                                  ? colors.accentRed.withValues(alpha: 0.08)
-                                  : colors.surface,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _onlyOverdue
-                                    ? colors.accentRed
-                                    : colors.border,
-                              ),
-                            ),
-                            alignment: Alignment.center,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  TablerIcons.alert_triangle,
-                                  size: 16,
-                                  color: _onlyOverdue
-                                      ? colors.accentRed
-                                      : colors.textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  language.translate('tasks_overdue'),
-                                  style: textStyles.captionSans.copyWith(
-                                    color: _onlyOverdue
-                                        ? colors.accentRed
-                                        : colors.textPrimary,
-                                    fontWeight: _onlyOverdue
-                                        ? FontWeight.w500
-                                        : FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  _TasksSearchFilterBar(
+                    searchQuery: _searchQuery,
+                    onSearchChanged: (value) {
+                      if (!mounted || _searchQuery == value) return;
+                      setState(() => _searchQuery = value);
+                    },
+                    onlyOverdue: _onlyOverdue,
+                    onOverdueChanged: (value) {
+                      if (!mounted || _onlyOverdue == value) return;
+                      setState(() => _onlyOverdue = value);
+                    },
                   ),
                   if (_activeTabIndex > 0 &&
                       _activeTabIndex < 5 &&
@@ -619,6 +549,276 @@ class _TasksViewState extends State<TasksView>
             return const SizedBox.shrink();
           },
         ),
+      ),
+    );
+  }
+}
+
+class _TasksSearchFilterBar extends StatefulWidget {
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final bool onlyOverdue;
+  final ValueChanged<bool> onOverdueChanged;
+
+  const _TasksSearchFilterBar({
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.onlyOverdue,
+    required this.onOverdueChanged,
+  });
+
+  @override
+  State<_TasksSearchFilterBar> createState() => _TasksSearchFilterBarState();
+}
+
+class _TasksSearchFilterBarState extends State<_TasksSearchFilterBar> {
+  late final TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.searchQuery);
+    _focusNode.addListener(_handleFocusChange);
+  }
+
+  @override
+  void didUpdateWidget(covariant _TasksSearchFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.searchQuery != _controller.text && !_focusNode.hasFocus) {
+      _controller.text = widget.searchQuery;
+    }
+  }
+
+  void _handleFocusChange() {
+    if (_focusNode.hasFocus) {
+      if (!_isExpanded) setState(() => _isExpanded = true);
+    } else {
+      if (_isExpanded) setState(() => _isExpanded = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_handleFocusChange);
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submitSearch(String val) {
+    widget.onSearchChanged(val.trim());
+    _focusNode.unfocus();
+  }
+
+  void _clear() {
+    _controller.clear();
+    widget.onSearchChanged('');
+    _focusNode.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final hasQuery = widget.searchQuery.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: AnimatedCrossFade(
+              duration: const Duration(milliseconds: 260),
+              firstCurve: Curves.easeOutCubic,
+              secondCurve: Curves.easeOutCubic,
+              sizeCurve: Curves.easeOutCubic,
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              // Свернутое состояние (компактный размер)
+              firstChild: GestureDetector(
+                onTap: () {
+                  setState(() => _isExpanded = true);
+                  _focusNode.requestFocus();
+                },
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: hasQuery
+                        ? colors.brand.withValues(alpha: 0.08)
+                        : colors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: hasQuery ? colors.brand : colors.border,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        TablerIcons.search,
+                        size: 18,
+                        color: hasQuery ? colors.brand : colors.textSecondary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          hasQuery
+                              ? widget.searchQuery
+                              : language.translate('tasks_search_hint'),
+                          style: textStyles.captionSans.copyWith(
+                            color: hasQuery
+                                ? colors.brand
+                                : colors.textSecondary,
+                            fontWeight: hasQuery
+                                ? FontWeight.w500
+                                : FontWeight.w400,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (hasQuery)
+                        GestureDetector(
+                          onTap: _clear,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Icon(
+                              TablerIcons.x,
+                              size: 16,
+                              color: colors.brand,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              // Развернутое состояние при поиске
+              secondChild: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: colors.brand, width: 1.5),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(width: 10),
+                    Icon(TablerIcons.search, size: 18, color: colors.brand),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        style: textStyles.bodySans,
+                        textInputAction: TextInputAction.search,
+                        onSubmitted: _submitSearch,
+                        decoration: InputDecoration(
+                          hintText: language.translate('tasks_search_hint'),
+                          hintStyle: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (val) {
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                    if (_controller.text.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          _controller.clear();
+                          setState(() {});
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            TablerIcons.x,
+                            size: 16,
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    GestureDetector(
+                      onTap: () => _submitSearch(_controller.text),
+                      child: Container(
+                        height: 34,
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        margin: const EdgeInsets.only(right: 4),
+                        decoration: BoxDecoration(
+                          color: colors.brand,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          TablerIcons.arrow_right,
+                          size: 16,
+                          color: colors.surface,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
+          // Кнопка «Просрочено» — никогда не деформируется и не меняет габариты
+          GestureDetector(
+            onTap: () => widget.onOverdueChanged(!widget.onlyOverdue),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: widget.onlyOverdue
+                    ? colors.accentRed.withValues(alpha: 0.08)
+                    : colors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: widget.onlyOverdue ? colors.accentRed : colors.border,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    TablerIcons.alert_triangle,
+                    size: 16,
+                    color: widget.onlyOverdue
+                        ? colors.accentRed
+                        : colors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    language.translate('tasks_overdue'),
+                    style: textStyles.captionSans.copyWith(
+                      color: widget.onlyOverdue
+                          ? colors.accentRed
+                          : colors.textPrimary,
+                      fontWeight: widget.onlyOverdue
+                          ? FontWeight.w500
+                          : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,323 +1,307 @@
 part of 'dashboard_screen.dart';
 
-extension _DashboardAccountsTab on _DashboardViewState {
-  Widget _buildAccountsRatesTab(
-    BuildContext context,
-    BankAccountsReport? accountsReport,
-    ExchangeRatesReport? ratesReport,
-    String currency,
-  ) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final languageCubit = context.read<LanguageCubit>();
-    final auth = context.watch<AuthBloc>().state;
-    final canWrite =
-        auth is AuthAuthenticated &&
-        auth.role.canWrite(AppCapability.dashboard);
-    final isDirector =
-        auth is AuthAuthenticated && auth.role == UserRole.director;
+Widget _buildAccountsRatesTab(
+  BuildContext context,
+  BankAccountsReport? accountsReport,
+  ExchangeRatesReport? ratesReport,
+  String currency,
+) {
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  final languageCubit = context.read<LanguageCubit>();
+  final auth = context.watch<AuthBloc>().state;
+  final canWrite =
+      auth is AuthAuthenticated && auth.role.canWrite(AppCapability.dashboard);
+  final isDirector =
+      auth is AuthAuthenticated && auth.role == UserRole.director;
 
-    if (accountsReport == null || ratesReport == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  if (accountsReport == null || ratesReport == null) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
-    return RefreshIndicator(
-      onRefresh: () => _refreshDashboard(context),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+  return ListView(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+    children: [
+      Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  languageCubit.translate('dashboard_bank_accounts'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              if (canWrite)
-                IconButton(
-                  onPressed: () => _showCreateAccountSheet(context),
-                  icon: Icon(TablerIcons.plus, color: colors.brand),
-                ),
-            ],
+          Expanded(
+            child: Text(
+              languageCubit.translate('dashboard_bank_accounts'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
           ),
-          const SizedBox(height: 8),
-          ...accountsReport.accounts.map(
-            (acc) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: LedgerCard(
-                padding: const EdgeInsets.all(14),
-                child: Column(
+          if (canWrite)
+            IconButton(
+              onPressed: () => _showCreateAccountSheet(context),
+              icon: Icon(TablerIcons.plus, color: colors.brand),
+            ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      ...accountsReport.accounts.map(
+        (acc) => Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: LedgerCard(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                languageCubit.translateMessage(acc.name),
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${acc.bank ?? languageCubit.translate('dashboard_settlement_account')} • ${acc.number ?? ""}',
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          '${_formatAmount(context, acc.balance)} ${acc.currency}',
-                          style: textStyles.bodyMono.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (canWrite) ...[
-                      const SizedBox(height: 6),
-                      Row(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (isDirector && acc.balance != 0)
-                            TextButton(
-                              onPressed: () => context
-                                  .read<DashboardBloc>()
-                                  .add(ZeroOutAccountRequested(acc.id)),
-                              child: Text(
-                                languageCubit.translate(
-                                  'dashboard_account_zero_out',
-                                ),
-                              ),
+                          Text(
+                            languageCubit.translateMessage(acc.name),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
                             ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: () => context.read<DashboardBloc>().add(
-                              DeleteAccountRequested(acc.id),
-                            ),
-                            icon: Icon(
-                              TablerIcons.trash,
-                              size: 18,
-                              color: colors.accentRed,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${acc.bank ?? languageCubit.translate('dashboard_settlement_account')} • ${acc.number ?? ""}',
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
                             ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                    Text(
+                      '${_formatAmount(context, acc.balance)} ${acc.currency}',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          LedgerCard(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  languageCubit.translate('dashboard_total_balance_tjs'),
-                  style: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
+                if (canWrite) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (isDirector && acc.balance != 0)
+                        TextButton(
+                          onPressed: () => context.read<DashboardBloc>().add(
+                            ZeroOutAccountRequested(acc.id),
+                          ),
+                          child: Text(
+                            languageCubit.translate(
+                              'dashboard_account_zero_out',
+                            ),
+                          ),
+                        ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => context.read<DashboardBloc>().add(
+                          DeleteAccountRequested(acc.id),
+                        ),
+                        icon: Icon(
+                          TablerIcons.trash,
+                          size: 18,
+                          color: colors.accentRed,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                Text(
-                  '${_formatAmount(context, accountsReport.totalTjs)} TJS',
-                  style: textStyles.bodyMono.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: colors.brand,
-                    fontSize: 16,
-                  ),
-                ),
+                ],
               ],
             ),
           ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  languageCubit.translate('dashboard_nbt_rates'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      LedgerCard(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              languageCubit.translate('dashboard_total_balance_tjs'),
+              style: textStyles.captionSans.copyWith(
+                fontWeight: FontWeight.w500,
               ),
-              if (canWrite)
-                TextButton.icon(
-                  onPressed: () => context.read<DashboardBloc>().add(
-                    const RefreshRatesRequested(),
-                  ),
-                  icon: Icon(
-                    TablerIcons.refresh,
-                    size: 16,
-                    color: colors.brand,
-                  ),
-                  label: Text(
-                    languageCubit.translate('dashboard_rates_refresh'),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          LedgerCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: ratesReport.rates.map((rate) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '1 ${rate.code}',
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        '${formatLocalizedNumber(context, rate.rate, minimumFractionDigits: 4, maximumFractionDigits: 4)} TJS',
-                        style: textStyles.bodyMono.copyWith(
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+            ),
+            Text(
+              '${_formatAmount(context, accountsReport.totalTjs)} TJS',
+              style: textStyles.bodyMono.copyWith(
+                fontWeight: FontWeight.w500,
+                color: colors.brand,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      Row(
+        children: [
+          Expanded(
+            child: Text(
+              languageCubit.translate('dashboard_nbt_rates'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            languageCubit.translate('dashboard_converter_title'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          _CurrencyConverterCard(rates: ratesReport.rates),
+          if (canWrite)
+            TextButton.icon(
+              onPressed: () => context.read<DashboardBloc>().add(
+                const RefreshRatesRequested(),
+              ),
+              icon: Icon(TablerIcons.refresh, size: 16, color: colors.brand),
+              label: Text(languageCubit.translate('dashboard_rates_refresh')),
+            ),
         ],
       ),
-    );
-  }
-
-  Future<void> _showCreateAccountSheet(BuildContext context) async {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final language = context.read<LanguageCubit>();
-    final nameCtrl = TextEditingController();
-    final bankCtrl = TextEditingController();
-    final numberCtrl = TextEditingController();
-    final balanceCtrl = TextEditingController(text: '0');
-    String currency = 'TJS';
-
-    try {
-      await LedgerBottomSheet.show(
-        context: context,
-        title: language.translate('dashboard_account_add'),
-        builder: (context, setSheetState) {
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('dashboard_account_name'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: bankCtrl,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('dashboard_account_bank'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: numberCtrl,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('dashboard_account_number'),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ExpansibleWidget<String>.selection(
-                cardPadding: EdgeInsets.zero,
-                tilePadding: const EdgeInsets.symmetric(horizontal: 8),
-                title: Text(
-                  currency,
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
+      const SizedBox(height: 8),
+      LedgerCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: ratesReport.rates.map((rate) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '1 ${rate.code}',
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                items: const ['TJS', 'USD', 'EUR', 'RUB'],
-                selectedValue: currency,
-                itemLabelBuilder: (c) => c,
-                onSelected: (v) => setSheetState(() => currency = v),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: balanceCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: language.translate('dashboard_account_balance'),
-                ),
-              ),
-            ],
-          );
-        },
-        footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final name = nameCtrl.text.trim();
-                if (name.isEmpty) return;
-                final balance =
-                    parseLocalizedNumber(context, balanceCtrl.text.trim()) ?? 0;
-                this.context.read<DashboardBloc>().add(
-                  CreateAccountRequested(
-                    name: name,
-                    bank: bankCtrl.text.trim().isEmpty
-                        ? null
-                        : bankCtrl.text.trim(),
-                    number: numberCtrl.text.trim().isEmpty
-                        ? null
-                        : numberCtrl.text.trim(),
-                    currency: currency,
-                    balance: balance,
+                  Text(
+                    '${formatLocalizedNumber(context, rate.rate, minimumFractionDigits: 4, maximumFractionDigits: 4)} TJS',
+                    style: textStyles.bodyMono.copyWith(
+                      color: colors.textPrimary,
+                    ),
                   ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
+                ],
               ),
-              child: Text(language.translate('common_create')),
+            );
+          }).toList(),
+        ),
+      ),
+      const SizedBox(height: 20),
+      Text(
+        languageCubit.translate('dashboard_converter_title'),
+        style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+      ),
+      const SizedBox(height: 8),
+      _CurrencyConverterCard(rates: ratesReport.rates),
+    ],
+  );
+}
+
+Future<void> _showCreateAccountSheet(BuildContext context) async {
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  final language = context.read<LanguageCubit>();
+  final nameCtrl = TextEditingController();
+  final bankCtrl = TextEditingController();
+  final numberCtrl = TextEditingController();
+  final balanceCtrl = TextEditingController(text: '0');
+  String currency = 'TJS';
+
+  try {
+    await LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('dashboard_account_add'),
+      builder: (context, setSheetState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: language.translate('dashboard_account_name'),
+              ),
             ),
-          );
-        },
-      );
-    } finally {
-      nameCtrl.dispose();
-      bankCtrl.dispose();
-      numberCtrl.dispose();
-      balanceCtrl.dispose();
-    }
+            const SizedBox(height: 12),
+            TextField(
+              controller: bankCtrl,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: language.translate('dashboard_account_bank'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: numberCtrl,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: language.translate('dashboard_account_number'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ExpansibleWidget<String>.selection(
+              cardPadding: EdgeInsets.zero,
+              tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+              title: Text(
+                currency,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              items: const ['TJS', 'USD', 'EUR', 'RUB'],
+              selectedValue: currency,
+              itemLabelBuilder: (c) => c,
+              onSelected: (v) => setSheetState(() => currency = v),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: balanceCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: language.translate('dashboard_account_balance'),
+              ),
+            ),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              final balance =
+                  parseLocalizedNumber(context, balanceCtrl.text.trim()) ?? 0;
+              context.read<DashboardBloc>().add(
+                CreateAccountRequested(
+                  name: name,
+                  bank: bankCtrl.text.trim().isEmpty
+                      ? null
+                      : bankCtrl.text.trim(),
+                  number: numberCtrl.text.trim().isEmpty
+                      ? null
+                      : numberCtrl.text.trim(),
+                  currency: currency,
+                  balance: balance,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              elevation: 0,
+            ),
+            child: Text(language.translate('common_create')),
+          ),
+        );
+      },
+    );
+  } finally {
+    nameCtrl.dispose();
+    bankCtrl.dispose();
+    numberCtrl.dispose();
+    balanceCtrl.dispose();
   }
 }
 

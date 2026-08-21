@@ -100,8 +100,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _onSessionSoftExpiry(event, emit);
       return;
     }
+    if (event is ActingStoreUpdated) {
+      _onActingStoreUpdated(event, emit);
+      return;
+    }
     if (event is LogoutRequested) {
       await _onLogoutRequested(event, emit);
+    }
+  }
+
+  void _onActingStoreUpdated(
+    ActingStoreUpdated event,
+    Emitter<AuthState> emit,
+  ) {
+    if (state is AuthAuthenticated) {
+      final current = state as AuthAuthenticated;
+      emit(
+        current.copyWith(storeId: event.storeId, storeName: event.storeName),
+      );
     }
   }
 
@@ -166,6 +182,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final result = await _authRepository.login(
         event.username.trim(),
         event.password,
+        storeId: event.storeId,
       );
       switch (result) {
         case LoginSuccess(:final user):
@@ -309,6 +326,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         username: user.username,
         name: user.name,
         role: user.role,
+        storeId: user.storeId,
+        storeName: user.storeName,
         accessTokenExpiresAt: user.accessTokenExpiresAt,
       ),
     );

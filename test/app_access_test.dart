@@ -13,13 +13,11 @@ void main() {
     }
   });
 
-  test('director is the only role with system administration access', () {
+  test('director and owner have system administration access', () {
     for (final role in UserRole.values) {
-      expect(AppAccess.canOpen(role, '/users'), role == UserRole.director);
-      expect(
-        AppAccess.canOpen(role, '/integrations'),
-        role == UserRole.director,
-      );
+      final hasAccess = role == UserRole.director || role == UserRole.owner;
+      expect(AppAccess.canOpen(role, '/users'), hasAccess);
+      expect(AppAccess.canOpen(role, '/integrations'), hasAccess);
     }
   });
 

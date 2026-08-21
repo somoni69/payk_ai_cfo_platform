@@ -158,6 +158,32 @@ class ApiClient {
     return _accessToken;
   }
 
+  static final RegExp _publicMediaExt = RegExp(
+    r'\.(jpe?g|png|webp|gif|svg)$',
+    caseSensitive: false,
+  );
+
+  /// Resolves full media URL. Documents (non-images) append `?token=`
+  /// to maintain store isolation (commit 8ac36a7).
+  String mediaUrl(String? value) {
+    if (value == null || value.trim().isEmpty) return '';
+    final trimmed = value.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    final baseUrl = dio.options.baseUrl;
+    final normalized = trimmed.replaceFirst(RegExp(r'^/+'), '');
+    final fullUrl = '$baseUrl/$normalized';
+    if (_publicMediaExt.hasMatch(trimmed)) {
+      return fullUrl;
+    }
+    final token = _accessToken;
+    if (token != null && token.isNotEmpty) {
+      return '$fullUrl?token=${Uri.encodeComponent(token)}';
+    }
+    return fullUrl;
+  }
+
   Future<void> clearAccessToken() async {
     if (_accessToken != null) ExpiringRequestCache.invalidateAll();
     _accessToken = null;

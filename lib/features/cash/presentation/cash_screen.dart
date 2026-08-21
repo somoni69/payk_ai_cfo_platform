@@ -408,6 +408,7 @@ class _CashViewState extends State<CashView>
         final loadedState = state is CashLoaded ? state : null;
 
         return Scaffold(
+          floatingActionButtonLocation: kLedgerShellFabLocation,
           floatingActionButton:
               (!isViewer && _tabController.index == 0 && loadedState != null)
               ? FloatingActionButton.extended(
@@ -488,10 +489,7 @@ class _CashViewState extends State<CashView>
                     IconButton(
                       tooltip: language.translate('cash_download_report'),
                       onPressed: () => _showReportDownloadBottomSheet(context),
-                      icon: Icon(
-                        TablerIcons.dots_vertical,
-                        color: colors.brand,
-                      ),
+                      icon: Icon(TablerIcons.download, color: colors.brand),
                     ),
                   ],
                   bottom: LedgerTabBar(

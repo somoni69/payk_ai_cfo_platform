@@ -3,6 +3,7 @@ import 'user_role.dart';
 
 /// Application modules that can be protected at navigation boundaries.
 enum AppCapability {
+  network,
   dashboard,
   cash,
   tasks,
@@ -30,6 +31,7 @@ enum AppCapability {
 /// never be treated as a replacement for server-side RBAC.
 extension UserRoleAccess on UserRole {
   Set<AppCapability> get capabilities => switch (this) {
+    UserRole.owner ||
     UserRole.director => const <AppCapability>{...AppCapability.values},
     UserRole.manager => const <AppCapability>{
       AppCapability.dashboard,
@@ -93,7 +95,7 @@ extension UserRoleAccess on UserRole {
   bool canManage(AppCapability capability) {
     if (!can(capability)) return false;
     return switch (this) {
-      UserRole.director || UserRole.manager => true,
+      UserRole.owner || UserRole.director || UserRole.manager => true,
       UserRole.accountant =>
         capability == AppCapability.cash ||
             capability == AppCapability.finOps ||
@@ -122,6 +124,7 @@ extension UserRoleAccess on UserRole {
   bool canDelete(AppCapability capability) => canManage(capability);
 
   String get landingLocation => switch (this) {
+    UserRole.owner => '/network',
     UserRole.cashier => '/cash',
     UserRole.hr => '/tasks',
     // Dashboard shows revenue — marketer starts in marketing (web parity).
@@ -135,6 +138,7 @@ extension UserRoleAccess on UserRole {
 
 abstract final class AppAccess {
   static const Map<String, AppCapability> _pathCapabilities = {
+    '/network': AppCapability.network,
     '/dashboard': AppCapability.dashboard,
     '/cash': AppCapability.cash,
     '/tasks': AppCapability.tasks,

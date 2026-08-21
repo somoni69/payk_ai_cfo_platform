@@ -384,7 +384,7 @@ extension _CashTabBuilders on _CashViewState {
     return RefreshIndicator(
       onRefresh: () => _refreshCash(context),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
         itemCount: state.shifts.length,
         separatorBuilder: (context, index) => const SizedBox(height: 6),
         itemBuilder: (context, index) {
@@ -518,7 +518,7 @@ extension _CashTabBuilders on _CashViewState {
 
     if (summaries.isEmpty) {
       return ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
         children: [
           const LedgerAdvicePanel(module: 'cash'),
           const SalesProfitCard(),
@@ -536,7 +536,7 @@ extension _CashTabBuilders on _CashViewState {
     return RefreshIndicator(
       onRefresh: () => _refreshCash(context),
       child: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
         itemCount: summaries.length + 2,
         separatorBuilder: (context, index) => const SizedBox(height: 14),
         itemBuilder: (context, index) {

@@ -283,7 +283,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
         );
       },
       child: ListView.separated(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
         itemCount: runs.length,
         separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
@@ -395,7 +395,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
       itemCount: templates.length,
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -468,7 +468,7 @@ class _ChecklistsViewState extends State<ChecklistsView>
     final completedRuns = summary.where((r) => r.percent >= 100).length;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
       children: [
         LedgerCard(
           child: Row(

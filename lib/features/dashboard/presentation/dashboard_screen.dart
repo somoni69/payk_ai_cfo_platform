@@ -73,58 +73,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class DashboardView extends StatefulWidget {
-  const DashboardView({super.key});
-
-  @override
-  State<DashboardView> createState() => _DashboardViewState();
+// Разделение тысяч для числовых сумм
+String _formatAmount(BuildContext context, double amount) {
+  return formatLocalizedNumber(context, amount);
 }
 
-class _DashboardViewState extends State<DashboardView> {
-  DashboardSection? _openReport;
+void _openDashboardReport(BuildContext context, DashboardSection section) {
+  final bloc = context.read<DashboardBloc>();
+  bloc.add(LoadDashboardSection(section));
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: DashboardReportScreen(section: section),
+      ),
+    ),
+  );
+}
 
-  void _openDashboardReport(DashboardSection section) {
-    setState(() => _openReport = section);
-    context.read<DashboardBloc>().add(LoadDashboardSection(section));
-  }
+String _reportTitle(LanguageCubit language, DashboardSection section) {
+  return language.translate(switch (section) {
+    DashboardSection.pnl => 'dashboard_tab_pnl',
+    DashboardSection.planFact => 'dashboard_tab_plan_fact',
+    DashboardSection.breakEven => 'dashboard_tab_break_even',
+    DashboardSection.abc => 'dashboard_tab_abc',
+    DashboardSection.accountsRates => 'dashboard_tab_accounts_rates',
+    DashboardSection.clients => 'dashboard_tab_clients',
+    DashboardSection.aiInsights => 'dashboard_tab_ai_insights',
+  });
+}
 
-  void _closeDashboardReport() {
-    setState(() => _openReport = null);
-  }
+Widget _buildOpenedReport(BuildContext context, DashboardSection section) {
+  return switch (section) {
+    DashboardSection.pnl => _buildLazyDashboardSection<PnlReport>(
+      section: DashboardSection.pnl,
+      select: (loaded) => loaded.pnl,
+      contentBuilder: _buildPnlTab,
+    ),
+    DashboardSection.planFact => _buildLazyDashboardSection<PlanFactReport>(
+      section: DashboardSection.planFact,
+      select: (loaded) => loaded.planFact,
+      contentBuilder: _buildPlanFactTab,
+    ),
+    DashboardSection.breakEven => _buildLazyDashboardSection<BreakEvenAnalysis>(
+      section: DashboardSection.breakEven,
+      select: (loaded) => loaded.breakEven,
+      contentBuilder: _buildBreakEvenTab,
+    ),
+    DashboardSection.abc => _buildLazyDashboardSection<AbcAnalysis>(
+      section: DashboardSection.abc,
+      select: (loaded) => loaded.abc,
+      contentBuilder: _buildAbcTab,
+    ),
+    DashboardSection.accountsRates =>
+      _buildLazyDashboardSection<_AccountsRatesData>(
+        section: DashboardSection.accountsRates,
+        select: (loaded) {
+          final accounts = loaded.bankAccounts;
+          final rates = loaded.rates;
+          return accounts == null || rates == null
+              ? null
+              : _AccountsRatesData(accounts, rates);
+        },
+        contentBuilder: (context, data, currency) {
+          return _buildAccountsRatesTab(
+            context,
+            data.accounts,
+            data.rates,
+            currency,
+          );
+        },
+      ),
+    DashboardSection.clients =>
+      _buildLazyDashboardSection<ClientAnalysisReport>(
+        section: DashboardSection.clients,
+        select: (loaded) => loaded.clients,
+        contentBuilder: (context, data, currency) =>
+            _buildClientsTab(context, data),
+      ),
+    DashboardSection.aiInsights => _buildLazyDashboardSection<AiInsightsReport>(
+      section: DashboardSection.aiInsights,
+      select: (loaded) => loaded.aiInsights,
+      contentBuilder: _buildAiInsightsTab,
+    ),
+  };
+}
 
-  String _reportTitle(LanguageCubit language, DashboardSection section) {
-    return language.translate(switch (section) {
-      DashboardSection.pnl => 'dashboard_tab_pnl',
-      DashboardSection.planFact => 'dashboard_tab_plan_fact',
-      DashboardSection.breakEven => 'dashboard_tab_break_even',
-      DashboardSection.abc => 'dashboard_tab_abc',
-      DashboardSection.accountsRates => 'dashboard_tab_accounts_rates',
-      DashboardSection.clients => 'dashboard_tab_clients',
-      DashboardSection.aiInsights => 'dashboard_tab_ai_insights',
-    });
-  }
+/// Полноэкранный детальный просмотр финансового отчета (P&L, План-Факт, Безубыточность и т.д.).
+/// Открывается поверх root navigator, скрывая bottomappbar и NotificationBell.
+class DashboardReportScreen extends StatelessWidget {
+  final DashboardSection section;
 
-  // Разделение тысяч для числовых сумм
-  String _formatAmount(BuildContext context, double amount) {
-    return formatLocalizedNumber(context, amount);
-  }
+  const DashboardReportScreen({super.key, required this.section});
 
-  Future<void> _refreshDashboard(BuildContext context) {
+  Future<void> _refreshReport(BuildContext context) {
     final completion = Completer<void>();
-    final section = _openReport;
-    if (section == null) {
-      context.read<DashboardBloc>().add(
-        LoadDashboardData(forceRefresh: true, completion: completion),
-      );
-    } else {
-      context.read<DashboardBloc>().add(
-        LoadDashboardSection(
-          section,
-          forceRefresh: true,
-          completion: completion,
-        ),
-      );
-    }
+    context.read<DashboardBloc>().add(
+      LoadDashboardSection(section, forceRefresh: true, completion: completion),
+    );
     return completion.future;
   }
 
@@ -138,6 +184,89 @@ class _DashboardViewState extends State<DashboardView> {
       return state is AuthAuthenticated &&
           state.role.canWrite(AppCapability.dashboard);
     });
+
+    return BlocBuilder<DashboardBloc, DashboardState>(
+      builder: (context, state) {
+        final currency = state is DashboardLoaded ? state.currency : 'TJS';
+        final loadedState = state is DashboardLoaded ? state : null;
+
+        return Scaffold(
+          backgroundColor: colors.background,
+          floatingActionButtonLocation: kLedgerShellFabLocation,
+          floatingActionButton:
+              (section == DashboardSection.planFact &&
+                  canWrite &&
+                  loadedState != null)
+              ? FloatingActionButton.extended(
+                  onPressed: () {
+                    final period =
+                        loadedState.planFact?.period ?? _defaultPlanPeriod();
+                    _showCreatePlanSheet(context, period);
+                  },
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  highlightElevation: 0,
+                  focusElevation: 0,
+                  hoverElevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: colors.brand),
+                  ),
+                  icon: const Icon(TablerIcons.plus),
+                  label: Text(
+                    languageCubit.translate('dashboard_plan_add'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                )
+              : null,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                LedgerCollapsingHeader(
+                  title: _reportTitle(languageCubit, section),
+                  pinned: true,
+                  floating: false,
+                  snap: false,
+                  actions: [_buildCurrencySelector(context, currency)],
+                ),
+              ];
+            },
+            body: RefreshIndicator(
+              onRefresh: () => _refreshReport(context),
+              child: _buildOpenedReport(context, section),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+Future<void> _refreshDashboard(BuildContext context) {
+  final completion = Completer<void>();
+  context.read<DashboardBloc>().add(
+    LoadDashboardData(forceRefresh: true, completion: completion),
+  );
+  return completion.future;
+}
+
+class DashboardView extends StatefulWidget {
+  const DashboardView({super.key});
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final languageCubit = context.watch<LanguageCubit>();
 
     return BlocConsumer<DashboardBloc, DashboardState>(
       listenWhen: (previous, current) =>
@@ -198,177 +327,51 @@ class _DashboardViewState extends State<DashboardView> {
         final loadedState = state is DashboardLoaded ? state : null;
         final currency = loadedState?.currency ?? 'TJS';
 
-        final openReport = _openReport;
-        return PopScope(
-          canPop: openReport == null,
-          onPopInvokedWithResult: (didPop, _) {
-            if (didPop) return;
-            if (_openReport != null) _closeDashboardReport();
-          },
-          child: Scaffold(
-            floatingActionButton:
-                (openReport == DashboardSection.planFact &&
-                    canWrite &&
-                    loadedState != null)
-                ? FloatingActionButton.extended(
-                    onPressed: () {
-                      final period =
-                          loadedState.planFact?.period ?? _defaultPlanPeriod();
-                      _showCreatePlanSheet(context, period);
-                    },
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.plus),
-                    label: Text(
-                      languageCubit.translate('dashboard_plan_add'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
+        return Scaffold(
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                LedgerCollapsingHeader(
+                  title: languageCubit.translate('dashboard_title'),
+                  titleWidget: Row(
+                    children: [
+                      Image.asset(
+                        'assets/images/payk_icon.png',
+                        height: 24,
+                        fit: BoxFit.contain,
+                        cacheWidth: 72,
+                        filterQuality: FilterQuality.low,
                       ),
-                    ),
-                  )
-                : null,
-            body: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  LedgerCollapsingHeader(
-                    title: openReport == null
-                        ? languageCubit.translate('dashboard_title')
-                        : _reportTitle(languageCubit, openReport),
-                    titleWidget: openReport == null
-                        ? Row(
-                            children: [
-                              Image.asset(
-                                'assets/images/payk_icon.png',
-                                height: 24,
-                                fit: BoxFit.contain,
-                                cacheWidth: 72,
-                                filterQuality: FilterQuality.low,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  languageCubit.translate('dashboard_title'),
-                                  style: textStyles.h1Sans.copyWith(
-                                    fontSize: context.fontSize(22),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                            ],
-                          )
-                        : Row(
-                            children: [
-                              IconButton(
-                                tooltip: languageCubit.translate(
-                                  'dashboard_back',
-                                ),
-                                onPressed: _closeDashboardReport,
-                                icon: Icon(
-                                  TablerIcons.arrow_left,
-                                  color: colors.brand,
-                                ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  _reportTitle(languageCubit, openReport),
-                                  style: textStyles.h1Sans.copyWith(
-                                    fontSize: context.fontSize(20),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
-                                ),
-                              ),
-                            ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          languageCubit.translate('dashboard_title'),
+                          style: textStyles.h1Sans.copyWith(
+                            fontSize: context.fontSize(22),
+                            fontWeight: FontWeight.w600,
                           ),
-                    pinned: true,
-                    floating: false,
-                    snap: false,
-                    actions: [
-                      const NotificationBell(),
-                      _buildCurrencySelector(context, currency),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
                     ],
                   ),
-                ];
-              },
-              body: loadedState == null
-                  ? const DashboardOverviewShimmer()
-                  : (openReport == null
-                        ? _buildOverviewHome(context, loadedState, currency)
-                        : _buildOpenedReport(openReport)),
-            ),
+                  pinned: true,
+                  floating: false,
+                  snap: false,
+                  actions: [
+                    const NotificationBell(),
+                    _buildCurrencySelector(context, currency),
+                  ],
+                ),
+              ];
+            },
+            body: loadedState == null
+                ? const DashboardOverviewShimmer()
+                : _buildOverviewHome(context, loadedState, currency),
           ),
         );
       },
     );
-  }
-
-  Widget _buildOpenedReport(DashboardSection section) {
-    return switch (section) {
-      DashboardSection.pnl => _buildLazyDashboardSection<PnlReport>(
-        section: DashboardSection.pnl,
-        select: (loaded) => loaded.pnl,
-        contentBuilder: _buildPnlTab,
-      ),
-      DashboardSection.planFact => _buildLazyDashboardSection<PlanFactReport>(
-        section: DashboardSection.planFact,
-        select: (loaded) => loaded.planFact,
-        contentBuilder: _buildPlanFactTab,
-      ),
-      DashboardSection.breakEven =>
-        _buildLazyDashboardSection<BreakEvenAnalysis>(
-          section: DashboardSection.breakEven,
-          select: (loaded) => loaded.breakEven,
-          contentBuilder: _buildBreakEvenTab,
-        ),
-      DashboardSection.abc => _buildLazyDashboardSection<AbcAnalysis>(
-        section: DashboardSection.abc,
-        select: (loaded) => loaded.abc,
-        contentBuilder: _buildAbcTab,
-      ),
-      DashboardSection.accountsRates =>
-        _buildLazyDashboardSection<_AccountsRatesData>(
-          section: DashboardSection.accountsRates,
-          select: (loaded) {
-            final accounts = loaded.bankAccounts;
-            final rates = loaded.rates;
-            return accounts == null || rates == null
-                ? null
-                : _AccountsRatesData(accounts, rates);
-          },
-          contentBuilder: (context, data, currency) {
-            return _buildAccountsRatesTab(
-              context,
-              data.accounts,
-              data.rates,
-              currency,
-            );
-          },
-        ),
-      DashboardSection.clients =>
-        _buildLazyDashboardSection<ClientAnalysisReport>(
-          section: DashboardSection.clients,
-          select: (loaded) => loaded.clients,
-          contentBuilder: (context, data, currency) =>
-              _buildClientsTab(context, data),
-        ),
-      DashboardSection.aiInsights =>
-        _buildLazyDashboardSection<AiInsightsReport>(
-          section: DashboardSection.aiInsights,
-          select: (loaded) => loaded.aiInsights,
-          contentBuilder: _buildAiInsightsTab,
-        ),
-    };
   }
 }

@@ -1,104 +1,99 @@
 part of 'dashboard_screen.dart';
 
-extension _DashboardClientsTab on _DashboardViewState {
-  Widget _buildClientsTab(BuildContext context, ClientAnalysisReport report) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final language = context.read<LanguageCubit>();
-    final oCcy = localizedDecimalFormat(context);
+Widget _buildClientsTab(BuildContext context, ClientAnalysisReport report) {
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  final language = context.read<LanguageCubit>();
+  final oCcy = localizedDecimalFormat(context);
 
-    Widget section(String title, List<ClientAnalysisRow> rows, Color accent) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 8),
-          if (rows.isEmpty)
-            LedgerCard(
-              child: Text(
-                language.translate('dashboard_clients_empty'),
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
+  Widget section(String title, List<ClientAnalysisRow> rows, Color accent) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        if (rows.isEmpty)
+          LedgerCard(
+            child: Text(
+              language.translate('dashboard_clients_empty'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
               ),
-            )
-          else
-            ...rows.map(
-              (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: LedgerCard(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              row.name,
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
+            ),
+          )
+        else
+          ...rows.map(
+            (row) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: LedgerCard(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            row.name,
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w500,
                             ),
-                            const SizedBox(height: 2),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            language.translate(
+                              'dashboard_clients_purchases',
+                              params: {'count': row.purchases},
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          if (row.daysSince != null)
                             Text(
                               language.translate(
-                                'dashboard_clients_purchases',
-                                params: {'count': row.purchases},
+                                'dashboard_clients_days_since',
+                                params: {'days': row.daysSince},
                               ),
-                              style: textStyles.captionSans.copyWith(
-                                color: colors.textSecondary,
+                              style: textStyles.smallSans.copyWith(
+                                color: colors.textTooltip,
                               ),
                             ),
-                            if (row.daysSince != null)
-                              Text(
-                                language.translate(
-                                  'dashboard_clients_days_since',
-                                  params: {'days': row.daysSince},
-                                ),
-                                style: textStyles.smallSans.copyWith(
-                                  color: colors.textTooltip,
-                                ),
-                              ),
-                          ],
-                        ),
+                        ],
                       ),
-                      Text(
-                        '${oCcy.format(row.total)} TJS',
-                        style: textStyles.bodyMono.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: accent,
-                        ),
+                    ),
+                    Text(
+                      '${oCcy.format(row.total)} TJS',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: accent,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-        ],
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => _refreshDashboard(context),
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          section(
-            language.translate('dashboard_clients_frequent'),
-            report.frequent,
-            colors.accentGreen,
           ),
-          const SizedBox(height: 20),
-          section(
-            language.translate('dashboard_clients_dormant'),
-            report.dormant,
-            colors.accentRed,
-          ),
-        ],
-      ),
+      ],
     );
   }
+
+  return ListView(
+    padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+    children: [
+      section(
+        language.translate('dashboard_clients_frequent'),
+        report.frequent,
+        colors.accentGreen,
+      ),
+      const SizedBox(height: 20),
+      section(
+        language.translate('dashboard_clients_dormant'),
+        report.dormant,
+        colors.accentRed,
+      ),
+    ],
+  );
 }

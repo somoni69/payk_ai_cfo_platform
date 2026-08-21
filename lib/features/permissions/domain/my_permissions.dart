@@ -123,6 +123,7 @@ class MyPermissions {
 /// Maps app navigation capabilities ↔ backend matrix module keys.
 abstract final class PermissionModules {
   static String? keyFor(AppCapability capability) => switch (capability) {
+    AppCapability.network => 'network',
     AppCapability.dashboard => 'dashboard',
     // Dashboard finance tabs share "finance" on backend.
     AppCapability.cash => 'cash',

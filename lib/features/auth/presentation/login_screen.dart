@@ -9,8 +9,11 @@ import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_event.dart';
 import '../../../features/auth/bloc/auth_state.dart';
+import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/payk_logo.dart';
+
+import '../data/api_auth_repository.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,8 +29,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _twoFactorController = TextEditingController();
 
+  List<LoginStore> _stores = const [];
+  int? _selectedStoreId;
+
   /// Keeps the SMS form visible across [AuthLoading] while verifying the code.
   bool _showTwoFactor = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStores();
+  }
+
+  Future<void> _loadStores() async {
+    try {
+      final stores = await ApiAuthRepository().fetchLoginStores();
+      if (!mounted) return;
+      setState(() {
+        _stores = stores;
+      });
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
@@ -174,6 +196,68 @@ class _LoginScreenState extends State<LoginScreen> {
               language.translate('login_title'),
               style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
             ),
+            if (_stores.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ExpansibleWidget<int?>.selection(
+                cardPadding: EdgeInsets.zero,
+                tilePadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                title: Row(
+                  children: [
+                    Icon(
+                      TablerIcons.building_store,
+                      size: 20,
+                      color: context.colors.brand,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _selectedStoreId == null
+                            ? language.translate('login_store_root_owner')
+                            : (_stores
+                                      .where((s) => s.id == _selectedStoreId)
+                                      .map(
+                                        (s) =>
+                                            s.location != null &&
+                                                s.location!.isNotEmpty
+                                            ? '${s.name} (${s.location})'
+                                            : s.name,
+                                      )
+                                      .firstOrNull ??
+                                  language.translate('login_store_root_owner')),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  language.translate('login_store_label'),
+                  style: textStyles.captionSans.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+                items: [null, ..._stores.map((s) => s.id)],
+                selectedValue: _selectedStoreId,
+                itemLabelBuilder: (id) {
+                  if (id == null) {
+                    return language.translate('login_store_root_owner');
+                  }
+                  final s = _stores.where((x) => x.id == id).firstOrNull;
+                  if (s == null) return '#$id';
+                  return s.location != null && s.location!.isNotEmpty
+                      ? '${s.name} (${s.location})'
+                      : s.name;
+                },
+                onSelected: isLoading
+                    ? null
+                    : (val) => setState(() => _selectedStoreId = val),
+              ),
+            ],
             const SizedBox(height: 16),
             TextFormField(
               controller: _usernameController,
@@ -306,6 +390,7 @@ class _LoginScreenState extends State<LoginScreen> {
       LoginSubmitted(
         username: _usernameController.text,
         password: _passwordController.text,
+        storeId: _selectedStoreId,
       ),
     );
   }

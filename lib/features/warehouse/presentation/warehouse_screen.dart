@@ -102,6 +102,7 @@ class _WarehouseViewState extends State<WarehouseView>
         authState.role.canManage(AppCapability.warehouse);
 
     return Scaffold(
+      floatingActionButtonLocation: kLedgerShellFabLocation,
       floatingActionButton: canManage && _tabController.index < 3
           ? switch (_tabController.index) {
               0 => FloatingActionButton.extended(
@@ -896,7 +897,7 @@ class _WarehouseViewState extends State<WarehouseView>
     final analysis = state.stockAnalysis;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
       children: [
         LedgerCard(
           child: Column(

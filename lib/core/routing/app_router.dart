@@ -17,6 +17,7 @@ import '../../features/integrations/presentation/integrations_screen.dart';
 import '../../features/legal/presentation/legal_screen.dart';
 import '../../features/marketing/presentation/marketing_screen.dart';
 import '../../features/meta/presentation/meta_screen.dart';
+import '../../features/network/presentation/network_screen.dart';
 import '../../features/notifications/presentation/inbox_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
@@ -107,6 +108,13 @@ GoRouter createRouter(
 
       // Вход в систему (MOB-05)
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+
+      // Сеть магазинов «Пайк» (Multistore Root)
+      GoRoute(
+        path: '/network',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const NetworkScreen(),
+      ),
 
       // Предупреждения / Инфо (MOB-04)
       GoRoute(

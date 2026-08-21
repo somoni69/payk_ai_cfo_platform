@@ -20,6 +20,7 @@ class LedgerCard extends StatelessWidget {
   final Color? backgroundColor;
   final Color? borderColor;
   final double borderRadius;
+  final BoxConstraints? constraints;
   final VoidCallback? onTap;
   final LedgerCardStyle style;
 
@@ -30,6 +31,7 @@ class LedgerCard extends StatelessWidget {
     this.backgroundColor,
     this.borderColor,
     this.borderRadius = 16,
+    this.constraints,
     this.onTap,
     this.style = LedgerCardStyle.outlined,
   });
@@ -56,6 +58,7 @@ class LedgerCard extends StatelessWidget {
     };
 
     return Container(
+      constraints: constraints,
       decoration: BoxDecoration(
         color: fill,
         border: border,

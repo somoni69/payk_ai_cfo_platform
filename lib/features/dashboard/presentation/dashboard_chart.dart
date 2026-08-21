@@ -29,7 +29,7 @@ class CashFlowChartPainter extends CustomPainter {
     final double width = size.width;
 
     const double chartLeft = 45.0;
-    const double chartBottom = 155.0;
+    final double chartBottom = size.height - 24.0;
     const double chartTop = 10.0;
     final double chartWidth = width - chartLeft;
     final double chartHeight = chartBottom - chartTop;
@@ -44,7 +44,7 @@ class CashFlowChartPainter extends CustomPainter {
     if (rangeY < 10.0) rangeY = 10.0;
 
     final int len = points.length;
-    final double stepX = chartWidth / (len - 1);
+    final double stepX = len > 1 ? chartWidth / (len - 1) : 0.0;
 
     final dashedPaint = Paint()
       ..color = gridColor.withValues(alpha: 0.6)
@@ -176,26 +176,44 @@ class CashFlowChartPainter extends CustomPainter {
     canvas.drawCircle(Offset(maxExpenseX, maxExpenseY), 4.5, dotPaint);
     canvas.drawCircle(Offset(maxExpenseX, maxExpenseY), 4.5, dotRedStrokePaint);
 
-    // Отрисовка дат на X-оси (каждые 5 дней для предотвращения наложений)
-    for (int i = 0; i < len; i++) {
-      if (i % 5 == 0 || i == len - 1) {
-        final p = points[i];
-        final x = chartLeft + i * stepX;
-        final dateStr = formatLocalizedDateTimeForLocale(
-          p.date,
-          locale,
-          style: LocalizedDateTimeStyle.date,
-        );
+    // Отрисовка дат на X-оси: 4 аккуратных равномерных метки в формате dd.MM без наложений
+    if (len > 0) {
+      final labelIndices = <int>[];
+      if (len <= 4) {
+        labelIndices.addAll(List.generate(len, (i) => i));
+      } else {
+        const int targetCount = 4;
+        final double step = (len - 1) / (targetCount - 1);
+        for (int k = 0; k < targetCount; k++) {
+          final idx = (k * step).round().clamp(0, len - 1);
+          if (!labelIndices.contains(idx)) {
+            labelIndices.add(idx);
+          }
+        }
+      }
+
+      for (final idx in labelIndices) {
+        final p = points[idx];
+        final d = p.date;
+        final day = d.day.toString().padLeft(2, '0');
+        final month = d.month.toString().padLeft(2, '0');
+        final dateStr = '$day.$month';
 
         final textPainter = TextPainter(
           text: TextSpan(text: dateStr, style: textStyle),
           textDirection: TextDirection.ltr,
         )..layout();
 
-        textPainter.paint(
-          canvas,
-          Offset(x - textPainter.width / 2, chartBottom + 6),
-        );
+        double posX;
+        if (idx == 0) {
+          posX = chartLeft;
+        } else if (idx == len - 1) {
+          posX = width - textPainter.width;
+        } else {
+          posX = chartLeft + idx * stepX - textPainter.width / 2;
+        }
+
+        textPainter.paint(canvas, Offset(posX, chartBottom + 6));
       }
     }
   }

@@ -50,7 +50,7 @@ extension _TasksCalendarBuilders on _TasksViewState {
     return RefreshIndicator(
       onRefresh: () => _refreshTasks(context),
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

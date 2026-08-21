@@ -21,6 +21,12 @@ class AuthUser {
 
   final UserRole role;
 
+  /// ID действующего магазина (если выбран или привязан).
+  final int? storeId;
+
+  /// Название действующего магазина (если известно).
+  final String? storeName;
+
   /// UTC expiry of the access token when known (from JWT `exp`).
   final DateTime? accessTokenExpiresAt;
 
@@ -29,6 +35,8 @@ class AuthUser {
     required this.username,
     this.name = '',
     required this.role,
+    this.storeId,
+    this.storeName,
     this.accessTokenExpiresAt,
   });
 
@@ -47,6 +55,8 @@ class AuthUser {
     String? username,
     String? name,
     UserRole? role,
+    int? storeId,
+    String? storeName,
     DateTime? accessTokenExpiresAt,
   }) {
     return AuthUser(
@@ -54,6 +64,8 @@ class AuthUser {
       username: username ?? this.username,
       name: name ?? this.name,
       role: role ?? this.role,
+      storeId: storeId ?? this.storeId,
+      storeName: storeName ?? this.storeName,
       accessTokenExpiresAt: accessTokenExpiresAt ?? this.accessTokenExpiresAt,
     );
   }

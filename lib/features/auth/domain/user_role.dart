@@ -2,6 +2,9 @@
 ///
 /// Domain-level enum: no dependency on BLoC or presentation layers.
 enum UserRole {
+  /// Владелец сети магазинов «Пайк»: сводка сети, вход в любой магазин.
+  owner,
+
   /// Директор: видит все, управляет всем (SYS-02).
   director,
 
@@ -25,6 +28,7 @@ enum UserRole {
 
   /// Localization key for [LanguageCubit.translate], e.g. `role_director`.
   String get labelKey => switch (this) {
+    UserRole.owner => 'role_owner',
     UserRole.director => 'role_director',
     UserRole.manager => 'role_manager',
     UserRole.accountant => 'role_accountant',
@@ -36,6 +40,7 @@ enum UserRole {
 
   /// Russian fallback label (for logs / non-UI contexts only).
   String get labelRu => switch (this) {
+    UserRole.owner => 'Владелец сети',
     UserRole.director => 'Директор',
     UserRole.manager => 'Менеджер',
     UserRole.accountant => 'Бухгалтер',

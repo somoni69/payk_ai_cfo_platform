@@ -405,7 +405,7 @@ class _ClientsTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.fromLTRB(0, 12, 0, 88),
         children: [
           _StatsBar(stats: state.stats),
           const SizedBox(height: 12),

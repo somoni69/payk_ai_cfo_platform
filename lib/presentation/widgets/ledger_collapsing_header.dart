@@ -90,6 +90,12 @@ class LedgerCollapsingHeader extends StatelessWidget {
         : DefaultTextStyle.merge(style: appBarTitleStyle, child: titleChild);
 
     final bool canPop = ModalRoute.of(context)?.canPop ?? false;
+    final Widget finalTitle = canPop
+        ? Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: headerTitle,
+          )
+        : headerTitle;
 
     return MediaQuery(
       data: mediaQuery.copyWith(textScaler: clampedTextScaler),
@@ -104,7 +110,7 @@ class LedgerCollapsingHeader extends StatelessWidget {
         scrolledUnderElevation: 1.0,
         centerTitle: false,
         titleSpacing: canPop ? 0 : 16,
-        title: headerTitle,
+        title: finalTitle,
         actions: null,
         bottom: bottom,
       ),
