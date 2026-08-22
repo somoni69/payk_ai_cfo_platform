@@ -240,44 +240,44 @@ class _LiquidBottomNav extends StatelessWidget {
               height: 52,
               child: Stack(
                 children: [
-                        AnimatedAlign(
-                          duration: const Duration(milliseconds: 420),
-                          curve: Curves.easeOutCubic,
-                          alignment: bubbleAlign,
-                          child: FractionallySizedBox(
-                            widthFactor: 1 / count,
-                            heightFactor: 1,
-                            child: Padding(
-                              padding: const EdgeInsets.all(2),
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color: colors.brand.withValues(alpha: 0.16),
-                                  borderRadius: BorderRadius.circular(22),
-                                ),
-                              ),
-                            ),
+                  AnimatedAlign(
+                    duration: const Duration(milliseconds: 420),
+                    curve: Curves.easeOutCubic,
+                    alignment: bubbleAlign,
+                    child: FractionallySizedBox(
+                      widthFactor: 1 / count,
+                      heightFactor: 1,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: colors.brand.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(22),
                           ),
                         ),
-                        Row(
-                          children: [
-                            for (var i = 0; i < count; i++)
-                              Expanded(
-                                child: _LiquidNavItem(
-                                  icon: tabs[i].icon,
-                                  label: language.translate(tabs[i].labelKey),
-                                  selected: i == currentIndex,
-                                  onTap: () => onTap(i),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  Row(
+                    children: [
+                      for (var i = 0; i < count; i++)
+                        Expanded(
+                          child: _LiquidNavItem(
+                            icon: tabs[i].icon,
+                            label: language.translate(tabs[i].labelKey),
+                            selected: i == currentIndex,
+                            onTap: () => onTap(i),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          );
+          ),
+        ),
+      ),
+    );
   }
 }
 

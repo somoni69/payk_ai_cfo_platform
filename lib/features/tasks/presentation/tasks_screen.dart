@@ -333,16 +333,23 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
     final language = context.watch<LanguageCubit>();
 
     final totalTasks = state.tasks.length;
-    final completedTasks =
-        state.tasks.where((t) => t.status == TaskStatus.done).length;
+    final completedTasks = state.tasks
+        .where((t) => t.status == TaskStatus.done)
+        .length;
     final overdueTasks = state.tasks
-        .where((t) => t.dueDate.isBefore(DateTime.now()) && t.status != TaskStatus.done)
+        .where(
+          (t) =>
+              t.dueDate.isBefore(DateTime.now()) && t.status != TaskStatus.done,
+        )
         .toList();
     final progress = totalTasks > 0 ? (completedTasks / totalTasks) : 0.0;
 
     final myTasksCount = state.myTasks.length + state.assignedToMe.length;
     final myOverdueCount = state.myTasks
-        .where((t) => t.dueDate.isBefore(DateTime.now()) && t.status != TaskStatus.done)
+        .where(
+          (t) =>
+              t.dueDate.isBefore(DateTime.now()) && t.status != TaskStatus.done,
+        )
         .length;
 
     // Recent 5 tasks for the feed
@@ -352,7 +359,12 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
       onRefresh: () => _refreshTasks(context),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16 + kLiquidNavClearance),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          16 + kLiquidNavClearance,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -660,7 +672,8 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                     title: language.translate('tasks_tab_all_tasks'),
                     badge: '$totalTasks шт.',
                     subtitle: language.translate('tasks_all_projects'),
-                    onTap: () => _openTaskSection(context, TaskSection.allTasks),
+                    onTap: () =>
+                        _openTaskSection(context, TaskSection.allTasks),
                   ),
                 ),
               ],
@@ -676,7 +689,8 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                     title: language.translate('tasks_tab_calendar'),
                     badge: 'Timeline',
                     subtitle: language.translate('tasks_calendar_gantt'),
-                    onTap: () => _openTaskSection(context, TaskSection.calendar),
+                    onTap: () =>
+                        _openTaskSection(context, TaskSection.calendar),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -688,7 +702,8 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                     title: language.translate('tasks_tab_analytics'),
                     badge: 'AI CFO',
                     subtitle: language.translate('tasks_ai_insights'),
-                    onTap: () => _openTaskSection(context, TaskSection.analytics),
+                    onTap: () =>
+                        _openTaskSection(context, TaskSection.analytics),
                   ),
                 ),
               ],
@@ -708,9 +723,13 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => _openTaskSection(context, TaskSection.allTasks),
+                  onPressed: () =>
+                      _openTaskSection(context, TaskSection.allTasks),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -725,7 +744,11 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(TablerIcons.arrow_right, size: 14, color: colors.brand),
+                      Icon(
+                        TablerIcons.arrow_right,
+                        size: 14,
+                        color: colors.brand,
+                      ),
                     ],
                   ),
                 ),
@@ -736,7 +759,10 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
             // 6. Recent Tasks List
             if (recentTasks.isEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 28,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   color: colors.surface,
                   borderRadius: BorderRadius.circular(12),
@@ -745,7 +771,9 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                 child: Center(
                   child: Text(
                     language.translate('tasks_no_tasks'),
-                    style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
                 ),
               )
@@ -761,11 +789,11 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                     canManage: canManage,
                     onTap: canManage
                         ? () => _showEditTaskBottomSheet(
-                              context,
-                              task,
-                              state.projects,
-                              state.assignees,
-                            )
+                            context,
+                            task,
+                            state.projects,
+                            state.assignees,
+                          )
                         : null,
                     onStatusChanged: (isDone) {
                       if (state.pendingStatusTaskIds.contains(task.id)) return;
@@ -823,7 +851,10 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                   child: Icon(icon, color: iconColor, size: 18),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.surfaceNested,
                     borderRadius: BorderRadius.circular(6),
@@ -1019,26 +1050,26 @@ class _TaskSectionScreenState extends State<TaskSectionScreen>
                 child: switch (widget.section) {
                   TaskSection.myTasks => _buildMyTasksTab(context, state),
                   TaskSection.allTasks => _buildAllTasksTab(
-                      context,
-                      filteredTasks,
-                      state.projects,
-                      state.assignees,
-                      state.pendingStatusTaskIds,
-                    ),
+                    context,
+                    filteredTasks,
+                    state.projects,
+                    state.assignees,
+                    state.pendingStatusTaskIds,
+                  ),
                   TaskSection.calendar => _buildCalendarTab(
-                      context,
-                      workloadTasks,
-                      state.projects,
-                      state.assignees,
-                    ),
+                    context,
+                    workloadTasks,
+                    state.projects,
+                    state.assignees,
+                  ),
                   TaskSection.analytics => _buildAnalysisTab(
-                      context,
-                      state.overloaded,
-                      state.criticalPath,
-                      isLoading: state.isAnalyticsLoading,
-                      isLoaded: state.analyticsLoaded,
-                      error: state.analyticsError,
-                    ),
+                    context,
+                    state.overloaded,
+                    state.criticalPath,
+                    isLoading: state.isAnalyticsLoading,
+                    isLoaded: state.analyticsLoaded,
+                    error: state.analyticsError,
+                  ),
                 },
               ),
             ],

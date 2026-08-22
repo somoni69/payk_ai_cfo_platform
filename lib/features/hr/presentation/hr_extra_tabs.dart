@@ -112,10 +112,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: node.status == 'active'
                       ? colors.accentGreen.withValues(alpha: 0.1)
@@ -1534,11 +1531,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     );
   }
 
-  Widget _buildKpiTab(
-    BuildContext context,
-    HrLoaded state, {
-    String? period,
-  }) {
+  Widget _buildKpiTab(BuildContext context, HrLoaded state, {String? period}) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.watch<LanguageCubit>();

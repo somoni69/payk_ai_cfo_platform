@@ -217,10 +217,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                           ),
                                         );
                                       },
-                                icon: const Icon(
-                                  TablerIcons.refresh,
-                                  size: 15,
-                                ),
+                                icon: const Icon(TablerIcons.refresh, size: 15),
                                 label: Text(
                                   localeCubit.translate('integrations_sync'),
                                   style: textStyles.smallSans.copyWith(
@@ -311,10 +308,12 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSuccess
-                                      ? colors.accentGreen
-                                          .withValues(alpha: 0.12)
-                                      : colors.accentRed
-                                          .withValues(alpha: 0.12),
+                                      ? colors.accentGreen.withValues(
+                                          alpha: 0.12,
+                                        )
+                                      : colors.accentRed.withValues(
+                                          alpha: 0.12,
+                                        ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(

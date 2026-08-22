@@ -321,7 +321,10 @@ class _DraggableDealCard extends StatelessWidget {
                       onPressed: stageIdx <= 0
                           ? null
                           : () => context.read<CrmBloc>().add(
-                              MoveDealStageRequested(dealId: deal.id, delta: -1),
+                              MoveDealStageRequested(
+                                dealId: deal.id,
+                                delta: -1,
+                              ),
                             ),
                       icon: const Icon(TablerIcons.chevron_left, size: 18),
                     ),

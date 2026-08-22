@@ -16,7 +16,10 @@ import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum ChecklistSection { runs, templates, summary }
 
-String _checklistSectionTitle(LanguageCubit language, ChecklistSection section) {
+String _checklistSectionTitle(
+  LanguageCubit language,
+  ChecklistSection section,
+) {
   return language.translate(switch (section) {
     ChecklistSection.runs => 'checklists_tab_runs',
     ChecklistSection.templates => 'checklists_tab_templates',
@@ -345,10 +348,8 @@ class _ChecklistsViewState extends State<ChecklistsView> {
                   child: SizedBox(
                     height: 44,
                     child: ElevatedButton.icon(
-                      onPressed: () => _openChecklistSection(
-                        context,
-                        ChecklistSection.runs,
-                      ),
+                      onPressed: () =>
+                          _openChecklistSection(context, ChecklistSection.runs),
                       icon: const Icon(TablerIcons.list_check, size: 17),
                       label: Text(
                         locale.translate('checklists_action_open'),
@@ -425,10 +426,8 @@ class _ChecklistsViewState extends State<ChecklistsView> {
                     params: {'count': '${state.todayRuns.length}'},
                   ),
                   icon: TablerIcons.calendar_event,
-                  onTap: () => _openChecklistSection(
-                    context,
-                    ChecklistSection.runs,
-                  ),
+                  onTap: () =>
+                      _openChecklistSection(context, ChecklistSection.runs),
                 ),
               ),
               const SizedBox(width: 12),
@@ -455,10 +454,8 @@ class _ChecklistsViewState extends State<ChecklistsView> {
                   title: locale.translate('checklists_tab_summary'),
                   subtitle: '$completedRuns из $totalRuns смен закрыто',
                   icon: TablerIcons.chart_bar,
-                  onTap: () => _openChecklistSection(
-                    context,
-                    ChecklistSection.summary,
-                  ),
+                  onTap: () =>
+                      _openChecklistSection(context, ChecklistSection.summary),
                 ),
               ),
             ],
@@ -478,10 +475,8 @@ class _ChecklistsViewState extends State<ChecklistsView> {
                 ),
               ),
               TextButton(
-                onPressed: () => _openChecklistSection(
-                  context,
-                  ChecklistSection.runs,
-                ),
+                onPressed: () =>
+                    _openChecklistSection(context, ChecklistSection.runs),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -599,37 +594,39 @@ class _ChecklistsViewState extends State<ChecklistsView> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      ...run.entries.take(3).map(
-                        (entry) => CheckboxListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            entry.text,
-                            style: textStyles.bodySans.copyWith(
-                              decoration: entry.isDone
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                              color: entry.isDone
-                                  ? colors.textSecondary
-                                  : colors.textPrimary,
-                              fontSize: 13.5,
+                      ...run.entries
+                          .take(3)
+                          .map(
+                            (entry) => CheckboxListTile(
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                              title: Text(
+                                entry.text,
+                                style: textStyles.bodySans.copyWith(
+                                  decoration: entry.isDone
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: entry.isDone
+                                      ? colors.textSecondary
+                                      : colors.textPrimary,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                              value: entry.isDone,
+                              activeColor: colors.brand,
+                              onChanged: (val) {
+                                if (val != null) {
+                                  context.read<ChecklistsBloc>().add(
+                                    ToggleEntryRequested(
+                                      runId: run.id,
+                                      entryId: entry.id,
+                                      isDone: val,
+                                    ),
+                                  );
+                                }
+                              },
                             ),
                           ),
-                          value: entry.isDone,
-                          activeColor: colors.brand,
-                          onChanged: (val) {
-                            if (val != null) {
-                              context.read<ChecklistsBloc>().add(
-                                ToggleEntryRequested(
-                                  runId: run.id,
-                                  entryId: entry.id,
-                                  isDone: val,
-                                ),
-                              );
-                            }
-                          },
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -783,14 +780,14 @@ class ChecklistSectionScreen extends StatelessWidget {
           return switch (section) {
             ChecklistSection.runs => _buildRunsTab(context, state.todayRuns),
             ChecklistSection.templates => _buildTemplatesTab(
-                context,
-                state.templates,
-                canManage,
-              ),
+              context,
+              state.templates,
+              canManage,
+            ),
             ChecklistSection.summary => _buildSummaryTab(
-                context,
-                state.summary,
-              ),
+              context,
+              state.summary,
+            ),
           };
         },
       ),
@@ -1011,7 +1008,8 @@ class ChecklistSectionScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (t.regulationText != null && t.regulationText!.isNotEmpty) ...[
+                if (t.regulationText != null &&
+                    t.regulationText!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     t.regulationText!,

@@ -493,7 +493,12 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
       onRefresh: () => _refreshCash(context),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16 + kLiquidNavClearance),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          12,
+          16,
+          16 + kLiquidNavClearance,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -964,8 +969,11 @@ class _CashSectionScreenState extends State<CashSectionScreen>
           ),
           floatingActionButton: fab,
           body: switch (widget.section) {
-            CashSection.operations =>
-              _buildOperationsTab(context, state, isViewer),
+            CashSection.operations => _buildOperationsTab(
+              context,
+              state,
+              isViewer,
+            ),
             CashSection.shifts => _buildShiftsTab(context, state, isViewer),
             CashSection.summary => _buildSummaryTab(context, state.summaries),
           },

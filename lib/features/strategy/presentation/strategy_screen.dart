@@ -82,10 +82,9 @@ class StrategyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
     return BlocProvider<StrategyBloc>(
-      create: (context) =>
-          StrategyBloc(context.read<StrategyRepository>())
-            ..add(const LoadDailySummary())
-            ..add(LoadScenarios(quarter: _currentQuarter())),
+      create: (context) => StrategyBloc(context.read<StrategyRepository>())
+        ..add(const LoadDailySummary())
+        ..add(LoadScenarios(quarter: _currentQuarter())),
       child: const StrategyView(),
     );
   }
@@ -129,9 +128,7 @@ class _StrategyViewState extends State<StrategyView> {
           if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  locale.translateMessage(state.errorMessage!),
-                ),
+                content: Text(locale.translateMessage(state.errorMessage!)),
                 backgroundColor: colors.accentRed,
               ),
             );
@@ -202,7 +199,11 @@ class _StrategyViewState extends State<StrategyView> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(TablerIcons.brain, size: 13, color: colors.brand),
+                          Icon(
+                            TablerIcons.brain,
+                            size: 13,
+                            color: colors.brand,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             _currentQuarter(),
@@ -231,7 +232,11 @@ class _StrategyViewState extends State<StrategyView> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Icon(TablerIcons.chart_dots_3, size: 16, color: colors.brand),
+                    Icon(
+                      TablerIcons.chart_dots_3,
+                      size: 16,
+                      color: colors.brand,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '${state.scenarios.length} ${locale.translate('strategy_tab_scenarios').toLowerCase()}',
@@ -311,7 +316,9 @@ class _StrategyViewState extends State<StrategyView> {
                           hasScenarios
                               ? locale.translate(
                                   'strategy_attention_scenarios',
-                                  params: {'count': '${state.scenarios.length}'},
+                                  params: {
+                                    'count': '${state.scenarios.length}',
+                                  },
                                 )
                               : locale.translate('strategy_attention_ready'),
                           style: textStyles.captionSans.copyWith(
@@ -340,10 +347,8 @@ class _StrategyViewState extends State<StrategyView> {
                 child: SizedBox(
                   height: 44,
                   child: ElevatedButton.icon(
-                    onPressed: () => _openStrategySection(
-                      context,
-                      StrategySection.whatIf,
-                    ),
+                    onPressed: () =>
+                        _openStrategySection(context, StrategySection.whatIf),
                     icon: const Icon(TablerIcons.help, size: 17),
                     label: Text(
                       locale.translate('strategy_action_whatif'),
@@ -419,10 +424,8 @@ class _StrategyViewState extends State<StrategyView> {
                   title: locale.translate('strategy_tab_whatif'),
                   subtitle: locale.translate('strategy_whatif_hint'),
                   icon: TablerIcons.help,
-                  onTap: () => _openStrategySection(
-                    context,
-                    StrategySection.whatIf,
-                  ),
+                  onTap: () =>
+                      _openStrategySection(context, StrategySection.whatIf),
                 ),
               ),
               const SizedBox(width: 12),
@@ -432,10 +435,8 @@ class _StrategyViewState extends State<StrategyView> {
                   title: locale.translate('strategy_tab_marketing'),
                   subtitle: locale.translate('strategy_marketing_hint'),
                   icon: TablerIcons.sparkles,
-                  onTap: () => _openStrategySection(
-                    context,
-                    StrategySection.marketing,
-                  ),
+                  onTap: () =>
+                      _openStrategySection(context, StrategySection.marketing),
                 ),
               ),
             ],
@@ -449,10 +450,8 @@ class _StrategyViewState extends State<StrategyView> {
                   title: locale.translate('strategy_tab_matrices'),
                   subtitle: 'SWOT, PESTEL, BCG',
                   icon: TablerIcons.layout_grid,
-                  onTap: () => _openStrategySection(
-                    context,
-                    StrategySection.matrices,
-                  ),
+                  onTap: () =>
+                      _openStrategySection(context, StrategySection.matrices),
                 ),
               ),
               const SizedBox(width: 12),
@@ -462,10 +461,8 @@ class _StrategyViewState extends State<StrategyView> {
                   title: locale.translate('strategy_tab_macro'),
                   subtitle: locale.translate('strategy_tab_macro'),
                   icon: TablerIcons.chart_arrows_vertical,
-                  onTap: () => _openStrategySection(
-                    context,
-                    StrategySection.macro,
-                  ),
+                  onTap: () =>
+                      _openStrategySection(context, StrategySection.macro),
                 ),
               ),
             ],
@@ -481,10 +478,8 @@ class _StrategyViewState extends State<StrategyView> {
                   title: locale.translate('strategy_tab_news'),
                   subtitle: locale.translate('strategy_tab_news'),
                   icon: TablerIcons.news,
-                  onTap: () => _openStrategySection(
-                    context,
-                    StrategySection.news,
-                  ),
+                  onTap: () =>
+                      _openStrategySection(context, StrategySection.news),
                 ),
               ),
               const SizedBox(width: 12),
@@ -494,10 +489,8 @@ class _StrategyViewState extends State<StrategyView> {
                   title: locale.translate('strategy_tab_scenarios'),
                   subtitle: '${state.scenarios.length} сценариев',
                   icon: TablerIcons.target_arrow,
-                  onTap: () => _openStrategySection(
-                    context,
-                    StrategySection.scenarios,
-                  ),
+                  onTap: () =>
+                      _openStrategySection(context, StrategySection.scenarios),
                 ),
               ),
             ],
@@ -517,10 +510,8 @@ class _StrategyViewState extends State<StrategyView> {
                 ),
               ),
               TextButton(
-                onPressed: () => _openStrategySection(
-                  context,
-                  StrategySection.summary,
-                ),
+                onPressed: () =>
+                    _openStrategySection(context, StrategySection.summary),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -562,7 +553,11 @@ class _StrategyViewState extends State<StrategyView> {
                     children: [
                       Row(
                         children: [
-                          Icon(TablerIcons.file_text, size: 16, color: colors.brand),
+                          Icon(
+                            TablerIcons.file_text,
+                            size: 16,
+                            color: colors.brand,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             state.dailySummary?.date ?? '',
@@ -739,7 +734,9 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
           child: Container(height: 1, color: colors.border),
         ),
       ),
-      floatingActionButton: canManage ? _buildSectionFab(context, locale) : null,
+      floatingActionButton: canManage
+          ? _buildSectionFab(context, locale)
+          : null,
       body: switch (widget.section) {
         StrategySection.whatIf => _buildWhatIfTab(context),
         StrategySection.marketing => _buildMarketingTab(context),
@@ -835,15 +832,15 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                 ElevatedButton(
                   onPressed:
                       state.isWhatIfLoading || !_canManageStrategy(context)
-                          ? null
-                          : () {
-                              final query = _whatIfController.text.trim();
-                              if (query.isNotEmpty) {
-                                context.read<StrategyBloc>().add(
-                                  AskWhatIfRequested(query),
-                                );
-                              }
-                            },
+                      ? null
+                      : () {
+                          final query = _whatIfController.text.trim();
+                          if (query.isNotEmpty) {
+                            context.read<StrategyBloc>().add(
+                              AskWhatIfRequested(query),
+                            );
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: colors.surface,
@@ -963,15 +960,15 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                 ElevatedButton(
                   onPressed:
                       state.isMarketingLoading || !_canManageStrategy(context)
-                          ? null
-                          : () {
-                              final query = _marketingController.text.trim();
-                              if (query.isNotEmpty) {
-                                context.read<StrategyBloc>().add(
-                                  GenerateMarketingIdeasRequested(query),
-                                );
-                              }
-                            },
+                      ? null
+                      : () {
+                          final query = _marketingController.text.trim();
+                          if (query.isNotEmpty) {
+                            context.read<StrategyBloc>().add(
+                              GenerateMarketingIdeasRequested(query),
+                            );
+                          }
+                        },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: colors.surface,
@@ -1160,15 +1157,15 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
               ElevatedButton.icon(
                 onPressed:
                     state.isGeneratingAnalysis || !_canManageStrategy(context)
-                        ? null
-                        : () {
-                            context.read<StrategyBloc>().add(
-                              GenerateStrategicAnalysis(
-                                type: _selectedAnalysisType,
-                                period: _currentQuarter(),
-                              ),
-                            );
-                          },
+                    ? null
+                    : () {
+                        context.read<StrategyBloc>().add(
+                          GenerateStrategicAnalysis(
+                            type: _selectedAnalysisType,
+                            period: _currentQuarter(),
+                          ),
+                        );
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.brand,
                   foregroundColor: colors.surface,

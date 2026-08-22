@@ -390,9 +390,7 @@ class _NotificationsViewState extends State<NotificationsView> {
           decoration: BoxDecoration(
             color: colors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: colors.accentRed.withValues(alpha: 0.5),
-            ),
+            border: Border.all(color: colors.accentRed.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -118,9 +118,7 @@ class _CrmViewState extends State<CrmView> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(language.resolveMessage(msg)),
-              backgroundColor: isError
-                  ? colors.accentRed
-                  : colors.accentGreen,
+              backgroundColor: isError ? colors.accentRed : colors.accentGreen,
             ),
           );
           context.read<CrmBloc>().add(const ClearCrmFeedback());
@@ -133,8 +131,7 @@ class _CrmViewState extends State<CrmView> {
             if (state is CrmError) {
               return _ErrorBody(
                 message: language.resolveMessage(state.message),
-                onRetry: () =>
-                    context.read<CrmBloc>().add(const LoadCrmData()),
+                onRetry: () => context.read<CrmBloc>().add(const LoadCrmData()),
               );
             }
             if (state is! CrmLoaded) return const SizedBox.shrink();
@@ -163,7 +160,8 @@ class _CrmViewState extends State<CrmView> {
     final oCcy = localizedDecimalFormat(context);
 
     final recentDeals = state.deals.take(5).toList();
-    final hasRisk = state.stats.churnCount > 0 ||
+    final hasRisk =
+        state.stats.churnCount > 0 ||
         state.stats.reactivationCount > 0 ||
         state.birthdays.isNotEmpty;
 
@@ -450,8 +448,7 @@ class _CrmViewState extends State<CrmView> {
                     icon: TablerIcons.cake,
                     title: language.translate('crm_tab_birthdays'),
                     subtitle: '${state.birthdays.length} в этом месяце',
-                    onTap: () =>
-                        _openCrmSection(context, CrmSection.birthdays),
+                    onTap: () => _openCrmSection(context, CrmSection.birthdays),
                   ),
                 ),
               ],
@@ -470,8 +467,7 @@ class _CrmViewState extends State<CrmView> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () =>
-                      _openCrmSection(context, CrmSection.funnel),
+                  onPressed: () => _openCrmSection(context, CrmSection.funnel),
                   child: Text(
                     language.translate('crm_all_deals'),
                     style: textStyles.captionSans.copyWith(
@@ -502,10 +498,12 @@ class _CrmViewState extends State<CrmView> {
                 ),
               )
             else
-              ...recentDeals.map((d) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _buildRecentDealCard(context, d, oCcy),
-              )),
+              ...recentDeals.map(
+                (d) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _buildRecentDealCard(context, d, oCcy),
+                ),
+              ),
           ],
         ),
       ),
@@ -714,98 +712,98 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
           floatingActionButton: canWrite && loadedState != null
               ? switch (widget.section) {
                   CrmSection.clients => FloatingActionButton.extended(
-                      heroTag: null,
-                      onPressed: () => showCrmClientForm(context),
-                      backgroundColor: colors.brand,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      highlightElevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      icon: const Icon(TablerIcons.user_plus, size: 18),
-                      label: Text(
-                        language.translate('crm_new_client'),
-                        style: textStyles.bodySans.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
+                    heroTag: null,
+                    onPressed: () => showCrmClientForm(context),
+                    backgroundColor: colors.brand,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    icon: const Icon(TablerIcons.user_plus, size: 18),
+                    label: Text(
+                      language.translate('crm_new_client'),
+                      style: textStyles.bodySans.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
                     ),
+                  ),
                   CrmSection.funnel => FloatingActionButton.extended(
-                      heroTag: null,
-                      onPressed: () => showCrmDealForm(
-                        context,
-                        clients: loadedState.pickClients.isNotEmpty
-                            ? loadedState.pickClients
-                            : loadedState.clients,
-                      ),
-                      backgroundColor: colors.brand,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      highlightElevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      icon: const Icon(TablerIcons.plus, size: 18),
-                      label: Text(
-                        language.translate('crm_new_deal'),
-                        style: textStyles.bodySans.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
+                    heroTag: null,
+                    onPressed: () => showCrmDealForm(
+                      context,
+                      clients: loadedState.pickClients.isNotEmpty
+                          ? loadedState.pickClients
+                          : loadedState.clients,
+                    ),
+                    backgroundColor: colors.brand,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    highlightElevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    icon: const Icon(TablerIcons.plus, size: 18),
+                    label: Text(
+                      language.translate('crm_new_deal'),
+                      style: textStyles.bodySans.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
                       ),
                     ),
+                  ),
                   _ => null,
                 }
               : null,
           body: loadedState != null
               ? switch (widget.section) {
                   CrmSection.clients => _ClientsTab(
-                      state: loadedState,
-                      canWrite: canWrite,
-                      canDelete: canDelete,
-                      searchCtrl: _searchCtrl,
-                      onSearch: (q) {
-                        _searchDebounce?.cancel();
-                        _searchDebounce = Timer(
-                          const Duration(milliseconds: 350),
-                          () {
-                            context.read<CrmBloc>().add(
-                              ClientFiltersChanged(query: q),
-                            );
-                          },
-                        );
-                      },
-                      onRefresh: () => _refresh(context),
-                    ),
+                    state: loadedState,
+                    canWrite: canWrite,
+                    canDelete: canDelete,
+                    searchCtrl: _searchCtrl,
+                    onSearch: (q) {
+                      _searchDebounce?.cancel();
+                      _searchDebounce = Timer(
+                        const Duration(milliseconds: 350),
+                        () {
+                          context.read<CrmBloc>().add(
+                            ClientFiltersChanged(query: q),
+                          );
+                        },
+                      );
+                    },
+                    onRefresh: () => _refresh(context),
+                  ),
                   CrmSection.funnel => CrmFunnelBoard(
-                      state: loadedState,
-                      canWrite: canWrite,
-                      canDelete: canDelete,
-                      onRefresh: () => _refresh(context),
-                    ),
+                    state: loadedState,
+                    canWrite: canWrite,
+                    canDelete: canDelete,
+                    onRefresh: () => _refresh(context),
+                  ),
                   CrmSection.loyalty => _LoyaltyTab(
-                      state: loadedState,
-                      canWrite: canWrite,
-                      onRefresh: () => _refresh(context),
-                    ),
+                    state: loadedState,
+                    canWrite: canWrite,
+                    onRefresh: () => _refresh(context),
+                  ),
                   CrmSection.reactivation => _ReactivationTab(
-                      state: loadedState,
-                      canWrite: canWrite,
-                      onRefresh: () => _refresh(context),
-                    ),
+                    state: loadedState,
+                    canWrite: canWrite,
+                    onRefresh: () => _refresh(context),
+                  ),
                   CrmSection.churn => _ChurnTab(
-                      state: loadedState,
-                      canWrite: canWrite,
-                      onRefresh: () => _refresh(context),
-                    ),
+                    state: loadedState,
+                    canWrite: canWrite,
+                    onRefresh: () => _refresh(context),
+                  ),
                   CrmSection.birthdays => _BirthdaysTab(
-                      state: loadedState,
-                      onRefresh: () => _refresh(context),
-                    ),
+                    state: loadedState,
+                    onRefresh: () => _refresh(context),
+                  ),
                 }
               : const _CrmSkeleton(),
         );
@@ -1110,7 +1108,8 @@ class _ClientsTab extends StatelessWidget {
                                     ),
                                     const SizedBox(width: 8),
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
                                       children: [
                                         Container(
                                           padding: const EdgeInsets.symmetric(
@@ -1119,8 +1118,9 @@ class _ClientsTab extends StatelessWidget {
                                           ),
                                           decoration: BoxDecoration(
                                             color: lc.bg,
-                                            borderRadius:
-                                                BorderRadius.circular(6),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
                                           ),
                                           child: Text(
                                             crmLoyaltyLabel(
@@ -1180,21 +1180,23 @@ class _ClientsTab extends StatelessWidget {
                                       Expanded(
                                         child: Text(
                                           'LTV ${oCcy.format(client.totalSpent)} TJS',
-                                          style: textStyles.captionSans.copyWith(
-                                            color: colors.accentGreen,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12.5,
-                                          ),
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.accentGreen,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12.5,
+                                              ),
                                         ),
                                       ),
                                       Expanded(
                                         child: Text(
                                           '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
-                                          style: textStyles.captionSans.copyWith(
-                                            color: colors.textSecondary,
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 12.5,
-                                          ),
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.textSecondary,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 12.5,
+                                              ),
                                           textAlign: TextAlign.center,
                                         ),
                                       ),
@@ -1203,11 +1205,12 @@ class _ClientsTab extends StatelessWidget {
                                           client.roi == null
                                               ? 'ROI —'
                                               : 'ROI ${oCcy.format(client.roi!)}×',
-                                          style: textStyles.captionSans.copyWith(
-                                            color: colors.textSecondary,
-                                            fontWeight: FontWeight.w500,
-                                            fontSize: 12.5,
-                                          ),
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.textSecondary,
+                                                fontWeight: FontWeight.w500,
+                                                fontSize: 12.5,
+                                              ),
                                           textAlign: TextAlign.end,
                                         ),
                                       ),
@@ -1358,9 +1361,7 @@ class _LoyaltyTab extends StatelessWidget {
                           'crm_loyalty_clients_count',
                           params: {'count': row.clients},
                         ),
-                        style: textStyles.captionSans.copyWith(
-                          fontSize: 13,
-                        ),
+                        style: textStyles.captionSans.copyWith(fontSize: 13),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1843,7 +1844,11 @@ class _BirthdaysTab extends StatelessWidget {
                           color: colors.brand.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Icon(TablerIcons.cake, color: colors.brand, size: 20),
+                        child: Icon(
+                          TablerIcons.cake,
+                          color: colors.brand,
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

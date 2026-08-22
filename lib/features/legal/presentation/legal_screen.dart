@@ -226,7 +226,11 @@ class _LegalScreenState extends State<LegalScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(TablerIcons.scale, size: 13, color: colors.brand),
+                          Icon(
+                            TablerIcons.scale,
+                            size: 13,
+                            color: colors.brand,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             locale.translate(
@@ -377,10 +381,8 @@ class _LegalScreenState extends State<LegalScreen> {
                   child: SizedBox(
                     height: 44,
                     child: ElevatedButton.icon(
-                      onPressed: () => _openLegalSection(
-                        context,
-                        LegalSection.aiLawyer,
-                      ),
+                      onPressed: () =>
+                          _openLegalSection(context, LegalSection.aiLawyer),
                       icon: const Icon(TablerIcons.robot, size: 17),
                       label: Text(
                         locale.translate('legal_action_chat'),
@@ -454,10 +456,8 @@ class _LegalScreenState extends State<LegalScreen> {
                   title: locale.translate('legal_tab_ai_lawyer'),
                   subtitle: 'Консультации ИИ юриста',
                   icon: TablerIcons.robot,
-                  onTap: () => _openLegalSection(
-                    context,
-                    LegalSection.aiLawyer,
-                  ),
+                  onTap: () =>
+                      _openLegalSection(context, LegalSection.aiLawyer),
                 ),
               ),
               const SizedBox(width: 12),
@@ -470,10 +470,7 @@ class _LegalScreenState extends State<LegalScreen> {
                     params: {'count': '${state.laws.length}'},
                   ),
                   icon: TablerIcons.scale,
-                  onTap: () => _openLegalSection(
-                    context,
-                    LegalSection.laws,
-                  ),
+                  onTap: () => _openLegalSection(context, LegalSection.laws),
                 ),
               ),
             ],
@@ -490,10 +487,8 @@ class _LegalScreenState extends State<LegalScreen> {
                     params: {'count': '${state.templates.length}'},
                   ),
                   icon: TablerIcons.file_text,
-                  onTap: () => _openLegalSection(
-                    context,
-                    LegalSection.constructor,
-                  ),
+                  onTap: () =>
+                      _openLegalSection(context, LegalSection.constructor),
                 ),
               ),
               const SizedBox(width: 12),
@@ -503,10 +498,8 @@ class _LegalScreenState extends State<LegalScreen> {
                   title: locale.translate('legal_tab_deadlines'),
                   subtitle: '$pendingDeadlines активных',
                   icon: TablerIcons.calendar_due,
-                  onTap: () => _openLegalSection(
-                    context,
-                    LegalSection.deadlines,
-                  ),
+                  onTap: () =>
+                      _openLegalSection(context, LegalSection.deadlines),
                 ),
               ),
             ],
@@ -526,10 +519,8 @@ class _LegalScreenState extends State<LegalScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () => _openLegalSection(
-                  context,
-                  LegalSection.deadlines,
-                ),
+                onPressed: () =>
+                    _openLegalSection(context, LegalSection.deadlines),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -798,7 +789,9 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
           child: Container(height: 1, color: colors.border),
         ),
       ),
-      floatingActionButton: canManage ? _buildSectionFab(context, locale) : null,
+      floatingActionButton: canManage
+          ? _buildSectionFab(context, locale)
+          : null,
       body: BlocBuilder<LegalBloc, LegalState>(
         builder: (context, state) {
           if (state is LegalLoading) {
@@ -921,7 +914,9 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
               final isUser = msg['sender'] == 'user';
 
               return Align(
-                alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                alignment: isUser
+                    ? Alignment.centerRight
+                    : Alignment.centerLeft,
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.symmetric(
@@ -1637,11 +1632,7 @@ void _showCreateLawSheet(BuildContext context) {
             final body = bodyController.text.trim();
             if (title.isEmpty || body.isEmpty) return;
             bloc.add(
-              CreateLawRequested(
-                title: title,
-                body: body,
-                category: category,
-              ),
+              CreateLawRequested(title: title, body: body, category: category),
             );
             Navigator.pop(context);
           },
@@ -1723,10 +1714,7 @@ void _showCreateDeadlineSheet(BuildContext context) {
               }
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               decoration: BoxDecoration(
                 border: Border.all(color: colors.border),
                 borderRadius: BorderRadius.circular(8),

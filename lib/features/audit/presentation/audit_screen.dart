@@ -113,7 +113,9 @@ class _AuditViewState extends State<AuditView> {
 
     final totalLogs = state.logs.length;
     final totalAlerts = state.alerts.length;
-    final highSeverityAlerts = state.alerts.where((a) => a.severity == 'high').length;
+    final highSeverityAlerts = state.alerts
+        .where((a) => a.severity == 'high')
+        .length;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -357,10 +359,8 @@ class _AuditViewState extends State<AuditView> {
                 child: SizedBox(
                   height: 44,
                   child: OutlinedButton.icon(
-                    onPressed: () => _openAuditSection(
-                      context,
-                      AuditSection.logs,
-                    ),
+                    onPressed: () =>
+                        _openAuditSection(context, AuditSection.logs),
                     icon: const Icon(TablerIcons.list_details, size: 17),
                     label: Text(
                       locale.translate('audit_action_logs'),

@@ -460,8 +460,10 @@ const Map<String, String> kRussianCatalog = {
   'checklists_tab_summary': 'Сводка',
   'checklists_hero_title': 'Исполнение регламентов и чек-листов',
   'checklists_attention_title': 'Контроль смен и регламентов',
-  'checklists_attention_active': 'В процессе: {count} активных смен требуют закрытия',
-  'checklists_attention_ok': 'Все чек-листы и регламенты смен успешно выполнены',
+  'checklists_attention_active':
+      'В процессе: {count} активных смен требуют закрытия',
+  'checklists_attention_ok':
+      'Все чек-листы и регламенты смен успешно выполнены',
   'checklists_recent_runs': 'Текущие чек-листы',
   'checklists_all_runs': 'Все смены',
   'checklists_runs_count': '{count} прогонов',
@@ -479,7 +481,8 @@ const Map<String, String> kRussianCatalog = {
   'fin_ops_new_aid': 'Выдать помощь',
   'fin_ops_hero_liquidity': 'Общая ликвидность на счетах',
   'fin_ops_attention_title': 'Казначейский контроль',
-  'fin_ops_attention_pending': 'В пути / на согласовании: {transfers} переводов, {aid} заявок помощи',
+  'fin_ops_attention_pending':
+      'В пути / на согласовании: {transfers} переводов, {aid} заявок помощи',
   'fin_ops_attention_ok': 'Все казначейские операции и переводы согласованы',
   'fin_ops_recent_banks': 'Банковские счета',
   'fin_ops_all_banks': 'Все счета',
@@ -498,7 +501,8 @@ const Map<String, String> kRussianCatalog = {
   'strategy_hero_title': 'AI CFO Стратегический радар',
   'strategy_hero_status': 'Аналитика и сценарное моделирование',
   'strategy_attention_title': 'Стратегический фокус',
-  'strategy_attention_scenarios': 'Рассчитано {count} квартальных сценариев и стресс-тестов',
+  'strategy_attention_scenarios':
+      'Рассчитано {count} квартальных сценариев и стресс-тестов',
   'strategy_attention_ready': 'AI-моделирование и макро-анализ готовы к работе',
   'strategy_recent_summary': 'Ежедневная AI-сводка',
   'strategy_full_summary': 'Полный бриф',
@@ -608,7 +612,8 @@ const Map<String, String> kRussianCatalog = {
   'audit_run_check': 'Запустить проверку AI',
   'audit_hero_title': 'Журнал действий & безопасность',
   'audit_attention_title': 'Контроль аномалий',
-  'audit_attention_active': 'Обнаружено аномалий: {count}. Требуется анализ безопасности',
+  'audit_attention_active':
+      'Обнаружено аномалий: {count}. Требуется анализ безопасности',
   'audit_attention_ok': 'Угрозы и аномалии не обнаружены. Система защищена',
   'audit_recent_logs': 'Последние действия в системе',
   'audit_all_logs': 'Весь журнал',
@@ -1088,7 +1093,8 @@ const Map<String, String> kRussianCatalog = {
   'users_tab_access': 'Доступ',
   'users_hero_title': 'Пользователи & безопасность доступа',
   'users_attention_title': 'Контроль учетных записей',
-  'users_attention_inactive': 'Отключено пользователей: {count}. Проверьте статус доступа',
+  'users_attention_inactive':
+      'Отключено пользователей: {count}. Проверьте статус доступа',
   'users_attention_ok': 'Все учетные записи активны и защищены RBAC',
   'users_recent_users': 'Сотрудники и роли',
   'users_all_users': 'Все пользователи',
@@ -1189,8 +1195,10 @@ const Map<String, String> kRussianCatalog = {
   'marketing_tab_brand_guide': 'Бренд-гайд',
   'marketing_hero_budget': 'Маркетинговый бюджет и охват',
   'marketing_attention_title': 'Маркетинговая активность',
-  'marketing_attention_active': 'Активных кампаний: {count}, инвестиции: {budget} TJS',
-  'marketing_attention_idle': 'Кампании не запущены. Создайте кампанию или пост с AI',
+  'marketing_attention_active':
+      'Активных кампаний: {count}, инвестиции: {budget} TJS',
+  'marketing_attention_idle':
+      'Кампании не запущены. Создайте кампанию или пост с AI',
   'marketing_recent_campaigns': 'Рекламные кампании',
   'marketing_all_campaigns': 'Все кампании',
   'marketing_campaigns_count': '{count} кампаний',

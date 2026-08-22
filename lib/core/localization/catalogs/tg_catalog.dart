@@ -457,8 +457,10 @@ const Map<String, String> kTajikCatalog = {
   'checklists_tab_summary': 'Хулоса',
   'checklists_hero_title': 'Иҷрои дастурҳо ва чек-листҳо',
   'checklists_attention_title': 'Назорати бастҳо ва дастурҳо',
-  'checklists_attention_active': 'Дар раванд: {count} басти фаъол пӯшидани чек-листро талаб мекунад',
-  'checklists_attention_ok': 'Ҳамаи чек-листҳо ва дастурҳои бастҳо бомуваффақият иҷро шуданд',
+  'checklists_attention_active':
+      'Дар раванд: {count} басти фаъол пӯшидани чек-листро талаб мекунад',
+  'checklists_attention_ok':
+      'Ҳамаи чек-листҳо ва дастурҳои бастҳо бомуваффақият иҷро шуданд',
   'checklists_recent_runs': 'Чек-листҳои ҷорӣ',
   'checklists_all_runs': 'Ҳамаи бастҳо',
   'checklists_runs_count': '{count} баст',
@@ -476,8 +478,10 @@ const Map<String, String> kTajikCatalog = {
   'fin_ops_new_aid': 'Додани ёрӣ',
   'fin_ops_hero_liquidity': 'Пардохтпазирии умумӣ дар суратҳисобҳо',
   'fin_ops_attention_title': 'Назорати хазинадорӣ',
-  'fin_ops_attention_pending': 'Дар роҳ / дар мувофиқа: {transfers} интиқол, {aid} дархости кӯмак',
-  'fin_ops_attention_ok': 'Ҳамаи амалиётҳои хазинадорӣ ва интиқолҳо тасдиқ шудаанд',
+  'fin_ops_attention_pending':
+      'Дар роҳ / дар мувофиқа: {transfers} интиқол, {aid} дархости кӯмак',
+  'fin_ops_attention_ok':
+      'Ҳамаи амалиётҳои хазинадорӣ ва интиқолҳо тасдиқ шудаанд',
   'fin_ops_recent_banks': 'Суратҳисобҳои бонкӣ',
   'fin_ops_all_banks': 'Ҳамаи суратҳисобҳо',
   'fin_ops_accounts_count': '{count} суратҳисоб',
@@ -495,8 +499,10 @@ const Map<String, String> kTajikCatalog = {
   'strategy_hero_title': 'AI CFO Радари стратегӣ',
   'strategy_hero_status': 'Таҳлил ва моделсозии сенариявӣ',
   'strategy_attention_title': 'Таваҷҷӯҳи стратегӣ',
-  'strategy_attention_scenarios': '{count} сенарияи семоҳа ва стресс-тестҳо ҳисоб карда шуданд',
-  'strategy_attention_ready': 'AI-моделсозӣ ва таҳлили макро омодаи кор мебошанд',
+  'strategy_attention_scenarios':
+      '{count} сенарияи семоҳа ва стресс-тестҳо ҳисоб карда шуданд',
+  'strategy_attention_ready':
+      'AI-моделсозӣ ва таҳлили макро омодаи кор мебошанд',
   'strategy_recent_summary': 'Хулосаи ҳаррӯзаи AI',
   'strategy_full_summary': 'Ҳисоботи пурра',
   'strategy_action_whatif': 'Саволи What-If',
@@ -605,8 +611,10 @@ const Map<String, String> kTajikCatalog = {
   'audit_run_check': 'Оғози санҷиши AI',
   'audit_hero_title': 'Сабти амалиётҳо ва амният',
   'audit_attention_title': 'Назорати аномалияҳо',
-  'audit_attention_active': 'Аномалияҳо ошкор шуданд: {count}. Таҳлили амният лозим аст',
-  'audit_attention_ok': 'Таҳдидҳо ва аномалияҳо ёфт нашуданд. Система ҳифз шудааст',
+  'audit_attention_active':
+      'Аномалияҳо ошкор шуданд: {count}. Таҳлили амният лозим аст',
+  'audit_attention_ok':
+      'Таҳдидҳо ва аномалияҳо ёфт нашуданд. Система ҳифз шудааст',
   'audit_recent_logs': 'Амалиётҳои охирин дар система',
   'audit_all_logs': 'Ҳамаи сабтҳо',
   'audit_logs_count': '{count} сабт',
@@ -1085,7 +1093,8 @@ const Map<String, String> kTajikCatalog = {
   'users_tab_access': 'Дастрасӣ',
   'users_hero_title': 'Корбарон ва амнияти дастрасӣ',
   'users_attention_title': 'Назорати сабтҳои корбарӣ',
-  'users_attention_inactive': 'Корбарони ғайрифаъол: {count}. Ҳолати дастрасиро санҷед',
+  'users_attention_inactive':
+      'Корбарони ғайрифаъол: {count}. Ҳолати дастрасиро санҷед',
   'users_attention_ok': 'Ҳамаи корбарон фаъоланд ва бо RBAC ҳифз шудаанд',
   'users_recent_users': 'Кормандон ва нақшҳо',
   'users_all_users': 'Ҳамаи корбарон',
@@ -1191,8 +1200,10 @@ const Map<String, String> kTajikCatalog = {
   'marketing_tab_brand_guide': 'Дастури бренд',
   'marketing_hero_budget': 'Буҷети маркетинг ва фарогирӣ',
   'marketing_attention_title': 'Фаъолияти маркетингӣ',
-  'marketing_attention_active': 'Кампанияҳои фаъол: {count}, сармоягузорӣ: {budget} TJS',
-  'marketing_attention_idle': 'Кампанияҳо оғоз нашудаанд. Кампания ё пости навро бо AI эҷод кунед',
+  'marketing_attention_active':
+      'Кампанияҳои фаъол: {count}, сармоягузорӣ: {budget} TJS',
+  'marketing_attention_idle':
+      'Кампанияҳо оғоз нашудаанд. Кампания ё пости навро бо AI эҷод кунед',
   'marketing_recent_campaigns': 'Кампанияҳои таблиғотӣ',
   'marketing_all_campaigns': 'Ҳамаи кампанияҳо',
   'marketing_campaigns_count': '{count} кампания',

@@ -213,9 +213,7 @@ class BranchesView extends StatelessWidget {
         listener: (context, state) {
           if (state is BranchesLoaded && state.message != null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(locale.translateMessage(state.message!)),
-              ),
+              SnackBar(content: Text(locale.translateMessage(state.message!))),
             );
           }
         },
@@ -367,10 +365,12 @@ class BranchesView extends StatelessWidget {
                                 ),
                                 decoration: BoxDecoration(
                                   color: branch.isActive
-                                      ? colors.accentGreen
-                                          .withValues(alpha: 0.12)
-                                      : colors.accentRed
-                                          .withValues(alpha: 0.12),
+                                      ? colors.accentGreen.withValues(
+                                          alpha: 0.12,
+                                        )
+                                      : colors.accentRed.withValues(
+                                          alpha: 0.12,
+                                        ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(

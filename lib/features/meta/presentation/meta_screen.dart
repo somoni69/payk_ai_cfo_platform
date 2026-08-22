@@ -456,9 +456,7 @@ class _MetaScreenState extends State<MetaScreen> {
                         selectedColor: colors.brand,
                         labelStyle: textStyles.captionSans.copyWith(
                           color: isSel ? Colors.white : colors.textPrimary,
-                          fontWeight: isSel
-                              ? FontWeight.w600
-                              : FontWeight.w400,
+                          fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
                         ),
                         checkmarkColor: Colors.white,
                         side: BorderSide(

@@ -601,181 +601,55 @@ class _ReportsViewState extends State<ReportsView> {
         ),
       ),
       body: BlocConsumer<ReportsBloc, ReportsState>(
-          listenWhen: (prev, next) {
-            if (next is! ReportsLoaded) return false;
-            return next.actionError != null || next.actionSuccess != null;
-          },
-          listener: (context, state) {
-            if (state is! ReportsLoaded) return;
-            final msg = state.actionError ?? state.actionSuccess;
-            if (msg == null) return;
-            final text = state.actionError != null
-                ? locale.translateMessage(msg)
-                : locale.translate(msg);
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(text)));
-          },
-          builder: (context, state) {
-            if (state is ReportsLoading || state is ReportsInitial) {
-              return const ReportsOverviewShimmer();
-            }
-            if (state is ReportsError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        locale.translateMessage(state.message),
-                        textAlign: TextAlign.center,
-                        style: textStyles.bodySans,
-                      ),
-                      const SizedBox(height: 12),
-                      TextButton(
-                        onPressed: () => _reload(),
-                        child: Text(locale.translate('common_retry')),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            if (state is! ReportsLoaded) return const SizedBox();
-
-            return RefreshIndicator(
-              onRefresh: () async => _reload(),
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-                children: [
-                  if (_isManagement) ...[
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (_branches.isNotEmpty)
-                            ExpansibleWidget<int?>.selection(
-                              cardPadding: EdgeInsets.zero,
-                              tilePadding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              title: Text(
-                                _filterBranchId == null
-                                    ? locale.translate('reports_all_branches')
-                                    : (_branches
-                                              .where(
-                                                (b) =>
-                                                    int.tryParse(b.id) ==
-                                                    _filterBranchId,
-                                              )
-                                              .map((b) => b.name)
-                                              .firstOrNull ??
-                                          locale.translate(
-                                            'reports_all_branches',
-                                          )),
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              items: [
-                                null,
-                                ..._branches
-                                    .map((b) => int.tryParse(b.id))
-                                    .whereType<int>(),
-                              ],
-                              selectedValue: _filterBranchId,
-                              itemLabelBuilder: (id) {
-                                if (id == null) {
-                                  return locale.translate(
-                                    'reports_all_branches',
-                                  );
-                                }
-                                return _branches
-                                        .where((b) => int.tryParse(b.id) == id)
-                                        .map((b) => b.name)
-                                        .firstOrNull ??
-                                    '#$id';
-                              },
-                              onSelected: (val) {
-                                setState(() => _filterBranchId = val);
-                                _reload();
-                              },
-                            ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _pickDate(isFrom: true),
-                                  icon: const Icon(
-                                    TablerIcons.calendar,
-                                    size: 16,
-                                  ),
-                                  label: Text(
-                                    _dateFrom == null
-                                        ? locale.translate('reports_date_from')
-                                        : formatLocalizedDateTime(
-                                            context,
-                                            _dateFrom!,
-                                            style: LocalizedDateTimeStyle.date,
-                                          ),
-                                    style: textStyles.captionSans,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _pickDate(isFrom: false),
-                                  icon: const Icon(
-                                    TablerIcons.calendar,
-                                    size: 16,
-                                  ),
-                                  label: Text(
-                                    _dateTo == null
-                                        ? locale.translate('reports_date_to')
-                                        : formatLocalizedDateTime(
-                                            context,
-                                            _dateTo!,
-                                            style: LocalizedDateTimeStyle.date,
-                                          ),
-                                    style: textStyles.captionSans,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ),
-                              if (_dateFrom != null || _dateTo != null) ...[
-                                const SizedBox(width: 4),
-                                IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _dateFrom = null;
-                                      _dateTo = null;
-                                    });
-                                    _reload();
-                                  },
-                                  icon: Icon(
-                                    TablerIcons.x,
-                                    size: 18,
-                                    color: colors.textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
+        listenWhen: (prev, next) {
+          if (next is! ReportsLoaded) return false;
+          return next.actionError != null || next.actionSuccess != null;
+        },
+        listener: (context, state) {
+          if (state is! ReportsLoaded) return;
+          final msg = state.actionError ?? state.actionSuccess;
+          if (msg == null) return;
+          final text = state.actionError != null
+              ? locale.translateMessage(msg)
+              : locale.translate(msg);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(text)));
+        },
+        builder: (context, state) {
+          if (state is ReportsLoading || state is ReportsInitial) {
+            return const ReportsOverviewShimmer();
+          }
+          if (state is ReportsError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      locale.translateMessage(state.message),
+                      textAlign: TextAlign.center,
+                      style: textStyles.bodySans,
                     ),
                     const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: () => _reload(),
+                      child: Text(locale.translate('common_retry')),
+                    ),
                   ],
+                ),
+              ),
+            );
+          }
+          if (state is! ReportsLoaded) return const SizedBox();
+
+          return RefreshIndicator(
+            onRefresh: () async => _reload(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
+              children: [
+                if (_isManagement) ...[
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
@@ -783,341 +657,459 @@ class _ReportsViewState extends State<ReportsView> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: colors.border),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          locale.translate('reports_total_sales_sum'),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w500,
+                        if (_branches.isNotEmpty)
+                          ExpansibleWidget<int?>.selection(
+                            cardPadding: EdgeInsets.zero,
+                            tilePadding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                            ),
+                            title: Text(
+                              _filterBranchId == null
+                                  ? locale.translate('reports_all_branches')
+                                  : (_branches
+                                            .where(
+                                              (b) =>
+                                                  int.tryParse(b.id) ==
+                                                  _filterBranchId,
+                                            )
+                                            .map((b) => b.name)
+                                            .firstOrNull ??
+                                        locale.translate(
+                                          'reports_all_branches',
+                                        )),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            items: [
+                              null,
+                              ..._branches
+                                  .map((b) => int.tryParse(b.id))
+                                  .whereType<int>(),
+                            ],
+                            selectedValue: _filterBranchId,
+                            itemLabelBuilder: (id) {
+                              if (id == null) {
+                                return locale.translate('reports_all_branches');
+                              }
+                              return _branches
+                                      .where((b) => int.tryParse(b.id) == id)
+                                      .map((b) => b.name)
+                                      .firstOrNull ??
+                                  '#$id';
+                            },
+                            onSelected: (val) {
+                              setState(() => _filterBranchId = val);
+                              _reload();
+                            },
                           ),
-                        ),
-                        Text(
-                          '${oCcy.format(state.totalSales)} TJS',
-                          style: textStyles.h2Sans.copyWith(
-                            color: colors.brand,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 18,
-                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickDate(isFrom: true),
+                                icon: const Icon(
+                                  TablerIcons.calendar,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _dateFrom == null
+                                      ? locale.translate('reports_date_from')
+                                      : formatLocalizedDateTime(
+                                          context,
+                                          _dateFrom!,
+                                          style: LocalizedDateTimeStyle.date,
+                                        ),
+                                  style: textStyles.captionSans,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () => _pickDate(isFrom: false),
+                                icon: const Icon(
+                                  TablerIcons.calendar,
+                                  size: 16,
+                                ),
+                                label: Text(
+                                  _dateTo == null
+                                      ? locale.translate('reports_date_to')
+                                      : formatLocalizedDateTime(
+                                          context,
+                                          _dateTo!,
+                                          style: LocalizedDateTimeStyle.date,
+                                        ),
+                                  style: textStyles.captionSans,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            if (_dateFrom != null || _dateTo != null) ...[
+                              const SizedBox(width: 4),
+                              IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _dateFrom = null;
+                                    _dateTo = null;
+                                  });
+                                  _reload();
+                                },
+                                icon: Icon(
+                                  TablerIcons.x,
+                                  size: 18,
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    locale.translate('reports_list_title'),
-                    style: textStyles.h2Sans.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
+                  const SizedBox(height: 12),
+                ],
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
                   ),
-                  const SizedBox(height: 10),
-                  if (state.dailyReports.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 24),
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.border),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        locale.translate('reports_total_sales_sum'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            TablerIcons.report_analytics,
-                            size: 32,
-                            color: colors.textTooltip,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            locale.translate('reports_empty'),
-                            style: textStyles.bodySans.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                      Text(
+                        '${oCcy.format(state.totalSales)} TJS',
+                        style: textStyles.h2Sans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                        ),
                       ),
-                    )
-                  else
-                    ...state.dailyReports.map(
-                      (rep) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: colors.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: colors.border),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  locale.translate('reports_list_title'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                if (state.dailyReports.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          TablerIcons.report_analytics,
+                          size: 32,
+                          color: colors.textTooltip,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          locale.translate('reports_empty'),
+                          style: textStyles.bodySans.copyWith(
+                            color: colors.textSecondary,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          formatLocalizedDateTime(
-                                            context,
-                                            rep.reportDate,
-                                            style: LocalizedDateTimeStyle.date,
-                                          ),
-                                          style: textStyles.bodySans.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  ...state.dailyReports.map(
+                    (rep) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        formatLocalizedDateTime(
+                                          context,
+                                          rep.reportDate,
+                                          style: LocalizedDateTimeStyle.date,
                                         ),
-                                        if (_isManagement &&
-                                            (rep.branchName?.isNotEmpty ??
-                                                false)) ...[
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            rep.branchName!,
-                                            style: textStyles.captionSans
-                                                .copyWith(
-                                                  color: colors.textSecondary,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                          ),
-                                        ],
+                                        style: textStyles.bodySans.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (_isManagement &&
+                                          (rep.branchName?.isNotEmpty ??
+                                              false)) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          rep.branchName!,
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.textSecondary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
                                       ],
-                                    ),
+                                    ],
                                   ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 7,
-                                      vertical: 2.5,
-                                    ),
-                                    decoration: BoxDecoration(
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: rep.hasInvoices
+                                        ? colors.accentGreen.withValues(
+                                            alpha: 0.12,
+                                          )
+                                        : colors.surfaceNested,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    rep.hasInvoices
+                                        ? locale.translate(
+                                            'reports_invoices_yes',
+                                          )
+                                        : locale.translate(
+                                            'reports_invoices_no',
+                                          ),
+                                    style: textStyles.captionSans.copyWith(
                                       color: rep.hasInvoices
                                           ? colors.accentGreen
-                                              .withValues(alpha: 0.12)
-                                          : colors.surfaceNested,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      rep.hasInvoices
-                                          ? locale.translate(
-                                              'reports_invoices_yes',
-                                            )
-                                          : locale.translate(
-                                              'reports_invoices_no',
-                                            ),
-                                      style: textStyles.captionSans.copyWith(
-                                        color: rep.hasInvoices
-                                            ? colors.accentGreen
-                                            : colors.textSecondary,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
-                                      ),
+                                          : colors.textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
                                     ),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    locale.translate(
-                                      'reports_field_total_sales',
-                                    ),
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                  Text(
-                                    '${oCcy.format(rep.totalSales)} TJS',
-                                    style: textStyles.h2Sans.copyWith(
-                                      color: colors.brand,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 17,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 6,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colors.surfaceNested,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          TablerIcons.cash,
-                                          size: 14,
-                                          color: colors.accentGreen,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${locale.translate('reports_field_cash')}: ${oCcy.format(rep.cashAmount)}',
-                                          style: textStyles.captionSans
-                                              .copyWith(
-                                                color: colors.textPrimary,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: colors.surfaceNested,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          TablerIcons.credit_card,
-                                          size: 14,
-                                          color: colors.brand,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${locale.translate('reports_field_cashless')}: ${oCcy.format(rep.cashlessAmount)}',
-                                          style: textStyles.captionSans
-                                              .copyWith(
-                                                color: colors.textPrimary,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (rep.returnsCount > 0 ||
-                                      rep.returnsAmount > 0)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: colors.accentRed.withValues(
-                                          alpha: 0.08,
-                                        ),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            TablerIcons.rotate_rectangle,
-                                            size: 14,
-                                            color: colors.accentRed,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${locale.translate('reports_field_returns')}: ${rep.returnsCount} (${oCcy.format(rep.returnsAmount)} TJS)',
-                                            style: textStyles.captionSans
-                                                .copyWith(
-                                                  color: colors.accentRed,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              if (rep.note != null && rep.note!.isNotEmpty) ...[
-                                const SizedBox(height: 8),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
                                 Text(
-                                  rep.note!,
+                                  locale.translate('reports_field_total_sales'),
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textSecondary,
                                   ),
                                 ),
+                                Text(
+                                  '${oCcy.format(rep.totalSales)} TJS',
+                                  style: textStyles.h2Sans.copyWith(
+                                    color: colors.brand,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 17,
+                                  ),
+                                ),
                               ],
+                            ),
+                            const SizedBox(height: 10),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceNested,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        TablerIcons.cash,
+                                        size: 14,
+                                        color: colors.accentGreen,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${locale.translate('reports_field_cash')}: ${oCcy.format(rep.cashAmount)}',
+                                        style: textStyles.captionSans.copyWith(
+                                          color: colors.textPrimary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceNested,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        TablerIcons.credit_card,
+                                        size: 14,
+                                        color: colors.brand,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${locale.translate('reports_field_cashless')}: ${oCcy.format(rep.cashlessAmount)}',
+                                        style: textStyles.captionSans.copyWith(
+                                          color: colors.textPrimary,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (rep.returnsCount > 0 ||
+                                    rep.returnsAmount > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colors.accentRed.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          TablerIcons.rotate_rectangle,
+                                          size: 14,
+                                          color: colors.accentRed,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${locale.translate('reports_field_returns')}: ${rep.returnsCount} (${oCcy.format(rep.returnsAmount)} TJS)',
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.accentRed,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (rep.note != null && rep.note!.isNotEmpty) ...[
                               const SizedBox(height: 8),
-                              const Divider(height: 1),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  if (_canWrite)
-                                    IconButton(
-                                      tooltip: locale.translate('common_edit'),
-                                      onPressed: () =>
-                                          _showReportForm(editing: rep),
-                                      icon: Icon(
-                                        TablerIcons.pencil,
-                                        size: 18,
-                                        color: colors.textSecondary,
-                                      ),
-                                    ),
-                                  TextButton.icon(
-                                    onPressed: _exporting
-                                        ? null
-                                        : () => _export(rep, 'pdf'),
-                                    icon: Icon(
-                                      TablerIcons.file_type_pdf,
-                                      size: 16,
-                                      color: colors.brand,
-                                    ),
-                                    label: Text(
-                                      'PDF',
-                                      style: TextStyle(color: colors.brand),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  TextButton.icon(
-                                    onPressed: _exporting
-                                        ? null
-                                        : () => _export(rep, 'docx'),
-                                    icon: Icon(
-                                      TablerIcons.file_type_doc,
-                                      size: 16,
-                                      color: colors.brand,
-                                    ),
-                                    label: Text(
-                                      'Word',
-                                      style: TextStyle(color: colors.brand),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  if (_canDelete)
-                                    IconButton(
-                                      tooltip: locale.translate(
-                                        'common_delete',
-                                      ),
-                                      onPressed: () => _confirmDelete(rep),
-                                      icon: Icon(
-                                        TablerIcons.trash,
-                                        size: 18,
-                                        color: colors.accentRed,
-                                      ),
-                                    ),
-                                ],
+                              Text(
+                                rep.note!,
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                ),
                               ),
                             ],
-                          ),
+                            const SizedBox(height: 8),
+                            const Divider(height: 1),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                if (_canWrite)
+                                  IconButton(
+                                    tooltip: locale.translate('common_edit'),
+                                    onPressed: () =>
+                                        _showReportForm(editing: rep),
+                                    icon: Icon(
+                                      TablerIcons.pencil,
+                                      size: 18,
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
+                                TextButton.icon(
+                                  onPressed: _exporting
+                                      ? null
+                                      : () => _export(rep, 'pdf'),
+                                  icon: Icon(
+                                    TablerIcons.file_type_pdf,
+                                    size: 16,
+                                    color: colors.brand,
+                                  ),
+                                  label: Text(
+                                    'PDF',
+                                    style: TextStyle(color: colors.brand),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                TextButton.icon(
+                                  onPressed: _exporting
+                                      ? null
+                                      : () => _export(rep, 'docx'),
+                                  icon: Icon(
+                                    TablerIcons.file_type_doc,
+                                    size: 16,
+                                    color: colors.brand,
+                                  ),
+                                  label: Text(
+                                    'Word',
+                                    style: TextStyle(color: colors.brand),
+                                  ),
+                                ),
+                                const Spacer(),
+                                if (_canDelete)
+                                  IconButton(
+                                    tooltip: locale.translate('common_delete'),
+                                    onPressed: () => _confirmDelete(rep),
+                                    icon: Icon(
+                                      TablerIcons.trash,
+                                      size: 18,
+                                      color: colors.accentRed,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              ),
-            );
-          },
-        ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }

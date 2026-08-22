@@ -71,11 +71,7 @@ class LedgerAiFloatingButton extends StatelessWidget {
             onTap: onPressed ?? () => LedgerAiAssistantHost.open(context),
             borderRadius: BorderRadius.circular(12),
             child: Center(
-              child: Icon(
-                TablerIcons.sparkles,
-                color: colors.brand,
-                size: 21,
-              ),
+              child: Icon(TablerIcons.sparkles, color: colors.brand, size: 21),
             ),
           ),
         ),

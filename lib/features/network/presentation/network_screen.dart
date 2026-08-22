@@ -207,7 +207,11 @@ class _NetworkViewState extends State<_NetworkView> {
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: Icon(TablerIcons.building_store, size: 20, color: colors.brand),
+            child: Icon(
+              TablerIcons.building_store,
+              size: 20,
+              color: colors.brand,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -619,20 +623,22 @@ class _NetworkViewState extends State<_NetworkView> {
                   color: isCurrent
                       ? colors.accentGreen.withValues(alpha: 0.12)
                       : (store.isActive
-                          ? colors.brand.withValues(alpha: 0.08)
-                          : colors.border.withValues(alpha: 0.5)),
+                            ? colors.brand.withValues(alpha: 0.08)
+                            : colors.border.withValues(alpha: 0.5)),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   isCurrent
                       ? language.translate('network_current_badge')
                       : (store.isActive
-                          ? language.translate('network_store_active')
-                          : language.translate('network_store_inactive')),
+                            ? language.translate('network_store_active')
+                            : language.translate('network_store_inactive')),
                   style: textStyles.captionSans.copyWith(
                     color: isCurrent
                         ? colors.accentGreen
-                        : (store.isActive ? colors.brand : colors.textSecondary),
+                        : (store.isActive
+                              ? colors.brand
+                              : colors.textSecondary),
                     fontWeight: FontWeight.w600,
                     fontSize: 11,
                   ),

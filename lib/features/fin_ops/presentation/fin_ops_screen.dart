@@ -154,10 +154,12 @@ class _FinOpsViewState extends State<FinOpsView> {
       0.0,
       (s, b) => s + b.balance,
     );
-    final pendingTransfers =
-        state.storeTransfers.where((t) => t.status == 'pending').length;
-    final activeAid =
-        state.financialAids.where((a) => a.status == 'active').length;
+    final pendingTransfers = state.storeTransfers
+        .where((t) => t.status == 'pending')
+        .length;
+    final activeAid = state.financialAids
+        .where((a) => a.status == 'active')
+        .length;
     final hasPending = pendingTransfers > 0 || activeAid > 0;
 
     return RefreshIndicator(
@@ -366,10 +368,8 @@ class _FinOpsViewState extends State<FinOpsView> {
                   child: SizedBox(
                     height: 44,
                     child: ElevatedButton.icon(
-                      onPressed: () => _showEncashmentModal(
-                        context,
-                        state.bankAccounts,
-                      ),
+                      onPressed: () =>
+                          _showEncashmentModal(context, state.bankAccounts),
                       icon: const Icon(TablerIcons.cash_banknote, size: 17),
                       label: Text(
                         locale.translate('fin_ops_new_encashment'),
@@ -402,11 +402,12 @@ class _FinOpsViewState extends State<FinOpsView> {
                   child: SizedBox(
                     height: 44,
                     child: OutlinedButton.icon(
-                      onPressed: () => _showTransferModal(
-                        context,
-                        state.branches,
+                      onPressed: () =>
+                          _showTransferModal(context, state.branches),
+                      icon: const Icon(
+                        TablerIcons.arrows_transfer_up,
+                        size: 17,
                       ),
-                      icon: const Icon(TablerIcons.arrows_transfer_up, size: 17),
                       label: Text(
                         locale.translate('fin_ops_tab_transfers'),
                         style: textStyles.captionSans.copyWith(
@@ -449,10 +450,7 @@ class _FinOpsViewState extends State<FinOpsView> {
                     params: {'count': '${state.bankAccounts.length}'},
                   ),
                   icon: TablerIcons.building_bank,
-                  onTap: () => _openFinOpsSection(
-                    context,
-                    FinOpsSection.banks,
-                  ),
+                  onTap: () => _openFinOpsSection(context, FinOpsSection.banks),
                 ),
               ),
               const SizedBox(width: 12),
@@ -464,10 +462,8 @@ class _FinOpsViewState extends State<FinOpsView> {
                       ? '$pendingTransfers в пути'
                       : '${state.storeTransfers.length} операций',
                   icon: TablerIcons.arrows_transfer_up,
-                  onTap: () => _openFinOpsSection(
-                    context,
-                    FinOpsSection.transfers,
-                  ),
+                  onTap: () =>
+                      _openFinOpsSection(context, FinOpsSection.transfers),
                 ),
               ),
             ],
@@ -483,10 +479,7 @@ class _FinOpsViewState extends State<FinOpsView> {
                       ? '$activeAid активных'
                       : '${state.financialAids.length} заявок',
                   icon: TablerIcons.heart_handshake,
-                  onTap: () => _openFinOpsSection(
-                    context,
-                    FinOpsSection.aid,
-                  ),
+                  onTap: () => _openFinOpsSection(context, FinOpsSection.aid),
                 ),
               ),
               const SizedBox(width: 12),
@@ -496,10 +489,8 @@ class _FinOpsViewState extends State<FinOpsView> {
                   title: locale.translate('fin_ops_new_encashment'),
                   subtitle: '${state.encashments.length} операций',
                   icon: TablerIcons.receipt_2,
-                  onTap: () => _openFinOpsSection(
-                    context,
-                    FinOpsSection.encashments,
-                  ),
+                  onTap: () =>
+                      _openFinOpsSection(context, FinOpsSection.encashments),
                 ),
               ),
             ],
@@ -519,10 +510,8 @@ class _FinOpsViewState extends State<FinOpsView> {
                 ),
               ),
               TextButton(
-                onPressed: () => _openFinOpsSection(
-                  context,
-                  FinOpsSection.banks,
-                ),
+                onPressed: () =>
+                    _openFinOpsSection(context, FinOpsSection.banks),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,

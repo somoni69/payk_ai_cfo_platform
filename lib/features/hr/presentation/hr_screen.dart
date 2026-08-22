@@ -454,17 +454,19 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
         ? state.salaryRecords.fold<double>(0.0, (s, r) => s + r.totalAmount)
         : state.employees.fold<double>(0.0, (s, e) => s + e.baseSalary);
     final totalEmployees = state.employees.length;
-    final activeEmployees =
-        state.employees.where((e) => e.status == 'active').length;
+    final activeEmployees = state.employees
+        .where((e) => e.status == 'active')
+        .length;
     final avgKpi = state.kpiAlerts.isNotEmpty
         ? state.kpiAlerts.fold<double>(0.0, (s, a) => s + a.completion) /
-            state.kpiAlerts.length
+              state.kpiAlerts.length
         : 1.0;
     final atRiskCount = state.kpiAlerts.where((a) => a.triggered).length;
     final turnoverRate =
-        state.employees.isNotEmpty && (state.movement?.fired.isNotEmpty ?? false)
-            ? (state.movement!.fired.length / state.employees.length)
-            : 0.0;
+        state.employees.isNotEmpty &&
+            (state.movement?.fired.isNotEmpty ?? false)
+        ? (state.movement!.fired.length / state.employees.length)
+        : 0.0;
     final hasRisk = atRiskCount > 0 || turnoverRate > 0;
 
     return RefreshIndicator(
@@ -1128,9 +1130,7 @@ class _HrSectionScreenState extends State<HrSectionScreen>
           child: Container(height: 1, color: colors.border),
         ),
       ),
-      floatingActionButton: canWrite
-          ? _buildSectionFab(context, locale)
-          : null,
+      floatingActionButton: canWrite ? _buildSectionFab(context, locale) : null,
       body: BlocBuilder<HrBloc, HrState>(
         builder: (context, state) {
           if (state is HrLoading) {

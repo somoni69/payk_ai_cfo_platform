@@ -96,9 +96,7 @@ class _UsersViewState extends State<UsersView> {
           if (state.successMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(
-                  language.translateMessage(state.successMessage!),
-                ),
+                content: Text(language.translateMessage(state.successMessage!)),
                 backgroundColor: colors.accentGreen,
               ),
             );
@@ -174,7 +172,11 @@ class _UsersViewState extends State<UsersView> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(TablerIcons.users, size: 13, color: colors.brand),
+                          Icon(
+                            TablerIcons.users,
+                            size: 13,
+                            color: colors.brand,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             language.translate(
@@ -206,7 +208,11 @@ class _UsersViewState extends State<UsersView> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Icon(TablerIcons.shield_lock, size: 16, color: colors.brand),
+                    Icon(
+                      TablerIcons.shield_lock,
+                      size: 16,
+                      color: colors.brand,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '$activeUsers ${language.translate('users_active').toLowerCase()}',
@@ -395,10 +401,8 @@ class _UsersViewState extends State<UsersView> {
                   title: language.translate('users_tab_users'),
                   subtitle: '$totalUsers аккаунтов · $activeUsers активных',
                   icon: TablerIcons.users,
-                  onTap: () => _openUsersSection(
-                    context,
-                    UsersSection.usersList,
-                  ),
+                  onTap: () =>
+                      _openUsersSection(context, UsersSection.usersList),
                 ),
               ),
               const SizedBox(width: 12),
@@ -431,10 +435,8 @@ class _UsersViewState extends State<UsersView> {
                 ),
               ),
               TextButton(
-                onPressed: () => _openUsersSection(
-                  context,
-                  UsersSection.usersList,
-                ),
+                onPressed: () =>
+                    _openUsersSection(context, UsersSection.usersList),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -883,7 +885,8 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
                                                 user.fullName,
                                                 style: textStyles.bodySans
                                                     .copyWith(
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                       fontSize: 15,
                                                     ),
                                                 maxLines: 1,
@@ -894,7 +897,8 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
                                                 '@${user.username}',
                                                 style: textStyles.captionSans
                                                     .copyWith(
-                                                      color: colors.textSecondary,
+                                                      color:
+                                                          colors.textSecondary,
                                                     ),
                                               ),
                                             ],
@@ -933,8 +937,8 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
                                                   user.email!,
                                                   style: textStyles.captionSans
                                                       .copyWith(
-                                                        color:
-                                                            colors.textSecondary,
+                                                        color: colors
+                                                            .textSecondary,
                                                       ),
                                                 ),
                                               ],
@@ -954,8 +958,8 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
                                                   user.phone!,
                                                   style: textStyles.captionSans
                                                       .copyWith(
-                                                        color:
-                                                            colors.textSecondary,
+                                                        color: colors
+                                                            .textSecondary,
                                                       ),
                                                 ),
                                               ],
@@ -1420,11 +1424,7 @@ Widget _buildRoleBadge(
     ),
     child: Text(
       name.toUpperCase(),
-      style: TextStyle(
-        color: col,
-        fontSize: 11,
-        fontWeight: FontWeight.w600,
-      ),
+      style: TextStyle(color: col, fontSize: 11, fontWeight: FontWeight.w600),
     ),
   );
 }
@@ -1454,9 +1454,7 @@ void _confirmDelete(BuildContext context, String id) {
           onPressed: () => Navigator.pop(dCtx),
           child: Text(
             language.translate('common_cancel'),
-            style: textStyles.captionSans.copyWith(
-              color: colors.textSecondary,
-            ),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
         ),
         TextButton(
@@ -1474,10 +1472,7 @@ void _confirmDelete(BuildContext context, String id) {
   );
 }
 
-Future<void> _showUserDialog(
-  BuildContext context, {
-  UserProfile? user,
-}) async {
+Future<void> _showUserDialog(BuildContext context, {UserProfile? user}) async {
   final colors = context.colors;
   final textStyles = context.textStyles;
   final language = context.read<LanguageCubit>();
@@ -1625,9 +1620,7 @@ Future<void> _showUserDialog(
                           horizontal: 4,
                           vertical: 0,
                         ),
-                        tilePadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                        ),
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                         title: Text(
                           language.translate(_userRoleTranslationKey(role)),
                           style: textStyles.captionSans.copyWith(
@@ -1638,9 +1631,8 @@ Future<void> _showUserDialog(
                         ),
                         items: roles,
                         selectedValue: role,
-                        itemLabelBuilder: (rCode) => language.translate(
-                          _userRoleTranslationKey(rCode),
-                        ),
+                        itemLabelBuilder: (rCode) =>
+                            language.translate(_userRoleTranslationKey(rCode)),
                         onSelected: (val) {
                           setModalState(() => role = val);
                         },
@@ -1666,9 +1658,7 @@ Future<void> _showUserDialog(
                           horizontal: 4,
                           vertical: 0,
                         ),
-                        tilePadding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                        ),
+                        tilePadding: const EdgeInsets.symmetric(horizontal: 8),
                         title: Text(
                           language.translateMessage(branch),
                           style: textStyles.captionSans.copyWith(
@@ -1807,9 +1797,7 @@ Future<void> _showUserDialog(
                   Navigator.pop(context);
                 },
                 child: Text(
-                  language.translate(
-                    isEdit ? 'common_save' : 'common_create',
-                  ),
+                  language.translate(isEdit ? 'common_save' : 'common_create'),
                 ),
               ),
             ),
