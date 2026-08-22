@@ -214,7 +214,11 @@ class _MoreScreenState extends State<MoreScreen> {
                       context.read<LanguageCubit>().setLanguage(val);
                     },
                   ),
+<<<<<<< Updated upstream
                   const SizedBox(height: 20),
+=======
+                  const SizedBox(height: 16),
+>>>>>>> Stashed changes
 
                   if (role != null) ..._buildGroupedModules(role),
 
