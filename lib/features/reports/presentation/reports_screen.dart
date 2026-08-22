@@ -22,9 +22,6 @@ import '../../../features/reports/domain/report_models.dart';
 import '../../../features/reports/domain/reports_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class ReportsScreen extends StatelessWidget {
@@ -256,10 +253,15 @@ class _ReportsViewState extends State<ReportsView> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (formError != null) ...[
-                LedgerCard(
-                  backgroundColor: colors.accentRed.withValues(alpha: 0.08),
-                  borderColor: colors.accentRed.withValues(alpha: 0.4),
+                Container(
                   padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.accentRed.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: colors.accentRed.withValues(alpha: 0.4),
+                    ),
+                  ),
                   child: Text(
                     formError!,
                     style: textStyles.captionSans.copyWith(
@@ -581,18 +583,24 @@ class _ReportsViewState extends State<ReportsView> {
               ),
             )
           : null,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            LedgerCollapsingHeader(
-              title: locale.translate('reports_title'),
-              pinned: true,
-              floating: false,
-              snap: false,
-            ),
-          ];
-        },
-        body: BlocConsumer<ReportsBloc, ReportsState>(
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          locale.translate('reports_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
+      body: BlocConsumer<ReportsBloc, ReportsState>(
           listenWhen: (prev, next) {
             if (next is! ReportsLoaded) return false;
             return next.actionError != null || next.actionSuccess != null;
@@ -642,8 +650,13 @@ class _ReportsViewState extends State<ReportsView> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
                 children: [
                   if (_isManagement) ...[
-                    LedgerCard(
-                      padding: const EdgeInsets.all(12),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -763,8 +776,13 @@ class _ReportsViewState extends State<ReportsView> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  LedgerCard(
+                  Container(
                     padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -778,7 +796,8 @@ class _ReportsViewState extends State<ReportsView> {
                           '${oCcy.format(state.totalSales)} TJS',
                           style: textStyles.h2Sans.copyWith(
                             color: colors.brand,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 18,
                           ),
                         ),
                       ],
@@ -788,39 +807,48 @@ class _ReportsViewState extends State<ReportsView> {
                   Text(
                     locale.translate('reports_list_title'),
                     style: textStyles.h2Sans.copyWith(
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 10),
                   if (state.dailyReports.isEmpty)
-                    LedgerCard(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 24),
-                        child: Column(
-                          children: [
-                            Icon(
-                              TablerIcons.report_analytics,
-                              size: 32,
-                              color: colors.textTooltip,
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            TablerIcons.report_analytics,
+                            size: 32,
+                            color: colors.textTooltip,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            locale.translate('reports_empty'),
+                            style: textStyles.bodySans.copyWith(
+                              color: colors.textSecondary,
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              locale.translate('reports_empty'),
-                              style: textStyles.bodySans.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     )
                   else
                     ...state.dailyReports.map(
                       (rep) => Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: LedgerCard(
+                        child: Container(
                           padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: colors.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: colors.border),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -858,22 +886,34 @@ class _ReportsViewState extends State<ReportsView> {
                                       ],
                                     ),
                                   ),
-                                  LedgerPill(
-                                    text: rep.hasInvoices
-                                        ? locale.translate(
-                                            'reports_invoices_yes',
-                                          )
-                                        : locale.translate(
-                                            'reports_invoices_no',
-                                          ),
-                                    backgroundColor: rep.hasInvoices
-                                        ? colors.accentGreen.withValues(
-                                            alpha: 0.12,
-                                          )
-                                        : colors.surfaceNested,
-                                    textColor: rep.hasInvoices
-                                        ? colors.accentGreen
-                                        : colors.textSecondary,
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 7,
+                                      vertical: 2.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: rep.hasInvoices
+                                          ? colors.accentGreen
+                                              .withValues(alpha: 0.12)
+                                          : colors.surfaceNested,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      rep.hasInvoices
+                                          ? locale.translate(
+                                              'reports_invoices_yes',
+                                            )
+                                          : locale.translate(
+                                              'reports_invoices_no',
+                                            ),
+                                      style: textStyles.captionSans.copyWith(
+                                        color: rep.hasInvoices
+                                            ? colors.accentGreen
+                                            : colors.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1078,7 +1118,6 @@ class _ReportsViewState extends State<ReportsView> {
             );
           },
         ),
-      ),
     );
   }
 }

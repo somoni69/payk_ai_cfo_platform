@@ -17,13 +17,35 @@ import '../../../features/crm/bloc/crm_state.dart';
 import '../../../features/crm/domain/crm_models.dart';
 import '../../../features/crm/domain/crm_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import 'crm_funnel.dart';
 import 'crm_labels.dart';
 import 'crm_sheets.dart';
+
+enum CrmSection { clients, funnel, loyalty, reactivation, churn, birthdays }
+
+String _crmSectionTitle(LanguageCubit language, CrmSection section) {
+  return language.translate(switch (section) {
+    CrmSection.clients => 'crm_tab_clients',
+    CrmSection.funnel => 'crm_tab_funnel',
+    CrmSection.loyalty => 'crm_tab_loyalty',
+    CrmSection.reactivation => 'crm_tab_reactivation',
+    CrmSection.churn => 'crm_tab_churn',
+    CrmSection.birthdays => 'crm_tab_birthdays',
+  });
+}
+
+void _openCrmSection(BuildContext context, CrmSection section) {
+  final bloc = context.read<CrmBloc>();
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: CrmSectionScreen(section: section),
+      ),
+    ),
+  );
+}
 
 class CrmScreen extends StatelessWidget {
   const CrmScreen({super.key});
@@ -45,30 +67,7 @@ class CrmView extends StatefulWidget {
   State<CrmView> createState() => _CrmViewState();
 }
 
-class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
-  final _searchCtrl = TextEditingController();
-  Timer? _searchDebounce;
-
-  static const _tabCount = 6;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: _tabCount, vsync: this);
-    _tabs.addListener(() {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchDebounce?.cancel();
-    _searchCtrl.dispose();
-    _tabs.dispose();
-    super.dispose();
-  }
-
+class _CrmViewState extends State<CrmView> {
   Future<void> _refresh(BuildContext context) {
     final done = Completer<void>();
     context.read<CrmBloc>().add(
@@ -92,172 +91,725 @@ class _CrmViewState extends State<CrmView> with SingleTickerProviderStateMixin {
     final canDelete = role?.canDelete(AppCapability.crm) ?? false;
 
     return Scaffold(
-      floatingActionButton: canWrite && (_tabs.index == 0 || _tabs.index == 1)
-          ? FloatingActionButton.extended(
-              heroTag: null,
-              onPressed: () {
-                final state = context.read<CrmBloc>().state;
-                if (state is! CrmLoaded) return;
-                if (_tabs.index == 0) {
-                  showCrmClientForm(context);
-                } else {
-                  showCrmDealForm(
-                    context,
-                    clients: state.pickClients.isNotEmpty
-                        ? state.pickClients
-                        : state.clients,
-                  );
-                }
-              },
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              highlightElevation: 0,
-              focusElevation: 0,
-              hoverElevation: 0,
-              shape: RoundedRectangleBorder(
+      appBar: AppBar(
+        title: Text(
+          language.translate('crm_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: BlocListener<CrmBloc, CrmState>(
+        listenWhen: (p, c) {
+          if (c is! CrmLoaded) return false;
+          return c.errorMessage != null || c.successMessage != null;
+        },
+        listener: (context, state) {
+          if (state is! CrmLoaded) return;
+          final msg = state.errorMessage ?? state.successMessage;
+          if (msg == null) return;
+          final isError = state.errorMessage != null;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(language.resolveMessage(msg)),
+              backgroundColor: isError
+                  ? colors.accentRed
+                  : colors.accentGreen,
+            ),
+          );
+          context.read<CrmBloc>().add(const ClearCrmFeedback());
+        },
+        child: BlocBuilder<CrmBloc, CrmState>(
+          builder: (context, state) {
+            if (state is CrmLoading) {
+              return const _CrmSkeleton();
+            }
+            if (state is CrmError) {
+              return _ErrorBody(
+                message: language.resolveMessage(state.message),
+                onRetry: () =>
+                    context.read<CrmBloc>().add(const LoadCrmData()),
+              );
+            }
+            if (state is! CrmLoaded) return const SizedBox.shrink();
+
+            return _buildCrmOverviewHub(
+              context,
+              state,
+              canWrite: canWrite,
+              canDelete: canDelete,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCrmOverviewHub(
+    BuildContext context,
+    CrmLoaded state, {
+    required bool canWrite,
+    required bool canDelete,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    final recentDeals = state.deals.take(5).toList();
+    final hasRisk = state.stats.churnCount > 0 ||
+        state.stats.reactivationCount > 0 ||
+        state.birthdays.isNotEmpty;
+
+    return RefreshIndicator(
+      onRefresh: () => _refresh(context),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: LTV & Base
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: colors.brand),
+                border: Border.all(color: colors.border),
               ),
-              icon: Icon(
-                _tabs.index == 0 ? TablerIcons.user_plus : TablerIcons.plus,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    language.translate('crm_hero_clients'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${oCcy.format(state.stats.ltvTotal)} TJS',
+                    style: textStyles.h1Sans.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(TablerIcons.users, size: 16, color: colors.brand),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${state.stats.clientsTotal} клиентов (${state.stats.activeClients} активных)',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        TablerIcons.trending_up,
+                        size: 16,
+                        color: colors.accentGreen,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'CAC: ${oCcy.format(state.stats.cacTotal)} TJS',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              label: Text(
-                language.translate(
-                  _tabs.index == 0 ? 'crm_new_client' : 'crm_new_deal',
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Attention & Risks
+            Material(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: () => _openCrmSection(
+                  context,
+                  state.stats.churnCount > 0
+                      ? CrmSection.churn
+                      : CrmSection.reactivation,
                 ),
-                style: textStyles.bodySans.copyWith(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: hasRisk ? colors.accentAmber : colors.border,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        hasRisk
+                            ? TablerIcons.alert_triangle
+                            : TablerIcons.circle_check,
+                        color: hasRisk
+                            ? colors.accentAmber
+                            : colors.accentGreen,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              language.translate('crm_attention_title'),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              hasRisk
+                                  ? language.translate(
+                                      'crm_attention_risk',
+                                      params: {
+                                        'churn': state.stats.churnCount,
+                                        'reactivation':
+                                            state.stats.reactivationCount,
+                                      },
+                                    )
+                                  : language.translate('crm_attention_ok'),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        TablerIcons.chevron_right,
+                        size: 18,
+                        color: colors.textTooltip,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // 3. Quick Action Buttons (if canWrite)
+            if (canWrite) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: ElevatedButton.icon(
+                        onPressed: () => showCrmClientForm(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.brand,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(TablerIcons.user_plus, size: 16),
+                        label: Text(
+                          language.translate('crm_new_client'),
+                          style: textStyles.captionSans.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: OutlinedButton.icon(
+                        onPressed: () => showCrmDealForm(
+                          context,
+                          clients: state.pickClients.isNotEmpty
+                              ? state.pickClients
+                              : state.clients,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(TablerIcons.plus, size: 16),
+                        label: Text(
+                          language.translate('crm_new_deal'),
+                          style: textStyles.captionSans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // 4. Section Grid Hub (2x2)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCrmHubTile(
+                    context,
+                    icon: TablerIcons.users,
+                    title: language.translate('crm_tab_clients'),
+                    subtitle: '${state.stats.clientsTotal} контактов',
+                    onTap: () => _openCrmSection(context, CrmSection.clients),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildCrmHubTile(
+                    context,
+                    icon: TablerIcons.layout_kanban,
+                    title: language.translate('crm_tab_funnel'),
+                    subtitle: '${state.deals.length} сделок',
+                    onTap: () => _openCrmSection(context, CrmSection.funnel),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCrmHubTile(
+                    context,
+                    icon: TablerIcons.gift,
+                    title: language.translate('crm_tab_loyalty'),
+                    subtitle: 'Кэшбэк и RFM',
+                    onTap: () => _openCrmSection(context, CrmSection.loyalty),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildCrmHubTile(
+                    context,
+                    icon: TablerIcons.user_x,
+                    title: language.translate('crm_tab_churn'),
+                    subtitle: '${state.stats.churnCount} в зоне риска',
+                    onTap: () => _openCrmSection(context, CrmSection.churn),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // 5. Secondary Quick Links Row
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCrmHubTile(
+                    context,
+                    icon: TablerIcons.refresh,
+                    title: language.translate('crm_tab_reactivation'),
+                    subtitle: '${state.stats.reactivationCount} клиентов',
+                    onTap: () =>
+                        _openCrmSection(context, CrmSection.reactivation),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildCrmHubTile(
+                    context,
+                    icon: TablerIcons.cake,
+                    title: language.translate('crm_tab_birthdays'),
+                    subtitle: '${state.birthdays.length} в этом месяце',
+                    onTap: () =>
+                        _openCrmSection(context, CrmSection.birthdays),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 6. Recent Deals Feed
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  language.translate('crm_recent_deals'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      _openCrmSection(context, CrmSection.funnel),
+                  child: Text(
+                    language.translate('crm_all_deals'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.brand,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (recentDeals.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
                   color: colors.surface,
-                  fontWeight: FontWeight.w500,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
                 ),
+                child: Text(
+                  language.translate('crm_no_deals'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              )
+            else
+              ...recentDeals.map((d) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildRecentDealCard(context, d, oCcy),
+              )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Widget _buildCrmHubTile(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String subtitle,
+  required VoidCallback onTap,
+}) {
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+
+  return Material(
+    color: colors.surface,
+    borderRadius: BorderRadius.circular(12),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: colors.brand.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
               ),
-            )
-          : null,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) {
-          return [
-            LedgerCollapsingHeader(
-              title: language.translate('crm_title'),
-              titleWidget: Text(
-                language.translate('crm_title'),
-                style: textStyles.h1Sans.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
+              child: Icon(icon, size: 19, color: colors.brand),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 14.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+                fontSize: 12.5,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _buildRecentDealCard(BuildContext context, CrmDeal deal, dynamic oCcy) {
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  final language = context.read<LanguageCubit>();
+  final sc = crmStageColors(colors, deal.stage);
+
+  return Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: colors.border),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                deal.title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              pinned: true,
-              floating: false,
-              snap: false,
-              bottom: LedgerTabBar(
-                controller: _tabs,
-                isScrollable: true,
-                tabs: [
-                  Tab(text: language.translate('crm_tab_clients')),
-                  Tab(text: language.translate('crm_tab_funnel')),
-                  Tab(text: language.translate('crm_tab_loyalty')),
-                  Tab(text: language.translate('crm_tab_reactivation')),
-                  Tab(text: language.translate('crm_tab_churn')),
-                  Tab(text: language.translate('crm_tab_birthdays')),
-                ],
-              ),
-            ),
-          ];
-        },
-        body: BlocListener<CrmBloc, CrmState>(
-          listenWhen: (p, c) {
-            if (c is! CrmLoaded) return false;
-            return c.errorMessage != null || c.successMessage != null;
-          },
-          listener: (context, state) {
-            if (state is! CrmLoaded) return;
-            final msg = state.errorMessage ?? state.successMessage;
-            if (msg == null) return;
-            final isError = state.errorMessage != null;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(language.resolveMessage(msg)),
-                backgroundColor: isError
-                    ? colors.accentRed
-                    : colors.accentGreen,
-              ),
-            );
-            context.read<CrmBloc>().add(const ClearCrmFeedback());
-          },
-          child: BlocBuilder<CrmBloc, CrmState>(
-            builder: (context, state) {
-              if (state is CrmLoading) {
-                return const _CrmSkeleton();
-              }
-              if (state is CrmError) {
-                return _ErrorBody(
-                  message: language.resolveMessage(state.message),
-                  onRetry: () =>
-                      context.read<CrmBloc>().add(const LoadCrmData()),
-                );
-              }
-              if (state is! CrmLoaded) return const SizedBox.shrink();
-
-              return Column(
-                children: [
-                  if (state.isRefreshing) const LinearProgressIndicator(),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabs,
-                      children: [
-                        _ClientsTab(
-                          state: state,
-                          canWrite: canWrite,
-                          canDelete: canDelete,
-                          searchCtrl: _searchCtrl,
-                          onSearch: (q) {
-                            _searchDebounce?.cancel();
-                            _searchDebounce = Timer(
-                              const Duration(milliseconds: 350),
-                              () {
-                                context.read<CrmBloc>().add(
-                                  ClientFiltersChanged(query: q),
-                                );
-                              },
-                            );
-                          },
-                          onRefresh: () => _refresh(context),
-                        ),
-                        CrmFunnelBoard(
-                          state: state,
-                          canWrite: canWrite,
-                          canDelete: canDelete,
-                          onRefresh: () => _refresh(context),
-                        ),
-                        _LoyaltyTab(
-                          state: state,
-                          canWrite: canWrite,
-                          onRefresh: () => _refresh(context),
-                        ),
-                        _ReactivationTab(
-                          state: state,
-                          canWrite: canWrite,
-                          onRefresh: () => _refresh(context),
-                        ),
-                        _ChurnTab(
-                          state: state,
-                          canWrite: canWrite,
-                          onRefresh: () => _refresh(context),
-                        ),
-                        _BirthdaysTab(
-                          state: state,
-                          onRefresh: () => _refresh(context),
-                        ),
-                      ],
-                    ),
+              if (deal.clientName != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  deal.clientName!,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: 13,
                   ),
-                ],
-              );
-            },
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
           ),
         ),
-      ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '${oCcy.format(deal.amount)} TJS',
+              style: textStyles.bodyMono.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: colors.brand,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+              decoration: BoxDecoration(
+                color: sc.bg,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                crmStagePill(language, deal.stage),
+                style: textStyles.captionSans.copyWith(
+                  color: sc.fg,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class CrmSectionScreen extends StatefulWidget {
+  final CrmSection section;
+
+  const CrmSectionScreen({super.key, required this.section});
+
+  @override
+  State<CrmSectionScreen> createState() => _CrmSectionScreenState();
+}
+
+class _CrmSectionScreenState extends State<CrmSectionScreen> {
+  final _searchCtrl = TextEditingController();
+  Timer? _searchDebounce;
+
+  @override
+  void dispose() {
+    _searchDebounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refresh(BuildContext context) {
+    final done = Completer<void>();
+    context.read<CrmBloc>().add(
+      LoadCrmData(forceRefresh: true, completion: done),
+    );
+    return done.future;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final auth = context.watch<AuthBloc>().state;
+    final role = auth is AuthAuthenticated ? auth.role : null;
+    final canWrite = role?.canWrite(AppCapability.crm) ?? false;
+    final canDelete = role?.canDelete(AppCapability.crm) ?? false;
+
+    return BlocBuilder<CrmBloc, CrmState>(
+      builder: (context, state) {
+        final loadedState = state is CrmLoaded ? state : null;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              _crmSectionTitle(language, widget.section),
+              style: textStyles.h2Sans.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+            leading: const BackButton(),
+            backgroundColor: colors.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+          ),
+          floatingActionButton: canWrite && loadedState != null
+              ? switch (widget.section) {
+                  CrmSection.clients => FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () => showCrmClientForm(context),
+                      backgroundColor: colors.brand,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      highlightElevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      icon: const Icon(TablerIcons.user_plus, size: 18),
+                      label: Text(
+                        language.translate('crm_new_client'),
+                        style: textStyles.bodySans.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  CrmSection.funnel => FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () => showCrmDealForm(
+                        context,
+                        clients: loadedState.pickClients.isNotEmpty
+                            ? loadedState.pickClients
+                            : loadedState.clients,
+                      ),
+                      backgroundColor: colors.brand,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      highlightElevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      icon: const Icon(TablerIcons.plus, size: 18),
+                      label: Text(
+                        language.translate('crm_new_deal'),
+                        style: textStyles.bodySans.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  _ => null,
+                }
+              : null,
+          body: loadedState != null
+              ? switch (widget.section) {
+                  CrmSection.clients => _ClientsTab(
+                      state: loadedState,
+                      canWrite: canWrite,
+                      canDelete: canDelete,
+                      searchCtrl: _searchCtrl,
+                      onSearch: (q) {
+                        _searchDebounce?.cancel();
+                        _searchDebounce = Timer(
+                          const Duration(milliseconds: 350),
+                          () {
+                            context.read<CrmBloc>().add(
+                              ClientFiltersChanged(query: q),
+                            );
+                          },
+                        );
+                      },
+                      onRefresh: () => _refresh(context),
+                    ),
+                  CrmSection.funnel => CrmFunnelBoard(
+                      state: loadedState,
+                      canWrite: canWrite,
+                      canDelete: canDelete,
+                      onRefresh: () => _refresh(context),
+                    ),
+                  CrmSection.loyalty => _LoyaltyTab(
+                      state: loadedState,
+                      canWrite: canWrite,
+                      onRefresh: () => _refresh(context),
+                    ),
+                  CrmSection.reactivation => _ReactivationTab(
+                      state: loadedState,
+                      canWrite: canWrite,
+                      onRefresh: () => _refresh(context),
+                    ),
+                  CrmSection.churn => _ChurnTab(
+                      state: loadedState,
+                      canWrite: canWrite,
+                      onRefresh: () => _refresh(context),
+                    ),
+                  CrmSection.birthdays => _BirthdaysTab(
+                      state: loadedState,
+                      onRefresh: () => _refresh(context),
+                    ),
+                }
+              : const _CrmSkeleton(),
+        );
+      },
     );
   }
 }
@@ -491,145 +1043,188 @@ class _ClientsTab extends StatelessWidget {
                         ? client.fullName[0].toUpperCase()
                         : '?';
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () => showCrmClientDetail(context, client),
-                        child: LedgerCard(
-                          padding: const EdgeInsets.all(14),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  // User avatar
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: colors.surfaceNested,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      initial,
-                                      style: textStyles.bodySans.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                        color: colors.brand,
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Material(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => showCrmClientDetail(context, client),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: colors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    // User avatar
+                                    Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: colors.surfaceNested,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        initial,
+                                        style: textStyles.bodySans.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: colors.brand,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          client.fullName,
-                                          style: textStyles.bodySans.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        if (client.phone != null ||
-                                            client.email != null) ...[
-                                          const SizedBox(height: 2),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
                                           Text(
-                                            client.phone ?? client.email!,
+                                            client.fullName,
+                                            style: textStyles.bodySans.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (client.phone != null ||
+                                              client.email != null) ...[
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              client.phone ?? client.email!,
+                                              style: textStyles.captionSans
+                                                  .copyWith(
+                                                    color: colors.textSecondary,
+                                                    fontSize: 13,
+                                                  ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: lc.bg,
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            crmLoyaltyLabel(
+                                              language,
+                                              client.loyaltyLevel,
+                                            ),
                                             style: textStyles.captionSans
                                                 .copyWith(
-                                                  color: colors.textSecondary,
+                                                  color: lc.fg,
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 11.5,
                                                 ),
+                                          ),
+                                        ),
+                                        if (client.churnRisk) ...[
+                                          const SizedBox(height: 4),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colors.accentRed
+                                                  .withValues(alpha: 0.12),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              language.translate(
+                                                'crm_churn_risk',
+                                              ),
+                                              style: textStyles.captionSans
+                                                  .copyWith(
+                                                    color: colors.accentRed,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 11.5,
+                                                  ),
+                                            ),
                                           ),
                                         ],
                                       ],
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      LedgerPill(
-                                        text: crmLoyaltyLabel(
-                                          language,
-                                          client.loyaltyLevel,
-                                        ),
-                                        backgroundColor: lc.bg,
-                                        textColor: lc.fg,
-                                      ),
-                                      if (client.churnRisk) ...[
-                                        const SizedBox(height: 4),
-                                        LedgerPill(
-                                          text: language.translate(
-                                            'crm_churn_risk',
-                                          ),
-                                          backgroundColor: colors.accentRed
-                                              .withValues(alpha: 0.12),
-                                          textColor: colors.accentRed,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colors.surfaceNested,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'LTV ${oCcy.format(client.totalSpent)} TJS',
-                                        style: textStyles.captionSans.copyWith(
-                                          color: colors.accentGreen,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
-                                        style: textStyles.captionSans.copyWith(
-                                          color: colors.textSecondary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Text(
-                                        client.roi == null
-                                            ? 'ROI —'
-                                            : 'ROI ${oCcy.format(client.roi!)}×',
-                                        style: textStyles.captionSans.copyWith(
-                                          color: colors.textSecondary,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        textAlign: TextAlign.end,
-                                      ),
-                                    ),
                                   ],
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${language.translate('crm_last_purchase')}: ${client.lastPurchaseAt == null ? '—' : formatLocalizedDateTime(context, client.lastPurchaseAt!, style: LocalizedDateTimeStyle.date)}',
-                                style: textStyles.smallSans.copyWith(
-                                  color: colors.textTooltip,
-                                  fontWeight: FontWeight.w400,
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceNested,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'LTV ${oCcy.format(client.totalSpent)} TJS',
+                                          style: textStyles.captionSans.copyWith(
+                                            color: colors.accentGreen,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12.5,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
+                                          style: textStyles.captionSans.copyWith(
+                                            color: colors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 12.5,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          client.roi == null
+                                              ? 'ROI —'
+                                              : 'ROI ${oCcy.format(client.roi!)}×',
+                                          style: textStyles.captionSans.copyWith(
+                                            color: colors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                            fontSize: 12.5,
+                                          ),
+                                          textAlign: TextAlign.end,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${language.translate('crm_last_purchase')}: ${client.lastPurchaseAt == null ? '—' : formatLocalizedDateTime(context, client.lastPurchaseAt!, style: LocalizedDateTimeStyle.date)}',
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textTooltip,
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -729,15 +1324,33 @@ class _LoyaltyTab extends StatelessWidget {
               final lc = crmLoyaltyColors(colors, row.level);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: LedgerCard(
+                child: Container(
                   padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      LedgerPill(
-                        text: crmLoyaltyLabel(language, row.level),
-                        backgroundColor: lc.bg,
-                        textColor: lc.fg,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: lc.bg,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          crmLoyaltyLabel(language, row.level),
+                          style: textStyles.captionSans.copyWith(
+                            color: lc.fg,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -745,21 +1358,32 @@ class _LoyaltyTab extends StatelessWidget {
                           'crm_loyalty_clients_count',
                           params: {'count': row.clients},
                         ),
-                        style: textStyles.captionSans,
+                        style: textStyles.captionSans.copyWith(
+                          fontSize: 13,
+                        ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         language.translate(
                           'crm_loyalty_spent',
                           params: {'amount': oCcy.format(row.totalSpent)},
                         ),
-                        style: textStyles.smallMono,
+                        style: textStyles.bodyMono.copyWith(
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                        ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         language.translate(
                           'crm_loyalty_bonus_total',
                           params: {'amount': oCcy.format(row.bonusPoints)},
                         ),
-                        style: textStyles.smallMono,
+                        style: textStyles.bodyMono.copyWith(
+                          fontSize: 13,
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
@@ -769,7 +1393,10 @@ class _LoyaltyTab extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             language.translate('crm_loyalty_history_title'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            style: textStyles.bodySans.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 8),
           Builder(
@@ -793,6 +1420,7 @@ class _LoyaltyTab extends StatelessWidget {
                     language.translate('crm_loyalty_filter_client'),
                     style: textStyles.bodySans.copyWith(
                       fontWeight: FontWeight.w500,
+                      fontSize: 13.5,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -833,7 +1461,7 @@ class _LoyaltyTab extends StatelessWidget {
           if (state.loyaltyTxnsLoading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
-              child: LedgerListShimmer(itemCount: 4),
+              child: LinearProgressIndicator(),
             )
           else if (state.loyaltyTxns.isEmpty)
             Text(
@@ -844,8 +1472,13 @@ class _LoyaltyTab extends StatelessWidget {
             ...state.loyaltyTxns.map((t) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: LedgerCard(
+                child: Container(
                   padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -855,7 +1488,8 @@ class _LoyaltyTab extends StatelessWidget {
                             Text(
                               _clientName(t.clientId),
                               style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.5,
                               ),
                             ),
                             Text(
@@ -868,6 +1502,7 @@ class _LoyaltyTab extends StatelessWidget {
                                     ),
                               style: textStyles.captionSans.copyWith(
                                 color: colors.textSecondary,
+                                fontSize: 12.5,
                               ),
                             ),
                           ],
@@ -876,7 +1511,8 @@ class _LoyaltyTab extends StatelessWidget {
                       Text(
                         oCcy.format(t.points),
                         style: textStyles.bodyMono.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                           color: t.points >= 0
                               ? colors.accentGreen
                               : colors.accentRed,
@@ -946,34 +1582,54 @@ class _ReactivationTab extends StatelessWidget {
               separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final c = state.reactivation[i];
-                return LedgerCard(
+                return Container(
                   padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         c.fullName,
                         style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
                       ),
-                      if (c.phone != null)
+                      if (c.phone != null) ...[
+                        const SizedBox(height: 2),
                         Text(
                           c.phone!,
                           style: textStyles.captionSans.copyWith(
                             color: colors.textSecondary,
+                            fontSize: 13,
                           ),
                         ),
+                      ],
+                      const SizedBox(height: 4),
                       Text(
                         'LTV ${oCcy.format(c.totalSpent)} TJS',
-                        style: textStyles.smallMono,
+                        style: textStyles.bodyMono.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colors.brand,
+                        ),
                       ),
                       if (canWrite) ...[
                         const SizedBox(height: 8),
                         OutlinedButton.icon(
                           onPressed: () => showCrmSmsSheet(context, c),
-                          icon: const Icon(TablerIcons.mail, size: 18),
-                          label: Text(language.translate('crm_send_sms')),
+                          icon: const Icon(TablerIcons.mail, size: 16),
+                          label: Text(
+                            language.translate('crm_send_sms'),
+                            style: textStyles.captionSans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -1009,20 +1665,29 @@ class _ChurnTab extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           if (state.churnAdvice != null) ...[
-            LedgerCard(
+            Container(
               padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.accentAmber),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     language.translate('crm_ai_advice'),
                     style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                       color: colors.accentAmber,
+                      fontSize: 14.5,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(state.churnAdvice!.advice, style: textStyles.bodySans),
+                  Text(
+                    state.churnAdvice!.advice,
+                    style: textStyles.bodySans.copyWith(fontSize: 13.5),
+                  ),
                 ],
               ),
             ),
@@ -1049,8 +1714,13 @@ class _ChurnTab extends StatelessWidget {
             ...state.churn.map((c) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: LedgerCard(
+                child: Container(
                   padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1060,22 +1730,39 @@ class _ChurnTab extends StatelessWidget {
                             child: Text(
                               c.fullName,
                               style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
                               ),
                             ),
                           ),
-                          LedgerPill(
-                            text: language.translate('crm_churn_risk'),
-                            backgroundColor: colors.accentRed.withValues(
-                              alpha: 0.08,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                            textColor: colors.accentRed,
+                            decoration: BoxDecoration(
+                              color: colors.accentRed.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              language.translate('crm_churn_risk'),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.accentRed,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
+                            ),
                           ),
                         ],
                       ),
+                      const SizedBox(height: 4),
                       Text(
                         'LTV ${oCcy.format(c.totalSpent)} TJS',
-                        style: textStyles.smallMono,
+                        style: textStyles.bodyMono.copyWith(
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                       if (canWrite) ...[
                         const SizedBox(height: 8),
@@ -1083,8 +1770,14 @@ class _ChurnTab extends StatelessWidget {
                           onPressed: () => context.read<CrmBloc>().add(
                             AnalyzeChurnRequested(c.id),
                           ),
-                          icon: const Icon(TablerIcons.brain, size: 18),
-                          label: Text(language.translate('crm_ai_analyze')),
+                          icon: const Icon(TablerIcons.brain, size: 16),
+                          label: Text(
+                            language.translate('crm_ai_analyze'),
+                            style: textStyles.captionSans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
+                            ),
+                          ),
                         ),
                       ],
                     ],
@@ -1134,11 +1827,24 @@ class _BirthdaysTab extends StatelessWidget {
               separatorBuilder: (context, index) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final b = state.birthdays[i];
-                return LedgerCard(
+                return Container(
                   padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Row(
                     children: [
-                      Icon(TablerIcons.cake, color: colors.brand, size: 22),
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: colors.brand.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(TablerIcons.cake, color: colors.brand, size: 20),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -1147,9 +1853,11 @@ class _BirthdaysTab extends StatelessWidget {
                             Text(
                               b.fullName,
                               style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
                               ),
                             ),
+                            const SizedBox(height: 2),
                             Text(
                               language.translate(
                                 'crm_birthday_in_days',
@@ -1157,24 +1865,32 @@ class _BirthdaysTab extends StatelessWidget {
                               ),
                               style: textStyles.captionSans.copyWith(
                                 color: colors.textSecondary,
+                                fontSize: 13,
                               ),
                             ),
-                            if (b.turning != null)
+                            if (b.turning != null) ...[
+                              const SizedBox(height: 2),
                               Text(
                                 language.translate(
                                   'crm_turning',
                                   params: {'age': b.turning},
                                 ),
-                                style: textStyles.smallMono,
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.brand,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12.5,
+                                ),
                               ),
+                            ],
                           ],
                         ),
                       ),
                       if (b.phone != null)
                         Text(
                           b.phone!,
-                          style: textStyles.smallMono.copyWith(
-                            color: colors.textTooltip,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 12.5,
                           ),
                         ),
                     ],

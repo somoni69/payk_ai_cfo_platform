@@ -1,6 +1,12 @@
 part of 'hr_screen.dart';
 
-extension _HrExtraTabs on _HrViewState {
+mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
+  bool _canManageHr(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.hr);
+  }
+
   Widget _sectionLoader(HrLoaded state, bool loaded, Widget child) {
     if (!loaded && state.sectionLoading) {
       return const HrOverviewShimmer();
@@ -59,8 +65,13 @@ extension _HrExtraTabs on _HrViewState {
     final widgets = <Widget>[
       Padding(
         padding: EdgeInsets.only(left: level * 16.0, bottom: 8),
-        child: LedgerCard(
+        child: Container(
           padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
           child: Row(
             children: [
               CircleAvatar(
@@ -72,7 +83,8 @@ extension _HrExtraTabs on _HrViewState {
                       : '?',
                   style: textStyles.bodySans.copyWith(
                     color: colors.brand,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -84,7 +96,8 @@ extension _HrExtraTabs on _HrViewState {
                     Text(
                       node.fullName,
                       style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
                       ),
                     ),
                     if (node.position != null && node.position!.isNotEmpty)
@@ -92,19 +105,33 @@ extension _HrExtraTabs on _HrViewState {
                         node.position!,
                         style: textStyles.captionSans.copyWith(
                           color: colors.textSecondary,
+                          fontSize: 13,
                         ),
                       ),
                   ],
                 ),
               ),
-              LedgerPill(
-                text: locale.translate('hr_status_${node.status}'),
-                backgroundColor: node.status == 'active'
-                    ? colors.accentGreen.withValues(alpha: 0.1)
-                    : colors.surfaceNested,
-                textColor: node.status == 'active'
-                    ? colors.accentGreen
-                    : colors.textSecondary,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: node.status == 'active'
+                      ? colors.accentGreen.withValues(alpha: 0.1)
+                      : colors.surfaceNested,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  locale.translate('hr_status_${node.status}'),
+                  style: textStyles.captionSans.copyWith(
+                    color: node.status == 'active'
+                        ? colors.accentGreen
+                        : colors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                  ),
+                ),
               ),
             ],
           ),
@@ -183,7 +210,13 @@ extension _HrExtraTabs on _HrViewState {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final row = state.attendance[index];
-                    return LedgerCard(
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -193,7 +226,8 @@ extension _HrExtraTabs on _HrViewState {
                                 Text(
                                   row.employeeName ?? '#${row.employeeId}',
                                   style: textStyles.bodySans.copyWith(
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.5,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -205,6 +239,7 @@ extension _HrExtraTabs on _HrViewState {
                                   ),
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textSecondary,
+                                    fontSize: 12.5,
                                   ),
                                 ),
                               ],
@@ -213,7 +248,9 @@ extension _HrExtraTabs on _HrViewState {
                           Text(
                             '${row.hours} h',
                             style: textStyles.bodyMono.copyWith(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: colors.brand,
                             ),
                           ),
                           if (canWrite)
@@ -433,7 +470,13 @@ extension _HrExtraTabs on _HrViewState {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final c = state.candidates[index];
-                    return LedgerCard(
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -443,16 +486,30 @@ extension _HrExtraTabs on _HrViewState {
                                 child: Text(
                                   c.fullName,
                                   style: textStyles.bodySans.copyWith(
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.5,
                                   ),
                                 ),
                               ),
-                              LedgerPill(
-                                text: locale.translate(
-                                  'hr_candidate_stage_${c.stage}',
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
-                                backgroundColor: colors.surfaceNested,
-                                textColor: colors.textSecondary,
+                                decoration: BoxDecoration(
+                                  color: colors.brand.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  locale.translate(
+                                    'hr_candidate_stage_${c.stage}',
+                                  ),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.brand,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -666,14 +723,21 @@ extension _HrExtraTabs on _HrViewState {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final e = state.evaluations[index];
-                    return LedgerCard(
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             e.employeeName ?? '#${e.employeeId}',
                             style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14.5,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -681,11 +745,17 @@ extension _HrExtraTabs on _HrViewState {
                             '${locale.translate('hr_eval_performance')}: ${e.performance} · ${locale.translate('hr_eval_potential')}: ${e.potential}',
                             style: textStyles.captionSans.copyWith(
                               color: colors.textSecondary,
+                              fontSize: 13,
                             ),
                           ),
                           if (e.note != null && e.note!.isNotEmpty) ...[
                             const SizedBox(height: 4),
-                            Text(e.note!, style: textStyles.captionSans),
+                            Text(
+                              e.note!,
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textTooltip,
+                              ),
+                            ),
                           ],
                         ],
                       ),
@@ -886,7 +956,13 @@ extension _HrExtraTabs on _HrViewState {
                   separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final c = state.contracts[index];
-                    return LedgerCard(
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Row(
                         children: [
                           Expanded(
@@ -896,7 +972,8 @@ extension _HrExtraTabs on _HrViewState {
                                 Text(
                                   c.employeeName ?? '#${c.employeeId}',
                                   style: textStyles.bodySans.copyWith(
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14.5,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
@@ -904,6 +981,7 @@ extension _HrExtraTabs on _HrViewState {
                                   '№ ${c.number}',
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textSecondary,
+                                    fontSize: 13,
                                   ),
                                 ),
                                 Text(
@@ -912,25 +990,39 @@ extension _HrExtraTabs on _HrViewState {
                                     c.startDate,
                                     style: LocalizedDateTimeStyle.date,
                                   ),
-                                  style: textStyles.smallSans.copyWith(
+                                  style: textStyles.captionSans.copyWith(
                                     color: colors.textTooltip,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          LedgerPill(
-                            text: c.isExpiring
-                                ? locale.translate('hr_contract_expiring')
-                                : locale.translate(
-                                    'hr_contract_status_${c.status}',
-                                  ),
-                            backgroundColor: c.isExpiring
-                                ? colors.accentAmber.withValues(alpha: 0.12)
-                                : colors.surfaceNested,
-                            textColor: c.isExpiring
-                                ? colors.accentAmber
-                                : colors.textSecondary,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: c.isExpiring
+                                  ? colors.accentAmber.withValues(alpha: 0.12)
+                                  : colors.surfaceNested,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              c.isExpiring
+                                  ? locale.translate('hr_contract_expiring')
+                                  : locale.translate(
+                                      'hr_contract_status_${c.status}',
+                                    ),
+                              style: textStyles.captionSans.copyWith(
+                                color: c.isExpiring
+                                    ? colors.accentAmber
+                                    : colors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
+                            ),
                           ),
                           if (canWrite)
                             IconButton(
@@ -1100,15 +1192,25 @@ extension _HrExtraTabs on _HrViewState {
           children: [
             Text(
               locale.translate('hr_movement_hired'),
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
             ),
             const SizedBox(height: 8),
             if (report == null || report.hired.isEmpty)
-              LedgerCard(
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
                 child: Text(
                   locale.translate('hr_movement_empty'),
                   style: textStyles.captionSans.copyWith(
                     color: colors.textSecondary,
+                    fontSize: 13,
                   ),
                 ),
               )
@@ -1116,7 +1218,13 @@ extension _HrExtraTabs on _HrViewState {
               ...report.hired.map(
                 (r) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: LedgerCard(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: Row(
                       children: [
                         Icon(
@@ -1132,7 +1240,8 @@ extension _HrExtraTabs on _HrViewState {
                               Text(
                                 r.fullName,
                                 style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.5,
                                 ),
                               ),
                               if (r.position != null)
@@ -1140,6 +1249,7 @@ extension _HrExtraTabs on _HrViewState {
                                   r.position!,
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textSecondary,
+                                    fontSize: 13,
                                   ),
                                 ),
                             ],
@@ -1152,7 +1262,10 @@ extension _HrExtraTabs on _HrViewState {
                               r.date!,
                               style: LocalizedDateTimeStyle.date,
                             ),
-                            style: textStyles.smallMono,
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
                       ],
                     ),
@@ -1162,15 +1275,25 @@ extension _HrExtraTabs on _HrViewState {
             const SizedBox(height: 16),
             Text(
               locale.translate('hr_movement_fired'),
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
             ),
             const SizedBox(height: 8),
             if (report == null || report.fired.isEmpty)
-              LedgerCard(
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
                 child: Text(
                   locale.translate('hr_movement_empty'),
                   style: textStyles.captionSans.copyWith(
                     color: colors.textSecondary,
+                    fontSize: 13,
                   ),
                 ),
               )
@@ -1178,7 +1301,13 @@ extension _HrExtraTabs on _HrViewState {
               ...report.fired.map(
                 (r) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: LedgerCard(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: Row(
                       children: [
                         Icon(
@@ -1194,7 +1323,8 @@ extension _HrExtraTabs on _HrViewState {
                               Text(
                                 r.fullName,
                                 style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w500,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14.5,
                                 ),
                               ),
                               if (r.position != null)
@@ -1202,6 +1332,7 @@ extension _HrExtraTabs on _HrViewState {
                                   r.position!,
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textSecondary,
+                                    fontSize: 13,
                                   ),
                                 ),
                             ],
@@ -1214,7 +1345,10 @@ extension _HrExtraTabs on _HrViewState {
                               r.date!,
                               style: LocalizedDateTimeStyle.date,
                             ),
-                            style: textStyles.smallMono,
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontSize: 12,
+                            ),
                           ),
                       ],
                     ),
@@ -1225,5 +1359,708 @@ extension _HrExtraTabs on _HrViewState {
         ),
       ),
     );
+  }
+
+  Widget _buildStaffTab(
+    BuildContext context,
+    HrLoaded state, {
+    String? period,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        final completion = Completer<void>();
+        context.read<HrBloc>().add(
+          LoadHrData(
+            period ?? state.period,
+            forceRefresh: true,
+            completion: completion,
+          ),
+        );
+        await completion.future;
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: state.employees.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final emp = state.employees[index];
+
+          Color statusBg = colors.brand.withValues(alpha: 0.08);
+          Color statusText = colors.brand;
+          String statusLabel = localeCubit.translate('hr_status_active');
+
+          if (emp.status == 'vacation') {
+            statusBg = colors.accentAmber.withValues(alpha: 0.1);
+            statusText = colors.accentAmber;
+            statusLabel = localeCubit.translate('hr_status_vacation');
+          } else if (emp.status == 'fired') {
+            statusBg = colors.accentRed.withValues(alpha: 0.1);
+            statusText = colors.accentRed;
+            statusLabel = localeCubit.translate('hr_status_fired');
+          }
+
+          final initial = emp.fullName.isNotEmpty
+              ? emp.fullName[0].toUpperCase()
+              : '?';
+
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initial,
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colors.brand,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        emp.fullName,
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: colors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        localeCubit.translate(
+                          'hr_employee_details',
+                          params: {
+                            'position':
+                                emp.position ??
+                                localeCubit.translate('hr_default_employee'),
+                            'department':
+                                emp.departmentName ??
+                                localeCubit.translate('hr_default_main_office'),
+                          },
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (emp.phone != null) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              TablerIcons.phone,
+                              size: 13,
+                              color: colors.textTooltip,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              emp.phone!,
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: textStyles.captionSans.copyWith(
+                          color: statusText,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      localeCubit.translate(
+                        'hr_amount_tjs',
+                        params: {'amount': oCcy.format(emp.baseSalary)},
+                      ),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildKpiTab(
+    BuildContext context,
+    HrLoaded state, {
+    String? period,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    if (state.kpiAlerts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            localeCubit.translate('hr_kpi_empty'),
+            style: textStyles.bodySans.copyWith(
+              color: colors.textTooltip,
+              fontSize: 14.5,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        final completion = Completer<void>();
+        context.read<HrBloc>().add(
+          LoadHrData(
+            period ?? state.period,
+            forceRefresh: true,
+            completion: completion,
+          ),
+        );
+        await completion.future;
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: state.kpiAlerts.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final alert = state.kpiAlerts[index];
+          final percent = formatLocalizedNumber(
+            context,
+            alert.completion * 100,
+            maximumFractionDigits: 0,
+          );
+
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: alert.triggered
+                  ? colors.accentAmber.withValues(alpha: 0.04)
+                  : colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: alert.triggered ? colors.accentAmber : colors.border,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      localeCubit.translateMessage(alert.employeeName),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: alert.triggered
+                            ? colors.accentAmber.withValues(alpha: 0.1)
+                            : colors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        localeCubit.translate(
+                          'hr_percentage',
+                          params: {'value': percent},
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: alert.triggered
+                              ? colors.accentAmber
+                              : colors.accentGreen,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  localeCubit.translate(
+                    'hr_kpi_metric_value',
+                    params: {'metric': alert.metric},
+                  ),
+                  style: textStyles.captionSans.copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      localeCubit.translate(
+                        'hr_kpi_plan_fact',
+                        params: {
+                          'plan': oCcy.format(alert.planValue),
+                          'fact': oCcy.format(alert.factValue),
+                        },
+                      ),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+                if (alert.comment != null && alert.comment!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    localeCubit.translate(
+                      'hr_ai_analysis',
+                      params: {'comment': alert.comment!},
+                    ),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.accentAmber,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSalaryTab(
+    BuildContext context,
+    HrLoaded state, {
+    String? period,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    if (state.salaryRecords.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            localeCubit.translate('hr_salary_empty'),
+            style: textStyles.bodySans.copyWith(
+              color: colors.textTooltip,
+              fontSize: 14.5,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        final completion = Completer<void>();
+        context.read<HrBloc>().add(
+          LoadHrData(
+            period ?? state.period,
+            forceRefresh: true,
+            completion: completion,
+          ),
+        );
+        await completion.future;
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: state.salaryRecords.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final record = state.salaryRecords[index];
+          final canManage = _canManageHr(context);
+          final recalculateLabel = localeCubit.translate('hr_recalculate');
+
+          return InkWell(
+            onTap: canManage
+                ? () => _showRecalcSalaryBottomSheet(context, record)
+                : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          localeCubit.translateMessage(record.employeeName),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        localeCubit.translate(
+                          'hr_amount_tjs',
+                          params: {'amount': oCcy.format(record.totalAmount)},
+                        ),
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14.5,
+                          color: colors.brand,
+                        ),
+                      ),
+                      if (canManage)
+                        IconButton(
+                          onPressed: () =>
+                              _showRecalcSalaryBottomSheet(context, record),
+                          icon: Icon(
+                            TablerIcons.refresh,
+                            size: 18,
+                            semanticLabel: recalculateLabel,
+                          ),
+                          tooltip: recalculateLabel,
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 4,
+                    alignment: WrapAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        localeCubit.translate(
+                          'hr_salary_base',
+                          params: {'amount': oCcy.format(record.baseAmount)},
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      Text(
+                        localeCubit.translate(
+                          'hr_salary_bonus',
+                          params: {'amount': oCcy.format(record.bonusAmount)},
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.accentGreen,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      Text(
+                        localeCubit.translate(
+                          'hr_salary_deductions',
+                          params: {'amount': oCcy.format(record.deductions)},
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.accentRed,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (record.bonusFormula != null &&
+                      record.bonusFormula!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      localeCubit.translate(
+                        'hr_kpi_formula',
+                        params: {'formula': record.bonusFormula!},
+                      ),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textTooltip,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _showAddEmployeeBottomSheet(BuildContext context) async {
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final hrBloc = context.read<HrBloc>();
+    final nameController = TextEditingController();
+    final posController = TextEditingController();
+    final salaryController = TextEditingController();
+    final phoneController = TextEditingController();
+    final emailController = TextEditingController();
+
+    bool isDirty() {
+      return nameController.text.trim().isNotEmpty ||
+          posController.text.trim().isNotEmpty ||
+          salaryController.text.trim().isNotEmpty ||
+          phoneController.text.trim().isNotEmpty ||
+          emailController.text.trim().isNotEmpty;
+    }
+
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: localeCubit.translate('hr_hire_title'),
+        isDirty: isDirty,
+        builder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_employee_full_name'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: posController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_position'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: salaryController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_salary_tjs'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_phone'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                style: textStyles.bodySans,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_email'),
+                ),
+              ),
+            ],
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+          return ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              final salary =
+                  parseLocalizedNumber(context, salaryController.text) ?? 0.0;
+
+              if (name.isEmpty) return;
+
+              hrBloc.add(
+                CreateEmployeeRequested(
+                  Employee(
+                    id: '',
+                    fullName: name,
+                    position: posController.text.trim(),
+                    baseSalary: salary,
+                    phone: phoneController.text.trim(),
+                    email: emailController.text.trim(),
+                    status: 'active',
+                    createdAt: DateTime.now(),
+                  ),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(language.translate('common_add')),
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+      posController.dispose();
+      salaryController.dispose();
+      phoneController.dispose();
+      emailController.dispose();
+    }
+  }
+
+  Future<void> _showRecalcSalaryBottomSheet(
+    BuildContext context,
+    SalaryRecord record,
+  ) async {
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final hrBloc = context.read<HrBloc>();
+    final initialBase = formatLocalizedNumber(
+      context,
+      record.baseAmount,
+      useGrouping: false,
+    );
+    final initialDeductions = formatLocalizedNumber(
+      context,
+      record.deductions,
+      useGrouping: false,
+    );
+    final baseController = TextEditingController(text: initialBase);
+    final dedController = TextEditingController(text: initialDeductions);
+    final formulaController = TextEditingController(
+      text: record.bonusFormula ?? '',
+    );
+
+    bool isDirty() {
+      return baseController.text.trim() != initialBase ||
+          dedController.text.trim() != initialDeductions ||
+          formulaController.text.trim() != (record.bonusFormula ?? '');
+    }
+
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: localeCubit.translate(
+          'hr_salary_adjustment_title',
+          params: {
+            'employee': localeCubit.translateMessage(record.employeeName),
+          },
+        ),
+        isDirty: isDirty,
+        builder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: baseController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_base_salary'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: dedController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_deductions_penalties'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: formulaController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: language.translate('hr_bonus_formula'),
+                  hintText: language.translate('hr_bonus_formula_hint'),
+                ),
+              ),
+            ],
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+          return ElevatedButton(
+            onPressed: () {
+              final base = parseLocalizedNumber(context, baseController.text);
+              final ded = parseLocalizedNumber(context, dedController.text);
+
+              hrBloc.add(
+                RecalcSalaryRequested(
+                  employeeId: record.employeeId,
+                  period: record.period,
+                  baseAmount: base,
+                  deductions: ded,
+                  bonusFormula: formulaController.text.trim(),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(language.translate('hr_recalculate')),
+          );
+        },
+      );
+    } finally {
+      baseController.dispose();
+      dedController.dispose();
+      formulaController.dispose();
+    }
   }
 }

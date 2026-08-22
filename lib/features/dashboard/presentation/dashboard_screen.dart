@@ -17,7 +17,6 @@ import '../../../features/dashboard/domain/finance_model.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_spotlight.dart';
 import '../../cash/presentation/sales_profit_card.dart';
@@ -226,12 +225,28 @@ class DashboardReportScreen extends StatelessWidget {
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
-                LedgerCollapsingHeader(
-                  title: _reportTitle(languageCubit, section),
+                SliverAppBar(
                   pinned: true,
-                  floating: false,
-                  snap: false,
-                  actions: [_buildCurrencySelector(context, currency)],
+                  backgroundColor: colors.surface,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  leading: const BackButton(),
+                  title: Text(
+                    _reportTitle(languageCubit, section),
+                    style: textStyles.h2Sans.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  actions: [
+                    _buildCurrencySelector(context, currency),
+                    const SizedBox(width: 8),
+                  ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(1),
+                    child: Container(height: 1, color: colors.border),
+                  ),
                 ),
               ];
             },
@@ -333,9 +348,12 @@ class _DashboardViewState extends State<DashboardView> {
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
-                LedgerCollapsingHeader(
-                  title: languageCubit.translate('dashboard_title'),
-                  titleWidget: Row(
+                SliverAppBar(
+                  pinned: true,
+                  backgroundColor: colors.surface,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  title: Row(
                     children: [
                       Image.asset(
                         'assets/images/payk_icon.png',
@@ -349,7 +367,7 @@ class _DashboardViewState extends State<DashboardView> {
                         child: Text(
                           languageCubit.translate('dashboard_title'),
                           style: textStyles.h1Sans.copyWith(
-                            fontSize: context.fontSize(22),
+                            fontSize: context.fontSize(20),
                             fontWeight: FontWeight.w600,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -358,13 +376,15 @@ class _DashboardViewState extends State<DashboardView> {
                       ),
                     ],
                   ),
-                  pinned: true,
-                  floating: false,
-                  snap: false,
                   actions: [
                     const NotificationBell(),
                     _buildCurrencySelector(context, currency),
+                    const SizedBox(width: 6),
                   ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(1),
+                    child: Container(height: 1, color: colors.border),
+                  ),
                 ),
               ];
             },

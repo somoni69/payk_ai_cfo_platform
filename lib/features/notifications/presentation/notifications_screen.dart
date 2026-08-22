@@ -4,18 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/localization/locale_date_time_format.dart';
+
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/notifications/bloc/notifications_bloc.dart';
 import '../../../features/notifications/bloc/notifications_event.dart';
 import '../../../features/notifications/bloc/notifications_state.dart';
-import '../../../features/notifications/domain/notifications_repository.dart';
 import '../../../features/notifications/domain/notification_model.dart';
-import '../../../presentation/widgets/ledger_ai_card.dart';
-import '../../../presentation/widgets/ledger_card.dart';
+import '../../../features/notifications/domain/notifications_repository.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
 
 /// Входная точка экрана уведомлений с внедрением NotificationsBloc.
 class NotificationsScreen extends StatelessWidget {
@@ -92,40 +90,47 @@ class _NotificationsViewState extends State<NotificationsView> {
     final textStyles = context.textStyles;
     final languageCubit = context.watch<LanguageCubit>();
 
-    return BlocConsumer<NotificationsBloc, NotificationsState>(
-      listener: (context, state) {
-        if (state is NotificationsLoaded && state.errorMessage != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                languageCubit.translateMessage(state.errorMessage!),
-              ),
-            ),
-          );
-        }
-      },
-      builder: (context, state) {
-        if (state is NotificationsLoading) {
-          return Scaffold(
-            backgroundColor: colors.background,
-            body: NestedScrollView(
-              headerSliverBuilder: (context, _) => [
-                LedgerCollapsingHeader(
-                  title: languageCubit.translate('notifications_title'),
-                  pinned: true,
-                  floating: false,
-                  snap: false,
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          languageCubit.translate('notifications_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
+      body: BlocConsumer<NotificationsBloc, NotificationsState>(
+        listener: (context, state) {
+          if (state is NotificationsLoaded && state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  languageCubit.translateMessage(state.errorMessage!),
                 ),
-              ],
-              body: const InboxOverviewShimmer(),
-            ),
-          );
-        }
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          if (state is NotificationsLoading) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: InboxOverviewShimmer(),
+            );
+          }
 
-        if (state is NotificationsError) {
-          return Scaffold(
-            backgroundColor: colors.background,
-            body: Center(
+          if (state is NotificationsError) {
+            return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -156,55 +161,42 @@ class _NotificationsViewState extends State<NotificationsView> {
                   ],
                 ),
               ),
-            ),
-          );
-        }
+            );
+          }
 
-        if (state is NotificationsLoaded) {
-          final unreadNotifications = state.notifications
-              .where((n) => !n.isRead)
-              .toList();
+          if (state is NotificationsLoaded) {
+            final unreadNotifications = state.notifications
+                .where((n) => !n.isRead)
+                .toList();
 
-          final visibleNotifications = unreadNotifications
-              .take(_visibleNotifications)
-              .toList(growable: false);
-          final criticalAlerts = visibleNotifications
-              .where((n) => n.severity == NotificationSeverity.critical)
-              .toList(growable: false);
-          final importantAlerts = visibleNotifications
-              .where((n) => n.severity == NotificationSeverity.important)
-              .toList(growable: false);
-          final infoAlerts = visibleNotifications
-              .where((n) => n.severity == NotificationSeverity.info)
-              .toList(growable: false);
+            final visibleNotifications = unreadNotifications
+                .take(_visibleNotifications)
+                .toList(growable: false);
+            final criticalAlerts = visibleNotifications
+                .where((n) => n.severity == NotificationSeverity.critical)
+                .toList(growable: false);
+            final importantAlerts = visibleNotifications
+                .where((n) => n.severity == NotificationSeverity.important)
+                .toList(growable: false);
+            final infoAlerts = visibleNotifications
+                .where((n) => n.severity == NotificationSeverity.info)
+                .toList(growable: false);
 
-          return Scaffold(
-            backgroundColor: colors.background,
-            body: NestedScrollView(
-              headerSliverBuilder: (context, _) => [
-                LedgerCollapsingHeader(
-                  title: languageCubit.translate('notifications_title'),
-                  pinned: true,
-                  floating: false,
-                  snap: false,
-                ),
-              ],
-              body: RefreshIndicator(
-                onRefresh: _refreshNotifications,
-                child: _buildNotificationsList(
-                  context,
-                  unreadNotifications: unreadNotifications,
-                  criticalAlerts: criticalAlerts,
-                  importantAlerts: importantAlerts,
-                  infoAlerts: infoAlerts,
-                ),
+            return RefreshIndicator(
+              onRefresh: _refreshNotifications,
+              child: _buildNotificationsList(
+                context,
+                unreadNotifications: unreadNotifications,
+                criticalAlerts: criticalAlerts,
+                importantAlerts: importantAlerts,
+                infoAlerts: infoAlerts,
               ),
-            ),
-          );
-        }
+            );
+          }
 
-        return const SizedBox.shrink();
-      },
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 
@@ -239,8 +231,9 @@ class _NotificationsViewState extends State<NotificationsView> {
                 child: Text(
                   language.translate(titleKey),
                   style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                     color: color,
+                    fontSize: 14.5,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -296,6 +289,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                   language.translate('notifications_empty'),
                   style: textStyles.captionSans.copyWith(
                     color: colors.textSecondary,
+                    fontSize: 13.5,
                   ),
                 ),
               ],
@@ -388,78 +382,91 @@ class _NotificationsViewState extends State<NotificationsView> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: LedgerCard(
+      child: InkWell(
         onTap: () => _handleNotificationTap(context, alert),
-        borderColor: colors.accentRed,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    language.translateMessage(alert.title),
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: colors.accentRed,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: language.translate('notifications_mark_read'),
-                  onPressed: () {
-                    context.read<NotificationsBloc>().add(
-                      MarkNotificationAsRead(alert.id),
-                    );
-                  },
-                  icon: Icon(
-                    TablerIcons.eye,
-                    color: colors.accentRed,
-                    size: 18,
-                  ),
-                ),
-              ],
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colors.accentRed.withValues(alpha: 0.5),
             ),
-            const SizedBox(height: 6),
-            Text(
-              language.translateMessage(alert.description),
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      language.translate('common_open'),
-                      style: textStyles.captionSans.copyWith(
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      language.translateMessage(alert.title),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
                         color: colors.accentRed,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 14.5,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      TablerIcons.arrow_right,
-                      size: 14,
-                      color: colors.accentRed,
-                    ),
-                  ],
-                ),
-                Text(
-                  formatLocalizedDateTime(
-                    context,
-                    alert.dateTime,
-                    style: LocalizedDateTimeStyle.time,
                   ),
-                  style: textStyles.smallMono,
+                  IconButton(
+                    tooltip: language.translate('notifications_mark_read'),
+                    onPressed: () {
+                      context.read<NotificationsBloc>().add(
+                        MarkNotificationAsRead(alert.id),
+                      );
+                    },
+                    icon: Icon(
+                      TablerIcons.eye,
+                      color: colors.accentRed,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                language.translateMessage(alert.description),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        language.translate('common_open'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.accentRed,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        TablerIcons.arrow_right,
+                        size: 14,
+                        color: colors.accentRed,
+                      ),
+                    ],
+                  ),
+                  Text(
+                    formatLocalizedDateTime(
+                      context,
+                      alert.dateTime,
+                      style: LocalizedDateTimeStyle.time,
+                    ),
+                    style: textStyles.smallMono,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -467,27 +474,63 @@ class _NotificationsViewState extends State<NotificationsView> {
 
   Widget _buildImportantCard(BuildContext context, AppNotification alert) {
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: GestureDetector(
+      child: InkWell(
         onTap: () => _handleNotificationTap(context, alert),
-        child: LedgerAICard(
-          title: language.translateMessage(alert.title),
-          content: language.translateMessage(alert.description),
-          trailing: IconButton(
-            tooltip: language.translate('notifications_mark_read'),
-            onPressed: () {
-              context.read<NotificationsBloc>().add(
-                MarkNotificationAsRead(alert.id),
-              );
-            },
-            icon: Icon(
-              TablerIcons.circle_check,
-              color: colors.accentAmber,
-              size: 18,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: colors.accentAmber.withValues(alpha: 0.5),
             ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      language.translateMessage(alert.title),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colors.accentAmber,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: language.translate('notifications_mark_read'),
+                    onPressed: () {
+                      context.read<NotificationsBloc>().add(
+                        MarkNotificationAsRead(alert.id),
+                      );
+                    },
+                    icon: Icon(
+                      TablerIcons.circle_check,
+                      color: colors.accentAmber,
+                      size: 18,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                language.translateMessage(alert.description),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -501,75 +544,87 @@ class _NotificationsViewState extends State<NotificationsView> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
-      child: LedgerCard(
+      child: InkWell(
         onTap: () => _handleNotificationTap(context, alert),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    language.translateMessage(alert.title),
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
-                      color: colors.textPrimary,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: language.translate('notifications_mark_read'),
-                  onPressed: () {
-                    context.read<NotificationsBloc>().add(
-                      MarkNotificationAsRead(alert.id),
-                    );
-                  },
-                  icon: Icon(
-                    TablerIcons.archive,
-                    color: colors.textTooltip,
-                    size: 18,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              language.translateMessage(alert.description),
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      language.translate('common_open'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.brand,
-                        fontWeight: FontWeight.w500,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      language.translateMessage(alert.title),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                        fontSize: 14.5,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      TablerIcons.arrow_right,
-                      size: 14,
-                      color: colors.brand,
+                  ),
+                  IconButton(
+                    tooltip: language.translate('notifications_mark_read'),
+                    onPressed: () {
+                      context.read<NotificationsBloc>().add(
+                        MarkNotificationAsRead(alert.id),
+                      );
+                    },
+                    icon: Icon(
+                      TablerIcons.archive,
+                      color: colors.textTooltip,
+                      size: 18,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                language.translateMessage(alert.description),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13,
                 ),
-                Text(
-                  MaterialLocalizations.of(
-                    context,
-                  ).formatShortMonthDay(alert.dateTime.toLocal()),
-                  style: textStyles.smallMono,
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        language.translate('common_open'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        TablerIcons.arrow_right,
+                        size: 14,
+                        color: colors.brand,
+                      ),
+                    ],
+                  ),
+                  Text(
+                    MaterialLocalizations.of(
+                      context,
+                    ).formatShortMonthDay(alert.dateTime.toLocal()),
+                    style: textStyles.smallMono,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

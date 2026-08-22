@@ -14,12 +14,35 @@ import '../../../features/marketing/bloc/marketing_event.dart';
 import '../../../features/marketing/bloc/marketing_state.dart';
 import '../../../features/marketing/domain/marketing_models.dart';
 import '../../../features/marketing/domain/marketing_repository.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
+
+enum MarketingSection { aiWriter, campaigns, posts, brandGuide }
+
+String _marketingSectionTitle(
+  LanguageCubit language,
+  MarketingSection section,
+) {
+  return language.translate(switch (section) {
+    MarketingSection.aiWriter => 'marketing_tab_ai_writer',
+    MarketingSection.campaigns => 'marketing_tab_campaigns',
+    MarketingSection.posts => 'marketing_tab_posts',
+    MarketingSection.brandGuide => 'marketing_tab_brand_guide',
+  });
+}
+
+void _openMarketingSection(BuildContext context, MarketingSection section) {
+  final bloc = context.read<MarketingBloc>();
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: MarketingSectionScreen(section: section),
+      ),
+    ),
+  );
+}
 
 class MarketingScreen extends StatelessWidget {
   const MarketingScreen({super.key});
@@ -30,7 +53,7 @@ class MarketingScreen extends StatelessWidget {
     return BlocProvider<MarketingBloc>(
       create: (context) =>
           MarketingBloc(context.read<MarketingRepository>())
-            ..add(LoadMarketingData()),
+            ..add(const LoadMarketingData()),
       child: const MarketingView(),
     );
   }
@@ -43,67 +66,697 @@ class MarketingView extends StatefulWidget {
   State<MarketingView> createState() => _MarketingViewState();
 }
 
-class _MarketingViewState extends State<MarketingView>
-    with SingleTickerProviderStateMixin {
-  static const _pageSize = 40;
+class _MarketingViewState extends State<MarketingView> {
+  bool _canManageMarketing(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.marketing);
+  }
 
-  late TabController _tabController;
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.watch<LanguageCubit>();
+    final canManage = _canManageMarketing(context);
+
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          localeCubit.translate('marketing_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
+      body: BlocListener<MarketingBloc, MarketingState>(
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  localeCubit.translateMessage(state.errorMessage!),
+                ),
+                backgroundColor: colors.accentRed,
+              ),
+            );
+          }
+        },
+        child: BlocBuilder<MarketingBloc, MarketingState>(
+          builder: (context, state) {
+            return _buildMarketingOverviewHub(context, state, canManage);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMarketingOverviewHub(
+    BuildContext context,
+    MarketingState state,
+    bool canManage,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    final totalBudget = state.campaigns.fold<double>(
+      0.0,
+      (s, c) => s + c.budget,
+    );
+    final activeCampaigns = state.campaigns
+        .where(
+          (c) =>
+              c.endedAt == null ||
+              c.endedAt!.isAfter(DateTime.now()),
+        )
+        .length;
+    final activeBudget = state.campaigns
+        .where(
+          (c) =>
+              c.endedAt == null ||
+              c.endedAt!.isAfter(DateTime.now()),
+        )
+        .fold<double>(0.0, (s, c) => s + c.budget);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<MarketingBloc>().add(
+          const LoadMarketingData(forceRefresh: true),
+        );
+      },
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        children: [
+          // 1. Hero Card: Marketing Budget & Active Campaigns
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        locale.translate('marketing_hero_budget'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            TablerIcons.sparkles,
+                            size: 13,
+                            color: colors.brand,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            locale.translate(
+                              'marketing_campaigns_count',
+                              params: {'count': '${state.campaigns.length}'},
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${oCcy.format(totalBudget)} TJS',
+                  style: textStyles.h2Sans.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(height: 1, color: colors.border),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(
+                      TablerIcons.speakerphone,
+                      size: 16,
+                      color: colors.brand,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '$activeCampaigns ${locale.translate('hr_status_active').toLowerCase()}',
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '• ${state.posts.length} ${locale.translate('marketing_tab_posts').toLowerCase()}',
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 2. Actionable Attention Card
+          InkWell(
+            onTap: () => _openMarketingSection(
+              context,
+              activeCampaigns > 0
+                  ? MarketingSection.campaigns
+                  : MarketingSection.aiWriter,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: activeCampaigns > 0
+                      ? colors.brand.withValues(alpha: 0.4)
+                      : colors.accentGreen.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: activeCampaigns > 0
+                          ? colors.brand.withValues(alpha: 0.08)
+                          : colors.accentGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      activeCampaigns > 0
+                          ? TablerIcons.chart_pie
+                          : TablerIcons.circle_check,
+                      color: activeCampaigns > 0
+                          ? colors.brand
+                          : colors.accentGreen,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          locale.translate('marketing_attention_title'),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          activeCampaigns > 0
+                              ? locale.translate(
+                                  'marketing_attention_active',
+                                  params: {
+                                    'count': '$activeCampaigns',
+                                    'budget': oCcy.format(activeBudget),
+                                  },
+                                )
+                              : locale.translate('marketing_attention_idle'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 3. Quick Action Buttons Row (if canManage)
+          if (canManage) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openMarketingSection(
+                        context,
+                        MarketingSection.aiWriter,
+                      ),
+                      icon: const Icon(TablerIcons.sparkles, size: 17),
+                      label: Text(
+                        locale.translate('marketing_action_writer'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.surface,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.surface,
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showCreateCampaignDialog(context),
+                      icon: const Icon(TablerIcons.plus, size: 17),
+                      label: Text(
+                        locale.translate('marketing_action_campaign'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.brand,
+                        side: BorderSide(color: colors.border),
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // 4. Main 2x2 Navigation Grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('marketing_tab_ai_writer'),
+                  subtitle: 'ИИ генерация текстов',
+                  icon: TablerIcons.sparkles,
+                  onTap: () => _openMarketingSection(
+                    context,
+                    MarketingSection.aiWriter,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('marketing_tab_campaigns'),
+                  subtitle: locale.translate(
+                    'marketing_campaigns_count',
+                    params: {'count': '${state.campaigns.length}'},
+                  ),
+                  icon: TablerIcons.speakerphone,
+                  onTap: () => _openMarketingSection(
+                    context,
+                    MarketingSection.campaigns,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('marketing_tab_posts'),
+                  subtitle: locale.translate(
+                    'marketing_posts_count',
+                    params: {'count': '${state.posts.length}'},
+                  ),
+                  icon: TablerIcons.news,
+                  onTap: () => _openMarketingSection(
+                    context,
+                    MarketingSection.posts,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('marketing_tab_brand_guide'),
+                  subtitle: 'Tone of Voice & правила',
+                  icon: TablerIcons.palette,
+                  onTap: () => _openMarketingSection(
+                    context,
+                    MarketingSection.brandGuide,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // 5. Recent Campaigns Feed
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                locale.translate('marketing_recent_campaigns'),
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              TextButton(
+                onPressed: () => _openMarketingSection(
+                  context,
+                  MarketingSection.campaigns,
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      locale.translate('marketing_all_campaigns'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      TablerIcons.chevron_right,
+                      size: 14,
+                      color: colors.brand,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          if (state.campaigns.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                locale.translate('marketing_no_campaigns'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13.5,
+                ),
+              ),
+            )
+          else
+            ...state.campaigns.take(4).map((c) {
+              final isActive =
+                  c.endedAt == null ||
+                  c.endedAt!.isAfter(DateTime.now());
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: colors.surfaceNested,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          TablerIcons.speakerphone,
+                          color: colors.brand,
+                          size: 19,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c.name,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.5,
+                                color: colors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${locale.translate('marketing_channel')}: ${c.channel?.toUpperCase() ?? locale.translate('marketing_channel_none')}',
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? colors.accentGreen.withValues(alpha: 0.1)
+                                  : colors.surfaceNested,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isActive
+                                  ? locale.translate('hr_status_active')
+                                  : locale.translate('hr_status_inactive'),
+                              style: textStyles.captionSans.copyWith(
+                                color: isActive
+                                    ? colors.accentGreen
+                                    : colors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${oCcy.format(c.budget)} TJS',
+                            style: textStyles.bodyMono.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHubCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colors.brand.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 20, color: colors.brand),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 16,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  color: colors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class MarketingSectionScreen extends StatefulWidget {
+  final MarketingSection section;
+
+  const MarketingSectionScreen({super.key, required this.section});
+
+  @override
+  State<MarketingSectionScreen> createState() => _MarketingSectionScreenState();
+}
+
+class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
   final ScrollController _campaignsController = ScrollController();
   final ScrollController _postsController = ScrollController();
   final TextEditingController _promptController = TextEditingController();
-  final TextEditingController _postController = TextEditingController();
   final TextEditingController _brandNameController = TextEditingController();
   final TextEditingController _toneController = TextEditingController();
   final TextEditingController _audienceController = TextEditingController();
   final TextEditingController _forbiddenController = TextEditingController();
   final TextEditingController _videoLimitController = TextEditingController();
   bool _brandInitialized = false;
-  String _selectedChannel = 'telegram';
   bool _generatePostTextMode = false;
-  int _visibleCampaigns = _pageSize;
-  int _visiblePosts = _pageSize;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _campaignsController.addListener(_revealMoreCampaigns);
-    _postsController.addListener(_revealMorePosts);
-  }
-
-  void _revealMoreCampaigns() {
-    if (!_campaignsController.hasClients ||
-        _campaignsController.position.extentAfter > 600) {
-      return;
-    }
-    final total = context.read<MarketingBloc>().state.campaigns.length;
-    if (_visibleCampaigns >= total) return;
-    final next = _visibleCampaigns + _pageSize;
-    setState(() => _visibleCampaigns = next < total ? next : total);
-  }
-
-  void _revealMorePosts() {
-    if (!_postsController.hasClients ||
-        _postsController.position.extentAfter > 600) {
-      return;
-    }
-    final total = context.read<MarketingBloc>().state.posts.length;
-    if (_visiblePosts >= total) return;
-    final next = _visiblePosts + _pageSize;
-    setState(() => _visiblePosts = next < total ? next : total);
-  }
+  final int _visibleCampaigns = 40;
+  final int _visiblePosts = 40;
 
   @override
   void dispose() {
-    _tabController.dispose();
-    _campaignsController
-      ..removeListener(_revealMoreCampaigns)
-      ..dispose();
-    _postsController
-      ..removeListener(_revealMorePosts)
-      ..dispose();
+    _campaignsController.dispose();
+    _postsController.dispose();
     _promptController.dispose();
-    _postController.dispose();
     _brandNameController.dispose();
     _toneController.dispose();
     _audienceController.dispose();
@@ -121,54 +774,83 @@ class _MarketingViewState extends State<MarketingView>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final localeCubit = context.watch<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final canManage = _canManageMarketing(context);
 
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            LedgerCollapsingHeader(
-              title: localeCubit.translate('marketing_title'),
-              pinned: true,
-              floating: false,
-              snap: false,
-              bottom: LedgerTabBar(
-                controller: _tabController,
-                tabs: [
-                  Tab(text: localeCubit.translate('marketing_tab_ai_writer')),
-                  Tab(text: localeCubit.translate('marketing_tab_campaigns')),
-                  Tab(text: localeCubit.translate('marketing_tab_posts')),
-                  Tab(text: localeCubit.translate('marketing_tab_brand_guide')),
-                ],
-              ),
-            ),
-          ];
-        },
-        body: BlocListener<MarketingBloc, MarketingState>(
-          listener: (context, state) {
-            if (state.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    localeCubit.translateMessage(state.errorMessage!),
-                  ),
-                  backgroundColor: colors.accentRed,
-                ),
-              );
-            }
-          },
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildAiWriterTab(context),
-              _buildCampaignsTab(context),
-              _buildPostsTab(context),
-              _buildBrandGuideTab(context),
-            ],
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: const BackButton(),
+        title: Text(
+          _marketingSectionTitle(locale, widget.section),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
           ),
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
       ),
+      floatingActionButton: canManage ? _buildSectionFab(context, locale) : null,
+      body: switch (widget.section) {
+        MarketingSection.aiWriter => _buildAiWriterTab(context),
+        MarketingSection.campaigns => _buildCampaignsTab(context),
+        MarketingSection.posts => _buildPostsTab(context),
+        MarketingSection.brandGuide => _buildBrandGuideTab(context),
+      },
     );
+  }
+
+  Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    if (widget.section == MarketingSection.campaigns) {
+      return FloatingActionButton.extended(
+        heroTag: null,
+        onPressed: () => _showCreateCampaignDialog(context),
+        backgroundColor: colors.brand,
+        foregroundColor: colors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        icon: const Icon(TablerIcons.plus),
+        label: Text(
+          locale.translate('marketing_new_campaign'),
+          style: textStyles.bodySans.copyWith(
+            color: colors.surface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    if (widget.section == MarketingSection.posts) {
+      return FloatingActionButton.extended(
+        heroTag: null,
+        onPressed: () => _showCreatePostDialog(context),
+        backgroundColor: colors.brand,
+        foregroundColor: colors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        icon: const Icon(TablerIcons.plus),
+        label: Text(
+          locale.translate('marketing_new_publication'),
+          style: textStyles.bodySans.copyWith(
+            color: colors.surface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    return null;
   }
 
   Widget _buildAiWriterTab(BuildContext context) {
@@ -177,10 +859,6 @@ class _MarketingViewState extends State<MarketingView>
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<MarketingBloc, MarketingState>(
-      buildWhen: (previous, current) =>
-          previous.isGenerating != current.isGenerating ||
-          previous.generatedIdeas != current.generatedIdeas ||
-          previous.generatedText != current.generatedText,
       builder: (context, state) {
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -189,11 +867,12 @@ class _MarketingViewState extends State<MarketingView>
               localeCubit.translate('marketing_writer_description'),
               style: textStyles.captionSans.copyWith(
                 color: colors.textSecondary,
+                fontSize: 13.5,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Режим генерации
+            // Режим генерации (Идеи / Пост)
             Row(
               children: [
                 Expanded(
@@ -206,7 +885,7 @@ class _MarketingViewState extends State<MarketingView>
                           ? Colors.white
                           : colors.textPrimary,
                       fontWeight: !_generatePostTextMode
-                          ? FontWeight.w500
+                          ? FontWeight.w600
                           : FontWeight.w400,
                     ),
                     checkmarkColor: Colors.white,
@@ -231,7 +910,7 @@ class _MarketingViewState extends State<MarketingView>
                           ? Colors.white
                           : colors.textPrimary,
                       fontWeight: _generatePostTextMode
-                          ? FontWeight.w500
+                          ? FontWeight.w600
                           : FontWeight.w400,
                     ),
                     checkmarkColor: Colors.white,
@@ -280,6 +959,14 @@ class _MarketingViewState extends State<MarketingView>
                         );
                       }
                     },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               icon: const Icon(TablerIcons.plus),
               label: Text(
                 localeCubit.translate(
@@ -302,12 +989,17 @@ class _MarketingViewState extends State<MarketingView>
                 Text(
                   localeCubit.translate('marketing_generated_ideas'),
                   style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
-                LedgerCard(
+                Container(
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.brand),
+                  ),
                   child: Column(
                     children: state.generatedIdeas
                         .map(
@@ -337,12 +1029,17 @@ class _MarketingViewState extends State<MarketingView>
                 Text(
                   localeCubit.translate('marketing_publication_text'),
                   style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 8),
-                LedgerCard(
+                Container(
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -414,9 +1111,6 @@ class _MarketingViewState extends State<MarketingView>
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<MarketingBloc, MarketingState>(
-      buildWhen: (previous, current) =>
-          previous.campaigns != current.campaigns ||
-          previous.isCampaignsLoading != current.isCampaignsLoading,
       builder: (context, state) {
         if (state.isCampaignsLoading && state.campaigns.isEmpty) {
           return const MarketingCampaignsShimmer();
@@ -425,92 +1119,105 @@ class _MarketingViewState extends State<MarketingView>
         final visibleCount = _visibleCampaigns < state.campaigns.length
             ? _visibleCampaigns
             : state.campaigns.length;
-        return Scaffold(
-          floatingActionButton: _canManageMarketing(context)
-              ? FloatingActionButton.extended(
-                  heroTag: null,
-                  tooltip: localeCubit.translate('marketing_new_campaign'),
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  highlightElevation: 0,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: colors.brand),
-                  ),
-                  onPressed: () => _showCreateCampaignDialog(context),
-                  icon: const Icon(TablerIcons.plus),
-                  label: Text(
-                    localeCubit.translate('marketing_new_campaign'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                )
-              : null,
-          body: RefreshIndicator(
-            onRefresh: () async {
-              _visibleCampaigns = _pageSize;
-              await context.read<MarketingBloc>().reload();
-            },
-            child: ListView.builder(
-              controller: _campaignsController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: state.campaigns.isEmpty ? 1 : visibleCount,
-              itemBuilder: (context, index) {
-                if (state.campaigns.isEmpty) {
-                  return Center(
-                    child: Text(
-                      localeCubit.translate('marketing_no_campaigns'),
-                    ),
-                  );
-                }
 
-                final camp = state.campaigns[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: InkWell(
-                    onTap: () => _showCampaignDetailsBottomSheet(context, camp),
+        if (state.campaigns.isEmpty) {
+          return Center(
+            child: Text(
+              localeCubit.translate('marketing_no_campaigns'),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<MarketingBloc>().add(
+              const LoadMarketingData(forceRefresh: true),
+            );
+          },
+          child: ListView.separated(
+            controller: _campaignsController,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+            itemCount: visibleCount,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final campaign = state.campaigns[index];
+              final isActive =
+                  campaign.endedAt == null ||
+                  campaign.endedAt!.isAfter(DateTime.now());
+
+              return InkWell(
+                onTap: () => _showCampaignDetailsBottomSheet(context, campaign),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    child: LedgerCard(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
                             child: Text(
-                              camp.name,
+                              campaign.name,
                               style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          LedgerPill(
-                            text:
-                                camp.channel?.toUpperCase() ??
-                                localeCubit.translate('marketing_channel_none'),
-                            backgroundColor: colors.brand.withValues(
-                              alpha: 0.1,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                            textColor: colors.brand,
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            TablerIcons.chevron_right,
-                            size: 20,
-                            color: colors.textSecondary,
+                            decoration: BoxDecoration(
+                              color: isActive
+                                  ? colors.accentGreen.withValues(alpha: 0.1)
+                                  : colors.surfaceNested,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              isActive
+                                  ? localeCubit.translate('hr_status_active')
+                                  : localeCubit.translate('hr_status_inactive'),
+                              style: textStyles.captionSans.copyWith(
+                                color: isActive
+                                    ? colors.accentGreen
+                                    : colors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11.5,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${localeCubit.translate('marketing_budget')}: ${formatLocalizedNumber(context, campaign.budget)} TJS  •  ${localeCubit.translate('marketing_spent')}: ${formatLocalizedNumber(context, campaign.spent)} TJS',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${localeCubit.translate('marketing_leads')}: ${campaign.leads}  •  ${localeCubit.translate('marketing_sales')}: ${campaign.conversions}',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -521,11 +1228,9 @@ class _MarketingViewState extends State<MarketingView>
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
+    final canManage = _canManageMarketing(context);
 
     return BlocBuilder<MarketingBloc, MarketingState>(
-      buildWhen: (previous, current) =>
-          previous.posts != current.posts ||
-          previous.isPostsLoading != current.isPostsLoading,
       builder: (context, state) {
         if (state.isPostsLoading && state.posts.isEmpty) {
           return const MarketingPostsShimmer();
@@ -534,520 +1239,147 @@ class _MarketingViewState extends State<MarketingView>
         final visibleCount = _visiblePosts < state.posts.length
             ? _visiblePosts
             : state.posts.length;
-        return Scaffold(
-          floatingActionButton: _canManageMarketing(context)
-              ? FloatingActionButton.extended(
-                  heroTag: null,
-                  tooltip: localeCubit.translate('marketing_new_publication'),
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  highlightElevation: 0,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: colors.brand),
-                  ),
-                  onPressed: () => _showCreatePostDialog(context),
-                  icon: const Icon(TablerIcons.plus),
-                  label: Text(
-                    localeCubit.translate('marketing_new_publication'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                )
-              : null,
-          body: RefreshIndicator(
-            onRefresh: () async {
-              _visiblePosts = _pageSize;
-              await context.read<MarketingBloc>().reload();
-            },
-            child: ListView.builder(
-              controller: _postsController,
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: state.posts.isEmpty ? 1 : visibleCount,
-              itemBuilder: (context, index) {
-                if (state.posts.isEmpty) {
-                  return Center(
-                    child: Text(localeCubit.translate('marketing_no_posts')),
-                  );
-                }
 
-                final post = state.posts[index];
-                final isDraft = post.status == 'draft';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: LedgerCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            LedgerPill(
-                              text: post.channel.toUpperCase(),
-                              backgroundColor: colors.brand.withValues(
-                                alpha: 0.1,
-                              ),
-                              textColor: colors.brand,
-                            ),
-                            LedgerPill(
-                              text: localeCubit.translate(
-                                isDraft
-                                    ? 'marketing_status_draft'
-                                    : 'marketing_status_published',
-                              ),
-                              backgroundColor: isDraft
-                                  ? colors.accentAmber.withValues(alpha: 0.1)
-                                  : colors.accentGreen.withValues(alpha: 0.1),
-                              textColor: isDraft
-                                  ? colors.accentAmber
-                                  : colors.accentGreen,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(post.text, style: textStyles.bodySans),
-                        const Divider(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              localeCubit.translate(
-                                'marketing_created_at',
-                                params: {
-                                  'date': formatLocalizedDateTime(
-                                    context,
-                                    post.createdAt,
-                                    style: LocalizedDateTimeStyle.dayMonthTime,
-                                  ),
-                                },
-                              ),
-                              style: textStyles.captionSans.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                            if (isDraft && _canManageMarketing(context))
-                              ElevatedButton.icon(
-                                onPressed: () {
-                                  context.read<MarketingBloc>().add(
-                                    PublishPostRequested(post.id),
-                                  );
-                                },
-                                icon: const Icon(TablerIcons.send, size: 16),
-                                label: Text(
-                                  localeCubit.translate(
-                                    'marketing_publish_telegram',
-                                  ),
-                                  style: textStyles.smallSans,
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+        if (state.posts.isEmpty) {
+          return Center(
+            child: Text(
+              localeCubit.translate('marketing_no_posts'),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildStatColumn(
-    String label,
-    String val,
-    dynamic textStyles,
-    dynamic colors,
-  ) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            val,
-            style: textStyles.h2Sans.copyWith(
-              fontWeight: FontWeight.w500,
-              color: colors.textPrimary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCampaignDetailsBottomSheet(
-    BuildContext context,
-    MarketingCampaign campaign,
-  ) {
-    final textStyles = context.textStyles;
-    final colors = context.colors;
-    final localeCubit = context.read<LanguageCubit>();
-
-    LedgerBottomSheet.show(
-      context: context,
-      title: campaign.name,
-      builder: (context, setSheetState) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  localeCubit.translate('marketing_channel'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                LedgerPill(
-                  text:
-                      campaign.channel?.toUpperCase() ??
-                      localeCubit.translate('marketing_channel_none'),
-                  backgroundColor: colors.brand.withValues(alpha: 0.1),
-                  textColor: colors.brand,
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-
-            // Строка 1 (2х2х2): Бюджет | Потрачено
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatColumn(
-                  localeCubit.translate('marketing_budget'),
-                  '${formatLocalizedNumber(context, campaign.budget)} TJS',
-                  textStyles,
-                  colors,
-                ),
-                const SizedBox(width: 16),
-                _buildStatColumn(
-                  localeCubit.translate('marketing_spent'),
-                  '${formatLocalizedNumber(context, campaign.spent)} TJS',
-                  textStyles,
-                  colors,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Строка 2 (2х2х2): Лиды | Продажи
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatColumn(
-                  localeCubit.translate('marketing_leads'),
-                  formatLocalizedNumber(
-                    context,
-                    campaign.leads,
-                    maximumFractionDigits: 0,
-                  ),
-                  textStyles,
-                  colors,
-                ),
-                const SizedBox(width: 16),
-                _buildStatColumn(
-                  localeCubit.translate('marketing_sales'),
-                  formatLocalizedNumber(
-                    context,
-                    campaign.conversions,
-                    maximumFractionDigits: 0,
-                  ),
-                  textStyles,
-                  colors,
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-
-            // Строка 3 (2х2х2): ROI | CAC
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildStatColumn(
-                  'ROI',
-                  '${formatLocalizedNumber(context, campaign.roi, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
-                  textStyles,
-                  colors,
-                ),
-                const SizedBox(width: 16),
-                _buildStatColumn(
-                  'CAC',
-                  campaign.cac != null
-                      ? '${formatLocalizedNumber(context, campaign.cac!)} TJS'
-                      : '—',
-                  textStyles,
-                  colors,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> _showCreateCampaignDialog(BuildContext context) async {
-    final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
-    final nameCtrl = TextEditingController();
-    final budgetCtrl = TextEditingController();
-    final spentCtrl = TextEditingController();
-    final leadsCtrl = TextEditingController();
-    final convCtrl = TextEditingController();
-    final revCtrl = TextEditingController();
-    String channel = 'telegram';
-
-    bool isDirty() {
-      return nameCtrl.text.trim().isNotEmpty ||
-          budgetCtrl.text.trim().isNotEmpty ||
-          spentCtrl.text.trim().isNotEmpty ||
-          leadsCtrl.text.trim().isNotEmpty ||
-          convCtrl.text.trim().isNotEmpty ||
-          revCtrl.text.trim().isNotEmpty ||
-          channel != 'telegram';
-    }
-
-    try {
-      await LedgerBottomSheet.show(
-        context: context,
-        title: localeCubit.translate('marketing_new_campaign'),
-        isDirty: isDirty,
-        builder: (context, setSheetState) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                style: textStyles.bodySans,
-                decoration: InputDecoration(
-                  labelText: localeCubit.translate('marketing_campaign_name'),
-                ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                localeCubit.translate('marketing_channel'),
-                style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 6),
-              ExpansibleWidget<String>.selection(
-                cardPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                title: Text(
-                  channel[0].toUpperCase() + channel.substring(1),
-                  style: textStyles.bodySans,
-                ),
-                items: const ['telegram', 'instagram', 'facebook'],
-                selectedValue: channel,
-                itemLabelBuilder: (s) => s[0].toUpperCase() + s.substring(1),
-                onSelected: (val) {
-                  setSheetState(() {
-                    channel = val;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: budgetCtrl,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: localeCubit.translate('marketing_budget_tjs'),
-                ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: spentCtrl,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: localeCubit.translate('marketing_spent_tjs'),
-                ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: leadsCtrl,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: localeCubit.translate('marketing_leads_count'),
-                ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: convCtrl,
-                style: textStyles.bodySans,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: localeCubit.translate('marketing_sales_count'),
-                ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: revCtrl,
-                style: textStyles.bodySans,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  labelText: localeCubit.translate('marketing_revenue_tjs'),
-                ),
-                onChanged: (_) => setSheetState(() {}),
-              ),
-            ],
           );
-        },
-        footerBuilder: (context, setSheetState) {
-          return ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
+        }
 
-              context.read<MarketingBloc>().add(
-                CreateCampaignRequested(
-                  name: name,
-                  channel: channel,
-                  budget: parseLocalizedNumber(context, budgetCtrl.text) ?? 0.0,
-                  spent: parseLocalizedNumber(context, spentCtrl.text) ?? 0.0,
-                  leads: int.tryParse(leadsCtrl.text) ?? 0,
-                  conversions: int.tryParse(convCtrl.text) ?? 0,
-                  revenue: parseLocalizedNumber(context, revCtrl.text) ?? 0.0,
-                ),
-              );
-
-              Navigator.pop(context);
-            },
-            child: Text(localeCubit.translate('marketing_create')),
-          );
-        },
-      );
-    } finally {
-      nameCtrl.dispose();
-      budgetCtrl.dispose();
-      spentCtrl.dispose();
-      leadsCtrl.dispose();
-      convCtrl.dispose();
-      revCtrl.dispose();
-    }
-  }
-
-  void _showCreatePostDialog(BuildContext context) {
-    final textStyles = context.textStyles;
-    final localeCubit = context.read<LanguageCubit>();
-
-    bool isDirty() {
-      return _postController.text.trim().isNotEmpty ||
-          _selectedChannel != 'telegram';
-    }
-
-    LedgerBottomSheet.show(
-      context: context,
-      title: localeCubit.translate('marketing_new_publication'),
-      isDirty: isDirty,
-      builder: (context, setSheetState) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _postController,
-              maxLines: 4,
-              style: textStyles.bodySans,
-              decoration: InputDecoration(
-                hintText: localeCubit.translate('marketing_publication_hint'),
-              ),
-              onChanged: (_) => setSheetState(() {}),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              localeCubit.translate('marketing_publication_channel'),
-              style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 6),
-            ExpansibleWidget<String>.selection(
-              cardPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 4,
-              ),
-              title: Text(
-                _selectedChannel[0].toUpperCase() +
-                    _selectedChannel.substring(1),
-                style: textStyles.bodySans,
-              ),
-              items: const ['telegram', 'instagram', 'facebook'],
-              selectedValue: _selectedChannel,
-              itemLabelBuilder: (s) => s[0].toUpperCase() + s.substring(1),
-              onSelected: (val) {
-                setSheetState(() {
-                  _selectedChannel = val;
-                });
-              },
-            ),
-          ],
-        );
-      },
-      footerBuilder: (context, setSheetState) {
-        return ElevatedButton(
-          onPressed: () {
-            final text = _postController.text.trim();
-            if (text.isEmpty) return;
-
+        return RefreshIndicator(
+          onRefresh: () async {
             context.read<MarketingBloc>().add(
-              CreatePostRequested(text: text, channel: _selectedChannel),
+              const LoadMarketingData(forceRefresh: true),
             );
-
-            _postController.clear();
-            Navigator.pop(context);
           },
-          child: Text(localeCubit.translate('marketing_save_draft')),
-        );
-      },
-    );
-  }
+          child: ListView.separated(
+            controller: _postsController,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+            itemCount: visibleCount,
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final post = state.posts[index];
+              final isPublished = post.status == 'published';
 
-  Widget _buildBrandGuideTab(BuildContext context) {
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.brand.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            post.channel.toUpperCase(),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11.5,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isPublished
+                                ? colors.accentGreen.withValues(alpha: 0.1)
+                                : colors.surfaceNested,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isPublished
+                                ? localeCubit.translate(
+                                    'marketing_status_published',
+                                  )
+                                : localeCubit.translate(
+                                    'marketing_status_draft',
+                                  ),
+                          style: textStyles.captionSans.copyWith(
+                            color: isPublished
+                                ? colors.accentGreen
+                                : colors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    post.text,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: textStyles.bodySans.copyWith(height: 1.3),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        localeCubit.translate(
+                          'marketing_created_at',
+                          params: {
+                            'date': formatLocalizedDateTime(
+                              context,
+                              post.createdAt,
+                              style: LocalizedDateTimeStyle.date,
+                            ),
+                          },
+                        ),
+                        style: textStyles.smallMono.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      if (!isPublished && canManage)
+                        TextButton.icon(
+                          onPressed: () {
+                            context.read<MarketingBloc>().add(
+                              PublishPostRequested(post.id),
+                            );
+                          },
+                          icon: const Icon(TablerIcons.send, size: 14),
+                          label: Text(
+                            localeCubit.translate('marketing_publish_telegram'),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildBrandGuideTab(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.watch<LanguageCubit>();
@@ -1091,7 +1423,13 @@ class _MarketingViewState extends State<MarketingView>
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            LedgerCard(
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1107,13 +1445,25 @@ class _MarketingViewState extends State<MarketingView>
                         ),
                       ),
                       if (learnedRounds > 0)
-                        LedgerPill(
-                          text: localeCubit.translate(
-                            'marketing_brand_learned',
-                            params: {'count': learnedRounds.toString()},
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
                           ),
-                          backgroundColor: colors.surfaceNested,
-                          textColor: colors.textPrimary,
+                          decoration: BoxDecoration(
+                            color: colors.surfaceNested,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            localeCubit.translate(
+                              'marketing_brand_learned',
+                              params: {'count': learnedRounds.toString()},
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -1128,7 +1478,13 @@ class _MarketingViewState extends State<MarketingView>
               ),
             ),
             const SizedBox(height: 12),
-            LedgerCard(
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1196,19 +1552,19 @@ class _MarketingViewState extends State<MarketingView>
                               final updatedGuide = BrandGuide(
                                 brandName:
                                     _brandNameController.text.trim().isNotEmpty
-                                    ? _brandNameController.text.trim()
-                                    : null,
+                                        ? _brandNameController.text.trim()
+                                        : null,
                                 tone: _toneController.text.trim().isNotEmpty
                                     ? _toneController.text.trim()
                                     : null,
                                 audience:
                                     _audienceController.text.trim().isNotEmpty
-                                    ? _audienceController.text.trim()
-                                    : null,
+                                        ? _audienceController.text.trim()
+                                        : null,
                                 forbidden:
                                     _forbiddenController.text.trim().isNotEmpty
-                                    ? _forbiddenController.text.trim()
-                                    : null,
+                                        ? _forbiddenController.text.trim()
+                                        : null,
                                 videoLimitMonth:
                                     int.tryParse(
                                       _videoLimitController.text.trim(),
@@ -1250,4 +1606,268 @@ class _MarketingViewState extends State<MarketingView>
       },
     );
   }
+
+  void _showCampaignDetailsBottomSheet(
+    BuildContext context,
+    MarketingCampaign campaign,
+  ) {
+    final textStyles = context.textStyles;
+    final colors = context.colors;
+    final localeCubit = context.read<LanguageCubit>();
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: campaign.name,
+      builder: (context, setSheetState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  localeCubit.translate('marketing_channel'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.brand.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    campaign.channel?.toUpperCase() ??
+                        localeCubit.translate('marketing_channel_none'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.brand,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatColumn(
+                  localeCubit.translate('marketing_budget'),
+                  '${formatLocalizedNumber(context, campaign.budget)} TJS',
+                  textStyles,
+                  colors,
+                ),
+                const SizedBox(width: 16),
+                _buildStatColumn(
+                  localeCubit.translate('marketing_spent'),
+                  '${formatLocalizedNumber(context, campaign.spent)} TJS',
+                  textStyles,
+                  colors,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatColumn(
+                  localeCubit.translate('marketing_leads'),
+                  formatLocalizedNumber(
+                    context,
+                    campaign.leads,
+                    maximumFractionDigits: 0,
+                  ),
+                  textStyles,
+                  colors,
+                ),
+                const SizedBox(width: 16),
+                _buildStatColumn(
+                  localeCubit.translate('marketing_sales'),
+                  formatLocalizedNumber(
+                    context,
+                    campaign.conversions,
+                    maximumFractionDigits: 0,
+                  ),
+                  textStyles,
+                  colors,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildStatColumn(
+                  'ROI',
+                  '${formatLocalizedNumber(context, campaign.roi, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+                  textStyles,
+                  colors,
+                ),
+                const SizedBox(width: 16),
+                _buildStatColumn(
+                  'CAC',
+                  '${formatLocalizedNumber(context, campaign.cac ?? 0.0, minimumFractionDigits: 1, maximumFractionDigits: 1)} TJS',
+                  textStyles,
+                  colors,
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildStatColumn(
+    String label,
+    String value,
+    dynamic textStyles,
+    dynamic colors,
+  ) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+              fontSize: 12.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: textStyles.bodyMono.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreatePostDialog(BuildContext context) {
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final textCtrl = TextEditingController();
+    String channel = 'telegram';
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: localeCubit.translate('marketing_new_publication'),
+      builder: (context, setSheetState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: textCtrl,
+              maxLines: 4,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                hintText: localeCubit.translate('marketing_publication_hint'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ExpansibleWidget<String>.selection(
+              title: Text(channel.toUpperCase(), style: textStyles.bodySans),
+              items: const ['telegram', 'instagram', 'facebook', 'other'],
+              selectedValue: channel,
+              itemLabelBuilder: (c) => c.toUpperCase(),
+              onSelected: (val) {
+                setSheetState(() => channel = val);
+              },
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                final text = textCtrl.text.trim();
+                if (text.isEmpty) return;
+                context.read<MarketingBloc>().add(
+                  CreatePostRequested(text: text, channel: channel),
+                );
+                Navigator.pop(context);
+              },
+              child: Text(localeCubit.translate('common_create')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+void _showCreateCampaignDialog(BuildContext context) {
+  final textStyles = context.textStyles;
+  final localeCubit = context.read<LanguageCubit>();
+  final nameCtrl = TextEditingController();
+  final budgetCtrl = TextEditingController();
+  String channel = 'telegram';
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: localeCubit.translate('marketing_new_campaign'),
+    builder: (context, setSheetState) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: nameCtrl,
+            style: textStyles.bodySans,
+            decoration: InputDecoration(
+              labelText: localeCubit.translate('marketing_campaign_name'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          ExpansibleWidget<String>.selection(
+            title: Text(channel.toUpperCase(), style: textStyles.bodySans),
+            items: const ['telegram', 'instagram', 'facebook', 'google', 'other'],
+            selectedValue: channel,
+            itemLabelBuilder: (c) => c.toUpperCase(),
+            onSelected: (val) {
+              setSheetState(() => channel = val);
+            },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: budgetCtrl,
+            keyboardType: TextInputType.number,
+            style: textStyles.bodySans,
+            decoration: InputDecoration(
+              labelText: localeCubit.translate('marketing_budget_tjs'),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              final budget = parseLocalizedNumber(context, budgetCtrl.text) ?? 0.0;
+              if (name.isEmpty) return;
+              context.read<MarketingBloc>().add(
+                CreateCampaignRequested(
+                  name: name,
+                  channel: channel,
+                  budget: budget,
+                  spent: 0.0,
+                  leads: 0,
+                  conversions: 0,
+                  revenue: 0.0,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(localeCubit.translate('common_create')),
+          ),
+        ],
+      );
+    },
+  );
 }

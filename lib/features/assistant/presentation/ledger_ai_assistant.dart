@@ -9,27 +9,23 @@ import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/assistant_models.dart';
 import '../domain/assistant_repository.dart';
 
-/// Host for the full-screen assistant on More. Open via [LedgerAiAssistantHost.open].
-class LedgerAiAssistantHost extends StatefulWidget {
+/// Host for the AI assistant. Open via [LedgerAiAssistantHost.open].
+class LedgerAiAssistantHost extends StatelessWidget {
   const LedgerAiAssistantHost({super.key, required this.child});
 
   final Widget child;
 
   static void open(BuildContext context) {
-    final host = context.findAncestorStateOfType<_LedgerAiAssistantHostState>();
-    if (host != null) {
-      host._openPanel();
-      return;
-    }
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.85,
+          height: MediaQuery.of(ctx).size.height * 0.88,
           child: _AssistantPanel(onClose: () => Navigator.of(ctx).pop()),
         ),
       ),
@@ -37,7 +33,7 @@ class LedgerAiAssistantHost extends StatefulWidget {
   }
 
   @override
-  State<LedgerAiAssistantHost> createState() => _LedgerAiAssistantHostState();
+  Widget build(BuildContext context) => child;
 }
 
 /// Compact AI Assistant Floating Action Button matching the square cube design (44x44, 12px radius).
@@ -54,59 +50,36 @@ class LedgerAiFloatingButton extends StatelessWidget {
 
     return Tooltip(
       message: language.translate('assistant_title'),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed ?? () => LedgerAiAssistantHost.open(context),
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: colors.surface,
           borderRadius: BorderRadius.circular(12),
-          child: Ink(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+          border: Border.all(color: colors.border),
+          boxShadow: [
+            BoxShadow(
+              color: colors.textPrimary.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed ?? () => LedgerAiAssistantHost.open(context),
+            borderRadius: BorderRadius.circular(12),
             child: Center(
-              child: Icon(TablerIcons.sparkles, color: colors.brand, size: 20),
+              child: Icon(
+                TablerIcons.sparkles,
+                color: colors.brand,
+                size: 21,
+              ),
             ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _LedgerAiAssistantHostState extends State<LedgerAiAssistantHost> {
-  bool _open = false;
-
-  void _openPanel() => setState(() => _open = true);
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        widget.child,
-        if (_open)
-          Positioned.fill(
-            child: PopScope(
-              canPop: false,
-              onPopInvokedWithResult: (didPop, _) {
-                if (!didPop) setState(() => _open = false);
-              },
-              child: _AssistantPanel(
-                onClose: () => setState(() => _open = false),
-              ),
-            ),
-          ),
-      ],
     );
   }
 }
@@ -322,7 +295,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
     return Material(
       color: colors.surface,
       child: SafeArea(
-        bottom: false,
+        bottom: true,
         child: Padding(
           padding: EdgeInsets.only(bottom: keyboardInset),
           child: Column(

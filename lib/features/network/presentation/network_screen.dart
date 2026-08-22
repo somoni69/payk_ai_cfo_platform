@@ -14,11 +14,7 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
-import '../../../presentation/widgets/ledger_spotlight.dart';
 import '../bloc/network_bloc.dart';
 import '../bloc/network_event.dart';
 import '../bloc/network_state.dart';
@@ -71,7 +67,33 @@ class _NetworkViewState extends State<_NetworkView> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      floatingActionButton: null,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          language.translate('network_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        actions: [
+          if (isOwner) ...[
+            IconButton(
+              tooltip: language.translate('network_new_store'),
+              icon: Icon(TablerIcons.plus, color: colors.brand, size: 20),
+              onPressed: () => _showCreateStoreDialog(context),
+            ),
+            const SizedBox(width: 4),
+          ],
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
       body: BlocConsumer<NetworkBloc, NetworkState>(
         listener: (context, state) {
           if (state is NetworkLoaded && state.actionMessage != null) {
@@ -94,20 +116,6 @@ class _NetworkViewState extends State<_NetworkView> {
           return CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              LedgerCollapsingHeader(
-                title: language.translate('network_title'),
-                pinned: true,
-                floating: false,
-                snap: false,
-                actions: [
-                  if (isOwner)
-                    IconButton(
-                      tooltip: language.translate('network_new_store'),
-                      icon: Icon(TablerIcons.plus, color: colors.brand),
-                      onPressed: () => _showCreateStoreDialog(context),
-                    ),
-                ],
-              ),
               CupertinoSliverRefreshControl(
                 onRefresh: () async {
                   final done = Completer<void>();
@@ -124,7 +132,7 @@ class _NetworkViewState extends State<_NetworkView> {
                 },
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (state is NetworkLoading) ...[
@@ -137,12 +145,16 @@ class _NetworkViewState extends State<_NetworkView> {
                         const SizedBox(height: 12),
                       ],
                       _buildSummaryCard(context, state),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Text(
                         language.translate('network_stores_list'),
-                        style: textStyles.h2Sans,
+                        style: textStyles.h2Sans.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       if (state.stores.isEmpty)
                         _buildEmptyStores(context)
                       else
@@ -160,7 +172,7 @@ class _NetworkViewState extends State<_NetworkView> {
                             ),
                             isCurrent: store.id == state.actingStore?.id,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                         ],
                     ],
                   ]),
@@ -178,12 +190,26 @@ class _NetworkViewState extends State<_NetworkView> {
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
 
-    return LedgerCard(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
       child: Row(
         children: [
-          Icon(TablerIcons.building_store, size: 20, color: colors.brand),
-          const SizedBox(width: 10),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: colors.brand.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(TablerIcons.building_store, size: 20, color: colors.brand),
+          ),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,6 +218,7 @@ class _NetworkViewState extends State<_NetworkView> {
                   language.translate('network_acting_store_label'),
                   style: textStyles.captionSans.copyWith(
                     color: colors.textSecondary,
+                    fontSize: 12,
                   ),
                 ),
                 Text(
@@ -199,6 +226,7 @@ class _NetworkViewState extends State<_NetworkView> {
                   style: textStyles.bodySans.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colors.brand,
+                    fontSize: 14.5,
                   ),
                 ),
               ],
@@ -220,12 +248,17 @@ class _NetworkViewState extends State<_NetworkView> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              side: BorderSide(color: colors.border),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: Text(
               language.translate('network_leave_store'),
               style: textStyles.captionSans.copyWith(
                 fontWeight: FontWeight.w600,
                 color: colors.brand,
+                fontSize: 12.5,
               ),
             ),
           ),
@@ -239,17 +272,19 @@ class _NetworkViewState extends State<_NetworkView> {
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
 
-    return LedgerCard(
-      style: LedgerCardStyle.outlined,
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Переключатель периода на всю ширину с удобными областями нажатия
           _buildPeriodSwitcher(context, state.period),
           const SizedBox(height: 16),
 
-          // Заголовок и главная сумма дохода сети
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -262,13 +297,14 @@ class _NetworkViewState extends State<_NetworkView> {
                       style: textStyles.captionSans.copyWith(
                         color: colors.textSecondary,
                         fontWeight: FontWeight.w500,
+                        fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _formatMoney(context, state.totalProfit),
                       style: textStyles.h1Sans.copyWith(
-                        fontSize: context.fontSize(28),
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: state.totalProfit >= 0
                             ? colors.textPrimary
@@ -278,17 +314,24 @@ class _NetworkViewState extends State<_NetworkView> {
                   ],
                 ),
               ),
-              LedgerIconBadge(
-                icon: TablerIcons.building_store,
-                color: colors.brand,
-                size: 44,
-                iconSize: 22,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  TablerIcons.building_store,
+                  color: colors.brand,
+                  size: 22,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // 2 компактные карточки с выручкой и расходами сети
           Row(
             children: [
               Expanded(
@@ -326,6 +369,7 @@ class _NetworkViewState extends State<_NetworkView> {
                         _formatMoney(context, state.totalRevenue),
                         style: textStyles.bodyMono.copyWith(
                           fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
                           color: colors.textPrimary,
                         ),
                       ),
@@ -369,6 +413,7 @@ class _NetworkViewState extends State<_NetworkView> {
                         _formatMoney(context, state.totalExpenses),
                         style: textStyles.bodyMono.copyWith(
                           fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
                           color: colors.textPrimary,
                         ),
                       ),
@@ -423,15 +468,6 @@ class _NetworkViewState extends State<_NetworkView> {
                     border: p == current
                         ? Border.all(color: colors.border)
                         : null,
-                    boxShadow: p == current
-                        ? [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
-                            ),
-                          ]
-                        : null,
                   ),
                   child: Text(
                     label,
@@ -440,6 +476,7 @@ class _NetworkViewState extends State<_NetworkView> {
                       fontWeight: p == current
                           ? FontWeight.w600
                           : FontWeight.w400,
+                      fontSize: 12.5,
                     ),
                   ),
                 ),
@@ -496,8 +533,13 @@ class _NetworkViewState extends State<_NetworkView> {
       context.go('/dashboard');
     }
 
-    return LedgerCard(
-      onTap: isCurrent ? openCurrentStore : enterStore,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -527,7 +569,7 @@ class _NetworkViewState extends State<_NetworkView> {
                       store.name,
                       style: textStyles.bodySans.copyWith(
                         fontWeight: FontWeight.w600,
-                        fontSize: context.fontSize(15),
+                        fontSize: 15,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -548,6 +590,7 @@ class _NetworkViewState extends State<_NetworkView> {
                               store.location!,
                               style: textStyles.captionSans.copyWith(
                                 color: colors.textSecondary,
+                                fontSize: 12,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -558,6 +601,7 @@ class _NetworkViewState extends State<_NetworkView> {
                             '#${store.id}',
                             style: textStyles.captionSans.copyWith(
                               color: colors.textSecondary,
+                              fontSize: 12,
                             ),
                           ),
                       ],
@@ -566,29 +610,38 @@ class _NetworkViewState extends State<_NetworkView> {
                 ),
               ),
               const SizedBox(width: 8),
-              if (isCurrent)
-                LedgerPill(
-                  text: language.translate('network_current_badge'),
-                  backgroundColor: colors.accentGreen.withValues(alpha: 0.12),
-                  textColor: colors.accentGreen,
-                )
-              else
-                LedgerPill(
-                  text: store.isActive
-                      ? language.translate('network_store_active')
-                      : language.translate('network_store_inactive'),
-                  backgroundColor: store.isActive
-                      ? colors.brand.withValues(alpha: 0.08)
-                      : colors.border.withValues(alpha: 0.5),
-                  textColor: store.isActive
-                      ? colors.brand
-                      : colors.textSecondary,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 2.5,
                 ),
+                decoration: BoxDecoration(
+                  color: isCurrent
+                      ? colors.accentGreen.withValues(alpha: 0.12)
+                      : (store.isActive
+                          ? colors.brand.withValues(alpha: 0.08)
+                          : colors.border.withValues(alpha: 0.5)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isCurrent
+                      ? language.translate('network_current_badge')
+                      : (store.isActive
+                          ? language.translate('network_store_active')
+                          : language.translate('network_store_inactive')),
+                  style: textStyles.captionSans.copyWith(
+                    color: isCurrent
+                        ? colors.accentGreen
+                        : (store.isActive ? colors.brand : colors.textSecondary),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Блок ключевых показателей 2х2 с идеальной адаптацией под мобилку
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -766,7 +819,7 @@ class _NetworkViewState extends State<_NetworkView> {
           label,
           style: textStyles.captionSans.copyWith(
             color: colors.textSecondary,
-            fontSize: context.fontSize(11),
+            fontSize: 11.5,
           ),
         ),
         const SizedBox(height: 2),
@@ -782,7 +835,7 @@ class _NetworkViewState extends State<_NetworkView> {
                 value,
                 style: textStyles.captionSans.copyWith(
                   fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
-                  fontSize: context.fontSize(13),
+                  fontSize: 13,
                   color: valueColor,
                 ),
                 maxLines: 1,

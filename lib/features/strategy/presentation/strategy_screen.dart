@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
@@ -13,10 +11,69 @@ import '../../../features/strategy/bloc/strategy_bloc.dart';
 import '../../../features/strategy/bloc/strategy_event.dart';
 import '../../../features/strategy/bloc/strategy_state.dart';
 import '../../../features/strategy/domain/strategy_repository.dart';
-import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+
+enum StrategySection {
+  whatIf,
+  marketing,
+  matrices,
+  macro,
+  news,
+  scenarios,
+  summary,
+}
+
+String _strategySectionTitle(LanguageCubit language, StrategySection section) {
+  return language.translate(switch (section) {
+    StrategySection.whatIf => 'strategy_tab_whatif',
+    StrategySection.marketing => 'strategy_tab_marketing',
+    StrategySection.matrices => 'strategy_tab_matrices',
+    StrategySection.macro => 'strategy_tab_macro',
+    StrategySection.news => 'strategy_tab_news',
+    StrategySection.scenarios => 'strategy_tab_scenarios',
+    StrategySection.summary => 'strategy_tab_summary',
+  });
+}
+
+String _currentQuarter() {
+  final now = DateTime.now();
+  final year = now.year;
+  final quarter = ((now.month - 1) ~/ 3) + 1;
+  return '$year-Q$quarter';
+}
+
+void _openStrategySection(BuildContext context, StrategySection section) {
+  final bloc = context.read<StrategyBloc>();
+  switch (section) {
+    case StrategySection.matrices:
+      bloc.add(const LoadStrategicAnalyses('swot'));
+      break;
+    case StrategySection.macro:
+      bloc.add(const LoadMacroIndicators());
+      break;
+    case StrategySection.news:
+      bloc.add(const LoadNews());
+      break;
+    case StrategySection.scenarios:
+      bloc.add(LoadScenarios(quarter: _currentQuarter()));
+      break;
+    case StrategySection.summary:
+      bloc.add(const LoadDailySummary());
+      break;
+    default:
+      break;
+  }
+
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: StrategySectionScreen(section: section),
+      ),
+    ),
+  );
+}
 
 class StrategyScreen extends StatelessWidget {
   const StrategyScreen({super.key});
@@ -25,7 +82,10 @@ class StrategyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
     return BlocProvider<StrategyBloc>(
-      create: (context) => StrategyBloc(context.read<StrategyRepository>()),
+      create: (context) =>
+          StrategyBloc(context.read<StrategyRepository>())
+            ..add(const LoadDailySummary())
+            ..add(LoadScenarios(quarter: _currentQuarter())),
       child: const StrategyView(),
     );
   }
@@ -38,11 +98,594 @@ class StrategyView extends StatefulWidget {
   State<StrategyView> createState() => _StrategyViewState();
 }
 
-class _StrategyViewState extends State<StrategyView>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _StrategyViewState extends State<StrategyView> {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          locale.translate('strategy_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
+      body: BlocListener<StrategyBloc, StrategyState>(
+        listener: (context, state) {
+          if (state.errorMessage != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  locale.translateMessage(state.errorMessage!),
+                ),
+                backgroundColor: colors.accentRed,
+              ),
+            );
+          }
+        },
+        child: BlocBuilder<StrategyBloc, StrategyState>(
+          builder: (context, state) {
+            return _buildStrategyOverviewHub(context, state);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStrategyOverviewHub(BuildContext context, StrategyState state) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+
+    final hasScenarios = state.scenarios.isNotEmpty;
+    final summaryText = state.dailySummary?.summary;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        final bloc = context.read<StrategyBloc>();
+        bloc.add(const LoadDailySummary(forceRefresh: true));
+        bloc.add(LoadScenarios(quarter: _currentQuarter(), forceRefresh: true));
+      },
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        children: [
+          // 1. Hero Card: AI CFO Strategy Radar
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        locale.translate('strategy_hero_title'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(TablerIcons.brain, size: 13, color: colors.brand),
+                          const SizedBox(width: 4),
+                          Text(
+                            _currentQuarter(),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  locale.translate('strategy_hero_status'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(height: 1, color: colors.border),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(TablerIcons.chart_dots_3, size: 16, color: colors.brand),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${state.scenarios.length} ${locale.translate('strategy_tab_scenarios').toLowerCase()}',
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '• AI What-If & SWOT готовы',
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 2. Actionable Attention Card
+          InkWell(
+            onTap: () => _openStrategySection(
+              context,
+              hasScenarios ? StrategySection.scenarios : StrategySection.whatIf,
+            ),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hasScenarios
+                      ? colors.brand.withValues(alpha: 0.4)
+                      : colors.accentGreen.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: hasScenarios
+                          ? colors.brand.withValues(alpha: 0.08)
+                          : colors.accentGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      hasScenarios
+                          ? TablerIcons.bulb
+                          : TablerIcons.circle_check,
+                      color: hasScenarios ? colors.brand : colors.accentGreen,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          locale.translate('strategy_attention_title'),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          hasScenarios
+                              ? locale.translate(
+                                  'strategy_attention_scenarios',
+                                  params: {'count': '${state.scenarios.length}'},
+                                )
+                              : locale.translate('strategy_attention_ready'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 3. Quick Action Buttons Row
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openStrategySection(
+                      context,
+                      StrategySection.whatIf,
+                    ),
+                    icon: const Icon(TablerIcons.help, size: 17),
+                    label: Text(
+                      locale.translate('strategy_action_whatif'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.surface,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colors.brand,
+                      foregroundColor: colors.surface,
+                      elevation: 0,
+                      minimumSize: const Size.fromHeight(44),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 44,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _openStrategySection(
+                      context,
+                      StrategySection.marketing,
+                    ),
+                    icon: const Icon(TablerIcons.sparkles, size: 17),
+                    label: Text(
+                      locale.translate('strategy_action_marketing'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colors.brand,
+                      side: BorderSide(color: colors.border),
+                      minimumSize: const Size.fromHeight(44),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // 4. Main 2x2 Navigation Grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('strategy_tab_whatif'),
+                  subtitle: locale.translate('strategy_whatif_hint'),
+                  icon: TablerIcons.help,
+                  onTap: () => _openStrategySection(
+                    context,
+                    StrategySection.whatIf,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('strategy_tab_marketing'),
+                  subtitle: locale.translate('strategy_marketing_hint'),
+                  icon: TablerIcons.sparkles,
+                  onTap: () => _openStrategySection(
+                    context,
+                    StrategySection.marketing,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('strategy_tab_matrices'),
+                  subtitle: 'SWOT, PESTEL, BCG',
+                  icon: TablerIcons.layout_grid,
+                  onTap: () => _openStrategySection(
+                    context,
+                    StrategySection.matrices,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('strategy_tab_macro'),
+                  subtitle: locale.translate('strategy_tab_macro'),
+                  icon: TablerIcons.chart_arrows_vertical,
+                  onTap: () => _openStrategySection(
+                    context,
+                    StrategySection.macro,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // 5. Secondary 2x2 Navigation Grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('strategy_tab_news'),
+                  subtitle: locale.translate('strategy_tab_news'),
+                  icon: TablerIcons.news,
+                  onTap: () => _openStrategySection(
+                    context,
+                    StrategySection.news,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('strategy_tab_scenarios'),
+                  subtitle: '${state.scenarios.length} сценариев',
+                  icon: TablerIcons.target_arrow,
+                  onTap: () => _openStrategySection(
+                    context,
+                    StrategySection.scenarios,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // 6. Recent AI Daily Summary Card
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                locale.translate('strategy_recent_summary'),
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              TextButton(
+                onPressed: () => _openStrategySection(
+                  context,
+                  StrategySection.summary,
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      locale.translate('strategy_full_summary'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      TablerIcons.chevron_right,
+                      size: 14,
+                      color: colors.brand,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: summaryText != null
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(TablerIcons.file_text, size: 16, color: colors.brand),
+                          const SizedBox(width: 6),
+                          Text(
+                            state.dailySummary?.date ?? '',
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        summaryText,
+                        style: textStyles.bodySans.copyWith(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: colors.textPrimary,
+                        ),
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  )
+                : Text(
+                    locale.translate('strategy_summary_empty'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                      fontSize: 13.5,
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHubCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colors.brand.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 20, color: colors.brand),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 16,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  color: colors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class StrategySectionScreen extends StatefulWidget {
+  final StrategySection section;
+
+  const StrategySectionScreen({super.key, required this.section});
+
+  @override
+  State<StrategySectionScreen> createState() => _StrategySectionScreenState();
+}
+
+class _StrategySectionScreenState extends State<StrategySectionScreen> {
   final TextEditingController _whatIfController = TextEditingController();
   final TextEditingController _marketingController = TextEditingController();
+  String _selectedAnalysisType = 'swot';
 
   static const List<String> _whatIfTemplateKeys = [
     'strategy_whatif_template_revenue_drop',
@@ -56,104 +699,14 @@ class _StrategyViewState extends State<StrategyView>
     'strategy_marketing_template_wholesale_builders',
   ];
 
-  String _selectedAnalysisType = 'swot';
-  bool _analysisRequested = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 7, vsync: this);
-    _tabController.addListener(_handleTabChange);
-  }
-
   bool _canManageStrategy(BuildContext context) {
     final authState = context.read<AuthBloc>().state;
     return authState is AuthAuthenticated &&
         authState.role.canManage(AppCapability.strategy);
   }
 
-  String get _currentQuarter {
-    final now = DateTime.now();
-    final year = now.year;
-    final quarter = ((now.month - 1) ~/ 3) + 1;
-    return '$year-Q$quarter';
-  }
-
-  void _handleTabChange() {
-    if (!mounted || _tabController.indexIsChanging) return;
-    // Rebuild tab-aware FAB (design_language).
-    setState(() {});
-    final bloc = context.read<StrategyBloc>();
-    switch (_tabController.index) {
-      case 2:
-        if (!_analysisRequested) {
-          _analysisRequested = true;
-          bloc.add(LoadStrategicAnalyses(_selectedAnalysisType));
-        }
-        break;
-      case 3:
-        bloc.add(const LoadMacroIndicators());
-        break;
-      case 4:
-        bloc.add(const LoadNews());
-        break;
-      case 5:
-        bloc.add(LoadScenarios(quarter: _currentQuarter));
-        break;
-      case 6:
-        bloc.add(const LoadDailySummary());
-        break;
-    }
-  }
-
-  Widget? _buildStrategyFab(BuildContext context) {
-    // Scenarios tab only — generate AI scenarios.
-    if (_tabController.index != 5 || !_canManageStrategy(context)) return null;
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final locale = context.read<LanguageCubit>();
-    return FloatingActionButton.extended(
-      heroTag: null,
-      onPressed: () => context.read<StrategyBloc>().add(
-        GenerateScenariosRequested(_currentQuarter),
-      ),
-      backgroundColor: colors.brand,
-      foregroundColor: colors.surface,
-      elevation: 0,
-      highlightElevation: 0,
-      focusElevation: 0,
-      hoverElevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: colors.brand),
-      ),
-      icon: const Icon(TablerIcons.plus),
-      label: Text(
-        locale.translate('strategy_scenarios_generate'),
-        style: textStyles.bodySans.copyWith(
-          color: colors.surface,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _refreshAnalyses(BuildContext context) {
-    final completion = Completer<void>();
-    context.read<StrategyBloc>().add(
-      LoadStrategicAnalyses(
-        _selectedAnalysisType,
-        forceRefresh: true,
-        completion: completion,
-      ),
-    );
-    return completion.future;
-  }
-
   @override
   void dispose() {
-    _tabController.removeListener(_handleTabChange);
-    _tabController.dispose();
     _whatIfController.dispose();
     _marketingController.dispose();
     super.dispose();
@@ -162,63 +715,68 @@ class _StrategyViewState extends State<StrategyView>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final localeCubit = context.watch<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final canManage = _canManageStrategy(context);
 
     return Scaffold(
       backgroundColor: colors.background,
-      floatingActionButton: _buildStrategyFab(context),
-      body: BlocListener<StrategyBloc, StrategyState>(
-        listener: (context, state) {
-          if (state.errorMessage != null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  localeCubit.translateMessage(state.errorMessage!),
-                ),
-                backgroundColor: colors.accentRed,
-              ),
-            );
-          }
-        },
-        child: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              LedgerCollapsingHeader(
-                title: localeCubit.translate('strategy_title'),
-                pinned: true,
-                floating: false,
-                snap: false,
-                bottom: LedgerTabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabs: [
-                    Tab(text: localeCubit.translate('strategy_tab_whatif')),
-                    Tab(text: localeCubit.translate('strategy_tab_marketing')),
-                    Tab(text: localeCubit.translate('strategy_tab_matrices')),
-                    Tab(text: localeCubit.translate('strategy_tab_macro')),
-                    Tab(text: localeCubit.translate('strategy_tab_news')),
-                    Tab(text: localeCubit.translate('strategy_tab_scenarios')),
-                    Tab(text: localeCubit.translate('strategy_tab_summary')),
-                  ],
-                ),
-              ),
-            ];
-          },
-          body: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildWhatIfTab(context),
-              _buildMarketingTab(context),
-              _buildAnalysisTab(context),
-              _buildMacroTab(context),
-              _buildNewsTab(context),
-              _buildScenariosTab(context),
-              _buildSummaryTab(context),
-            ],
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: const BackButton(),
+        title: Text(
+          _strategySectionTitle(locale, widget.section),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
           ),
         ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
       ),
+      floatingActionButton: canManage ? _buildSectionFab(context, locale) : null,
+      body: switch (widget.section) {
+        StrategySection.whatIf => _buildWhatIfTab(context),
+        StrategySection.marketing => _buildMarketingTab(context),
+        StrategySection.matrices => _buildAnalysisTab(context),
+        StrategySection.macro => _buildMacroTab(context),
+        StrategySection.news => _buildNewsTab(context),
+        StrategySection.scenarios => _buildScenariosTab(context),
+        StrategySection.summary => _buildSummaryTab(context),
+      },
     );
+  }
+
+  Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    if (widget.section == StrategySection.scenarios) {
+      return FloatingActionButton.extended(
+        heroTag: null,
+        onPressed: () => context.read<StrategyBloc>().add(
+          GenerateScenariosRequested(_currentQuarter()),
+        ),
+        backgroundColor: colors.brand,
+        foregroundColor: colors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        icon: const Icon(TablerIcons.sparkles),
+        label: Text(
+          locale.translate('strategy_scenarios_generate'),
+          style: textStyles.bodySans.copyWith(
+            color: colors.surface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+    return null;
   }
 
   Widget _buildWhatIfTab(BuildContext context) {
@@ -235,6 +793,7 @@ class _StrategyViewState extends State<StrategyView>
               localeCubit.translate('strategy_whatif_description'),
               style: textStyles.captionSans.copyWith(
                 color: colors.textSecondary,
+                fontSize: 13.5,
               ),
             ),
             const SizedBox(height: 12),
@@ -276,15 +835,15 @@ class _StrategyViewState extends State<StrategyView>
                 ElevatedButton(
                   onPressed:
                       state.isWhatIfLoading || !_canManageStrategy(context)
-                      ? null
-                      : () {
-                          final query = _whatIfController.text.trim();
-                          if (query.isNotEmpty) {
-                            context.read<StrategyBloc>().add(
-                              AskWhatIfRequested(query),
-                            );
-                          }
-                        },
+                          ? null
+                          : () {
+                              final query = _whatIfController.text.trim();
+                              if (query.isNotEmpty) {
+                                context.read<StrategyBloc>().add(
+                                  AskWhatIfRequested(query),
+                                );
+                              }
+                            },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: colors.surface,
@@ -309,10 +868,13 @@ class _StrategyViewState extends State<StrategyView>
             if (state.isWhatIfLoading)
               const StrategyOverviewShimmer()
             else if (state.whatIfAnswer != null)
-              LedgerCard(
-                borderColor: colors.accentAmber,
-                backgroundColor: colors.accentAmber.withValues(alpha: 0.04),
+              Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.accentAmber),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -324,7 +886,7 @@ class _StrategyViewState extends State<StrategyView>
                           localeCubit.translate('strategy_scenario_analysis'),
                           style: textStyles.captionSans.copyWith(
                             color: colors.accentAmber,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -357,6 +919,7 @@ class _StrategyViewState extends State<StrategyView>
               localeCubit.translate('strategy_marketing_description'),
               style: textStyles.captionSans.copyWith(
                 color: colors.textSecondary,
+                fontSize: 13.5,
               ),
             ),
             const SizedBox(height: 12),
@@ -381,7 +944,7 @@ class _StrategyViewState extends State<StrategyView>
             ),
             const SizedBox(height: 16),
 
-            // Поле ввода вопроса
+            // Поле ввода запроса
             Row(
               children: [
                 Expanded(
@@ -400,15 +963,15 @@ class _StrategyViewState extends State<StrategyView>
                 ElevatedButton(
                   onPressed:
                       state.isMarketingLoading || !_canManageStrategy(context)
-                      ? null
-                      : () {
-                          final prompt = _marketingController.text.trim();
-                          if (prompt.isNotEmpty) {
-                            context.read<StrategyBloc>().add(
-                              GenerateMarketingIdeasRequested(prompt),
-                            );
-                          }
-                        },
+                          ? null
+                          : () {
+                              final query = _marketingController.text.trim();
+                              if (query.isNotEmpty) {
+                                context.read<StrategyBloc>().add(
+                                  GenerateMarketingIdeasRequested(query),
+                                );
+                              }
+                            },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.brand,
                     foregroundColor: colors.surface,
@@ -422,10 +985,8 @@ class _StrategyViewState extends State<StrategyView>
                     ),
                   ),
                   child: Icon(
-                    TablerIcons.bulb,
-                    semanticLabel: localeCubit.translate(
-                      'strategy_generate_ideas_action',
-                    ),
+                    TablerIcons.send,
+                    semanticLabel: localeCubit.translate('common_send'),
                   ),
                 ),
               ],
@@ -435,52 +996,54 @@ class _StrategyViewState extends State<StrategyView>
             if (state.isMarketingLoading)
               const StrategyOverviewShimmer()
             else if (state.marketingIdeas.isNotEmpty)
-              LedgerCard(
+              Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.brand),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Icon(TablerIcons.target, color: colors.brand),
+                        Icon(TablerIcons.bulb, color: colors.brand),
                         const SizedBox(width: 8),
                         Text(
                           localeCubit.translate('strategy_marketing_ideas'),
                           style: textStyles.captionSans.copyWith(
                             color: colors.brand,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: state.marketingIdeas.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        return Row(
+                    ...state.marketingIdeas.map(
+                      (idea) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '• ',
                               style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                color: colors.brand,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                             Expanded(
                               child: Text(
-                                localeCubit.translateMessage(
-                                  state.marketingIdeas[index],
+                                localeCubit.translateMessage(idea),
+                                style: textStyles.bodySans.copyWith(
+                                  height: 1.3,
                                 ),
-                                style: textStyles.bodySans,
                               ),
                             ),
                           ],
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -501,7 +1064,11 @@ class _StrategyViewState extends State<StrategyView>
         final analysis = state.latestAnalysis;
 
         return RefreshIndicator(
-          onRefresh: () => _refreshAnalyses(context),
+          onRefresh: () async {
+            context.read<StrategyBloc>().add(
+              LoadStrategicAnalyses(_selectedAnalysisType, forceRefresh: true),
+            );
+          },
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -516,7 +1083,7 @@ class _StrategyViewState extends State<StrategyView>
                             ? Colors.white
                             : colors.textPrimary,
                         fontWeight: _selectedAnalysisType == 'swot'
-                            ? FontWeight.w500
+                            ? FontWeight.w600
                             : FontWeight.w400,
                       ),
                       checkmarkColor: Colors.white,
@@ -542,7 +1109,7 @@ class _StrategyViewState extends State<StrategyView>
                             ? Colors.white
                             : colors.textPrimary,
                         fontWeight: _selectedAnalysisType == 'pestel'
-                            ? FontWeight.w500
+                            ? FontWeight.w600
                             : FontWeight.w400,
                       ),
                       checkmarkColor: Colors.white,
@@ -568,7 +1135,7 @@ class _StrategyViewState extends State<StrategyView>
                             ? Colors.white
                             : colors.textPrimary,
                         fontWeight: _selectedAnalysisType == 'bcg'
-                            ? FontWeight.w500
+                            ? FontWeight.w600
                             : FontWeight.w400,
                       ),
                       checkmarkColor: Colors.white,
@@ -593,15 +1160,23 @@ class _StrategyViewState extends State<StrategyView>
               ElevatedButton.icon(
                 onPressed:
                     state.isGeneratingAnalysis || !_canManageStrategy(context)
-                    ? null
-                    : () {
-                        context.read<StrategyBloc>().add(
-                          GenerateStrategicAnalysis(
-                            type: _selectedAnalysisType,
-                            period: _currentQuarter,
-                          ),
-                        );
-                      },
+                        ? null
+                        : () {
+                            context.read<StrategyBloc>().add(
+                              GenerateStrategicAnalysis(
+                                type: _selectedAnalysisType,
+                                period: _currentQuarter(),
+                              ),
+                            );
+                          },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
                 icon: const Icon(TablerIcons.plus),
                 label: Text(
                   localeCubit.translate(
@@ -616,8 +1191,13 @@ class _StrategyViewState extends State<StrategyView>
               if (state.isAnalysisLoading || state.isGeneratingAnalysis)
                 const StrategyOverviewShimmer()
               else if (analysis == null)
-                LedgerCard(
+                Container(
                   padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Center(
                     child: Column(
                       children: [
@@ -665,18 +1245,22 @@ class _StrategyViewState extends State<StrategyView>
 
     Widget buildQuadrantCard(String title, dynamic itemsVal, Color color) {
       final List<dynamic> items = itemsVal is List ? itemsVal : [];
-      return LedgerCard(
-        borderColor: color.withValues(alpha: 0.5),
-        backgroundColor: color.withValues(alpha: 0.03),
-        padding: const EdgeInsets.all(12),
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
                 color: color,
+                fontSize: 14.5,
               ),
             ),
             const Divider(),
@@ -696,13 +1280,13 @@ class _StrategyViewState extends State<StrategyView>
                         '• ',
                         style: textStyles.bodySans.copyWith(
                           color: color,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       Expanded(
                         child: Text(
                           localeCubit.translateMessage(it.toString()),
-                          style: textStyles.captionSans,
+                          style: textStyles.captionSans.copyWith(fontSize: 13),
                         ),
                       ),
                     ],
@@ -767,7 +1351,7 @@ class _StrategyViewState extends State<StrategyView>
           child: ExpansibleWidget(
             title: Text(
               localeCubit.translate(f['labelKey']!),
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
             ),
             subtitle: Text(
               localeCubit.translatePlural(
@@ -794,7 +1378,7 @@ class _StrategyViewState extends State<StrategyView>
                           '• ',
                           style: textStyles.bodySans.copyWith(
                             color: colors.brand,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         Expanded(
@@ -851,8 +1435,13 @@ class _StrategyViewState extends State<StrategyView>
     return Column(
       children: [
         if (items.isEmpty)
-          LedgerCard(
+          Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
             child: Center(
               child: Text(
                 localeCubit.translate('strategy_bcg_no_categories'),
@@ -871,8 +1460,13 @@ class _StrategyViewState extends State<StrategyView>
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 10.0),
-              child: LedgerCard(
+              child: Container(
                 padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -883,7 +1477,7 @@ class _StrategyViewState extends State<StrategyView>
                           Text(
                             name,
                             style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -910,13 +1504,13 @@ class _StrategyViewState extends State<StrategyView>
                       ),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         translateQuadrant(quadrant),
                         style: textStyles.smallSans.copyWith(
                           color: color,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -956,10 +1550,16 @@ class _StrategyViewState extends State<StrategyView>
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: state.macro.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final m = state.macro[index];
-              return LedgerCard(
+              return Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
                 child: Row(
                   children: [
                     Expanded(
@@ -969,9 +1569,11 @@ class _StrategyViewState extends State<StrategyView>
                           Text(
                             m.name,
                             style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14.5,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
                             formatLocalizedDateTime(
                               context,
@@ -988,7 +1590,8 @@ class _StrategyViewState extends State<StrategyView>
                     Text(
                       '${m.value}${m.unit != null ? ' ${m.unit}' : ''}',
                       style: textStyles.bodyMono.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14.5,
                         color: colors.brand,
                       ),
                     ),
@@ -1039,7 +1642,8 @@ class _StrategyViewState extends State<StrategyView>
                     Text(
                       source.name,
                       style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -1056,10 +1660,18 @@ class _StrategyViewState extends State<StrategyView>
                           .map(
                             (item) => Padding(
                               padding: const EdgeInsets.only(bottom: 8),
-                              child: LedgerCard(
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: colors.surface,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: colors.border),
+                                ),
                                 child: Text(
                                   item.title,
-                                  style: textStyles.captionSans,
+                                  style: textStyles.captionSans.copyWith(
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1087,7 +1699,7 @@ class _StrategyViewState extends State<StrategyView>
         return RefreshIndicator(
           onRefresh: () async {
             context.read<StrategyBloc>().add(
-              LoadScenarios(quarter: _currentQuarter, forceRefresh: true),
+              LoadScenarios(quarter: _currentQuarter(), forceRefresh: true),
             );
           },
           child: state.scenarios.isEmpty
@@ -1108,28 +1720,42 @@ class _StrategyViewState extends State<StrategyView>
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                   itemCount: state.scenarios.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final s = state.scenarios[index];
-                    return LedgerCard(
+                    return Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             s.title,
                             style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             s.quarter,
                             style: textStyles.captionSans.copyWith(
-                              color: colors.textSecondary,
+                              color: colors.brand,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(s.content, style: textStyles.captionSans),
+                          Text(
+                            s.content,
+                            style: textStyles.captionSans.copyWith(
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -1161,7 +1787,13 @@ class _StrategyViewState extends State<StrategyView>
             padding: const EdgeInsets.all(16),
             children: [
               if (summary == null)
-                LedgerCard(
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Text(
                     locale.translate('strategy_summary_empty'),
                     style: textStyles.captionSans.copyWith(
@@ -1174,11 +1806,24 @@ class _StrategyViewState extends State<StrategyView>
                   summary.date,
                   style: textStyles.captionSans.copyWith(
                     color: colors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 8),
-                LedgerCard(
-                  child: Text(summary.summary, style: textStyles.bodySans),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Text(
+                    summary.summary,
+                    style: textStyles.bodySans.copyWith(
+                      fontSize: 14.5,
+                      height: 1.4,
+                    ),
+                  ),
                 ),
               ],
             ],

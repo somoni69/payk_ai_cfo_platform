@@ -1,6 +1,6 @@
 part of 'cash_screen.dart';
 
-extension _CashSheetBuilders on _CashViewState {
+extension _CashSheetBuilders on _CashViewMixin {
   void _showOpenShiftBottomSheet(
     BuildContext context,
     List<CashRegister> registers,
@@ -372,8 +372,13 @@ extension _CashSheetBuilders on _CashViewState {
                   }
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: LedgerCard(
+                    child: Container(
                       padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -528,8 +533,13 @@ extension _CashSheetBuilders on _CashViewState {
 
               // 3. Сумма операции — при строках товаров считается автоматически.
               if (saleLines.isNotEmpty) ...[
-                LedgerCard(
+                Container(
                   padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Row(
                     children: [
                       Expanded(

@@ -1,6 +1,6 @@
 part of 'tasks_screen.dart';
 
-extension _TasksFormBuilders on _TasksViewState {
+extension _TasksFormBuilders on _TasksViewMixin {
   Future<void> _showAddTaskBottomSheet(
     BuildContext context,
     List<TaskProject> projects,

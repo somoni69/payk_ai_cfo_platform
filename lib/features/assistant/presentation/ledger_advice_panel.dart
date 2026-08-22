@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../permissions/cubit/permissions_cubit.dart';
 import '../domain/assistant_models.dart';
@@ -118,8 +117,13 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: LedgerCard(
+      child: Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -233,9 +237,13 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
                         content.goal!.text.isNotEmpty))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: LedgerCard(
-                      backgroundColor: colors.surfaceNested,
+                    child: Container(
                       padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceNested,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -265,13 +273,19 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
                 for (var i = 0; i < content.priorities.length; i++)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
-                    child: LedgerCard(
+                    child: Container(
                       padding: const EdgeInsets.all(12),
-                      borderColor: i == 0
-                          ? colors.accentAmber
-                          : i == 1
-                          ? colors.accentGreen
-                          : colors.brand,
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: i == 0
+                              ? colors.accentAmber
+                              : i == 1
+                              ? colors.accentGreen
+                              : colors.brand,
+                        ),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -295,8 +309,13 @@ class _LedgerAdvicePanelState extends State<LedgerAdvicePanel> {
                     ),
                   ),
                 if (content.analysis.isNotEmpty)
-                  LedgerCard(
+                  Container(
                     padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

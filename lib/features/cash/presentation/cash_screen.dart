@@ -24,13 +24,8 @@ import '../../../features/fin_ops/domain/fin_ops_repository.dart';
 import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 import '../../assistant/presentation/ledger_ai_assistant.dart';
-import '../../../features/assistant/presentation/ledger_advice_panel.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
-import '../../../presentation/widgets/ledger_spotlight.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import 'cash_transaction_tile.dart';
 import 'sales_profit_card.dart';
@@ -38,37 +33,30 @@ import 'sales_profit_card.dart';
 part 'cash_tabs.dart';
 part 'cash_sheets.dart';
 
-/// Точка входа в кассовый модуль с внедрением CashBloc.
-class CashScreen extends StatelessWidget {
-  const CashScreen({super.key});
+enum CashSection { operations, shifts, summary }
 
-  @override
-  Widget build(BuildContext context) {
-    context.watch<LanguageCubit>();
-    try {
-      context.read<CashBloc>();
-      return const CashView();
-    } catch (_) {
-      return BlocProvider<CashBloc>(
-        create: (context) =>
-            CashBloc(context.read<CashRepository>())..add(const LoadCashData()),
-        child: const CashView(),
-      );
-    }
-  }
+String _cashSectionTitle(LanguageCubit language, CashSection section) {
+  return language.translate(switch (section) {
+    CashSection.operations => 'cash_tab_operations',
+    CashSection.shifts => 'cash_tab_shifts',
+    CashSection.summary => 'cash_tab_summary',
+  });
 }
 
-class CashView extends StatefulWidget {
-  const CashView({super.key});
-
-  @override
-  State<CashView> createState() => _CashViewState();
+void _openCashSection(BuildContext context, CashSection section) {
+  final bloc = context.read<CashBloc>();
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: CashSectionScreen(section: section),
+      ),
+    ),
+  );
 }
 
-class _CashViewState extends State<CashView>
-    with SingleTickerProviderStateMixin {
+mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
   final TextEditingController _searchController = TextEditingController();
-  late final TabController _tabController;
 
   String _selectedType = 'all';
   String _selectedPaymentMethod = 'all';
@@ -78,30 +66,8 @@ class _CashViewState extends State<CashView>
   bool _exporting = false;
 
   @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(_handleTabChange);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final bloc = context.read<CashBloc>();
-      if (bloc.state is! CashLoaded) {
-        bloc.add(const LoadCashData());
-      }
-    });
-  }
-
-  void _handleTabChange() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
-    _tabController.removeListener(_handleTabChange);
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -111,7 +77,9 @@ class _CashViewState extends State<CashView>
     return completion.future;
   }
 
-  void _rebuild([VoidCallback? fn]) => setState(fn ?? () {});
+  void _rebuild([VoidCallback? fn]) {
+    if (mounted) setState(fn ?? () {});
+  }
 
   CashOperationFilters _exportFilters() {
     final registerId = int.tryParse(_selectedRegister);
@@ -310,6 +278,47 @@ class _CashViewState extends State<CashView>
       },
     );
   }
+}
+
+/// Точка входа в кассовый модуль с внедрением CashBloc.
+class CashScreen extends StatelessWidget {
+  const CashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    context.watch<LanguageCubit>();
+    try {
+      context.read<CashBloc>();
+      return const CashView();
+    } catch (_) {
+      return BlocProvider<CashBloc>(
+        create: (context) =>
+            CashBloc(context.read<CashRepository>())..add(const LoadCashData()),
+        child: const CashView(),
+      );
+    }
+  }
+}
+
+class CashView extends StatefulWidget {
+  const CashView({super.key});
+
+  @override
+  State<CashView> createState() => _CashViewState();
+}
+
+class _CashViewState extends State<CashView> with _CashViewMixin {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bloc = context.read<CashBloc>();
+      if (bloc.state is! CashLoaded) {
+        bloc.add(const LoadCashData());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -397,80 +406,28 @@ class _CashViewState extends State<CashView>
 
         final loadedState = state is CashLoaded ? state : null;
 
-        Widget? mainFab;
-        if (!isViewer && _tabController.index == 0 && loadedState != null) {
-          mainFab = FloatingActionButton.extended(
-            heroTag: null,
-            onPressed: () => _showAddTransactionBottomSheet(
-              context,
-              authState,
-              loadedState.registers,
-            ),
-            backgroundColor: colors.brand,
-            foregroundColor: colors.surface,
-            elevation: 0,
-            highlightElevation: 0,
-            focusElevation: 0,
-            hoverElevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: colors.brand),
-            ),
-            icon: const Icon(TablerIcons.plus),
-            label: Text(
-              language.translate('cash_new_operation_btn'),
-              style: textStyles.bodySans.copyWith(
-                color: colors.surface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          );
-        } else if (!isViewer &&
-            _tabController.index == 1 &&
-            loadedState != null) {
-          mainFab = FloatingActionButton.extended(
-            heroTag: null,
-            onPressed: () =>
-                _showOpenShiftBottomSheet(context, loadedState.registers),
-            backgroundColor: colors.brand,
-            foregroundColor: colors.surface,
-            elevation: 0,
-            highlightElevation: 0,
-            focusElevation: 0,
-            hoverElevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: colors.brand),
-            ),
-            icon: const Icon(TablerIcons.plus),
-            label: Text(
-              language.translate('cash_open_shift_btn'),
-              style: textStyles.bodySans.copyWith(
-                color: colors.surface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          );
-        }
-
         return Scaffold(
+          backgroundColor: colors.background,
           floatingActionButtonLocation: kLedgerShellFabLocation,
-          floatingActionButton: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const LedgerAiFloatingButton(),
-              if (mainFab != null) ...[const SizedBox(height: 10), mainFab],
-            ],
-          ),
+          floatingActionButton: const LedgerAiFloatingButton(),
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
-                LedgerCollapsingHeader(
-                  title: language.translate('cash_title'),
+                SliverAppBar(
+                  title: Text(
+                    language.translate('cash_title'),
+                    style: textStyles.h2Sans.copyWith(
+                      fontSize: 19,
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
                   pinned: true,
                   floating: false,
-                  snap: false,
+                  backgroundColor: colors.surface,
+                  surfaceTintColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
                   actions: [
                     IconButton(
                       tooltip: language.translate('cash_filters'),
@@ -492,29 +449,526 @@ class _CashViewState extends State<CashView>
                       onPressed: () => _showReportDownloadBottomSheet(context),
                       icon: Icon(TablerIcons.download, color: colors.brand),
                     ),
+                    const SizedBox(width: 4),
                   ],
-                  bottom: LedgerTabBar(
-                    controller: _tabController,
-                    tabs: [
-                      Tab(text: language.translate('cash_tab_operations')),
-                      Tab(text: language.translate('cash_tab_shifts')),
-                      Tab(text: language.translate('cash_tab_summary')),
-                    ],
+                  bottom: PreferredSize(
+                    preferredSize: const Size.fromHeight(1),
+                    child: Container(height: 1, color: colors.border),
                   ),
                 ),
               ];
             },
             body: loadedState == null
                 ? const CashOverviewShimmer()
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildOperationsTab(context, loadedState, isViewer),
-                      _buildShiftsTab(context, loadedState, isViewer),
-                      _buildSummaryTab(context, loadedState.summaries),
-                    ],
+                : _buildCashOverviewHub(
+                    context,
+                    loadedState,
+                    isViewer,
+                    authState,
                   ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCashOverviewHub(
+    BuildContext context,
+    CashLoaded state,
+    bool isViewer,
+    AuthState authState,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final shift = state.activeShift;
+    final isOpen = shift != null && shift.isOpen;
+    final totalOps = state.transactions.length;
+    final openShiftsCount = state.shifts.where((s) => s.isOpen).length;
+    final totalRegisters = state.summaries.length;
+
+    final recentTransactions = state.transactions.take(5).toList();
+
+    return RefreshIndicator(
+      onRefresh: () => _refreshCash(context),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16 + kLiquidNavClearance),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Shift & Cash Hero Balance Card
+            _buildShiftHero(context, state, isViewer),
+            const SizedBox(height: 12),
+
+            // 2. Attention Card (Active Shift status)
+            InkWell(
+              onTap: () => _openCashSection(context, CashSection.shifts),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isOpen
+                        ? colors.accentGreen.withValues(alpha: 0.4)
+                        : colors.accentAmber.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isOpen
+                            ? colors.accentGreen.withValues(alpha: 0.1)
+                            : colors.accentAmber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isOpen
+                            ? TablerIcons.circle_check
+                            : TablerIcons.clock_pause,
+                        color: isOpen ? colors.accentGreen : colors.accentAmber,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isOpen
+                                ? language.translate('cash_shift_open')
+                                : language.translate('cash_shift_closed'),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14.5,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            isOpen
+                                ? '${shift.registerName ?? language.translate('cash_default_register')} • ${formatLocalizedDateTime(context, shift.openedAt, style: LocalizedDateTimeStyle.time)}'
+                                : language.translate(
+                                    'cash_shift_operations_blocked',
+                                  ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      TablerIcons.chevron_right,
+                      size: 18,
+                      color: colors.textSecondary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            // 3. Quick Action Button (Full-width)
+            // 3. Quick Action Button (Matches Hero shift button style)
+            if (!isViewer) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAddTransactionBottomSheet(
+                    context,
+                    authState,
+                    state.registers,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: colors.brand,
+                    foregroundColor: colors.surface,
+                    elevation: 0,
+                    minimumSize: const Size.fromHeight(44),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: const Icon(TablerIcons.plus, size: 16),
+                  label: Text(
+                    language.translate('cash_new_operation_btn'),
+                    style: textStyles.bodySans.copyWith(
+                      color: colors.surface,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
+
+            // 4. Navigation Grid (3 Section Cards)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildHubSectionCard(
+                    context: context,
+                    icon: TablerIcons.receipt,
+                    iconColor: colors.brand,
+                    title: language.translate('cash_tab_operations'),
+                    badge: '$totalOps',
+                    subtitle: language.translate('cash_filter_all_types'),
+                    onTap: () =>
+                        _openCashSection(context, CashSection.operations),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildHubSectionCard(
+                    context: context,
+                    icon: TablerIcons.clock_hour_4,
+                    iconColor: isOpen ? colors.accentGreen : colors.accentAmber,
+                    title: language.translate('cash_tab_shifts'),
+                    badge: '$openShiftsCount акт.',
+                    subtitle: language.translate('cash_col_status'),
+                    onTap: () => _openCashSection(context, CashSection.shifts),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _buildHubSectionCard(
+              context: context,
+              icon: TablerIcons.building_bank,
+              iconColor: colors.brand,
+              title: language.translate('cash_tab_summary'),
+              badge: '$totalRegisters касс',
+              subtitle: language.translate('cash_tab_registers'),
+              onTap: () => _openCashSection(context, CashSection.summary),
+            ),
+            const SizedBox(height: 10),
+
+            // 5. Recent Activity Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  language.translate('cash_tab_operations'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      _openCashSection(context, CashSection.operations),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        language.translate('common_view_all'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        TablerIcons.arrow_right,
+                        size: 14,
+                        color: colors.brand,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // 6. Recent Activity List
+            if (recentTransactions.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 28,
+                  horizontal: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Center(
+                  child: Text(
+                    language.translate('cash_operations_empty'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...recentTransactions.map(
+                (tx) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: CashTransactionTile(
+                    transaction: tx,
+                    onEdit: null,
+                    onDelete: null,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHubSectionCard({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String badge,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: iconColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 18),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badge,
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textPrimary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+                fontSize: 12,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CashSectionScreen extends StatefulWidget {
+  final CashSection section;
+  const CashSectionScreen({super.key, required this.section});
+
+  @override
+  State<CashSectionScreen> createState() => _CashSectionScreenState();
+}
+
+class _CashSectionScreenState extends State<CashSectionScreen>
+    with _CashViewMixin {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final authState = context.watch<AuthBloc>().state;
+    final isViewer =
+        authState is! AuthAuthenticated ||
+        !authState.role.canManage(AppCapability.cash);
+
+    return BlocBuilder<CashBloc, CashState>(
+      builder: (context, state) {
+        if (state is! CashLoaded) {
+          return Scaffold(
+            backgroundColor: colors.background,
+            appBar: AppBar(
+              backgroundColor: colors.surface,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: const BackButton(),
+              title: Text(
+                _cashSectionTitle(language, widget.section),
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1),
+                child: Container(height: 1, color: colors.border),
+              ),
+            ),
+            body: const CashOverviewShimmer(),
+          );
+        }
+
+        Widget? fab;
+        if (!isViewer) {
+          if (widget.section == CashSection.operations) {
+            fab = FloatingActionButton.extended(
+              heroTag: 'cash_op_fab',
+              onPressed: () => _showAddTransactionBottomSheet(
+                context,
+                authState,
+                state.registers,
+              ),
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              icon: const Icon(TablerIcons.plus),
+              label: Text(
+                language.translate('cash_new_operation_btn'),
+                style: textStyles.bodySans.copyWith(
+                  color: colors.surface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          } else if (widget.section == CashSection.shifts) {
+            fab = FloatingActionButton.extended(
+              heroTag: 'cash_shift_fab',
+              onPressed: () =>
+                  _showOpenShiftBottomSheet(context, state.registers),
+              backgroundColor: colors.brand,
+              foregroundColor: colors.surface,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              icon: const Icon(TablerIcons.plus),
+              label: Text(
+                language.translate('cash_open_shift_btn'),
+                style: textStyles.bodySans.copyWith(
+                  color: colors.surface,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          }
+        }
+
+        return Scaffold(
+          backgroundColor: colors.background,
+          appBar: AppBar(
+            backgroundColor: colors.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: const BackButton(),
+            title: Text(
+              _cashSectionTitle(language, widget.section),
+              style: textStyles.h2Sans.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+            actions: [
+              if (widget.section == CashSection.operations)
+                IconButton(
+                  tooltip: language.translate('cash_filters'),
+                  onPressed: () => _showFiltersSheet(context, state),
+                  icon: Badge(
+                    isLabelVisible: _hasActiveFilters,
+                    smallSize: 8,
+                    backgroundColor: colors.brand,
+                    child: Icon(
+                      TablerIcons.adjustments_horizontal,
+                      color: colors.brand,
+                    ),
+                  ),
+                ),
+              IconButton(
+                tooltip: language.translate('cash_download_report'),
+                onPressed: () => _showReportDownloadBottomSheet(context),
+                icon: Icon(TablerIcons.download, color: colors.brand),
+              ),
+              const SizedBox(width: 4),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Container(height: 1, color: colors.border),
+            ),
+          ),
+          floatingActionButton: fab,
+          body: switch (widget.section) {
+            CashSection.operations =>
+              _buildOperationsTab(context, state, isViewer),
+            CashSection.shifts => _buildShiftsTab(context, state, isViewer),
+            CashSection.summary => _buildSummaryTab(context, state.summaries),
+          },
         );
       },
     );

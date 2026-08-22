@@ -15,11 +15,31 @@ import '../../../features/fin_ops/domain/fin_ops_repository.dart';
 import '../../../features/branches/domain/branch_models.dart';
 import '../../../features/branches/domain/branches_repository.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+
+enum FinOpsSection { banks, transfers, aid, encashments }
+
+String _finOpsSectionTitle(LanguageCubit language, FinOpsSection section) {
+  return language.translate(switch (section) {
+    FinOpsSection.banks => 'fin_ops_tab_banks',
+    FinOpsSection.transfers => 'fin_ops_tab_transfers',
+    FinOpsSection.aid => 'fin_ops_tab_aid',
+    FinOpsSection.encashments => 'fin_ops_new_encashment',
+  });
+}
+
+void _openFinOpsSection(BuildContext context, FinOpsSection section) {
+  final bloc = context.read<FinOpsBloc>();
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: FinOpsSectionScreen(section: section),
+      ),
+    ),
+  );
+}
 
 class FinOpsScreen extends StatelessWidget {
   const FinOpsScreen({super.key});
@@ -43,341 +63,793 @@ class FinOpsView extends StatefulWidget {
   State<FinOpsView> createState() => _FinOpsViewState();
 }
 
-class _FinOpsViewState extends State<FinOpsView>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  void _showEncashmentModal(BuildContext context, List<BankAccount> banks) {
-    final locale = context.read<LanguageCubit>();
-    final textStyles = context.textStyles;
-
-    BankAccount? selectedBank = banks.isNotEmpty ? banks.first : null;
-    final amountCtrl = TextEditingController();
-    final respCtrl = TextEditingController();
-
-    LedgerBottomSheet.show(
-      context: context,
-      title: locale.translate('fin_ops_new_encashment'),
-      builder: (context, setSheetState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            locale.translate('fin_ops_bank_credit'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 6),
-          ExpansibleWidget<BankAccount>.selection(
-            borderRadius: 8.0,
-            title: Text(
-              locale.translateMessage(
-                selectedBank?.bankName ?? 'mock_bank_oriyon',
-              ),
-              style: textStyles.bodySans,
-            ),
-            items: banks,
-            selectedValue: selectedBank,
-            itemLabelBuilder: (b) => locale.translateMessage(b.bankName),
-            onSelected: (val) {
-              setSheetState(() => selectedBank = val);
-            },
-            cardPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 2,
-            ),
-            tilePadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: amountCtrl,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_encashment_amount'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: respCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_responsible'),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-              if (amt == null || amt <= 0) return;
-              context.read<FinOpsBloc>().add(
-                CreateEncashmentRequested(
-                  bankName: selectedBank?.bankName ?? 'mock_bank_oriyon',
-                  amount: amt,
-                  responsiblePerson: respCtrl.text.trim(),
-                ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text(locale.translate('save_to_ledger')),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCreateBankSheet(BuildContext context) {
-    final locale = context.read<LanguageCubit>();
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final nameCtrl = TextEditingController();
-
-    LedgerBottomSheet.show(
-      context: context,
-      title: locale.translate('fin_ops_new_bank'),
-      builder: (context, setSheetState) => TextField(
-        controller: nameCtrl,
-        style: textStyles.bodySans,
-        decoration: InputDecoration(
-          labelText: locale.translate('fin_ops_bank_name'),
-        ),
-      ),
-      footerBuilder: (context, setSheetState) {
-        return SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
-              this.context.read<FinOpsBloc>().add(CreateBankRequested(name));
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-            ),
-            child: Text(locale.translate('common_create')),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showTransferModal(BuildContext context, List<Branch> branches) {
-    final locale = context.read<LanguageCubit>();
-    final textStyles = context.textStyles;
-
-    Branch? selectedFromBranch = branches.isNotEmpty ? branches.first : null;
-    Branch? selectedToBranch = branches.length > 1
-        ? branches[1]
-        : (branches.isNotEmpty ? branches.first : null);
-    final amountCtrl = TextEditingController();
-
-    LedgerBottomSheet.show(
-      context: context,
-      title: locale.translate('fin_ops_new_transfer'),
-      builder: (context, setSheetState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            locale.translate('fin_ops_from_branch'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 6),
-          ExpansibleWidget<Branch?>.selection(
-            borderRadius: 8.0,
-            title: Text(
-              selectedFromBranch != null
-                  ? context.read<LanguageCubit>().translateMessage(
-                      selectedFromBranch!.name,
-                    )
-                  : locale.translate('common_select'),
-              style: textStyles.bodySans,
-            ),
-            items: branches,
-            selectedValue: selectedFromBranch,
-            itemLabelBuilder: (b) =>
-                context.read<LanguageCubit>().translateMessage(b?.name ?? ''),
-            onSelected: (b) {
-              setSheetState(() => selectedFromBranch = b);
-            },
-            cardPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 2,
-            ),
-            tilePadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            locale.translate('fin_ops_to_branch'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 6),
-          ExpansibleWidget<Branch?>.selection(
-            borderRadius: 8.0,
-            title: Text(
-              selectedToBranch != null
-                  ? context.read<LanguageCubit>().translateMessage(
-                      selectedToBranch!.name,
-                    )
-                  : locale.translate('common_select'),
-              style: textStyles.bodySans,
-            ),
-            items: branches,
-            selectedValue: selectedToBranch,
-            itemLabelBuilder: (b) =>
-                context.read<LanguageCubit>().translateMessage(b?.name ?? ''),
-            onSelected: (b) {
-              setSheetState(() => selectedToBranch = b);
-            },
-            cardPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 2,
-            ),
-            tilePadding: EdgeInsets.zero,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: amountCtrl,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_transfer_amount'),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-              if (amt == null ||
-                  amt <= 0 ||
-                  selectedFromBranch == null ||
-                  selectedToBranch == null) {
-                return;
-              }
-              context.read<FinOpsBloc>().add(
-                CreateStoreTransferRequested(
-                  fromBranch: selectedFromBranch!.name,
-                  toBranch: selectedToBranch!.name,
-                  amount: amt,
-                ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text(locale.translate('save_to_ledger')),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAidModal(BuildContext context) {
-    final locale = context.read<LanguageCubit>();
-    final empCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
-
-    LedgerBottomSheet.show(
-      context: context,
-      title: locale.translate('fin_ops_new_aid'),
-      builder: (context, setSheetState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: empCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_employee_name'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: amountCtrl,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: locale.translate('fin_ops_aid_amount'),
-            ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-              if (amt == null || amt <= 0 || empCtrl.text.trim().isEmpty) {
-                return;
-              }
-              context.read<FinOpsBloc>().add(
-                CreateFinancialAidRequested(
-                  employeeName: empCtrl.text.trim(),
-                  amount: amt,
-                ),
-              );
-              Navigator.pop(context);
-            },
-            child: Text(locale.translate('save_to_ledger')),
-          ),
-        ],
-      ),
-    );
+class _FinOpsViewState extends State<FinOpsView> {
+  bool _canManage(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.finOps);
   }
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
     final locale = context.watch<LanguageCubit>();
-    final authState = context.watch<AuthBloc>().state;
-    final canManage =
-        authState is AuthAuthenticated &&
-        authState.role.canManage(AppCapability.finOps);
+    final canManage = _canManage(context);
 
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            LedgerCollapsingHeader(
-              title: locale.translate('fin_ops_title'),
-              pinned: true,
-              floating: false,
-              snap: false,
-              bottom: LedgerTabBar(
-                controller: _tabController,
-                tabs: [
-                  Tab(text: locale.translate('fin_ops_tab_banks')),
-                  Tab(text: locale.translate('fin_ops_tab_transfers')),
-                  Tab(text: locale.translate('fin_ops_tab_aid')),
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          locale.translate('fin_ops_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
+      body: BlocBuilder<FinOpsBloc, FinOpsState>(
+        builder: (context, state) {
+          if (state is FinOpsLoading) {
+            return const FinOpsOverviewShimmer();
+          }
+          if (state is FinOpsError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      TablerIcons.alert_circle,
+                      size: 48,
+                      color: colors.accentRed,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.message,
+                      style: textStyles.bodySans,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => context.read<FinOpsBloc>().add(
+                        const LoadFinOpsData(),
+                      ),
+                      child: Text(locale.translate('common_retry')),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          if (state is FinOpsLoaded) {
+            return _buildFinOpsOverviewHub(context, state, canManage);
+          }
+          return const SizedBox();
+        },
+      ),
+    );
+  }
+
+  Widget _buildFinOpsOverviewHub(
+    BuildContext context,
+    FinOpsLoaded state,
+    bool canManage,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    final totalBalance = state.bankAccounts.fold<double>(
+      0.0,
+      (s, b) => s + b.balance,
+    );
+    final pendingTransfers =
+        state.storeTransfers.where((t) => t.status == 'pending').length;
+    final activeAid =
+        state.financialAids.where((a) => a.status == 'active').length;
+    final hasPending = pendingTransfers > 0 || activeAid > 0;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<FinOpsBloc>().add(const LoadFinOpsData());
+      },
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        children: [
+          // 1. Hero Card: Total Bank Liquidity & Active Accounts
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        locale.translate('fin_ops_hero_liquidity'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            TablerIcons.building_bank,
+                            size: 13,
+                            color: colors.brand,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            locale.translate(
+                              'fin_ops_accounts_count',
+                              params: {'count': '${state.bankAccounts.length}'},
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${oCcy.format(totalBalance)} TJS',
+                  style: textStyles.h2Sans.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 24,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(height: 1, color: colors.border),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(
+                      TablerIcons.arrows_transfer_up,
+                      size: 16,
+                      color: colors.brand,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      locale.translate(
+                        'fin_ops_transfers_count',
+                        params: {'count': '${state.storeTransfers.length}'},
+                      ),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      '• ${state.financialAids.length} ${locale.translate('fin_ops_tab_aid').toLowerCase()}',
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 2. Actionable Attention & Treasury Control Card
+          InkWell(
+            onTap: () => _openFinOpsSection(
+              context,
+              pendingTransfers > 0
+                  ? FinOpsSection.transfers
+                  : (activeAid > 0 ? FinOpsSection.aid : FinOpsSection.banks),
+            ),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: hasPending
+                      ? colors.accentAmber.withValues(alpha: 0.6)
+                      : colors.accentGreen.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: hasPending
+                          ? colors.accentAmber.withValues(alpha: 0.1)
+                          : colors.accentGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      hasPending
+                          ? TablerIcons.alert_triangle
+                          : TablerIcons.circle_check,
+                      color: hasPending
+                          ? colors.accentAmber
+                          : colors.accentGreen,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          locale.translate('fin_ops_attention_title'),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14.5,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          hasPending
+                              ? locale.translate(
+                                  'fin_ops_attention_pending',
+                                  params: {
+                                    'transfers': '$pendingTransfers',
+                                    'aid': '$activeAid',
+                                  },
+                                )
+                              : locale.translate('fin_ops_attention_ok'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
                 ],
               ),
             ),
-          ];
-        },
-        body: BlocBuilder<FinOpsBloc, FinOpsState>(
-          builder: (context, state) {
-            if (state is FinOpsLoading) {
-              return const FinOpsOverviewShimmer();
-            }
-            if (state is FinOpsError) {
-              return Center(child: Text(state.message));
-            }
-            if (state is FinOpsLoaded) {
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildBanksTab(context, state, canManage),
-                  _buildTransfersTab(context, state, canManage),
-                  _buildAidTab(context, state, canManage),
-                ],
+          ),
+          const SizedBox(height: 12),
+
+          // 3. Quick Action Buttons Row (if canManage)
+          if (canManage) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showEncashmentModal(
+                        context,
+                        state.bankAccounts,
+                      ),
+                      icon: const Icon(TablerIcons.cash_banknote, size: 17),
+                      label: Text(
+                        locale.translate('fin_ops_new_encashment'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.surface,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.surface,
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showTransferModal(
+                        context,
+                        state.branches,
+                      ),
+                      icon: const Icon(TablerIcons.arrows_transfer_up, size: 17),
+                      label: Text(
+                        locale.translate('fin_ops_tab_transfers'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.brand,
+                        side: BorderSide(color: colors.border),
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // 4. Main 2x2 Navigation Grid
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('fin_ops_tab_banks'),
+                  subtitle: locale.translate(
+                    'fin_ops_accounts_count',
+                    params: {'count': '${state.bankAccounts.length}'},
+                  ),
+                  icon: TablerIcons.building_bank,
+                  onTap: () => _openFinOpsSection(
+                    context,
+                    FinOpsSection.banks,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('fin_ops_tab_transfers'),
+                  subtitle: pendingTransfers > 0
+                      ? '$pendingTransfers в пути'
+                      : '${state.storeTransfers.length} операций',
+                  icon: TablerIcons.arrows_transfer_up,
+                  onTap: () => _openFinOpsSection(
+                    context,
+                    FinOpsSection.transfers,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('fin_ops_tab_aid'),
+                  subtitle: activeAid > 0
+                      ? '$activeAid активных'
+                      : '${state.financialAids.length} заявок',
+                  icon: TablerIcons.heart_handshake,
+                  onTap: () => _openFinOpsSection(
+                    context,
+                    FinOpsSection.aid,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildHubCard(
+                  context,
+                  title: locale.translate('fin_ops_new_encashment'),
+                  subtitle: '${state.encashments.length} операций',
+                  icon: TablerIcons.receipt_2,
+                  onTap: () => _openFinOpsSection(
+                    context,
+                    FinOpsSection.encashments,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // 5. Recent Bank Accounts Feed
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                locale.translate('fin_ops_recent_banks'),
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              TextButton(
+                onPressed: () => _openFinOpsSection(
+                  context,
+                  FinOpsSection.banks,
+                ),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      locale.translate('fin_ops_all_banks'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      TablerIcons.chevron_right,
+                      size: 14,
+                      color: colors.brand,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          if (state.bankAccounts.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                locale.translate('empty_data'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13.5,
+                ),
+              ),
+            )
+          else
+            ...state.bankAccounts.take(4).map((bank) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: colors.surfaceNested,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          TablerIcons.building_bank,
+                          color: colors.brand,
+                          size: 19,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              locale.translateMessage(bank.bankName),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.5,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            if (bank.accountNumber.isNotEmpty)
+                              Text(
+                                bank.accountNumber,
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: bank.isActive
+                                  ? colors.accentGreen.withValues(alpha: 0.1)
+                                  : colors.surfaceNested,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              bank.isActive
+                                  ? locale.translate('status_active')
+                                  : locale.translate('hr_status_inactive'),
+                              style: textStyles.captionSans.copyWith(
+                                color: bank.isActive
+                                    ? colors.accentGreen
+                                    : colors.textSecondary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${oCcy.format(bank.balance)} TJS',
+                            style: textStyles.bodyMono.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.5,
+                              color: colors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               );
-            }
-            return const SizedBox();
-          },
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHubCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: colors.brand.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 20, color: colors.brand),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 16,
+                    color: colors.textSecondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  color: colors.textPrimary,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class FinOpsSectionScreen extends StatelessWidget {
+  final FinOpsSection section;
+
+  const FinOpsSectionScreen({super.key, required this.section});
+
+  bool _canManage(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.finOps);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final canManage = _canManage(context);
+
+    return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: const BackButton(),
+        title: Text(
+          _finOpsSectionTitle(locale, section),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
+      floatingActionButton: canManage
+          ? _buildSectionFab(context, locale)
+          : null,
+      body: BlocBuilder<FinOpsBloc, FinOpsState>(
+        builder: (context, state) {
+          if (state is FinOpsLoading) {
+            return const FinOpsOverviewShimmer();
+          }
+          if (state is FinOpsLoaded) {
+            return switch (section) {
+              FinOpsSection.banks => _buildBanksTab(context, state, canManage),
+              FinOpsSection.transfers => _buildTransfersTab(
+                context,
+                state,
+                canManage,
+              ),
+              FinOpsSection.aid => _buildAidTab(context, state, canManage),
+              FinOpsSection.encashments => _buildEncashmentsTab(
+                context,
+                state,
+                canManage,
+              ),
+            };
+          }
+          return const SizedBox();
+        },
+      ),
+    );
+  }
+
+  Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final state = context.read<FinOpsBloc>().state;
+    if (state is! FinOpsLoaded) return null;
+
+    final (icon, label, action) = switch (section) {
+      FinOpsSection.banks => (
+        TablerIcons.plus,
+        locale.translate('fin_ops_new_bank'),
+        () => _showCreateBankSheet(context),
+      ),
+      FinOpsSection.transfers => (
+        TablerIcons.arrows_transfer_up,
+        locale.translate('fin_ops_new_transfer'),
+        () => _showTransferModal(context, state.branches),
+      ),
+      FinOpsSection.aid => (
+        TablerIcons.plus,
+        locale.translate('fin_ops_new_aid'),
+        () => _showAidModal(context),
+      ),
+      FinOpsSection.encashments => (
+        TablerIcons.plus,
+        locale.translate('fin_ops_new_encashment'),
+        () => _showEncashmentModal(context, state.bankAccounts),
+      ),
+    };
+
+    return FloatingActionButton.extended(
+      heroTag: null,
+      onPressed: action,
+      backgroundColor: colors.brand,
+      foregroundColor: colors.surface,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      icon: Icon(icon),
+      label: Text(
+        label,
+        style: textStyles.bodySans.copyWith(
+          color: colors.surface,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -393,170 +865,118 @@ class _FinOpsViewState extends State<FinOpsView>
     final locale = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    return Scaffold(
-      floatingActionButton: canManage
-          ? Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                FloatingActionButton.extended(
-                  heroTag: null,
-                  onPressed: () => _showCreateBankSheet(context),
-                  backgroundColor: colors.surface,
-                  foregroundColor: colors.brand,
-                  elevation: 0,
-                  highlightElevation: 0,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: colors.border),
-                  ),
-                  icon: const Icon(TablerIcons.building_bank),
-                  label: Text(
-                    locale.translate('fin_ops_new_bank'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.brand,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                FloatingActionButton.extended(
-                  heroTag: null,
-                  onPressed: () =>
-                      _showEncashmentModal(context, state.bankAccounts),
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  highlightElevation: 0,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: colors.brand),
-                  ),
-                  icon: const Icon(TablerIcons.cash_banknote),
-                  label: Text(
-                    locale.translate('fin_ops_new_encashment'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : null,
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-        children: [
-          Text(
-            locale.translate('fin_ops_bank_balances'),
-            style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 12),
-          ...state.bankAccounts.map(
-            (bank) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: LedgerCard(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            context.read<LanguageCubit>().translateMessage(
-                              bank.bankName,
-                            ),
-                            style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          LedgerPill(
-                            text: bank.isActive
-                                ? locale.translate('status_active')
-                                : locale.translate('hr_status_inactive'),
-                            backgroundColor: bank.isActive
-                                ? colors.accentGreen.withValues(alpha: 0.1)
-                                : colors.surfaceNested,
-                            textColor: bank.isActive
-                                ? colors.accentGreen
-                                : colors.textSecondary,
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (canManage && bank.isActive)
-                      IconButton(
-                        onPressed: () => context.read<FinOpsBloc>().add(
-                          DeleteBankRequested(bank.id),
-                        ),
-                        icon: Icon(
-                          TablerIcons.power,
-                          size: 18,
-                          color: colors.accentRed,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<FinOpsBloc>().add(const LoadFinOpsData());
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+        itemCount: state.bankAccounts.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final bank = state.bankAccounts[index];
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            locale.translate('fin_ops_encashment_history'),
-            style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 12),
-          ...state.encashments.map(
-            (enc) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: LedgerCard(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.read<LanguageCubit>().translate(
-                            'fin_ops_encashment_to',
-                            params: {
-                              'bank': context
-                                  .read<LanguageCubit>()
-                                  .translateMessage(enc.bankName),
-                            },
-                          ),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    TablerIcons.building_bank,
+                    color: colors.brand,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        locale.translateMessage(bank.bankName),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: colors.textPrimary,
                         ),
+                      ),
+                      if (bank.accountNumber.isNotEmpty)
                         Text(
-                          context.read<LanguageCubit>().translateMessage(
-                            enc.responsiblePerson,
-                          ),
+                          bank.accountNumber,
                           style: textStyles.captionSans.copyWith(
                             color: colors.textSecondary,
+                            fontSize: 13,
                           ),
                         ),
-                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: bank.isActive
+                            ? colors.accentGreen.withValues(alpha: 0.1)
+                            : colors.surfaceNested,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        bank.isActive
+                            ? locale.translate('status_active')
+                            : locale.translate('hr_status_inactive'),
+                        style: textStyles.captionSans.copyWith(
+                          color: bank.isActive
+                              ? colors.accentGreen
+                              : colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 6),
                     Text(
-                      '+${oCcy.format(enc.amount)} TJS',
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.accentGreen,
-                        fontWeight: FontWeight.w500,
+                      '${oCcy.format(bank.balance)} TJS',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ],
                 ),
-              ),
+                if (canManage && bank.isActive) ...[
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () => context.read<FinOpsBloc>().add(
+                      DeleteBankRequested(bank.id),
+                    ),
+                    icon: Icon(
+                      TablerIcons.power,
+                      size: 18,
+                      color: colors.accentRed,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -571,40 +991,37 @@ class _FinOpsViewState extends State<FinOpsView>
     final locale = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    return Scaffold(
-      floatingActionButton: canManage
-          ? FloatingActionButton.extended(
-              heroTag: null,
-              onPressed: () => _showTransferModal(context, state.branches),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              highlightElevation: 0,
-              focusElevation: 0,
-              hoverElevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: colors.brand),
-              ),
-              icon: const Icon(TablerIcons.arrows_transfer_up),
-              label: Text(
-                locale.translate('fin_ops_new_transfer'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )
-          : null,
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+    if (state.storeTransfers.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            locale.translate('empty_data'),
+            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<FinOpsBloc>().add(const LoadFinOpsData());
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
         itemCount: state.storeTransfers.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final tr = state.storeTransfers[index];
           final isPending = tr.status == 'pending';
 
-          return LedgerCard(
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -614,31 +1031,44 @@ class _FinOpsViewState extends State<FinOpsView>
                     Text(
                       '${oCcy.format(tr.amount)} TJS',
                       style: textStyles.h2Sans.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
                         color: colors.brand,
                       ),
                     ),
-                    LedgerPill(
-                      text: isPending
-                          ? context.read<LanguageCubit>().translate(
-                              'fin_ops_status_pending',
-                            )
-                          : context.read<LanguageCubit>().translate(
-                              'fin_ops_status_received',
-                            ),
-                      backgroundColor: isPending
-                          ? colors.accentAmber.withValues(alpha: 0.1)
-                          : colors.accentGreen.withValues(alpha: 0.1),
-                      textColor: isPending
-                          ? colors.accentAmber
-                          : colors.accentGreen,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isPending
+                            ? colors.accentAmber.withValues(alpha: 0.1)
+                            : colors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isPending
+                            ? locale.translate('fin_ops_status_pending')
+                            : locale.translate('fin_ops_status_received'),
+                        style: textStyles.captionSans.copyWith(
+                          color: isPending
+                              ? colors.accentAmber
+                              : colors.accentGreen,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${context.read<LanguageCubit>().translateMessage(tr.fromBranch)} ➔ ${context.read<LanguageCubit>().translateMessage(tr.toBranch)}',
-                  style: textStyles.bodySans,
+                  '${locale.translateMessage(tr.fromBranch)} ➔ ${locale.translateMessage(tr.toBranch)}',
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
                 ),
                 if (isPending && canManage) ...[
                   const SizedBox(height: 12),
@@ -659,7 +1089,7 @@ class _FinOpsViewState extends State<FinOpsView>
                         ),
                       ),
                       const SizedBox(width: 8),
-                      OutlinedButton(
+                      ElevatedButton(
                         onPressed: () {
                           context.read<FinOpsBloc>().add(
                             UpdateTransferStatusRequested(
@@ -668,10 +1098,16 @@ class _FinOpsViewState extends State<FinOpsView>
                             ),
                           );
                         },
-                        child: Text(
-                          context.read<LanguageCubit>().translate(
-                            'fin_ops_confirm_receive',
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.brand,
+                          foregroundColor: colors.surface,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                        ),
+                        child: Text(
+                          locale.translate('fin_ops_confirm_receive'),
                         ),
                       ),
                     ],
@@ -695,40 +1131,37 @@ class _FinOpsViewState extends State<FinOpsView>
     final locale = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    return Scaffold(
-      floatingActionButton: canManage
-          ? FloatingActionButton.extended(
-              heroTag: null,
-              onPressed: () => _showAidModal(context),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              highlightElevation: 0,
-              focusElevation: 0,
-              hoverElevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: colors.brand),
-              ),
-              icon: const Icon(TablerIcons.heart_handshake),
-              label: Text(
-                locale.translate('fin_ops_new_aid'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            )
-          : null,
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+    if (state.financialAids.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            locale.translate('empty_data'),
+            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<FinOpsBloc>().add(const LoadFinOpsData());
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
         itemCount: state.financialAids.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final aid = state.financialAids[index];
           final isActive = aid.status == 'active';
 
-          return LedgerCard(
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -736,23 +1169,36 @@ class _FinOpsViewState extends State<FinOpsView>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      context.read<LanguageCubit>().translateMessage(
-                        aid.employeeName,
-                      ),
-                      style: textStyles.h2Sans.copyWith(
-                        fontWeight: FontWeight.w500,
+                      locale.translateMessage(aid.employeeName),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                        color: colors.textPrimary,
                       ),
                     ),
-                    LedgerPill(
-                      text: isActive
-                          ? locale.translate('fin_ops_status_active')
-                          : locale.translate('fin_ops_status_repaid'),
-                      backgroundColor: isActive
-                          ? colors.accentAmber.withValues(alpha: 0.1)
-                          : colors.accentGreen.withValues(alpha: 0.1),
-                      textColor: isActive
-                          ? colors.accentAmber
-                          : colors.accentGreen,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isActive
+                            ? colors.accentAmber.withValues(alpha: 0.1)
+                            : colors.accentGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isActive
+                            ? locale.translate('fin_ops_status_active')
+                            : locale.translate('fin_ops_status_repaid'),
+                        style: textStyles.captionSans.copyWith(
+                          color: isActive
+                              ? colors.accentAmber
+                              : colors.accentGreen,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -765,6 +1211,11 @@ class _FinOpsViewState extends State<FinOpsView>
                         'fin_ops_loan_amount',
                         params: {'amount': oCcy.format(aid.amount)},
                       ),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     Text(
                       locale.translate(
@@ -773,6 +1224,7 @@ class _FinOpsViewState extends State<FinOpsView>
                       ),
                       style: textStyles.captionSans.copyWith(
                         color: colors.textSecondary,
+                        fontSize: 12.5,
                       ),
                     ),
                   ],
@@ -791,6 +1243,14 @@ class _FinOpsViewState extends State<FinOpsView>
                             ),
                           );
                         },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.brand,
+                          foregroundColor: colors.surface,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                         child: Text(locale.translate('fin_ops_repay_action')),
                       ),
                     ],
@@ -803,4 +1263,348 @@ class _FinOpsViewState extends State<FinOpsView>
       ),
     );
   }
+
+  Widget _buildEncashmentsTab(
+    BuildContext context,
+    FinOpsLoaded state,
+    bool canManage,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    if (state.encashments.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            locale.translate('empty_data'),
+            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        context.read<FinOpsBloc>().add(const LoadFinOpsData());
+      },
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+        itemCount: state.encashments.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final enc = state.encashments[index];
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      locale.translate(
+                        'fin_ops_encashment_to',
+                        params: {'bank': locale.translateMessage(enc.bankName)},
+                      ),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
+                        color: colors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      locale.translateMessage(enc.responsiblePerson),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  '+${oCcy.format(enc.amount)} TJS',
+                  style: textStyles.bodyMono.copyWith(
+                    color: colors.accentGreen,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14.5,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+void _showEncashmentModal(BuildContext context, List<BankAccount> banks) {
+  final locale = context.read<LanguageCubit>();
+  final textStyles = context.textStyles;
+
+  BankAccount? selectedBank = banks.isNotEmpty ? banks.first : null;
+  final amountCtrl = TextEditingController();
+  final respCtrl = TextEditingController();
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: locale.translate('fin_ops_new_encashment'),
+    builder: (context, setSheetState) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          locale.translate('fin_ops_bank_credit'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        ExpansibleWidget<BankAccount>.selection(
+          borderRadius: 8.0,
+          title: Text(
+            locale.translateMessage(
+              selectedBank?.bankName ?? 'mock_bank_oriyon',
+            ),
+            style: textStyles.bodySans,
+          ),
+          items: banks,
+          selectedValue: selectedBank,
+          itemLabelBuilder: (b) => locale.translateMessage(b.bankName),
+          onSelected: (val) {
+            setSheetState(() => selectedBank = val);
+          },
+          cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          tilePadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: amountCtrl,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: locale.translate('fin_ops_encashment_amount'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: respCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('fin_ops_responsible'),
+          ),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () {
+            final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
+            if (amt == null || amt <= 0) return;
+            context.read<FinOpsBloc>().add(
+              CreateEncashmentRequested(
+                bankName: selectedBank?.bankName ?? 'mock_bank_oriyon',
+                amount: amt,
+                responsiblePerson: respCtrl.text.trim(),
+              ),
+            );
+            Navigator.pop(context);
+          },
+          child: Text(locale.translate('save_to_ledger')),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showCreateBankSheet(BuildContext context) {
+  final locale = context.read<LanguageCubit>();
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  final nameCtrl = TextEditingController();
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: locale.translate('fin_ops_new_bank'),
+    builder: (context, setSheetState) => TextField(
+      controller: nameCtrl,
+      style: textStyles.bodySans,
+      decoration: InputDecoration(
+        labelText: locale.translate('fin_ops_bank_name'),
+      ),
+    ),
+    footerBuilder: (context, setSheetState) {
+      return SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: ElevatedButton(
+          onPressed: () {
+            final name = nameCtrl.text.trim();
+            if (name.isEmpty) return;
+            context.read<FinOpsBloc>().add(CreateBankRequested(name));
+            Navigator.pop(context);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: colors.brand,
+            foregroundColor: colors.surface,
+            elevation: 0,
+          ),
+          child: Text(locale.translate('common_create')),
+        ),
+      );
+    },
+  );
+}
+
+void _showTransferModal(BuildContext context, List<Branch> branches) {
+  final locale = context.read<LanguageCubit>();
+  final textStyles = context.textStyles;
+
+  Branch? selectedFromBranch = branches.isNotEmpty ? branches.first : null;
+  Branch? selectedToBranch = branches.length > 1
+      ? branches[1]
+      : (branches.isNotEmpty ? branches.first : null);
+  final amountCtrl = TextEditingController();
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: locale.translate('fin_ops_new_transfer'),
+    builder: (context, setSheetState) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          locale.translate('fin_ops_from_branch'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        ExpansibleWidget<Branch?>.selection(
+          borderRadius: 8.0,
+          title: Text(
+            selectedFromBranch != null
+                ? context.read<LanguageCubit>().translateMessage(
+                    selectedFromBranch!.name,
+                  )
+                : locale.translate('common_select'),
+            style: textStyles.bodySans,
+          ),
+          items: branches,
+          selectedValue: selectedFromBranch,
+          itemLabelBuilder: (b) =>
+              context.read<LanguageCubit>().translateMessage(b?.name ?? ''),
+          onSelected: (b) {
+            setSheetState(() => selectedFromBranch = b);
+          },
+          cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          tilePadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          locale.translate('fin_ops_to_branch'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        ExpansibleWidget<Branch?>.selection(
+          borderRadius: 8.0,
+          title: Text(
+            selectedToBranch != null
+                ? context.read<LanguageCubit>().translateMessage(
+                    selectedToBranch!.name,
+                  )
+                : locale.translate('common_select'),
+            style: textStyles.bodySans,
+          ),
+          items: branches,
+          selectedValue: selectedToBranch,
+          itemLabelBuilder: (b) =>
+              context.read<LanguageCubit>().translateMessage(b?.name ?? ''),
+          onSelected: (b) {
+            setSheetState(() => selectedToBranch = b);
+          },
+          cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+          tilePadding: EdgeInsets.zero,
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: amountCtrl,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: locale.translate('fin_ops_transfer_amount'),
+          ),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () {
+            final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
+            if (amt == null ||
+                amt <= 0 ||
+                selectedFromBranch == null ||
+                selectedToBranch == null) {
+              return;
+            }
+            context.read<FinOpsBloc>().add(
+              CreateStoreTransferRequested(
+                fromBranch: selectedFromBranch!.name,
+                toBranch: selectedToBranch!.name,
+                amount: amt,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          child: Text(locale.translate('save_to_ledger')),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAidModal(BuildContext context) {
+  final locale = context.read<LanguageCubit>();
+  final empCtrl = TextEditingController();
+  final amountCtrl = TextEditingController();
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: locale.translate('fin_ops_new_aid'),
+    builder: (context, setSheetState) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: empCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('fin_ops_employee_name'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: amountCtrl,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: locale.translate('fin_ops_aid_amount'),
+          ),
+        ),
+        const SizedBox(height: 20),
+        ElevatedButton(
+          onPressed: () {
+            final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
+            if (amt == null || amt <= 0 || empCtrl.text.trim().isEmpty) {
+              return;
+            }
+            context.read<FinOpsBloc>().add(
+              CreateFinancialAidRequested(
+                employeeName: empCtrl.text.trim(),
+                amount: amt,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          child: Text(locale.translate('save_to_ledger')),
+        ),
+      ],
+    ),
+  );
 }

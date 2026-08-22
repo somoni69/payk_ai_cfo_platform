@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -224,32 +222,24 @@ class _LiquidBottomNav extends StatelessWidget {
       type: MaterialType.transparency,
       child: DecoratedBox(
         decoration: BoxDecoration(
+          color: colors.surface,
           borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: colors.border),
           boxShadow: [
             BoxShadow(
-              color: colors.textPrimary.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: colors.textPrimary.withValues(alpha: 0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: RepaintBoundary(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: 8,
-                sigmaY: 8,
-                tileMode: TileMode.decal,
-              ),
-              child: ColoredBox(
-                color: colors.surface.withValues(alpha: 0.72),
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: SizedBox(
-                    height: 52,
-                    child: Stack(
-                      children: [
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: SizedBox(
+              height: 52,
+              child: Stack(
+                children: [
                         AnimatedAlign(
                           duration: const Duration(milliseconds: 420),
                           curve: Curves.easeOutCubic,
@@ -287,10 +277,7 @@ class _LiquidBottomNav extends StatelessWidget {
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
+          );
   }
 }
 

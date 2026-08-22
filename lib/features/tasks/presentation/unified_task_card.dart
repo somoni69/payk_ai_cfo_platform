@@ -70,257 +70,268 @@ class UnifiedTaskCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: LedgerCard(
-        onTap: onTap,
-        padding: const EdgeInsets.fromLTRB(6, 10, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Material(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(6, 10, 14, 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left interactive checkbox / state indicator
-                if (isSubmitted && !isPersonal)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-                    child: Icon(
-                      TablerIcons.clock_hour_4,
-                      size: 22,
-                      color: colors.accentAmber,
-                    ),
-                  )
-                else
-                  AnimatedCheckbox(
-                    value: isDone,
-                    isPending: isPending,
-                    isEnabled: canManage,
-                    semanticLabel: task.title,
-                    pendingSemanticLabel: context.translate('common_loading'),
-                    onChanged: (val) => onStatusChanged?.call(val),
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left interactive checkbox / state indicator
+                    if (isSubmitted && !isPersonal)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+                        child: Icon(
+                          TablerIcons.clock_hour_4,
+                          size: 22,
+                          color: colors.accentAmber,
+                        ),
+                      )
+                    else
+                      AnimatedCheckbox(
+                        value: isDone,
+                        isPending: isPending,
+                        isEnabled: canManage,
+                        semanticLabel: task.title,
+                        pendingSemanticLabel: context.translate(
+                          'common_loading',
+                        ),
+                        onChanged: (val) => onStatusChanged?.call(val),
+                      ),
 
-                // Main Content
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Title + Priority / Status Pill
-                        Row(
+                    // Main Content
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Text(
-                                task.title,
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15,
-                                  decoration: isDone
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color: isDone
-                                      ? colors.textSecondary
-                                      : colors.textPrimary,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            if (isDone)
-                              LedgerPill(
-                                text: language.translate('tasks_status_done'),
-                                backgroundColor: colors.accentGreen.withValues(
-                                  alpha: 0.12,
-                                ),
-                                textColor: colors.accentGreen,
-                                fontSize: 12,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                              )
-                            else
-                              LedgerPill(
-                                text: language.translate(
-                                  task.priority.localizationKey,
-                                ),
-                                backgroundColor: priorityBg,
-                                textColor: priorityText,
-                                fontSize: 12,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                              ),
-                          ],
-                        ),
-
-                        // Optional Description
-                        if (task.description.trim().isNotEmpty) ...[
-                          const SizedBox(height: 5),
-                          Text(
-                            task.description.trim(),
-                            style: textStyles.captionSans.copyWith(
-                              color: colors.textSecondary,
-                              height: 1.3,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-
-                        const SizedBox(height: 8),
-
-                        // Metadata Chips Row
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            // Project Chip
-                            if (task.projectName != null &&
-                                task.projectName!.trim().isNotEmpty)
-                              _buildMetaChip(
-                                context,
-                                icon: TablerIcons.folder,
-                                label: task.projectName!,
-                                textColor: colors.brand,
-                                bgColor: colors.brand.withValues(alpha: 0.08),
-                              ),
-
-                            // Assignee / Author Chip
-                            if (task.assigneeName != null &&
-                                task.assigneeName!.trim().isNotEmpty)
-                              _buildMetaChip(
-                                context,
-                                icon: TablerIcons.user,
-                                label: language.translateMessage(
-                                  task.assigneeName!,
-                                ),
-                                textColor: colors.textSecondary,
-                              )
-                            else if (isPersonal)
-                              _buildMetaChip(
-                                context,
-                                icon: TablerIcons.lock,
-                                label: language.translate(
-                                  'tasks_my_personal_chip',
-                                ),
-                                textColor: colors.textSecondary,
-                              ),
-
-                            // Author info if assigned to me
-                            if (isAssignee && task.createdBy != null)
-                              _buildMetaChip(
-                                context,
-                                icon: TablerIcons.crown,
-                                label:
-                                    '${language.translate('tasks_created_by')}: #${task.createdBy}',
-                                textColor: colors.textSecondary,
-                              ),
-
-                            // Due Date Chip
-                            _buildMetaChip(
-                              context,
-                              icon: TablerIcons.calendar,
-                              label: _formatLocalizedCompactDate(
-                                language,
-                                task.dueDate,
-                              ),
-                              textColor: isOverdue
-                                  ? colors.accentRed
-                                  : colors.textTooltip,
-                              bgColor: isOverdue
-                                  ? colors.accentRed.withValues(alpha: 0.08)
-                                  : null,
-                              isBold: isOverdue,
-                            ),
-
-                            // Acceptance status for assigned tasks
-                            if (!isPersonal && isAssignee) ...[
-                              if (task.acknowledgedAt != null)
-                                _buildMetaChip(
-                                  context,
-                                  icon: TablerIcons.check,
-                                  label: language.translate(
-                                    'tasks_badge_accepted',
-                                  ),
-                                  textColor: colors.accentGreen,
-                                  bgColor: colors.accentGreen.withValues(
-                                    alpha: 0.08,
-                                  ),
-                                )
-                              else if (!isDone)
-                                _buildMetaChip(
-                                  context,
-                                  icon: TablerIcons.alert_circle,
-                                  label: language.translate(
-                                    'tasks_badge_pending_acceptance',
-                                  ),
-                                  textColor: colors.accentAmber,
-                                  bgColor: colors.accentAmber.withValues(
-                                    alpha: 0.08,
-                                  ),
-                                ),
-                            ],
-                          ],
-                        ),
-
-                        // Reject reason alert (if returned for rework)
-                        if (task.rejectReason != null &&
-                            task.rejectReason!.trim().isNotEmpty &&
-                            !isDone) ...[
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colors.accentRed.withValues(alpha: 0.06),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: colors.accentRed.withValues(alpha: 0.2),
-                              ),
-                            ),
-                            child: Row(
+                            // Title + Priority / Status Badge
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  TablerIcons.alert_triangle,
-                                  size: 14,
-                                  color: colors.accentRed,
-                                ),
-                                const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    '${language.translate('tasks_reject_reason_prefix')}: ${task.rejectReason}',
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.accentRed,
-                                      fontWeight: FontWeight.w500,
+                                    task.title,
+                                    style: textStyles.bodySans.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14.5,
+                                      decoration: isDone
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                      color: isDone
+                                          ? colors.textSecondary
+                                          : colors.textPrimary,
                                     ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                const SizedBox(width: 8),
+                                if (isDone)
+                                  _buildBadge(
+                                    text: language.translate(
+                                      'tasks_status_done',
+                                    ),
+                                    bgColor: colors.accentGreen.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    textColor: colors.accentGreen,
+                                  )
+                                else
+                                  _buildBadge(
+                                    text: language.translate(
+                                      task.priority.localizationKey,
+                                    ),
+                                    bgColor: priorityBg,
+                                    textColor: priorityText,
+                                  ),
                               ],
                             ),
-                          ),
-                        ],
 
-                        // Interactive Action Bar (Acceptance / Submission / Review workflow)
-                        if (_hasActionButtons) ...[
-                          const SizedBox(height: 10),
-                          _buildActionBar(context),
-                        ],
-                      ],
+                            // Optional Description
+                            if (task.description.trim().isNotEmpty) ...[
+                              const SizedBox(height: 5),
+                              Text(
+                                task.description.trim(),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                  height: 1.3,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+
+                            const SizedBox(height: 8),
+
+                            // Metadata Chips Row
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                // Project Chip
+                                if (task.projectName != null &&
+                                    task.projectName!.trim().isNotEmpty)
+                                  _buildMetaChip(
+                                    context,
+                                    icon: TablerIcons.folder,
+                                    label: task.projectName!,
+                                    textColor: colors.brand,
+                                    bgColor: colors.brand.withValues(
+                                      alpha: 0.08,
+                                    ),
+                                  ),
+
+                                // Assignee / Author Chip
+                                if (task.assigneeName != null &&
+                                    task.assigneeName!.trim().isNotEmpty)
+                                  _buildMetaChip(
+                                    context,
+                                    icon: TablerIcons.user,
+                                    label: language.translateMessage(
+                                      task.assigneeName!,
+                                    ),
+                                    textColor: colors.textSecondary,
+                                  )
+                                else if (isPersonal)
+                                  _buildMetaChip(
+                                    context,
+                                    icon: TablerIcons.lock,
+                                    label: language.translate(
+                                      'tasks_my_personal_chip',
+                                    ),
+                                    textColor: colors.textSecondary,
+                                  ),
+
+                                // Author info if assigned to me
+                                if (isAssignee && task.createdBy != null)
+                                  _buildMetaChip(
+                                    context,
+                                    icon: TablerIcons.crown,
+                                    label:
+                                        '${language.translate('tasks_created_by')}: #${task.createdBy}',
+                                    textColor: colors.textSecondary,
+                                  ),
+
+                                // Due Date Chip
+                                _buildMetaChip(
+                                  context,
+                                  icon: TablerIcons.calendar,
+                                  label: _formatLocalizedCompactDate(
+                                    language,
+                                    task.dueDate,
+                                  ),
+                                  textColor: isOverdue
+                                      ? colors.accentRed
+                                      : colors.textTooltip,
+                                  bgColor: isOverdue
+                                      ? colors.accentRed.withValues(alpha: 0.08)
+                                      : null,
+                                  isBold: isOverdue,
+                                ),
+
+                                // Acceptance status for assigned tasks
+                                if (!isPersonal && isAssignee) ...[
+                                  if (task.acknowledgedAt != null)
+                                    _buildMetaChip(
+                                      context,
+                                      icon: TablerIcons.check,
+                                      label: language.translate(
+                                        'tasks_badge_accepted',
+                                      ),
+                                      textColor: colors.accentGreen,
+                                      bgColor: colors.accentGreen.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    )
+                                  else if (!isDone)
+                                    _buildMetaChip(
+                                      context,
+                                      icon: TablerIcons.alert_circle,
+                                      label: language.translate(
+                                        'tasks_badge_pending_acceptance',
+                                      ),
+                                      textColor: colors.accentAmber,
+                                      bgColor: colors.accentAmber.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    ),
+                                ],
+                              ],
+                            ),
+
+                            // Reject reason alert (if returned for rework)
+                            if (task.rejectReason != null &&
+                                task.rejectReason!.trim().isNotEmpty &&
+                                !isDone) ...[
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colors.accentRed.withValues(
+                                    alpha: 0.06,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: colors.accentRed.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      TablerIcons.alert_triangle,
+                                      size: 14,
+                                      color: colors.accentRed,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        '${language.translate('tasks_reject_reason_prefix')}: ${task.rejectReason}',
+                                        style: textStyles.captionSans.copyWith(
+                                          color: colors.accentRed,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            // Interactive Action Bar (Acceptance / Submission / Review workflow)
+                            if (_hasActionButtons) ...[
+                              const SizedBox(height: 10),
+                              _buildActionBar(context),
+                            ],
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -513,6 +524,28 @@ class UnifiedTaskCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBadge({
+    required String text,
+    required Color bgColor,
+    required Color textColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: textColor,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

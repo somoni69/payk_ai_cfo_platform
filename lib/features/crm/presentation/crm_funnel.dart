@@ -6,8 +6,6 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../bloc/crm_bloc.dart';
 import '../bloc/crm_event.dart';
 import '../bloc/crm_state.dart';
@@ -148,10 +146,25 @@ class _StageColumn extends StatelessWidget {
               Row(
                 children: [
                   Flexible(
-                    child: LedgerPill(
-                      text: crmStagePill(language, stage),
-                      backgroundColor: sc.bg,
-                      textColor: sc.fg,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: sc.bg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        crmStagePill(language, stage),
+                        style: textStyles.captionSans.copyWith(
+                          color: sc.fg,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 6),
@@ -159,6 +172,7 @@ class _StageColumn extends StatelessWidget {
                     '${deals.length}',
                     style: textStyles.captionSans.copyWith(
                       color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -166,7 +180,11 @@ class _StageColumn extends StatelessWidget {
               const SizedBox(height: 4),
               Text(
                 '${oCcy.format(sum)} TJS',
-                style: textStyles.smallMono.copyWith(color: colors.textTooltip),
+                style: textStyles.smallMono.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 10),
               if (deals.isEmpty)
@@ -175,7 +193,8 @@ class _StageColumn extends StatelessWidget {
                     child: Text(
                       language.translate('crm_funnel_empty_stage'),
                       style: textStyles.captionSans.copyWith(
-                        color: colors.textTooltip,
+                        color: colors.textSecondary,
+                        fontSize: 13,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -231,86 +250,106 @@ class _DraggableDealCard extends StatelessWidget {
     final language = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    final card = LedgerCard(
-      onTap: () =>
-          showCrmDealForm(context, clients: pickClients, existing: deal),
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            deal.title,
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+    final card = Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () =>
+            showCrmDealForm(context, clients: pickClients, existing: deal),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
           ),
-          if (deal.clientName != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              deal.clientName!,
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 6),
-          Text(
-            '${oCcy.format(deal.amount)} TJS',
-            style: textStyles.smallMono.copyWith(
-              fontWeight: FontWeight.w500,
-              color: colors.brand,
-            ),
-          ),
-          if (deal.expectedClose != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              formatLocalizedDateTime(
-                context,
-                deal.expectedClose!,
-                style: LocalizedDateTimeStyle.date,
-              ),
-              style: textStyles.smallMono.copyWith(color: colors.textTooltip),
-            ),
-          ],
-          if (canWrite) ...[
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: language.translate('crm_stage_prev'),
-                  onPressed: stageIdx <= 0
-                      ? null
-                      : () => context.read<CrmBloc>().add(
-                          MoveDealStageRequested(dealId: deal.id, delta: -1),
-                        ),
-                  icon: const Icon(TablerIcons.chevron_left, size: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                deal.title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: language.translate('crm_stage_next'),
-                  onPressed: stageIdx >= kDealStages.length - 1
-                      ? null
-                      : () => context.read<CrmBloc>().add(
-                          MoveDealStageRequested(dealId: deal.id, delta: 1),
-                        ),
-                  icon: const Icon(TablerIcons.chevron_right, size: 18),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (deal.clientName != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  deal.clientName!,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
-            ),
-          ],
-          if (canWrite)
-            Text(
-              language.translate('crm_funnel_drag_hint'),
-              style: textStyles.smallSans.copyWith(
-                color: colors.textTooltip,
-                fontWeight: FontWeight.w400,
+              const SizedBox(height: 6),
+              Text(
+                '${oCcy.format(deal.amount)} TJS',
+                style: textStyles.bodyMono.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: colors.brand,
+                  fontSize: 14,
+                ),
               ),
-            ),
-        ],
+              if (deal.expectedClose != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  formatLocalizedDateTime(
+                    context,
+                    deal.expectedClose!,
+                    style: LocalizedDateTimeStyle.date,
+                  ),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              if (canWrite) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: language.translate('crm_stage_prev'),
+                      onPressed: stageIdx <= 0
+                          ? null
+                          : () => context.read<CrmBloc>().add(
+                              MoveDealStageRequested(dealId: deal.id, delta: -1),
+                            ),
+                      icon: const Icon(TablerIcons.chevron_left, size: 18),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      tooltip: language.translate('crm_stage_next'),
+                      onPressed: stageIdx >= kDealStages.length - 1
+                          ? null
+                          : () => context.read<CrmBloc>().add(
+                              MoveDealStageRequested(dealId: deal.id, delta: 1),
+                            ),
+                      icon: const Icon(TablerIcons.chevron_right, size: 18),
+                    ),
+                  ],
+                ),
+              ],
+              if (canWrite)
+                Text(
+                  language.translate('crm_funnel_drag_hint'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textTooltip,
+                    fontWeight: FontWeight.w400,
+                    fontSize: 11.5,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
 

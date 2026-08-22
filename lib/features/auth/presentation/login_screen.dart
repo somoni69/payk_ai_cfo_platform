@@ -10,7 +10,6 @@ import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_event.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/payk_logo.dart';
 
 import '../data/api_auth_repository.dart';
@@ -186,7 +185,14 @@ class _LoginScreenState extends State<LoginScreen> {
     required LedgerTextStyles textStyles,
     required bool isLoading,
   }) {
-    return LedgerCard(
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
       child: Form(
         key: _formKey,
         child: Column(
@@ -316,7 +322,14 @@ class _LoginScreenState extends State<LoginScreen> {
     required LedgerTextStyles textStyles,
     required bool isLoading,
   }) {
-    return LedgerCard(
+    final colors = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: colors.border),
+      ),
       child: Form(
         key: _twoFactorFormKey,
         child: Column(

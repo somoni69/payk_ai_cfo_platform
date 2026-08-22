@@ -12,9 +12,6 @@ import '../../../features/branches/bloc/branches_state.dart';
 import '../../../features/branches/domain/branch_models.dart';
 import '../../../features/branches/domain/branches_repository.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class BranchesScreen extends StatelessWidget {
@@ -128,7 +125,7 @@ class BranchesView extends StatelessWidget {
                 }
                 Navigator.pop(context);
               },
-              child: Text(locale.translate('save_to_ledger')),
+              child: Text(locale.translate('common_save')),
             ),
           ),
           if (editing != null) ...[
@@ -171,6 +168,24 @@ class BranchesView extends StatelessWidget {
         authState.role.canManage(AppCapability.branches);
 
     return Scaffold(
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          locale.translate('branches_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
+      ),
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               heroTag: null,
@@ -183,75 +198,73 @@ class BranchesView extends StatelessWidget {
               hoverElevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: colors.brand),
               ),
               icon: const Icon(TablerIcons.plus),
               label: Text(
                 locale.translate('branches_new'),
                 style: textStyles.bodySans.copyWith(
                   color: colors.surface,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             )
           : null,
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            LedgerCollapsingHeader(
-              title: locale.translate('branches_title'),
-              pinned: true,
-              floating: false,
-              snap: false,
-            ),
-          ];
+      body: BlocConsumer<BranchesBloc, BranchesState>(
+        listener: (context, state) {
+          if (state is BranchesLoaded && state.message != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(locale.translateMessage(state.message!)),
+              ),
+            );
+          }
         },
-        body: BlocConsumer<BranchesBloc, BranchesState>(
-          listener: (context, state) {
-            if (state is BranchesLoaded && state.message != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(locale.translateMessage(state.message!)),
+        builder: (context, state) {
+          if (state is BranchesLoading) {
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: LedgerListShimmer(itemCount: 4),
+            );
+          }
+          if (state is BranchesError) {
+            return Center(child: Text(state.message));
+          }
+          if (state is BranchesLoaded) {
+            if (state.branches.isEmpty) {
+              return Center(
+                child: Text(
+                  locale.translate('branches_empty'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textSecondary,
+                  ),
                 ),
               );
             }
-          },
-          builder: (context, state) {
-            if (state is BranchesLoading) {
-              return const BranchesOverviewShimmer();
-            }
-            if (state is BranchesError) {
-              return Center(child: Text(state.message));
-            }
-            if (state is BranchesLoaded) {
-              if (state.branches.isEmpty) {
-                return Center(
-                  child: Text(
-                    locale.translate('branches_empty'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.textSecondary,
-                    ),
-                  ),
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<BranchesBloc>().add(
+                  const LoadBranches(forceRefresh: true),
                 );
-              }
-              return RefreshIndicator(
-                onRefresh: () async {
-                  context.read<BranchesBloc>().add(
-                    const LoadBranches(forceRefresh: true),
-                  );
-                },
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: state.branches.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final branch = state.branches[index];
-                    return LedgerCard(
-                      onTap: canManage
-                          ? () => _showBranchModal(context, editing: branch)
-                          : null,
+              },
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+                itemCount: state.branches.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final branch = state.branches[index];
+                  return InkWell(
+                    onTap: canManage
+                        ? () => _showBranchModal(context, editing: branch)
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
                       padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -262,7 +275,7 @@ class BranchesView extends StatelessWidget {
                                 height: 42,
                                 decoration: BoxDecoration(
                                   color: colors.brand.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 alignment: Alignment.center,
                                 child: Icon(
@@ -285,7 +298,7 @@ class BranchesView extends StatelessWidget {
                                             ),
                                             style: textStyles.bodySans.copyWith(
                                               fontWeight: FontWeight.w600,
-                                              fontSize: 16,
+                                              fontSize: 15.5,
                                             ),
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
@@ -294,11 +307,24 @@ class BranchesView extends StatelessWidget {
                                         if (branch.code != null &&
                                             branch.code!.isNotEmpty) ...[
                                           const SizedBox(width: 6),
-                                          LedgerPill(
-                                            text: branch.code!,
-                                            backgroundColor:
-                                                colors.surfaceNested,
-                                            textColor: colors.textSecondary,
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: colors.surfaceNested,
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                            ),
+                                            child: Text(
+                                              branch.code!,
+                                              style: textStyles.smallMono
+                                                  .copyWith(
+                                                    color: colors.textSecondary,
+                                                    fontSize: 11,
+                                                  ),
+                                            ),
                                           ),
                                         ],
                                       ],
@@ -321,6 +347,7 @@ class BranchesView extends StatelessWidget {
                                               style: textStyles.captionSans
                                                   .copyWith(
                                                     color: colors.textSecondary,
+                                                    fontSize: 12.5,
                                                   ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -333,16 +360,31 @@ class BranchesView extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              LedgerPill(
-                                text: branch.isActive
-                                    ? locale.translate('branches_active')
-                                    : locale.translate('branches_inactive'),
-                                backgroundColor: branch.isActive
-                                    ? colors.accentGreen.withValues(alpha: 0.12)
-                                    : colors.accentRed.withValues(alpha: 0.12),
-                                textColor: branch.isActive
-                                    ? colors.accentGreen
-                                    : colors.accentRed,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: branch.isActive
+                                      ? colors.accentGreen
+                                          .withValues(alpha: 0.12)
+                                      : colors.accentRed
+                                          .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  branch.isActive
+                                      ? locale.translate('branches_active')
+                                      : locale.translate('branches_inactive'),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: branch.isActive
+                                        ? colors.accentGreen
+                                        : colors.accentRed,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -365,6 +407,7 @@ class BranchesView extends StatelessWidget {
                                       branch.phone,
                                       style: textStyles.captionSans.copyWith(
                                         color: colors.textSecondary,
+                                        fontSize: 12.5,
                                       ),
                                     ),
                                   ],
@@ -390,6 +433,7 @@ class BranchesView extends StatelessWidget {
                                   style: textStyles.captionSans.copyWith(
                                     color: colors.textPrimary,
                                     fontWeight: FontWeight.w500,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ),
@@ -397,14 +441,14 @@ class BranchesView extends StatelessWidget {
                           ),
                         ],
                       ),
-                    );
-                  },
-                ),
-              );
-            }
-            return const SizedBox();
-          },
-        ),
+                    ),
+                  );
+                },
+              ),
+            );
+          }
+          return const SizedBox();
+        },
       ),
     );
   }

@@ -1,6 +1,6 @@
 part of 'tasks_screen.dart';
 
-extension _TasksMyTab on _TasksViewState {
+extension _TasksMyTab on _TasksViewMixin {
   int? get _currentUserId {
     final auth = context.read<AuthBloc>().state;
     return auth is AuthAuthenticated ? auth.id : null;
@@ -45,8 +45,13 @@ extension _TasksMyTab on _TasksViewState {
           if (personal.isEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 20),
-              child: LedgerCard(
+              child: Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
                 child: Center(
                   child: Text(
                     language.translate('tasks_my_personal_empty'),
@@ -88,8 +93,13 @@ extension _TasksMyTab on _TasksViewState {
             icon: TablerIcons.user_check,
           ),
           if (assigned.isEmpty && mineOther.isEmpty)
-            LedgerCard(
+            Container(
               padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
               child: Center(
                 child: Text(
                   language.translate('tasks_my_assigned_empty'),

@@ -5,7 +5,6 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
@@ -169,14 +168,19 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                       Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
                     ],
                   )
-                : const Column(
+                : Column(
                     children: [
                       Row(
                         children: [
                           Expanded(
-                            child: LedgerCard(
-                              padding: EdgeInsets.all(12),
-                              child: Column(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: colors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colors.border),
+                              ),
+                              child: const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   ShimmerBox(
@@ -194,11 +198,16 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                               ),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: LedgerCard(
-                              padding: EdgeInsets.all(12),
-                              child: Column(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: colors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colors.border),
+                              ),
+                              child: const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   ShimmerBox(
@@ -218,13 +227,18 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                           ),
                         ],
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
-                            child: LedgerCard(
-                              padding: EdgeInsets.all(12),
-                              child: Column(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: colors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colors.border),
+                              ),
+                              child: const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   ShimmerBox(
@@ -242,11 +256,16 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                               ),
                             ),
                           ),
-                          SizedBox(width: 8),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: LedgerCard(
-                              padding: EdgeInsets.all(12),
-                              child: Column(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: colors.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: colors.border),
+                              ),
+                              child: const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   ShimmerBox(
@@ -274,8 +293,13 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
             Row(
               children: [
                 Expanded(
-                  child: LedgerCard(
+                  child: Container(
                     padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: _metricContent(
                       context,
                       language.translate('cash_profit_revenue'),
@@ -286,8 +310,13 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: LedgerCard(
+                  child: Container(
                     padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: _metricContent(
                       context,
                       language.translate('cash_profit_cost'),
@@ -302,8 +331,13 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
             Row(
               children: [
                 Expanded(
-                  child: LedgerCard(
+                  child: Container(
                     padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: _metricContent(
                       context,
                       language.translate('cash_profit_profit'),
@@ -316,8 +350,13 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: LedgerCard(
+                  child: Container(
                     padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: _metricContent(
                       context,
                       language.translate('cash_profit_markup'),
@@ -396,7 +435,15 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
       return content;
     }
 
-    return LedgerCard(child: content);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: content,
+    );
   }
 
   Widget _metricContent(

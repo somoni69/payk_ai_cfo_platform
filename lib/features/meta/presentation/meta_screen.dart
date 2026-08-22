@@ -10,16 +10,13 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../crm/domain/crm_models.dart';
 import '../../crm/domain/crm_repository.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
 
-/// Meta chats (Facebook / Instagram / WhatsApp) — Ledger-styled mobile list.
+/// Meta chats (Facebook / Instagram / WhatsApp) — Grounded Enterprise design.
 class MetaScreen extends StatefulWidget {
   const MetaScreen({super.key});
 
@@ -152,6 +149,14 @@ class _MetaScreenState extends State<MetaScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _sending = false);
+      final language = context.read<LanguageCubit>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            language.resolveMessage(e.toString().replaceAll('Exception: ', '')),
+          ),
+        ),
+      );
     }
   }
 
@@ -159,183 +164,128 @@ class _MetaScreenState extends State<MetaScreen> {
     final thread = _selected;
     if (thread == null) return;
     final language = context.read<LanguageCubit>();
+    final crmRepo = context.read<CrmRepository>();
     final colors = context.colors;
-    final textStyles = context.textStyles;
-    final searchCtrl = TextEditingController(text: thread.peerPhone ?? '');
-    List<CrmClient> results = const [];
-    var searching = true;
-    int? pickedId = thread.clientId;
-    var linking = false;
-
-    Future<void> runSearch(StateSetter setSheet) async {
-      setSheet(() => searching = true);
-      try {
-        final page = await context.read<CrmRepository>().getClients(
-          filters: ClientListFilters(
-            query: searchCtrl.text.trim().isEmpty
-                ? null
-                : searchCtrl.text.trim(),
-            page: 1,
-            size: 20,
-          ),
-          forceRefresh: true,
-        );
-        setSheet(() {
-          results = page.items;
-          searching = false;
-        });
-      } catch (_) {
-        setSheet(() {
-          results = const [];
-          searching = false;
-        });
-      }
-    }
+    final searchCtrl = TextEditingController();
+    List<CrmClient> clients = const [];
+    CrmClient? chosen;
+    bool searching = false;
+    bool saving = false;
 
     try {
       await LedgerBottomSheet.show(
         context: context,
-        title: language.translate('meta_link_title'),
-        builder: (sheetContext, setSheet) {
-          // First frame search.
-          if (searching && results.isEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (sheetContext.mounted) unawaited(runSearch(setSheet));
-            });
+        title: language.translate('meta_link_client_title'),
+        builder: (ctx, setSheetState) {
+          Future<void> doSearch() async {
+            final q = searchCtrl.text.trim();
+            if (q.isEmpty) return;
+            setSheetState(() => searching = true);
+            try {
+              final res = await crmRepo.getClients(
+                filters: ClientListFilters(query: q),
+              );
+              setSheetState(() {
+                clients = res.items;
+                searching = false;
+              });
+            } catch (_) {
+              setSheetState(() => searching = false);
+            }
           }
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                language.translate(
-                  'meta_link_hint',
-                  params: {
-                    'peer':
-                        thread.peerName ?? thread.peerPhone ?? thread.peerId,
-                  },
-                ),
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-              if (thread.clientName != null &&
-                  thread.clientName!.trim().isNotEmpty) ...[
-                const SizedBox(height: 8),
-                LedgerPill(
-                  text: language.translate(
-                    'meta_link_current',
-                    params: {'name': thread.clientName},
-                  ),
-                  backgroundColor: colors.brand.withValues(alpha: 0.1),
-                  textColor: colors.brand,
-                ),
-              ],
-              const SizedBox(height: 12),
-              TextField(
-                controller: searchCtrl,
-                decoration: InputDecoration(
-                  labelText: language.translate('meta_link_search'),
-                  prefixIcon: const Icon(TablerIcons.search, size: 20),
-                ),
-                onSubmitted: (_) => runSearch(setSheet),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: searching ? null : () => runSearch(setSheet),
-                child: Text(language.translate('common_retry')),
-              ),
-              const SizedBox(height: 12),
-              if (searching)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: LedgerListShimmer(itemCount: 3),
-                )
-              else if (results.isEmpty)
-                Text(
-                  language.translate('meta_link_empty'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textTooltip,
-                  ),
-                )
-              else
-                ...results.map((c) {
-                  final id = int.tryParse(c.id);
-                  final selected = id != null && id == pickedId;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: LedgerCard(
-                      onTap: id == null
-                          ? null
-                          : () => setSheet(() => pickedId = id),
-                      borderColor: selected ? colors.brand : null,
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            c.fullName,
-                            style: textStyles.bodySans.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          if (c.phone != null && c.phone!.isNotEmpty)
-                            Text(
-                              c.phone!,
-                              style: textStyles.captionSans.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                        ],
+
+          Future<void> submit() async {
+            if (chosen == null) return;
+            setSheetState(() => saving = true);
+            try {
+              final clientIdInt = int.tryParse(chosen!.id) ?? 0;
+              final updated = await context.read<MetaRepository>().linkClient(
+                thread.id,
+                clientIdInt,
+              );
+              if (mounted) {
+                setState(() => _selected = updated);
+              }
+              if (ctx.mounted) Navigator.pop(ctx);
+            } catch (e) {
+              setSheetState(() => saving = false);
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      language.resolveMessage(
+                        e.toString().replaceAll('Exception: ', ''),
                       ),
                     ),
-                  );
-                }),
+                  ),
+                );
+              }
+            }
+          }
+
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: searchCtrl,
+                      decoration: InputDecoration(
+                        hintText: language.translate('meta_link_search_hint'),
+                        isDense: true,
+                      ),
+                      onSubmitted: (_) => doSearch(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: searching ? null : doSearch,
+                    icon: searching
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(TablerIcons.search),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (clients.isNotEmpty)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: clients.length,
+                    itemBuilder: (_, i) {
+                      final c = clients[i];
+                      final isSelected = chosen?.id == c.id;
+                      return ListTile(
+                        dense: true,
+                        selected: isSelected,
+                        title: Text(c.fullName),
+                        subtitle: Text(c.phone ?? ''),
+                        trailing: isSelected
+                            ? Icon(TablerIcons.check, color: colors.brand)
+                            : null,
+                        onTap: () => setSheetState(() => chosen = c),
+                      );
+                    },
+                  ),
+                ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: pickedId == null || linking
-                    ? null
-                    : () async {
-                        setSheet(() => linking = true);
-                        try {
-                          final updated = await context
-                              .read<MetaRepository>()
-                              .linkClient(thread.id, pickedId!);
-                          if (!context.mounted) return;
-                          setState(() {
-                            _selected = updated;
-                            _threads = _threads
-                                .map((t) => t.id == updated.id ? updated : t)
-                                .toList();
-                          });
-                          Navigator.of(sheetContext).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                language.translate('meta_link_success'),
-                              ),
-                              backgroundColor: colors.accentGreen,
-                            ),
-                          );
-                        } catch (e) {
-                          setSheet(() => linking = false);
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                language.resolveMessage(
-                                  e.toString().replaceAll('Exception: ', ''),
-                                ),
-                              ),
-                              backgroundColor: colors.accentRed,
-                            ),
-                          );
-                        }
-                      },
-                child: linking
+                onPressed: chosen == null || saving ? null : submit,
+                child: saving
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : Text(language.translate('meta_link_submit')),
               ),
@@ -355,37 +305,48 @@ class _MetaScreenState extends State<MetaScreen> {
     final language = context.watch<LanguageCubit>();
 
     return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          LedgerCollapsingHeader(
-            title: _selected == null
-                ? language.translate('meta_title')
-                : _selected!.displayName,
-            pinned: true,
-            floating: false,
-            snap: false,
-            actions: _selected != null
-                ? [
-                    IconButton(
-                      tooltip: language.translate('meta_link_client'),
-                      onPressed: () => _showLinkClientSheet(context),
-                      icon: const Icon(TablerIcons.link, size: 20),
-                    ),
-                    IconButton(
-                      onPressed: () => setState(() {
-                        _selected = null;
-                        _messages = const [];
-                      }),
-                      icon: const Icon(TablerIcons.arrow_left),
-                    ),
-                  ]
-                : null,
+      backgroundColor: colors.background,
+      appBar: AppBar(
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        leading: _selected != null
+            ? IconButton(
+                icon: const Icon(TablerIcons.arrow_left),
+                onPressed: () => setState(() {
+                  _selected = null;
+                  _messages = const [];
+                }),
+              )
+            : null,
+        title: Text(
+          _selected == null
+              ? language.translate('meta_title')
+              : _selected!.displayName,
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
           ),
+        ),
+        actions: [
+          if (_selected != null) ...[
+            IconButton(
+              tooltip: language.translate('meta_link_client'),
+              onPressed: () => _showLinkClientSheet(context),
+              icon: const Icon(TablerIcons.link, size: 20),
+            ),
+            const SizedBox(width: 4),
+          ],
         ],
-        body: _selected == null
-            ? _buildThreadList(context, language, colors, textStyles)
-            : _buildChat(context, language, colors, textStyles),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: colors.border),
+        ),
       ),
+      body: _selected == null
+          ? _buildThreadList(context, language, colors, textStyles)
+          : _buildChat(context, language, colors, textStyles),
     );
   }
 
@@ -437,8 +398,15 @@ class _MetaScreenState extends State<MetaScreen> {
             if (cursor == 0) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: LedgerCard(
-                  borderColor: colors.accentAmber,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colors.accentAmber.withValues(alpha: 0.5),
+                    ),
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -485,11 +453,17 @@ class _MetaScreenState extends State<MetaScreen> {
                               : language.translate('meta_channel_$ch'),
                         ),
                         selected: isSel,
+                        selectedColor: colors.brand,
                         labelStyle: textStyles.captionSans.copyWith(
                           color: isSel ? Colors.white : colors.textPrimary,
-                          fontWeight: isSel ? FontWeight.w500 : FontWeight.w400,
+                          fontWeight: isSel
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                         ),
                         checkmarkColor: Colors.white,
+                        side: BorderSide(
+                          color: isSel ? colors.brand : colors.border,
+                        ),
                         onSelected: (val) {
                           if (!val) return;
                           setState(() => _channel = ch);
@@ -518,53 +492,88 @@ class _MetaScreenState extends State<MetaScreen> {
           final t = _threads[cursor - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: LedgerCard(
+            child: InkWell(
               onTap: () => _openThread(t),
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            t.displayName,
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            t.lastText ?? '',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontSize: 12.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          t.displayName,
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w500,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colors.surfaceNested,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            language.translate('meta_channel_${t.channel}'),
+                            style: textStyles.smallSans.copyWith(
+                              color: colors.textSecondary,
+                              fontSize: 11,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          t.lastText ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
+                        if (t.unread > 0) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colors.brand.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${t.unread}',
+                              style: textStyles.smallSans.copyWith(
+                                color: colors.brand,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      LedgerPill(
-                        text: language.translate('meta_channel_${t.channel}'),
-                        backgroundColor: colors.surfaceNested,
-                        textColor: colors.textSecondary,
-                      ),
-                      if (t.unread > 0) ...[
-                        const SizedBox(height: 6),
-                        LedgerPill(
-                          text: '${t.unread}',
-                          backgroundColor: colors.brand.withValues(alpha: 0.12),
-                          textColor: colors.brand,
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           );

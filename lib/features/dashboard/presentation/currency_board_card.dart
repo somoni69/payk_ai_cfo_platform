@@ -8,7 +8,6 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/finance_model.dart';
 import '../domain/finance_repository.dart';
@@ -206,14 +205,19 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
 
         // Shimmer состояние
         if (_loading && _board == null)
-          const LedgerShimmer(
+          LedgerShimmer(
             child: Column(
               children: [
                 Row(
                   children: [
                     Expanded(
-                      child: LedgerCard(
-                        padding: EdgeInsets.all(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -224,10 +228,15 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: LedgerCard(
-                        padding: EdgeInsets.all(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -238,10 +247,15 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
                         ),
                       ),
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
-                      child: LedgerCard(
-                        padding: EdgeInsets.all(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -254,9 +268,14 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
-                LedgerCard(
-                  padding: EdgeInsets.all(14),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     children: [
                       ShimmerBox(
@@ -369,8 +388,13 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
             const SizedBox(height: 8),
 
             // Единая, чистая карточка-таблица со всеми банками
-            LedgerCard(
+            Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
               child: Column(
                 children: [
                   for (var idx = 0; idx < byBank.entries.length; idx++) ...[

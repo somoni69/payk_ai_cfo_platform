@@ -1,6 +1,6 @@
 part of 'cash_screen.dart';
 
-extension _CashTabBuilders on _CashViewState {
+extension _CashTabBuilders on _CashViewMixin {
   bool get _hasActiveFilters =>
       _selectedType != 'all' ||
       _selectedPaymentMethod != 'all' ||
@@ -178,68 +178,170 @@ extension _CashTabBuilders on _CashViewState {
   ) {
     final language = context.read<LanguageCubit>();
     final colors = context.colors;
+    final textStyles = context.textStyles;
     final oCcy = localizedDecimalFormat(context);
     final suffix = language.translate('cash_currency_suffix');
     final shift = state.activeShift;
     final summary = state.summaries.isEmpty ? null : state.summaries.first;
     final net = summary?.net;
+    final isOpen = shift != null && shift.isOpen;
 
-    if (shift == null || !shift.isOpen) {
-      return LedgerHero(
-        label: language.translate('cash_title'),
-        value: net == null ? '—' : '${oCcy.format(net)} $suffix',
-        caption: language.translate('cash_shift_hero_closed'),
-        captionColor: colors.textSecondary,
-        trailing: LedgerIconBadge(
-          icon: TablerIcons.cash,
-          color: colors.textSecondary,
-          size: 48,
-          iconSize: 24,
-        ),
-        footer: isViewer
-            ? null
-            : SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () =>
-                      _showOpenShiftBottomSheet(context, state.registers),
-                  child: Text(language.translate('cash_open_shift_btn')),
+    final balanceStr = net == null
+        ? (isOpen ? '${oCcy.format(shift.startingBalance)} $suffix' : '—')
+        : '${oCcy.format(net)} $suffix';
+
+    final label = isOpen
+        ? (shift.registerName ?? language.translate('cash_tab_shifts'))
+        : language.translate('cash_title');
+
+    final caption = isOpen
+        ? language.translate(
+            'cash_shift_hero_open',
+            params: {
+              'time': formatLocalizedDateTime(
+                context,
+                shift.openedAt,
+                style: LocalizedDateTimeStyle.time,
+              ),
+            },
+          )
+        : language.translate('cash_shift_hero_closed');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
                 ),
               ),
-      );
-    }
-
-    return LedgerHero(
-      label: shift.registerName ?? language.translate('cash_tab_shifts'),
-      value: net == null
-          ? '${oCcy.format(shift.startingBalance)} $suffix'
-          : '${oCcy.format(net)} $suffix',
-      caption: language.translate(
-        'cash_shift_hero_open',
-        params: {
-          'time': formatLocalizedDateTime(
-            context,
-            shift.openedAt,
-            style: LocalizedDateTimeStyle.time,
-          ),
-        },
-      ),
-      captionColor: colors.accentGreen,
-      trailing: LedgerIconBadge(
-        icon: TablerIcons.cash,
-        color: colors.accentGreen,
-        size: 48,
-        iconSize: 24,
-      ),
-      footer: isViewer
-          ? null
-          : SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => _showCloseShiftBottomSheet(context, shift),
-                child: Text(language.translate('cash_close_shift_action')),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: isOpen
+                      ? colors.accentGreen.withValues(alpha: 0.12)
+                      : colors.surfaceNested,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isOpen
+                            ? colors.accentGreen
+                            : colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isOpen
+                          ? language.translate('cash_shift_open')
+                          : language.translate('cash_shift_closed'),
+                      style: textStyles.captionSans.copyWith(
+                        color: isOpen
+                            ? colors.accentGreen
+                            : colors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            balanceStr,
+            style: textStyles.h1Mono.copyWith(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: colors.textPrimary,
             ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            caption,
+            style: textStyles.captionSans.copyWith(
+              color: isOpen ? colors.accentGreen : colors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          if (!isViewer) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: isOpen
+                  ? OutlinedButton(
+                      onPressed: () =>
+                          _showCloseShiftBottomSheet(context, shift),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        side: BorderSide(color: colors.border),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        language.translate('cash_close_shift_action'),
+                        style: textStyles.bodySans.copyWith(
+                          color: colors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    )
+                  : ElevatedButton(
+                      onPressed: () =>
+                          _showOpenShiftBottomSheet(context, state.registers),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.surface,
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        language.translate('cash_open_shift_btn'),
+                        style: textStyles.bodySans.copyWith(
+                          color: colors.surface,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -426,16 +528,29 @@ extension _CashTabBuilders on _CashViewState {
                     child: Text(language.translate('cash_close_shift_action')),
                   )
                 else
-                  LedgerPill(
-                    text: shift.isOpen
-                        ? language.translate('cash_shift_open')
-                        : language.translate('cash_shift_closed'),
-                    backgroundColor: shift.isOpen
-                        ? colors.accentGreen.withValues(alpha: 0.1)
-                        : colors.textSecondary.withValues(alpha: 0.1),
-                    textColor: shift.isOpen
-                        ? colors.accentGreen
-                        : colors.textSecondary,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: shift.isOpen
+                          ? colors.accentGreen.withValues(alpha: 0.12)
+                          : colors.surfaceNested,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      shift.isOpen
+                          ? language.translate('cash_shift_open')
+                          : language.translate('cash_shift_closed'),
+                      style: textStyles.captionSans.copyWith(
+                        color: shift.isOpen
+                            ? colors.accentGreen
+                            : colors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -520,7 +635,6 @@ extension _CashTabBuilders on _CashViewState {
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
         children: [
-          const LedgerAdvicePanel(module: 'cash'),
           const SalesProfitCard(),
           const SizedBox(height: 16),
           Center(
@@ -537,21 +651,23 @@ extension _CashTabBuilders on _CashViewState {
       onRefresh: () => _refreshCash(context),
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
-        itemCount: summaries.length + 2,
-        separatorBuilder: (context, index) => const SizedBox(height: 14),
+        itemCount: summaries.length + 1,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           if (index == 0) {
-            return const LedgerAdvicePanel(module: 'cash');
-          }
-          if (index == 1) {
             return const SalesProfitCard();
           }
-          index -= 2;
+          index -= 1;
           final row = summaries[index];
           final isNegativeNet = row.net < 0;
 
-          return LedgerCard(
+          return Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -561,20 +677,32 @@ extension _CashTabBuilders on _CashViewState {
                     Text(
                       language.translateMessage(row.registerName),
                       style: textStyles.h2Sans.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
                     if (row.hasOpenShift)
-                      LedgerPill(
-                        text: language.translate('cash_shift_open_badge'),
-                        backgroundColor: colors.accentGreen.withValues(
-                          alpha: 0.1,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
                         ),
-                        textColor: colors.accentGreen,
+                        decoration: BoxDecoration(
+                          color: colors.accentGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          language.translate('cash_shift_open_badge'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.accentGreen,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -582,13 +710,15 @@ extension _CashTabBuilders on _CashViewState {
                       language.translate('cash_income'),
                       style: textStyles.bodySans.copyWith(
                         color: colors.textSecondary,
+                        fontSize: 13.5,
                       ),
                     ),
                     Text(
                       "${oCcy.format(row.income)} ${language.translate('cash_currency_suffix')}",
                       style: textStyles.bodySans.copyWith(
                         color: colors.accentGreen,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
                       ),
                     ),
                   ],
@@ -601,13 +731,15 @@ extension _CashTabBuilders on _CashViewState {
                       language.translate('cash_expense'),
                       style: textStyles.bodySans.copyWith(
                         color: colors.textSecondary,
+                        fontSize: 13.5,
                       ),
                     ),
                     Text(
                       "${oCcy.format(row.expense)} ${language.translate('cash_currency_suffix')}",
                       style: textStyles.bodySans.copyWith(
                         color: colors.accentRed,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13.5,
                       ),
                     ),
                   ],
@@ -619,7 +751,8 @@ extension _CashTabBuilders on _CashViewState {
                     Text(
                       language.translate('cash_total'),
                       style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
                     Text(
@@ -628,7 +761,8 @@ extension _CashTabBuilders on _CashViewState {
                         color: isNegativeNet
                             ? colors.accentRed
                             : colors.accentGreen,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
                       ),
                     ),
                   ],

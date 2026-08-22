@@ -11,8 +11,6 @@ import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../bloc/crm_bloc.dart';
 import '../bloc/crm_event.dart';
@@ -832,10 +830,23 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                     Expanded(
                       child: Text(detail.fullName, style: textStyles.h2Sans),
                     ),
-                    LedgerPill(
-                      text: crmLoyaltyLabel(lang, detail.loyaltyLevel),
-                      backgroundColor: loyalty.bg,
-                      textColor: loyalty.fg,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: loyalty.bg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        crmLoyaltyLabel(lang, detail.loyaltyLevel),
+                        style: textStyles.captionSans.copyWith(
+                          color: loyalty.fg,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 11.5,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -845,8 +856,13 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                 if (detail.email != null)
                   Text(detail.email!, style: textStyles.captionSans),
                 const SizedBox(height: 12),
-                LedgerCard(
+                Container(
                   padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     children: [
                       _kv(ctx, 'LTV', '${oCcy.format(detail.totalSpent)} TJS'),
@@ -963,8 +979,13 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                     final sc = crmStageColors(colors, d.stage);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 8),
-                      child: LedgerCard(
+                      child: Container(
                         padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
                         child: Row(
                           children: [
                             Expanded(
@@ -974,20 +995,38 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) {
                                   Text(
                                     d.title,
                                     style: textStyles.bodySans.copyWith(
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
                                     ),
                                   ),
                                   Text(
                                     '${oCcy.format(d.amount)} TJS',
-                                    style: textStyles.smallMono,
+                                    style: textStyles.bodyMono.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: colors.brand,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                            LedgerPill(
-                              text: crmStagePill(lang, d.stage),
-                              backgroundColor: sc.bg,
-                              textColor: sc.fg,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: sc.bg,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                crmStagePill(lang, d.stage),
+                                style: textStyles.captionSans.copyWith(
+                                  color: sc.fg,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11.5,
+                                ),
+                              ),
                             ),
                           ],
                         ),

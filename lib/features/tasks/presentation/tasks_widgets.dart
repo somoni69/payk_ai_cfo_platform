@@ -322,10 +322,6 @@ String _weekdayLocalizationKey(int weekday) {
   return keys[weekday - 1];
 }
 
-String _taskCountLabel(LanguageCubit language, int count) {
-  return language.translatePlural('tasks_count', count);
-}
-
 /// Builds a tab lazily on first activation, then keeps it mounted (offstage)
 /// so NestedScrollView/tab transitions do not tear down InheritedWidgets mid-frame.
 class _LazyTaskTab extends StatefulWidget {

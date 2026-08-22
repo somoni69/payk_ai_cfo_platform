@@ -13,13 +13,9 @@ import '../../../features/warehouse/bloc/warehouse_event.dart';
 import '../../../features/warehouse/bloc/warehouse_state.dart';
 import '../../../features/warehouse/domain/warehouse_models.dart';
 import '../../../features/warehouse/domain/warehouse_repository.dart';
-import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_pill.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
-import '../../assistant/presentation/ledger_advice_panel.dart';
 import '../../assistant/presentation/ledger_ai_assistant.dart';
 
 class WarehouseScreen extends StatefulWidget {
@@ -47,6 +43,40 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   }
 }
 
+enum WarehouseSection { products, movements, batches, analysis }
+
+String _warehouseSectionTitle(
+  LanguageCubit language,
+  WarehouseSection section,
+) {
+  return language.translate(switch (section) {
+    WarehouseSection.products => 'warehouse_tab_products',
+    WarehouseSection.movements => 'warehouse_tab_movements',
+    WarehouseSection.batches => 'warehouse_tab_batches',
+    WarehouseSection.analysis => 'warehouse_tab_analysis',
+  });
+}
+
+void _openWarehouseSection(BuildContext context, WarehouseSection section) {
+  final bloc = context.read<WarehouseBloc>();
+  if (section == WarehouseSection.analysis) {
+    final state = bloc.state;
+    if (state is WarehouseLoaded &&
+        state.stockAnalysis == null &&
+        !state.isAnalysisLoading) {
+      bloc.add(const RunStockAnalysisRequested());
+    }
+  }
+  Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute(
+      builder: (_) => BlocProvider.value(
+        value: bloc,
+        child: WarehouseSectionScreen(section: section),
+      ),
+    ),
+  );
+}
+
 class WarehouseView extends StatefulWidget {
   const WarehouseView({super.key});
 
@@ -54,16 +84,10 @@ class WarehouseView extends StatefulWidget {
   State<WarehouseView> createState() => _WarehouseViewState();
 }
 
-class _WarehouseViewState extends State<WarehouseView>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  var _askedStockAnalysis = false;
-
+class _WarehouseViewState extends State<WarehouseView> {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(_handleTabChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final bloc = context.read<WarehouseBloc>();
@@ -71,19 +95,6 @@ class _WarehouseViewState extends State<WarehouseView>
         bloc.add(LoadWarehouseData());
       }
     });
-  }
-
-  void _handleTabChange() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.removeListener(_handleTabChange);
-    _tabController.dispose();
-    super.dispose();
   }
 
   @override
@@ -98,229 +109,573 @@ class _WarehouseViewState extends State<WarehouseView>
 
     return Scaffold(
       floatingActionButtonLocation: kLedgerShellFabLocation,
-      floatingActionButton: Builder(
-        builder: (context) {
-          final warehouseFab = canManage && _tabController.index < 3
-              ? switch (_tabController.index) {
-                  0 => FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () => _showAddProductDialog(context),
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.plus),
-                    label: Text(
-                      localeCubit.translate('warehouse_add_product_btn'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  1 => FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () => _showAddMovementDialog(context),
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.arrow_left_right),
-                    label: Text(
-                      localeCubit.translate('warehouse_movement_btn'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  _ => FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () => _showAddBatchDialog(context),
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    focusElevation: 0,
-                    hoverElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: colors.brand),
-                    ),
-                    icon: const Icon(TablerIcons.layers_linked),
-                    label: Text(
-                      localeCubit.translate('warehouse_add_batch_btn'),
-                      style: textStyles.bodySans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                }
-              : null;
-
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const LedgerAiFloatingButton(),
-              if (warehouseFab != null) ...[
-                const SizedBox(height: 10),
-                warehouseFab,
-              ],
-            ],
-          );
-        },
-      ),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            LedgerCollapsingHeader(
-              title: localeCubit.translate('warehouse_title'),
-              pinned: true,
-              floating: false,
-              snap: false,
-              bottom: LedgerTabBar(
-                controller: _tabController,
-                isScrollable: true,
-                tabs: [
-                  Tab(text: localeCubit.translate('warehouse_tab_products')),
-                  Tab(text: localeCubit.translate('warehouse_tab_movements')),
-                  Tab(text: localeCubit.translate('warehouse_tab_batches')),
-                  Tab(text: localeCubit.translate('warehouse_tab_analysis')),
-                ],
-              ),
-              actions: canManage
-                  ? [
-                      IconButton(
-                        tooltip: localeCubit.translate(
-                          'warehouse_expiry_check_tooltip',
-                        ),
-                        onPressed: () {
-                          context.read<WarehouseBloc>().add(
-                            const RunExpiryCheckRequested(),
-                          );
-                        },
-                        icon: Icon(
-                          TablerIcons.alert_triangle,
-                          color: colors.accentAmber,
-                        ),
-                      ),
-                    ]
-                  : null,
-            ),
-          ];
-        },
-        body: BlocListener<WarehouseBloc, WarehouseState>(
-          listener: (context, state) {
-            if (state is WarehouseLoaded) {
-              if (state.errorMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      localeCubit.translateMessage(state.errorMessage!),
-                    ),
-                    backgroundColor: colors.accentRed,
-                  ),
-                );
-              } else if (state.successMessage != null) {
-                final raw = state.successMessage!;
-                final parts = raw.split('|');
-                final text = parts.length == 2
-                    ? localeCubit.translate(
-                        parts[0],
-                        params: {'count': parts[1]},
-                      )
-                    : localeCubit.translateMessage(raw);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(text),
-                    backgroundColor: colors.accentGreen,
-                  ),
-                );
-              }
-            }
-          },
-          child: BlocBuilder<WarehouseBloc, WarehouseState>(
-            buildWhen: (previous, current) {
-              if (previous is WarehouseLoaded && current is WarehouseLoaded) {
-                return previous.products != current.products ||
-                    previous.movements != current.movements ||
-                    previous.batches != current.batches ||
-                    previous.batchesExpiringOnly !=
-                        current.batchesExpiringOnly ||
-                    previous.stockAnalysis != current.stockAnalysis ||
-                    previous.isAnalysisLoading != current.isAnalysisLoading ||
-                    previous.analysisError != current.analysisError ||
-                    previous.summary != current.summary;
-              }
-              return previous.runtimeType != current.runtimeType ||
-                  previous != current;
-            },
-            builder: (context, state) {
-              if (state is WarehouseLoading) {
-                return const WarehouseOverviewShimmer();
-              }
-
-              if (state is WarehouseError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          TablerIcons.alert_circle,
-                          size: 48,
-                          color: colors.accentRed,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          localeCubit.translateMessage(state.message),
-                          style: textStyles.bodySans,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => context.read<WarehouseBloc>().add(
-                            LoadWarehouseData(),
-                          ),
-                          child: Text(localeCubit.translate('common_retry')),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              if (state is WarehouseLoaded) {
-                return TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildProductsTab(context, state),
-                    _buildMovementsTab(context, state),
-                    _buildBatchesTab(context, state, canManage: canManage),
-                    _buildAnalysisTab(context, state),
-                  ],
-                );
-              }
-
-              return const SizedBox();
-            },
+      floatingActionButton: const LedgerAiFloatingButton(),
+      appBar: AppBar(
+        title: Text(
+          localeCubit.translate('warehouse_title'),
+          style: textStyles.h2Sans.copyWith(
+            fontSize: 19,
+            fontWeight: FontWeight.w600,
+            color: colors.textPrimary,
           ),
         ),
+        backgroundColor: colors.surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        actions: canManage
+            ? [
+                IconButton(
+                  tooltip: localeCubit.translate(
+                    'warehouse_expiry_check_tooltip',
+                  ),
+                  onPressed: () {
+                    context.read<WarehouseBloc>().add(
+                      const RunExpiryCheckRequested(),
+                    );
+                  },
+                  icon: Icon(
+                    TablerIcons.alert_triangle,
+                    color: colors.accentAmber,
+                    size: 20,
+                  ),
+                ),
+              ]
+            : null,
+      ),
+      body: BlocListener<WarehouseBloc, WarehouseState>(
+        listener: (context, state) {
+          if (state is WarehouseLoaded) {
+            if (state.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    localeCubit.translateMessage(state.errorMessage!),
+                  ),
+                  backgroundColor: colors.accentRed,
+                ),
+              );
+            } else if (state.successMessage != null) {
+              final raw = state.successMessage!;
+              final parts = raw.split('|');
+              final text = parts.length == 2
+                  ? localeCubit.translate(
+                      parts[0],
+                      params: {'count': parts[1]},
+                    )
+                  : localeCubit.translateMessage(raw);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(text),
+                  backgroundColor: colors.accentGreen,
+                ),
+              );
+            }
+          }
+        },
+        child: BlocBuilder<WarehouseBloc, WarehouseState>(
+          buildWhen: (previous, current) {
+            if (previous is WarehouseLoaded && current is WarehouseLoaded) {
+              return previous.products != current.products ||
+                  previous.movements != current.movements ||
+                  previous.batches != current.batches ||
+                  previous.batchesExpiringOnly !=
+                      current.batchesExpiringOnly ||
+                  previous.stockAnalysis != current.stockAnalysis ||
+                  previous.isAnalysisLoading != current.isAnalysisLoading ||
+                  previous.analysisError != current.analysisError ||
+                  previous.summary != current.summary;
+            }
+            return previous.runtimeType != current.runtimeType ||
+                previous != current;
+          },
+          builder: (context, state) {
+            if (state is WarehouseLoading) {
+              return const WarehouseOverviewShimmer();
+            }
+
+            if (state is WarehouseError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        TablerIcons.alert_circle,
+                        size: 48,
+                        color: colors.accentRed,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        localeCubit.translateMessage(state.message),
+                        style: textStyles.bodySans,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => context.read<WarehouseBloc>().add(
+                          LoadWarehouseData(),
+                        ),
+                        child: Text(localeCubit.translate('common_retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            if (state is WarehouseLoaded) {
+              return _buildOverviewHome(context, state, canManage: canManage);
+            }
+
+            return const SizedBox();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOverviewHome(
+    BuildContext context,
+    WarehouseLoaded state, {
+    required bool canManage,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+
+    final recentMovements = state.movements.take(5).toList();
+
+    return RefreshIndicator(
+      onRefresh: context.read<WarehouseBloc>().reload,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16 + kLiquidNavClearance),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Total stock value
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    localeCubit.translate('warehouse_stats_value'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    localeCubit.translate(
+                      'warehouse_amount_tjs',
+                      params: {
+                        'amount': oCcy.format(state.summary.totalStockValue),
+                      },
+                    ),
+                    style: textStyles.h1Sans.copyWith(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(
+                        TablerIcons.box_seam,
+                        size: 16,
+                        color: colors.brand,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${localeCubit.translate('warehouse_stats_count')}: ${state.summary.productsCount}',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Attention & Risk Alerts
+            _buildWarehouseAttention(context, state),
+            const SizedBox(height: 16),
+
+            // 3. Quick Action Buttons (if canManage)
+            if (canManage) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _showAddProductDialog(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.brand,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(TablerIcons.plus, size: 16),
+                        label: Text(
+                          localeCubit.translate('warehouse_add_product_btn'),
+                          style: textStyles.captionSans.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showAddMovementDialog(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: const Icon(TablerIcons.arrow_left_right, size: 16),
+                        label: Text(
+                          localeCubit.translate('warehouse_movement_btn'),
+                          style: textStyles.captionSans.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // 4. Section Grid Hub (2x2)
+            Row(
+              children: [
+                Expanded(
+                  child: _buildHubTile(
+                    context,
+                    icon: TablerIcons.box,
+                    title: localeCubit.translate('warehouse_tab_products'),
+                    subtitle: '${state.products.length} поз.',
+                    onTap: () => _openWarehouseSection(
+                      context,
+                      WarehouseSection.products,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildHubTile(
+                    context,
+                    icon: TablerIcons.arrows_exchange,
+                    title: localeCubit.translate('warehouse_tab_movements'),
+                    subtitle: '${state.movements.length} операций',
+                    onTap: () => _openWarehouseSection(
+                      context,
+                      WarehouseSection.movements,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildHubTile(
+                    context,
+                    icon: TablerIcons.layers_linked,
+                    title: localeCubit.translate('warehouse_tab_batches'),
+                    subtitle: '${state.batches.length} партий',
+                    onTap: () => _openWarehouseSection(
+                      context,
+                      WarehouseSection.batches,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildHubTile(
+                    context,
+                    icon: TablerIcons.chart_pie,
+                    title: localeCubit.translate('warehouse_tab_analysis'),
+                    subtitle: 'Ликвидность и остатки',
+                    onTap: () => _openWarehouseSection(
+                      context,
+                      WarehouseSection.analysis,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // 5. Recent Movements Feed
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  localeCubit.translate('warehouse_recent_movements'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => _openWarehouseSection(
+                    context,
+                    WarehouseSection.movements,
+                  ),
+                  child: Text(
+                    localeCubit.translate('warehouse_all_movements'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.brand,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (recentMovements.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Text(
+                  localeCubit.translate('warehouse_empty_movements'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              )
+            else
+              ...recentMovements.map((m) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildMovementItem(context, m, oCcy),
+              )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+Widget _buildHubTile(
+  BuildContext context, {
+  required IconData icon,
+  required String title,
+  required String subtitle,
+  required VoidCallback onTap,
+}) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 19, color: colors.brand),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMovementItem(
+    BuildContext context,
+    WarehouseMovement m,
+    dynamic oCcy,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final isIncome = m.direction == 'income';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  localeCubit.translateMessage(m.productName),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                formatLocalizedDateTime(
+                  context,
+                  m.occurredAt,
+                  style: LocalizedDateTimeStyle.dateTime,
+                ),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isIncome
+                        ? TablerIcons.arrow_down_left
+                        : TablerIcons.arrow_up_right,
+                    size: 16,
+                    color: isIncome ? colors.accentGreen : colors.accentRed,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    isIncome
+                        ? localeCubit.translate('warehouse_movement_income')
+                        : localeCubit.translate('warehouse_movement_expense'),
+                    style: textStyles.captionSans.copyWith(
+                      color: isIncome ? colors.accentGreen : colors.accentRed,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    localeCubit.translate(
+                      'warehouse_movement_quantity',
+                      params: {
+                        'sign': isIncome ? '+' : '-',
+                        'quantity': formatLocalizedNumber(context, m.qty),
+                      },
+                    ),
+                    style: textStyles.bodyMono.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      color: isIncome ? colors.accentGreen : colors.accentRed,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    localeCubit.translate(
+                      'warehouse_amount_tjs',
+                      params: {'amount': oCcy.format(m.amount)},
+                    ),
+                    style: textStyles.bodyMono.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (m.note != null && m.note!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              localeCubit.translateMessage(m.note!),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+                fontSize: 12.5,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -336,47 +691,206 @@ class _WarehouseViewState extends State<WarehouseView>
     final low = analysis.lowStock.length;
     final risk = analysis.expiringCount + analysis.expiredCount;
     final hasRisk = low > 0 || risk > 0;
-    return LedgerCard(
-      borderColor: hasRisk ? colors.accentAmber : colors.border,
-      onTap: () => _tabController.animateTo(3),
-      child: Row(
-        children: [
-          Icon(
-            hasRisk ? TablerIcons.alert_triangle : TablerIcons.circle_check,
-            color: hasRisk ? colors.accentAmber : colors.accentGreen,
-            size: 22,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  language.translate('warehouse_attention_title'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  hasRisk
-                      ? language.translate(
-                          'warehouse_attention_risk',
-                          params: {'low': low, 'expiring': risk},
-                        )
-                      : language.translate('warehouse_attention_ok'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-              ],
+    return Material(
+      color: colors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => _openWarehouseSection(context, WarehouseSection.analysis),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: hasRisk ? colors.accentAmber : colors.border,
             ),
           ),
-          Icon(TablerIcons.chevron_right, size: 18, color: colors.textTooltip),
-        ],
+          child: Row(
+            children: [
+              Icon(
+                hasRisk ? TablerIcons.alert_triangle : TablerIcons.circle_check,
+                color: hasRisk ? colors.accentAmber : colors.accentGreen,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      language.translate('warehouse_attention_title'),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      hasRisk
+                          ? language.translate(
+                              'warehouse_attention_risk',
+                              params: {'low': low, 'expiring': risk},
+                            )
+                          : language.translate('warehouse_attention_ok'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                TablerIcons.chevron_right,
+                size: 18,
+                color: colors.textTooltip,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
+
+/// Полноэкранный детальный просмотр раздела склада (Товары, Движения, Партии, Анализ).
+class WarehouseSectionScreen extends StatelessWidget {
+  final WarehouseSection section;
+
+  const WarehouseSectionScreen({super.key, required this.section});
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final authState = context.watch<AuthBloc>().state;
+    final canManage =
+        authState is AuthAuthenticated &&
+        authState.role.canManage(AppCapability.warehouse);
+
+    return BlocBuilder<WarehouseBloc, WarehouseState>(
+      builder: (context, state) {
+        final loadedState = state is WarehouseLoaded ? state : null;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              _warehouseSectionTitle(language, section),
+              style: textStyles.h2Sans.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+            leading: const BackButton(),
+            backgroundColor: colors.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            actions: [
+              if (section == WarehouseSection.analysis)
+                IconButton(
+                  tooltip: language.translate('warehouse_analysis_rerun'),
+                  onPressed: () {
+                    context.read<WarehouseBloc>().add(
+                      const RunStockAnalysisRequested(),
+                    );
+                  },
+                  icon: const Icon(TablerIcons.refresh, size: 20),
+                ),
+            ],
+          ),
+          floatingActionButton: canManage && loadedState != null
+              ? switch (section) {
+                  WarehouseSection.products => FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () => _showAddProductDialog(context),
+                      backgroundColor: colors.brand,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      highlightElevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      icon: const Icon(TablerIcons.plus, size: 18),
+                      label: Text(
+                        language.translate('warehouse_add_product_btn'),
+                        style: textStyles.bodySans.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  WarehouseSection.movements => FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () => _showAddMovementDialog(context),
+                      backgroundColor: colors.brand,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      highlightElevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      icon: const Icon(TablerIcons.arrow_left_right, size: 18),
+                      label: Text(
+                        language.translate('warehouse_movement_btn'),
+                        style: textStyles.bodySans.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  WarehouseSection.batches => FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () => _showAddBatchDialog(context),
+                      backgroundColor: colors.brand,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      highlightElevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      icon: const Icon(TablerIcons.layers_linked, size: 18),
+                      label: Text(
+                        language.translate('warehouse_add_batch_btn'),
+                        style: textStyles.bodySans.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  _ => null,
+                }
+              : null,
+          body: loadedState != null
+              ? switch (section) {
+                  WarehouseSection.products => _buildProductsTab(
+                      context,
+                      loadedState,
+                    ),
+                  WarehouseSection.movements => _buildMovementsTab(
+                      context,
+                      loadedState,
+                    ),
+                  WarehouseSection.batches => _buildBatchesTab(
+                      context,
+                      loadedState,
+                      canManage: canManage,
+                    ),
+                  WarehouseSection.analysis => _buildAnalysisTab(
+                      context,
+                      loadedState,
+                    ),
+                }
+              : const WarehouseOverviewShimmer(),
+        );
+      },
+    );
+  }
+}
 
   Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
     final colors = context.colors;
@@ -399,92 +913,86 @@ class _WarehouseViewState extends State<WarehouseView>
             SizedBox(height: index == 0 ? 16 : 12),
         itemBuilder: (context, index) {
           if (index == 0) {
-            if (!_askedStockAnalysis &&
-                state.stockAnalysis == null &&
-                !state.isAnalysisLoading &&
-                state.analysisError == null) {
-              _askedStockAnalysis = true;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!context.mounted) return;
-                context.read<WarehouseBloc>().add(
-                  const RunStockAnalysisRequested(),
-                );
-              });
-            }
-            // Сводные метрики склада
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            return Row(
               children: [
-                _buildWarehouseAttention(context, state),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: LedgerCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              localeCubit.translate('warehouse_stats_count'),
-                              style: textStyles.smallSans.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                '${state.summary.productsCount}',
-                                style: textStyles.h1Sans.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 3,
-                      child: LedgerCard(
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              localeCubit.translate('warehouse_stats_value'),
-                              style: textStyles.smallSans.copyWith(
-                                color: colors.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                localeCubit.translate(
-                                  'warehouse_amount_tjs',
-                                  params: {
-                                    'amount': oCcy.format(
-                                      state.summary.totalStockValue,
-                                    ),
-                                  },
-                                ),
-                                style: textStyles.h1Sans.copyWith(
-                                  color: colors.accentGreen,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localeCubit.translate('warehouse_stats_count'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '${state.summary.productsCount}',
+                            style: textStyles.h1Sans.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localeCubit.translate('warehouse_stats_value'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            localeCubit.translate(
+                              'warehouse_amount_tjs',
+                              params: {
+                                'amount': oCcy.format(
+                                  state.summary.totalStockValue,
+                                ),
+                              },
+                            ),
+                            style: textStyles.h1Sans.copyWith(
+                              color: colors.accentGreen,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             );
@@ -498,6 +1006,7 @@ class _WarehouseViewState extends State<WarehouseView>
                   localeCubit.translate('warehouse_empty_products'),
                   style: textStyles.bodySans.copyWith(
                     color: colors.textTooltip,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -517,101 +1026,140 @@ class _WarehouseViewState extends State<WarehouseView>
               ? colors.accentRed
               : (isLowStock ? colors.accentAmber : colors.accentGreen);
 
-          return LedgerCard(
-            onTap: canWrite
-                ? () => _showEditProductSheet(context, product)
-                : null,
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                // Product icon container
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: colors.brand.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(TablerIcons.box, size: 22, color: colors.brand),
+          return Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: canWrite
+                  ? () => _showEditProductSheet(context, product)
+                  : null,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localeCubit.translateMessage(product.name),
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                child: Row(
+                  children: [
+                    // Product icon container
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
+                      alignment: Alignment.center,
+                      child: Icon(TablerIcons.box, size: 22, color: colors.brand),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (product.sku != null &&
-                              product.sku!.isNotEmpty) ...[
-                            LedgerPill(
-                              text: product.sku!,
-                              backgroundColor: colors.surfaceNested,
-                              textColor: colors.textSecondary,
-                            ),
-                            const SizedBox(width: 6),
-                          ],
                           Text(
-                            localeCubit.translate(
-                              'warehouse_product_price',
-                              params: {'price': oCcy.format(product.price)},
+                            localeCubit.translateMessage(product.name),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15.5,
                             ),
-                            style: textStyles.captionSans.copyWith(
-                              color: colors.textSecondary,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (product.sku != null &&
+                                  product.sku!.isNotEmpty) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceNested,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    product.sku!,
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.textSecondary,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                localeCubit.translate(
+                                  'warehouse_product_price',
+                                  params: {'price': oCcy.format(product.price)},
+                                ),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    LedgerPill(
-                      text: localeCubit.translate(
-                        'warehouse_quantity_with_unit',
-                        params: {
-                          'quantity': formatLocalizedNumber(
-                            context,
-                            product.stockQty,
-                          ),
-                          'unit': localeCubit.translateMessage(product.unit),
-                        },
-                      ),
-                      backgroundColor: stockStatusColor.withValues(alpha: 0.12),
-                      textColor: stockStatusColor,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      localeCubit.translate(
-                        'warehouse_amount_tjs',
-                        params: {
-                          'amount': oCcy.format(
-                            product.stockQty * product.price,
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
                           ),
-                        },
-                      ),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
+                          decoration: BoxDecoration(
+                            color: stockStatusColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            localeCubit.translate(
+                              'warehouse_quantity_with_unit',
+                              params: {
+                                'quantity': formatLocalizedNumber(
+                                  context,
+                                  product.stockQty,
+                                ),
+                                'unit': localeCubit.translateMessage(product.unit),
+                              },
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: stockStatusColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          localeCubit.translate(
+                            'warehouse_amount_tjs',
+                            params: {
+                              'amount': oCcy.format(
+                                product.stockQty * product.price,
+                              ),
+                            },
+                          ),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           );
         },
@@ -646,118 +1194,14 @@ class _WarehouseViewState extends State<WarehouseView>
                   localeCubit.translate('warehouse_empty_movements'),
                   style: textStyles.bodySans.copyWith(
                     color: colors.textTooltip,
+                    fontSize: 14,
                   ),
                 ),
               ),
             );
           }
-
           final m = state.movements[index];
-          final isIncome = m.direction == 'income';
-
-          return LedgerCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      localeCubit.translateMessage(m.productName),
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      formatLocalizedDateTime(
-                        context,
-                        m.occurredAt,
-                        style: LocalizedDateTimeStyle.dateTime,
-                      ),
-                      style: textStyles.smallSans.copyWith(
-                        color: colors.textTooltip,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          isIncome
-                              ? TablerIcons.arrow_down_left
-                              : TablerIcons.arrow_up_right,
-                          size: 16,
-                          color: isIncome
-                              ? colors.accentGreen
-                              : colors.accentRed,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          isIncome
-                              ? localeCubit.translate(
-                                  'warehouse_movement_income',
-                                )
-                              : localeCubit.translate(
-                                  'warehouse_movement_expense',
-                                ),
-                          style: textStyles.smallSans.copyWith(
-                            color: isIncome
-                                ? colors.accentGreen
-                                : colors.accentRed,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          localeCubit.translate(
-                            'warehouse_movement_quantity',
-                            params: {
-                              'sign': isIncome ? '+' : '-',
-                              'quantity': formatLocalizedNumber(context, m.qty),
-                            },
-                          ),
-                          style: textStyles.smallMono.copyWith(
-                            fontWeight: FontWeight.w500,
-                            color: isIncome
-                                ? colors.accentGreen
-                                : colors.accentRed,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          localeCubit.translate(
-                            'warehouse_amount_tjs',
-                            params: {'amount': oCcy.format(m.amount)},
-                          ),
-                          style: textStyles.smallMono.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                if (m.note != null && m.note!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    localeCubit.translateMessage(m.note!),
-                    style: textStyles.smallSans.copyWith(
-                      color: colors.textSecondary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
+          return _buildMovementItem(context, m, oCcy);
         },
       ),
     );
@@ -788,27 +1232,37 @@ class _WarehouseViewState extends State<WarehouseView>
           16 + kLiquidNavClearance,
         ),
         children: [
-          const LedgerAdvicePanel(module: 'warehouse'),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  localeCubit.translate('warehouse_batches_filter_expiring'),
-                  style: textStyles.captionSans,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    localeCubit.translate('warehouse_batches_filter_expiring'),
+                    style: textStyles.captionSans.copyWith(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
-              ),
-              Switch.adaptive(
-                value: state.batchesExpiringOnly,
-                activeThumbColor: colors.brand,
-                onChanged: (v) {
-                  context.read<WarehouseBloc>().add(
-                    LoadBatchesRequested(expiringOnly: v),
-                  );
-                },
-              ),
-            ],
+                Switch.adaptive(
+                  value: state.batchesExpiringOnly,
+                  activeThumbColor: colors.brand,
+                  onChanged: (v) {
+                    context.read<WarehouseBloc>().add(
+                      LoadBatchesRequested(expiringOnly: v),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           if (state.batches.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 48),
@@ -817,6 +1271,7 @@ class _WarehouseViewState extends State<WarehouseView>
                   localeCubit.translate('warehouse_empty_batches'),
                   style: textStyles.bodySans.copyWith(
                     color: colors.textTooltip,
+                    fontSize: 14,
                   ),
                 ),
               ),
@@ -841,73 +1296,108 @@ class _WarehouseViewState extends State<WarehouseView>
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: LedgerCard(
-                  onTap: canManage
-                      ? () => _showEditBatchDialog(context, batch)
-                      : null,
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                child: Material(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: canManage
+                        ? () => _showEditBatchDialog(context, batch)
+                        : null,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: batch.isExpired || batch.isUrgent
+                              ? tone.withValues(alpha: 0.5)
+                              : colors.border,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: Text(
-                              batch.productName,
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  batch.productName,
+                                  style: textStyles.bodySans.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15.5,
+                                  ),
+                                ),
                               ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: tone.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  riskLabel,
+                                  style: textStyles.captionSans.copyWith(
+                                    color: tone,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            localeCubit.translate(
+                              'warehouse_batch_qty',
+                              params: {
+                                'qty': formatLocalizedNumber(context, batch.qty),
+                                'unit': batch.unit ?? '',
+                              },
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                              fontSize: 13,
                             ),
                           ),
-                          LedgerPill(
-                            text: riskLabel,
-                            backgroundColor: tone.withValues(alpha: 0.12),
-                            textColor: tone,
-                          ),
+                          if (batch.expiryDate != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              localeCubit.translate(
+                                'warehouse_batch_expiry',
+                                params: {
+                                  'date': formatLocalizedDateTime(
+                                    context,
+                                    batch.expiryDate!,
+                                    style: LocalizedDateTimeStyle.date,
+                                  ),
+                                },
+                              ),
+                              style: textStyles.captionSans.copyWith(
+                                color: tone,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                          if (batch.code != null && batch.code!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              localeCubit.translate(
+                                'warehouse_batch_code',
+                                params: {'code': batch.code},
+                              ),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textTooltip,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        localeCubit.translate(
-                          'warehouse_batch_qty',
-                          params: {
-                            'qty': formatLocalizedNumber(context, batch.qty),
-                            'unit': batch.unit ?? '',
-                          },
-                        ),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      if (batch.expiryDate != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          localeCubit.translate(
-                            'warehouse_batch_expiry',
-                            params: {
-                              'date': formatLocalizedDateTime(
-                                context,
-                                batch.expiryDate!,
-                                style: LocalizedDateTimeStyle.date,
-                              ),
-                            },
-                          ),
-                          style: textStyles.smallSans.copyWith(color: tone),
-                        ),
-                      ],
-                      if (batch.code != null && batch.code!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          localeCubit.translate(
-                            'warehouse_batch_code',
-                            params: {'code': batch.code},
-                          ),
-                          style: textStyles.smallSans.copyWith(
-                            color: colors.textTooltip,
-                          ),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -936,7 +1426,13 @@ class _WarehouseViewState extends State<WarehouseView>
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16 + kLiquidNavClearance),
       children: [
-        LedgerCard(
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -948,7 +1444,8 @@ class _WarehouseViewState extends State<WarehouseView>
                     child: Text(
                       language.translate('warehouse_analysis_title'),
                       style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15.5,
                       ),
                     ),
                   ),
@@ -959,6 +1456,7 @@ class _WarehouseViewState extends State<WarehouseView>
                 language.translate('warehouse_analysis_subtitle'),
                 style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
+                  fontSize: 13,
                 ),
               ),
               const SizedBox(height: 14),
@@ -968,6 +1466,13 @@ class _WarehouseViewState extends State<WarehouseView>
                     : () => context.read<WarehouseBloc>().add(
                         const RunStockAnalysisRequested(),
                       ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
                 icon: state.isAnalysisLoading
                     ? SizedBox(
                         width: 16,
@@ -984,6 +1489,11 @@ class _WarehouseViewState extends State<WarehouseView>
                         ? 'warehouse_analysis_run'
                         : 'warehouse_analysis_rerun',
                   ),
+                  style: textStyles.captionSans.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ),
               if (analysis == null && !state.isAnalysisLoading) ...[
@@ -992,6 +1502,7 @@ class _WarehouseViewState extends State<WarehouseView>
                   language.translate('warehouse_analysis_idle'),
                   style: textStyles.captionSans.copyWith(
                     color: colors.textTooltip,
+                    fontSize: 12.5,
                   ),
                 ),
               ],
@@ -1000,13 +1511,21 @@ class _WarehouseViewState extends State<WarehouseView>
         ),
         if (state.isAnalysisLoading) ...[
           const SizedBox(height: 16),
-          const LedgerNamedListShimmer(itemCount: 3),
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(),
+            ),
+          ),
         ],
         if (state.analysisError != null) ...[
           const SizedBox(height: 12),
           Text(
             language.resolveMessage(state.analysisError!),
-            style: textStyles.captionSans.copyWith(color: colors.accentRed),
+            style: textStyles.captionSans.copyWith(
+              color: colors.accentRed,
+              fontSize: 13,
+            ),
           ),
         ],
         if (analysis != null) ...[
@@ -1014,22 +1533,29 @@ class _WarehouseViewState extends State<WarehouseView>
           Row(
             children: [
               Expanded(
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         language.translate('warehouse_analysis_stat_items'),
-                        style: textStyles.smallSans.copyWith(
+                        style: textStyles.captionSans.copyWith(
                           color: colors.textSecondary,
+                          fontSize: 13,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${analysis.totalItems}',
                         style: textStyles.h2Sans.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
                         ),
                       ),
                     ],
@@ -1038,22 +1564,29 @@ class _WarehouseViewState extends State<WarehouseView>
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         language.translate('warehouse_analysis_stat_zero'),
-                        style: textStyles.smallSans.copyWith(
+                        style: textStyles.captionSans.copyWith(
                           color: colors.textSecondary,
+                          fontSize: 13,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '${analysis.zeroItems}',
                         style: textStyles.h2Sans.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 20,
                         ),
                       ),
                     ],
@@ -1066,23 +1599,30 @@ class _WarehouseViewState extends State<WarehouseView>
           Row(
             children: [
               Expanded(
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         language.translate('warehouse_analysis_stat_value'),
-                        style: textStyles.smallSans.copyWith(
+                        style: textStyles.captionSans.copyWith(
                           color: colors.textSecondary,
+                          fontSize: 13,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         oCcy.format(analysis.stockValue),
                         style: textStyles.bodyMono.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
                           color: colors.brand,
+                          fontSize: 16,
                         ),
                       ),
                     ],
@@ -1091,30 +1631,39 @@ class _WarehouseViewState extends State<WarehouseView>
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
-                  borderColor: analysis.atRiskAmount > 0
-                      ? colors.accentRed.withValues(alpha: 0.4)
-                      : null,
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: analysis.atRiskAmount > 0
+                          ? colors.accentRed.withValues(alpha: 0.4)
+                          : colors.border,
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         language.translate('warehouse_analysis_stat_risk'),
-                        style: textStyles.smallSans.copyWith(
+                        style: textStyles.captionSans.copyWith(
                           color: colors.textSecondary,
+                          fontSize: 13,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         oCcy.format(analysis.atRiskAmount),
                         style: textStyles.bodyMono.copyWith(
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
                           color: analysis.atRiskAmount > 0
                               ? colors.accentRed
                               : colors.textPrimary,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         language.translate(
                           'warehouse_analysis_stat_risk_hint',
@@ -1123,8 +1672,9 @@ class _WarehouseViewState extends State<WarehouseView>
                             'expired': '${analysis.expiredCount}',
                           },
                         ),
-                        style: textStyles.smallSans.copyWith(
+                        style: textStyles.captionSans.copyWith(
                           color: colors.textTooltip,
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -1135,21 +1685,32 @@ class _WarehouseViewState extends State<WarehouseView>
           ),
           if (analysis.summary.trim().isNotEmpty) ...[
             const SizedBox(height: 16),
-            LedgerCard(
-              borderColor: colors.accentAmber.withValues(alpha: 0.45),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: colors.accentAmber.withValues(alpha: 0.45),
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     language.translate('warehouse_analysis_summary_title'),
                     style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _plainAiText(analysis.summary),
-                    style: textStyles.captionSans,
+                    style: textStyles.captionSans.copyWith(
+                      fontSize: 13.5,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
@@ -1159,23 +1720,38 @@ class _WarehouseViewState extends State<WarehouseView>
             const SizedBox(height: 16),
             Text(
               language.translate('warehouse_analysis_low_stock'),
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 15.5,
+              ),
             ),
             const SizedBox(height: 8),
             ...analysis.lowStock.map(
               (row) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(row.name, style: textStyles.bodySans),
+                        child: Text(
+                          row.name,
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14.5,
+                          ),
+                        ),
                       ),
                       Text(
                         '${formatLocalizedNumber(context, row.qty)} ${row.unit}',
-                        style: textStyles.smallMono.copyWith(
-                          fontWeight: FontWeight.w500,
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
                       ),
                     ],
@@ -1188,13 +1764,17 @@ class _WarehouseViewState extends State<WarehouseView>
             const SizedBox(height: 16),
             Text(
               language.translate('warehouse_analysis_risk_title'),
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 15.5,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               language.translate('warehouse_analysis_risk_subtitle'),
               style: textStyles.captionSans.copyWith(
                 color: colors.textSecondary,
+                fontSize: 13,
               ),
             ),
             const SizedBox(height: 8),
@@ -1202,9 +1782,15 @@ class _WarehouseViewState extends State<WarehouseView>
               final tone = row.expired ? colors.accentRed : colors.accentAmber;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: LedgerCard(
-                  padding: const EdgeInsets.all(12),
-                  borderColor: tone.withValues(alpha: 0.35),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: tone.withValues(alpha: 0.35),
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1214,19 +1800,33 @@ class _WarehouseViewState extends State<WarehouseView>
                             child: Text(
                               row.productName,
                               style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
                               ),
                             ),
                           ),
-                          LedgerPill(
-                            text: row.expired
-                                ? language.translate('warehouse_batch_expired')
-                                : language.translate(
-                                    'warehouse_batch_days_left',
-                                    params: {'days': '${row.daysLeft}'},
-                                  ),
-                            backgroundColor: tone.withValues(alpha: 0.12),
-                            textColor: tone,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: tone.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              row.expired
+                                  ? language.translate('warehouse_batch_expired')
+                                  : language.translate(
+                                      'warehouse_batch_days_left',
+                                      params: {'days': '${row.daysLeft}'},
+                                    ),
+                              style: textStyles.captionSans.copyWith(
+                                color: tone,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -1241,6 +1841,7 @@ class _WarehouseViewState extends State<WarehouseView>
                         ),
                         style: textStyles.captionSans.copyWith(
                           color: colors.textSecondary,
+                          fontSize: 13,
                         ),
                       ),
                       if (row.expiryDate != null)
@@ -1255,15 +1856,22 @@ class _WarehouseViewState extends State<WarehouseView>
                               ),
                             },
                           ),
-                          style: textStyles.smallSans.copyWith(color: tone),
+                          style: textStyles.captionSans.copyWith(
+                            color: tone,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
                         ),
+                      const SizedBox(height: 2),
                       Text(
                         language.translate(
                           'warehouse_analysis_at_risk_amount',
                           params: {'amount': oCcy.format(row.atRiskAmount)},
                         ),
-                        style: textStyles.smallMono.copyWith(
+                        style: textStyles.bodyMono.copyWith(
                           color: colors.accentRed,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
                         ),
                       ),
                     ],
@@ -1459,7 +2067,7 @@ class _WarehouseViewState extends State<WarehouseView>
                 child: OutlinedButton.icon(
                   onPressed: () async {
                     final didDelete = await _confirmDeleteBatch(
-                      this.context,
+                      context,
                       batch,
                     );
                     if (didDelete == true && sheetContext.mounted) {
@@ -1853,7 +2461,7 @@ class _WarehouseViewState extends State<WarehouseView>
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       final didZeroOut = await _confirmZeroOut(
-                        this.context,
+                        context,
                         product,
                       );
                       if (didZeroOut == true && context.mounted) {
@@ -1880,7 +2488,7 @@ class _WarehouseViewState extends State<WarehouseView>
                   child: OutlinedButton.icon(
                     onPressed: () async {
                       final didDelete = await _confirmDeleteProduct(
-                        this.context,
+                        context,
                         product,
                       );
                       if (didDelete == true && context.mounted) {
@@ -1904,7 +2512,7 @@ class _WarehouseViewState extends State<WarehouseView>
             ],
           );
         },
-        footerBuilder: (context, setSheetState) {
+        footerBuilder: (sheetContext, setSheetState) {
           return SizedBox(
             width: double.infinity,
             height: 48,
@@ -1914,11 +2522,11 @@ class _WarehouseViewState extends State<WarehouseView>
                 if (name.isEmpty) return;
                 final price =
                     parseLocalizedNumber(
-                      context,
+                      sheetContext,
                       priceController.text.trim(),
                     ) ??
                     product.price;
-                this.context.read<WarehouseBloc>().add(
+                context.read<WarehouseBloc>().add(
                   UpdateProductRequested(
                     product.copyWith(
                       name: name,
@@ -1930,13 +2538,13 @@ class _WarehouseViewState extends State<WarehouseView>
                           : unitController.text.trim(),
                       price: price,
                       costPrice: parseLocalizedNumber(
-                        context,
+                        sheetContext,
                         costController.text,
                       ),
                     ),
                   ),
                 );
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.brand,
@@ -2404,4 +3012,3 @@ class _WarehouseViewState extends State<WarehouseView>
       noteController.dispose();
     }
   }
-}
