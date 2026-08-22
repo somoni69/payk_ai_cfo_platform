@@ -9,14 +9,21 @@ import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_event.dart';
 import '../../../features/auth/bloc/auth_state.dart';
-import '../../../features/assistant/presentation/ledger_ai_assistant.dart';
 import '../../../features/auth/domain/app_access.dart';
 import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_card.dart';
-import '../../../presentation/widgets/ledger_collapsing_header.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/payk_logo.dart';
+import '../../cash/bloc/cash_bloc.dart';
+import '../../cash/bloc/cash_event.dart';
+import '../../dashboard/bloc/dashboard_bloc.dart';
+import '../../dashboard/bloc/dashboard_event.dart';
+import '../../tasks/bloc/tasks_bloc.dart';
+import '../../tasks/bloc/tasks_event.dart';
+import '../../warehouse/bloc/warehouse_bloc.dart';
+import '../../warehouse/bloc/warehouse_event.dart';
 import '../../notifications/presentation/notification_bell.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -34,6 +41,30 @@ class _MoreScreenState extends State<MoreScreen> {
   void initState() {
     super.initState();
     _loadBiometricSettings();
+  }
+
+  Future<void> _handleRefresh() async {
+    await _loadBiometricSettings();
+    if (!mounted) return;
+    _refreshAllBlocs(context);
+  }
+
+  void _refreshAllBlocs(BuildContext ctx) {
+    try {
+      ctx.read<PermissionsCubit>().load();
+    } catch (_) {}
+    try {
+      ctx.read<DashboardBloc>().add(LoadDashboardData(forceRefresh: true));
+    } catch (_) {}
+    try {
+      ctx.read<CashBloc>().add(const LoadCashData());
+    } catch (_) {}
+    try {
+      ctx.read<WarehouseBloc>().add(LoadWarehouseData());
+    } catch (_) {}
+    try {
+      ctx.read<TasksBloc>().add(const LoadTasks(forceRefresh: true));
+    } catch (_) {}
   }
 
   Future<void> _loadBiometricSettings() async {
@@ -129,46 +160,69 @@ class _MoreScreenState extends State<MoreScreen> {
         : context.translate('language_russian');
     final authState = context.watch<AuthBloc>().state;
     final role = authState is AuthAuthenticated ? authState.role : null;
+    if (authState is AuthLoading || authState is AuthInitial) {
+      return const Scaffold(body: MoreOverviewShimmer());
+    }
     context.watch<PermissionsCubit>();
 
-    return LedgerAiAssistantHost(
-      child: Scaffold(
-        body: NestedScrollView(
-          headerSliverBuilder: (context, innerBoxIsScrolled) {
-            return [
-              LedgerCollapsingHeader(
-                title: context.translate('more'),
-                pinned: true,
-                floating: true,
-                snap: true,
-                actions: const [
-                  NotificationBell(),
-                  SizedBox(width: 8),
-                  PaykLogo(height: 22),
-                ],
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              backgroundColor: colors.surface,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              title: Text(
+                context.translate('more'),
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
               ),
-            ];
-          },
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+              actions: const [
+                NotificationBell(),
+                SizedBox(width: 8),
+                PaykLogo(height: 22),
+                SizedBox(width: 12),
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1),
+                child: Container(height: 1, color: colors.border),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                16 + kLiquidNavClearance,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
                   // Профиль пользователя
                   _buildProfileCard(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Безопасность и настройки
                   Text(
                     context.translate('more_access_settings'),
                     style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  LedgerCard(
-                    padding: EdgeInsets.zero,
+                  const SizedBox(height: 6),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
                     child: _buildSettingsToggleRow(
                       icon: TablerIcons.fingerprint,
                       title: context.translate('biometrics'),
@@ -187,7 +241,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       children: [
                         Icon(
                           TablerIcons.language,
-                          color: colors.textSecondary,
+                          color: colors.brand,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -214,15 +268,10 @@ class _MoreScreenState extends State<MoreScreen> {
                       context.read<LanguageCubit>().setLanguage(val);
                     },
                   ),
-<<<<<<< Updated upstream
-                  const SizedBox(height: 20),
-=======
                   const SizedBox(height: 16),
->>>>>>> Stashed changes
 
                   if (role != null) ..._buildGroupedModules(role),
 
-                  // Выход (Смена сессии)
                   OutlinedButton(
                     onPressed: () {
                       context.read<AuthBloc>().add(LogoutRequested());
@@ -235,12 +284,11 @@ class _MoreScreenState extends State<MoreScreen> {
                     ),
                     child: Text(context.translate('logout')),
                   ),
-                  // Space so content is not hidden under the AI FAB.
-                  const SizedBox(height: 72),
-                ],
+                  const SizedBox(height: 8),
+                ]),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -329,8 +377,14 @@ class _MoreScreenState extends State<MoreScreen> {
         titleKey: 'more_group_system',
         modules: [
           (
-            capability: AppCapability.branches,
+            capability: AppCapability.network,
             icon: TablerIcons.building_store,
+            titleKey: 'more_network',
+            route: '/network',
+          ),
+          (
+            capability: AppCapability.branches,
+            icon: TablerIcons.map_pin,
             titleKey: 'more_branches',
             route: '/branches',
           ),
@@ -375,34 +429,90 @@ class _MoreScreenState extends State<MoreScreen> {
       widgets.add(
         Text(
           context.translate(group.titleKey),
-          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
         ),
       );
-      widgets.add(const SizedBox(height: 8));
-
-      final rows = <Widget>[];
-      for (var i = 0; i < allowedModules.length; i++) {
-        final module = allowedModules[i];
-        if (i > 0) rows.add(const Divider());
-        rows.add(
-          _buildSettingsNavigationRow(
-            icon: module.icon,
-            title: context.translate(module.titleKey),
-            onTap: () => GoRouter.of(context).push(module.route),
+      widgets.add(const SizedBox(height: 6));
+      for (var i = 0; i < allowedModules.length; i += 2) {
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: i + 2 < allowedModules.length ? 8 : 0,
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildModuleTile(
+                      icon: allowedModules[i].icon,
+                      title: context.translate(allowedModules[i].titleKey),
+                      onTap: () =>
+                          GoRouter.of(context).push(allowedModules[i].route),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: i + 1 < allowedModules.length
+                        ? _buildModuleTile(
+                            icon: allowedModules[i + 1].icon,
+                            title: context.translate(
+                              allowedModules[i + 1].titleKey,
+                            ),
+                            onTap: () => GoRouter.of(
+                              context,
+                            ).push(allowedModules[i + 1].route),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       }
-
-      widgets.add(
-        LedgerCard(
-          padding: EdgeInsets.zero,
-          child: Column(children: rows),
-        ),
-      );
-      widgets.add(const SizedBox(height: 20));
+      widgets.add(const SizedBox(height: 16));
     }
 
     return widgets;
+  }
+
+  Widget _buildModuleTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        constraints: const BoxConstraints(minHeight: 74),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20, color: colors.brand),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w500,
+                height: 1.2,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildProfileCard() {
@@ -425,7 +535,17 @@ class _MoreScreenState extends State<MoreScreen> {
       );
     }
 
-    return LedgerCard(
+    final storeName = authState is AuthAuthenticated
+        ? authState.storeName
+        : null;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
       child: Row(
         children: [
           CircleAvatar(
@@ -441,6 +561,29 @@ class _MoreScreenState extends State<MoreScreen> {
                 Text(profileName, style: textStyles.h2Sans),
                 const SizedBox(height: 2),
                 Text(roleLabel, style: textStyles.captionSans),
+                if (storeName != null && storeName.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        TablerIcons.building_store,
+                        size: 14,
+                        color: colors.brand,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          storeName,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.brand,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -451,6 +594,7 @@ class _MoreScreenState extends State<MoreScreen> {
 
   String _roleTranslationKey(UserRole role) {
     return switch (role) {
+      UserRole.owner => 'role_owner',
       UserRole.director => 'role_director',
       UserRole.manager => 'role_manager',
       UserRole.accountant => 'role_accountant',
@@ -474,7 +618,7 @@ class _MoreScreenState extends State<MoreScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: Row(
         children: [
-          Icon(icon, color: colors.textSecondary, size: 20),
+          Icon(icon, color: colors.brand, size: 20),
           const SizedBox(width: 12),
           Expanded(child: Text(title, style: textStyles.bodySans)),
           const SizedBox(width: 8),
@@ -484,34 +628,6 @@ class _MoreScreenState extends State<MoreScreen> {
             activeTrackColor: colors.brand,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsNavigationRow({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-        child: Row(
-          children: [
-            Icon(icon, color: colors.textSecondary, size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Text(title, style: textStyles.bodySans)),
-            Icon(
-              TablerIcons.chevron_right,
-              color: colors.textTooltip,
-              size: 16,
-            ),
-          ],
-        ),
       ),
     );
   }
