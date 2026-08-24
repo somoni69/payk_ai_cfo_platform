@@ -77,7 +77,7 @@ class ApiAuthRepository {
         ),
       );
 
-      return _parseLoginBody(response.data, fallbackUsername: username);
+      return await _parseLoginBody(response.data, fallbackUsername: username);
     } on DioException catch (error) {
       throw Exception(_loginErrorKey(error));
     } catch (_) {

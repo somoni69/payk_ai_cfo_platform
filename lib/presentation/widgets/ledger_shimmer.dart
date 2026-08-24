@@ -3,7 +3,7 @@ import '../../core/theme/theme_extensions.dart';
 import 'ledger_card.dart';
 
 /// Легковесный системный виджет эффекта Shimmer (мерцания загрузки)
-/// в полном соответствии с дизайн-системой Ledger.
+/// в полном соответствии с дизайн-системой Grounded Enterprise.
 class LedgerShimmer extends StatefulWidget {
   final Widget child;
 
@@ -22,7 +22,7 @@ class _LedgerShimmerState extends State<LedgerShimmer>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1300),
     )..repeat();
   }
 
@@ -36,7 +36,7 @@ class _LedgerShimmerState extends State<LedgerShimmer>
   Widget build(BuildContext context) {
     final colors = context.colors;
     final baseColor = colors.border.withValues(alpha: 0.35);
-    final highlightColor = colors.surface;
+    final highlightColor = colors.surface.withValues(alpha: 0.95);
 
     return AnimatedBuilder(
       animation: _controller,
@@ -95,25 +95,26 @@ class ShimmerBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: colors.border.withValues(alpha: 0.3),
+        color: colors.border.withValues(alpha: 0.32),
         borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
   }
 }
 
-/// Пилюля статуса — как [LedgerPill].
+/// Пилюля статуса / бейджа для скелетона.
 class LedgerChipShimmer extends StatelessWidget {
   final double width;
-  const LedgerChipShimmer({super.key, this.width = 64});
+  final double height;
+  const LedgerChipShimmer({super.key, this.width = 64, this.height = 22});
 
   @override
   Widget build(BuildContext context) {
-    return ShimmerBox(width: width, height: 22, borderRadius: 999);
+    return ShimmerBox(width: width, height: height, borderRadius: 999);
   }
 }
 
-/// Строка операции: заголовок + пилюля/категория + сумма. Без аватара.
+/// Строка карточки операции: заголовок + пилюля/категория + сумма.
 class LedgerCardShimmer extends StatelessWidget {
   final double height;
   const LedgerCardShimmer({super.key, this.height = 72});
@@ -124,62 +125,72 @@ class LedgerCardShimmer extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
+          ShimmerBox(width: 40, height: 40, borderRadius: 8),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                ShimmerBox(width: 150, height: 16, borderRadius: 4),
-                SizedBox(height: 8),
+                ShimmerBox(width: 140, height: 15, borderRadius: 4),
+                SizedBox(height: 6),
                 Row(
                   children: [
-                    LedgerChipShimmer(width: 72),
-                    SizedBox(width: 8),
-                    ShimmerBox(width: 90, height: 12, borderRadius: 4),
+                    LedgerChipShimmer(width: 60, height: 18),
+                    SizedBox(width: 6),
+                    ShimmerBox(width: 80, height: 11, borderRadius: 4),
                   ],
                 ),
               ],
             ),
           ),
-          SizedBox(width: 16),
-          ShimmerBox(width: 78, height: 16, borderRadius: 4),
+          SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ShimmerBox(width: 76, height: 15, borderRadius: 4),
+              SizedBox(height: 5),
+              ShimmerBox(width: 48, height: 10, borderRadius: 4),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-/// Скелетон метрик (сводки) для верхней части экранов.
+/// Скелетон сводных метрик (две карточки в строке).
 class LedgerStatsShimmer extends StatelessWidget {
   const LedgerStatsShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
         Expanded(
           flex: 2,
           child: LedgerCard(
-            padding: const EdgeInsets.all(12),
-            child: const Column(
+            padding: EdgeInsets.all(14),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ShimmerBox(width: 80, height: 10, borderRadius: 4),
+                ShimmerBox(width: 80, height: 11, borderRadius: 4),
                 SizedBox(height: 8),
-                ShimmerBox(width: 50, height: 24, borderRadius: 6),
+                ShimmerBox(width: 54, height: 24, borderRadius: 6),
               ],
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        SizedBox(width: 10),
         Expanded(
           flex: 3,
           child: LedgerCard(
-            padding: const EdgeInsets.all(12),
-            child: const Column(
+            padding: EdgeInsets.all(14),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ShimmerBox(width: 100, height: 10, borderRadius: 4),
+                ShimmerBox(width: 100, height: 11, borderRadius: 4),
                 SizedBox(height: 8),
                 ShimmerBox(width: 110, height: 24, borderRadius: 6),
               ],
@@ -187,6 +198,93 @@ class LedgerStatsShimmer extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Скелетон навигационной сетки 2x2 для Hub-экранов.
+class LedgerHubGridShimmer extends StatelessWidget {
+  const LedgerHubGridShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildTile()),
+            const SizedBox(width: 10),
+            Expanded(child: _buildTile()),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(child: _buildTile()),
+            const SizedBox(width: 10),
+            Expanded(child: _buildTile()),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTile() {
+    return const LedgerCard(
+      padding: EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ShimmerBox(width: 32, height: 32, borderRadius: 8),
+              LedgerChipShimmer(width: 44, height: 18),
+            ],
+          ),
+          SizedBox(height: 12),
+          ShimmerBox(width: 90, height: 14, borderRadius: 4),
+          SizedBox(height: 4),
+          ShimmerBox(width: 110, height: 11, borderRadius: 4),
+        ],
+      ),
+    );
+  }
+}
+
+/// Скелетон Hero-карточки сводки.
+class LedgerHeroCardShimmer extends StatelessWidget {
+  final bool hasActionButton;
+  const LedgerHeroCardShimmer({super.key, this.hasActionButton = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return LedgerCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              ShimmerBox(width: 140, height: 13, borderRadius: 4),
+              LedgerChipShimmer(width: 72, height: 20),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const ShimmerBox(width: 190, height: 26, borderRadius: 6),
+          const SizedBox(height: 6),
+          const ShimmerBox(width: 160, height: 12, borderRadius: 4),
+          if (hasActionButton) ...[
+            const SizedBox(height: 12),
+            const ShimmerBox(
+              width: double.infinity,
+              height: 44,
+              borderRadius: 8,
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -210,7 +308,7 @@ class LedgerListShimmer extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         itemCount: showStatsHeader ? itemCount + 1 : itemCount,
         separatorBuilder: (context, index) =>
-            SizedBox(height: (showStatsHeader && index == 0) ? 16 : 12),
+            SizedBox(height: (showStatsHeader && index == 0) ? 16 : 10),
         itemBuilder: (context, index) {
           if (showStatsHeader && index == 0) {
             return const LedgerStatsShimmer();
@@ -230,29 +328,31 @@ class LedgerAdviceShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return LedgerCard(
-      borderColor: colors.accentAmber,
-      padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+      borderColor: colors.border,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              ShimmerBox(width: 20, height: 20, borderRadius: 4),
+              ShimmerBox(width: 22, height: 22, borderRadius: 6),
               SizedBox(width: 8),
-              ShimmerBox(width: 110, height: 16, borderRadius: 4),
+              ShimmerBox(width: 120, height: 15, borderRadius: 4),
+              Spacer(),
+              ShimmerBox(width: 20, height: 20, borderRadius: 4),
             ],
           ),
           SizedBox(height: 12),
           ShimmerBox(width: double.infinity, height: 12, borderRadius: 4),
           SizedBox(height: 6),
-          ShimmerBox(width: 220, height: 12, borderRadius: 4),
+          ShimmerBox(width: 240, height: 12, borderRadius: 4),
         ],
       ),
     );
   }
 }
 
-/// Точный скелетон обзора дашборда: советы, метрики, прибыль, курсы, график.
+/// Точный скелетон обзора дашборда: советы, ключевые метрики, продажи, курсы, график.
 class DashboardOverviewShimmer extends StatelessWidget {
   const DashboardOverviewShimmer({super.key});
 
@@ -266,9 +366,9 @@ class DashboardOverviewShimmer extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const LedgerAdviceShimmer(),
-            const SizedBox(height: 20),
-            const ShimmerBox(width: 170, height: 16, borderRadius: 4),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            const ShimmerBox(width: 170, height: 15, borderRadius: 4),
+            const SizedBox(height: 10),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -286,13 +386,13 @@ class DashboardOverviewShimmer extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ShimmerBox(width: 100, height: 12, borderRadius: 4),
+                      ShimmerBox(width: 90, height: 11, borderRadius: 4),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 110, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 110, height: 18, borderRadius: 4),
                           SizedBox(height: 4),
-                          ShimmerBox(width: 48, height: 10, borderRadius: 4),
+                          ShimmerBox(width: 50, height: 10, borderRadius: 4),
                         ],
                       ),
                     ],
@@ -301,7 +401,9 @@ class DashboardOverviewShimmer extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
+            // Sales & profit card skeleton
             const LedgerCard(
+              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -309,29 +411,29 @@ class DashboardOverviewShimmer extends StatelessWidget {
                     children: [
                       ShimmerBox(width: 20, height: 20, borderRadius: 4),
                       SizedBox(width: 8),
-                      ShimmerBox(width: 140, height: 16, borderRadius: 4),
-                    ],
-                  ),
-                  SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-                      SizedBox(width: 6),
-                      Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-                      SizedBox(width: 6),
-                      Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+                      ShimmerBox(width: 140, height: 15, borderRadius: 4),
                     ],
                   ),
                   SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+                      SizedBox(width: 6),
+                      Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+                      SizedBox(width: 6),
+                      Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+                    ],
+                  ),
+                  SizedBox(height: 14),
                   Row(
                     children: [
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ShimmerBox(width: 70, height: 10, borderRadius: 4),
+                            ShimmerBox(width: 70, height: 11, borderRadius: 4),
                             SizedBox(height: 4),
-                            ShimmerBox(width: 90, height: 16, borderRadius: 4),
+                            ShimmerBox(width: 95, height: 17, borderRadius: 4),
                           ],
                         ),
                       ),
@@ -339,9 +441,9 @@ class DashboardOverviewShimmer extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ShimmerBox(width: 70, height: 10, borderRadius: 4),
+                            ShimmerBox(width: 70, height: 11, borderRadius: 4),
                             SizedBox(height: 4),
-                            ShimmerBox(width: 90, height: 16, borderRadius: 4),
+                            ShimmerBox(width: 95, height: 17, borderRadius: 4),
                           ],
                         ),
                       ),
@@ -351,39 +453,58 @@ class DashboardOverviewShimmer extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
+            // Currency board card skeleton
             const LedgerCard(
+              padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
-                      SizedBox(width: 8),
-                      ShimmerBox(width: 120, height: 16, borderRadius: 4),
+                      Row(
+                        children: [
+                          ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                          SizedBox(width: 8),
+                          ShimmerBox(width: 130, height: 15, borderRadius: 4),
+                        ],
+                      ),
+                      ShimmerBox(width: 60, height: 11, borderRadius: 4),
                     ],
                   ),
                   SizedBox(height: 12),
-                  ShimmerBox(
-                    width: double.infinity,
-                    height: 120,
-                    borderRadius: 8,
+                  Row(
+                    children: [
+                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                      SizedBox(width: 8),
+                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                      SizedBox(width: 8),
+                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            const ShimmerBox(width: 210, height: 16, borderRadius: 4),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            // Cash flow chart card skeleton
+            const ShimmerBox(width: 210, height: 15, borderRadius: 4),
+            const SizedBox(height: 10),
             const LedgerCard(
               padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ShimmerBox(width: 130, height: 16, borderRadius: 4),
+                  ShimmerBox(width: 140, height: 15, borderRadius: 4),
                   SizedBox(height: 16),
                   ShimmerBox(
                     width: double.infinity,
-                    height: 180,
+                    height: 160,
                     borderRadius: 8,
                   ),
                 ],
@@ -396,7 +517,7 @@ class DashboardOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон кассы: поиск, фильтры и строки операций без аватара.
+/// Скелетон кассы: поиск, фильтры и список операций.
 class CashOverviewShimmer extends StatelessWidget {
   const CashOverviewShimmer({super.key});
 
@@ -414,16 +535,16 @@ class CashOverviewShimmer extends StatelessWidget {
             physics: NeverScrollableScrollPhysics(),
             child: Row(
               children: [
-                ShimmerBox(width: 145, height: 40, borderRadius: 12),
+                ShimmerBox(width: 135, height: 38, borderRadius: 8),
                 SizedBox(width: 8),
-                ShimmerBox(width: 180, height: 40, borderRadius: 12),
+                ShimmerBox(width: 160, height: 38, borderRadius: 8),
                 SizedBox(width: 8),
-                ShimmerBox(width: 150, height: 40, borderRadius: 12),
+                ShimmerBox(width: 140, height: 38, borderRadius: 8),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          ...List.generate(7, (index) {
+          const SizedBox(height: 10),
+          ...List.generate(6, (index) {
             return const Padding(
               padding: EdgeInsets.only(bottom: 6),
               child: LedgerCardShimmer(),
@@ -435,7 +556,7 @@ class CashOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон кадров: ФИО, должность, телефон, статус-пилюля, зарплата.
+/// Скелетон кадров: список сотрудников с аватаром, должностью и зарплатой.
 class HrOverviewShimmer extends StatelessWidget {
   const HrOverviewShimmer({super.key});
 
@@ -446,30 +567,32 @@ class HrOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return const LedgerCard(
             padding: EdgeInsets.all(14),
             child: Row(
               children: [
+                ShimmerBox(width: 42, height: 42, borderRadius: 999),
+                SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ShimmerBox(width: 150, height: 16, borderRadius: 4),
+                      ShimmerBox(width: 140, height: 15, borderRadius: 4),
                       SizedBox(height: 6),
-                      ShimmerBox(width: 180, height: 12, borderRadius: 4),
+                      ShimmerBox(width: 170, height: 12, borderRadius: 4),
                       SizedBox(height: 6),
-                      ShimmerBox(width: 110, height: 10, borderRadius: 4),
+                      ShimmerBox(width: 100, height: 10, borderRadius: 4),
                     ],
                   ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    LedgerChipShimmer(width: 72),
+                    LedgerChipShimmer(width: 68),
                     SizedBox(height: 8),
-                    ShimmerBox(width: 80, height: 16, borderRadius: 4),
+                    ShimmerBox(width: 76, height: 15, borderRadius: 4),
                   ],
                 ),
               ],
@@ -481,7 +604,7 @@ class HrOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон CRM: три ячейки сводки, поиск, уровни, карточки клиентов.
+/// Скелетон CRM: три ячейки сводки, поиск, сегменты, карточки клиентов.
 class CrmOverviewShimmer extends StatelessWidget {
   const CrmOverviewShimmer({super.key});
 
@@ -506,38 +629,33 @@ class CrmOverviewShimmer extends StatelessWidget {
           const SizedBox(height: 10),
           const Row(
             children: [
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           ...List.generate(5, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.only(bottom: 8),
               child: LedgerCard(
                 padding: EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Expanded(
-                          child: ShimmerBox(
-                            width: 140,
-                            height: 16,
-                            borderRadius: 4,
-                          ),
-                        ),
-                        LedgerChipShimmer(width: 70),
+                        ShimmerBox(width: 140, height: 15, borderRadius: 4),
+                        LedgerChipShimmer(width: 68),
                       ],
                     ),
                     SizedBox(height: 8),
                     ShimmerBox(width: 110, height: 12, borderRadius: 4),
                     SizedBox(height: 6),
-                    ShimmerBox(width: 80, height: 16, borderRadius: 4),
+                    ShimmerBox(width: 80, height: 15, borderRadius: 4),
                   ],
                 ),
               ),
@@ -554,9 +672,9 @@ class _CrmStatCellShimmer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LedgerCard(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      child: const Column(
+    return const LedgerCard(
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ShimmerBox(width: 56, height: 10, borderRadius: 4),
@@ -568,7 +686,7 @@ class _CrmStatCellShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон фин. операций: заголовок и карточки банков (имя + пилюля).
+/// Скелетон фин. операций: заголовок и карточки счетов/переводов.
 class FinOpsOverviewShimmer extends StatelessWidget {
   const FinOpsOverviewShimmer({super.key});
 
@@ -579,36 +697,46 @@ class FinOpsOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          const ShimmerBox(width: 180, height: 20, borderRadius: 4),
-          const SizedBox(height: 12),
-          ...List.generate(4, (index) {
+          const ShimmerBox(width: 160, height: 16, borderRadius: 4),
+          const SizedBox(height: 10),
+          ...List.generate(3, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 10),
               child: LedgerCard(
+                padding: EdgeInsets.all(14),
                 child: Row(
                   children: [
+                    ShimmerBox(width: 38, height: 38, borderRadius: 8),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 140, height: 16, borderRadius: 4),
-                          SizedBox(height: 6),
-                          LedgerChipShimmer(width: 70),
+                          ShimmerBox(width: 130, height: 15, borderRadius: 4),
+                          SizedBox(height: 5),
+                          ShimmerBox(width: 90, height: 11, borderRadius: 4),
                         ],
                       ),
                     ),
-                    ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        LedgerChipShimmer(width: 50, height: 20),
+                        SizedBox(height: 5),
+                        ShimmerBox(width: 80, height: 15, borderRadius: 4),
+                      ],
+                    ),
                   ],
                 ),
               ),
             );
           }),
-          const SizedBox(height: 4),
-          const ShimmerBox(width: 200, height: 20, borderRadius: 4),
           const SizedBox(height: 12),
-          ...List.generate(3, (index) {
+          const ShimmerBox(width: 180, height: 16, borderRadius: 4),
+          const SizedBox(height: 10),
+          ...List.generate(4, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 8),
               child: LedgerCardShimmer(),
             );
           }),
@@ -618,7 +746,7 @@ class FinOpsOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон стратегии: сегменты матриц, кнопка генерации, раскрываемые блоки.
+/// Скелетон стратегии: сегменты, кнопка анализа, раскрываемые блоки.
 class StrategyOverviewShimmer extends StatelessWidget {
   const StrategyOverviewShimmer({super.key});
 
@@ -638,14 +766,14 @@ class StrategyOverviewShimmer extends StatelessWidget {
               Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           const ShimmerBox(
             width: double.infinity,
             height: 48,
             borderRadius: 12,
           ),
           const SizedBox(height: 16),
-          const ShimmerBox(width: 180, height: 12, borderRadius: 4),
+          const ShimmerBox(width: 170, height: 14, borderRadius: 4),
           const SizedBox(height: 10),
           ...List.generate(4, (index) {
             return const Padding(
@@ -658,13 +786,13 @@ class StrategyOverviewShimmer extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 160, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 160, height: 15, borderRadius: 4),
                           SizedBox(height: 6),
-                          ShimmerBox(width: 110, height: 12, borderRadius: 4),
+                          ShimmerBox(width: 110, height: 11, borderRadius: 4),
                         ],
                       ),
                     ),
-                    ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                    ShimmerBox(width: 20, height: 20, borderRadius: 4),
                   ],
                 ),
               ),
@@ -676,7 +804,7 @@ class StrategyOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон задач: шапка счётчика и строки задач.
+/// Скелетон задач: поиск + просрочено, фильтры проектов, карточки задач.
 class TasksOverviewShimmer extends StatelessWidget {
   const TasksOverviewShimmer({super.key});
 
@@ -685,47 +813,68 @@ class TasksOverviewShimmer extends StatelessWidget {
     return LedgerShimmer(
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
         children: [
-          const LedgerCard(
-            padding: EdgeInsets.all(16),
+          const Row(
+            children: [
+              Expanded(child: ShimmerBox(height: 44, borderRadius: 8)),
+              SizedBox(width: 8),
+              ShimmerBox(width: 110, height: 44, borderRadius: 8),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: NeverScrollableScrollPhysics(),
             child: Row(
               children: [
-                ShimmerBox(width: 140, height: 16, borderRadius: 4),
-                Spacer(),
-                LedgerChipShimmer(width: 48),
+                ShimmerBox(width: 100, height: 32, borderRadius: 999),
+                SizedBox(width: 8),
+                ShimmerBox(width: 120, height: 32, borderRadius: 999),
+                SizedBox(width: 8),
+                ShimmerBox(width: 90, height: 32, borderRadius: 999),
+                SizedBox(width: 8),
+                ShimmerBox(width: 110, height: 32, borderRadius: 999),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          ...List.generate(6, (index) {
+          const SizedBox(height: 14),
+          const ShimmerBox(width: 150, height: 14, borderRadius: 4),
+          const SizedBox(height: 8),
+          ...List.generate(5, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 8),
               child: LedgerCard(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
+                padding: EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ShimmerBox(width: 180, height: 16, borderRadius: 4),
-                          SizedBox(height: 8),
-                          Row(
-                            children: [
-                              LedgerChipShimmer(width: 56),
-                              SizedBox(width: 8),
-                              ShimmerBox(
-                                width: 80,
-                                height: 12,
-                                borderRadius: 4,
-                              ),
-                            ],
+                    Row(
+                      children: [
+                        ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: ShimmerBox(
+                            width: 160,
+                            height: 15,
+                            borderRadius: 4,
                           ),
+                        ),
+                        SizedBox(width: 8),
+                        LedgerChipShimmer(width: 58, height: 20),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Padding(
+                      padding: EdgeInsets.only(left: 28),
+                      child: Row(
+                        children: [
+                          ShimmerBox(width: 80, height: 11, borderRadius: 4),
+                          SizedBox(width: 12),
+                          ShimmerBox(width: 64, height: 11, borderRadius: 4),
                         ],
                       ),
                     ),
-                    ShimmerBox(width: 20, height: 20, borderRadius: 4),
                   ],
                 ),
               ),
@@ -749,10 +898,10 @@ class WarehouseOverviewShimmer extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const LedgerStatsShimmer(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           ...List.generate(6, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 8),
               child: LedgerCard(
                 padding: EdgeInsets.all(14),
                 child: Row(
@@ -761,13 +910,20 @@ class WarehouseOverviewShimmer extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 150, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 150, height: 15, borderRadius: 4),
                           SizedBox(height: 6),
-                          ShimmerBox(width: 90, height: 12, borderRadius: 4),
+                          ShimmerBox(width: 90, height: 11, borderRadius: 4),
                         ],
                       ),
                     ),
-                    ShimmerBox(width: 72, height: 16, borderRadius: 4),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        LedgerChipShimmer(width: 68),
+                        SizedBox(height: 6),
+                        ShimmerBox(width: 76, height: 14, borderRadius: 4),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -790,7 +946,7 @@ class InboxOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          const ShimmerBox(width: 140, height: 12, borderRadius: 4),
+          const ShimmerBox(width: 130, height: 12, borderRadius: 4),
           const SizedBox(height: 12),
           ...List.generate(6, (index) {
             return const Padding(
@@ -801,7 +957,7 @@ class InboxOverviewShimmer extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: EdgeInsets.only(top: 6),
+                      padding: EdgeInsets.only(top: 5),
                       child: ShimmerBox(width: 8, height: 8, borderRadius: 4),
                     ),
                     SizedBox(width: 12),
@@ -809,7 +965,7 @@ class InboxOverviewShimmer extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 170, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 160, height: 15, borderRadius: 4),
                           SizedBox(height: 6),
                           ShimmerBox(
                             width: double.infinity,
@@ -817,7 +973,7 @@ class InboxOverviewShimmer extends StatelessWidget {
                             borderRadius: 4,
                           ),
                           SizedBox(height: 6),
-                          ShimmerBox(width: 110, height: 10, borderRadius: 4),
+                          ShimmerBox(width: 90, height: 10, borderRadius: 4),
                         ],
                       ),
                     ),
@@ -845,39 +1001,41 @@ class MetaOverviewShimmer extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
             ],
           ),
           const SizedBox(height: 12),
           ...List.generate(6, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.only(bottom: 8),
               child: LedgerCard(
                 padding: EdgeInsets.all(14),
                 child: Row(
                   children: [
+                    ShimmerBox(width: 40, height: 40, borderRadius: 999),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 140, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 130, height: 15, borderRadius: 4),
                           SizedBox(height: 6),
-                          ShimmerBox(width: 200, height: 12, borderRadius: 4),
+                          ShimmerBox(width: 180, height: 11, borderRadius: 4),
                         ],
                       ),
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        LedgerChipShimmer(width: 80),
+                        ShimmerBox(width: 36, height: 10, borderRadius: 4),
                         SizedBox(height: 6),
-                        LedgerChipShimmer(width: 28),
+                        LedgerChipShimmer(width: 22, height: 18),
                       ],
                     ),
                   ],
@@ -900,10 +1058,10 @@ class UsersOverviewShimmer extends StatelessWidget {
     return LedgerShimmer(
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         children: [
           const Padding(
-            padding: EdgeInsets.only(bottom: 10, top: 8),
+            padding: EdgeInsets.only(bottom: 10, top: 4),
             child: ShimmerBox(
               width: double.infinity,
               height: 44,
@@ -915,23 +1073,21 @@ class UsersOverviewShimmer extends StatelessWidget {
               padding: EdgeInsets.only(bottom: 8),
               child: LedgerCard(
                 padding: EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ShimmerBox(
-                            width: 140,
-                            height: 16,
-                            borderRadius: 4,
-                          ),
-                        ),
-                        LedgerChipShimmer(width: 80),
-                      ],
+                    ShimmerBox(width: 38, height: 38, borderRadius: 999),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(width: 140, height: 15, borderRadius: 4),
+                          SizedBox(height: 5),
+                          ShimmerBox(width: 110, height: 11, borderRadius: 4),
+                        ],
+                      ),
                     ),
-                    SizedBox(height: 6),
-                    ShimmerBox(width: 120, height: 12, borderRadius: 4),
+                    LedgerChipShimmer(width: 76),
                   ],
                 ),
               ),
@@ -954,28 +1110,30 @@ class IntegrationsOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          const ShimmerBox(width: 180, height: 16, borderRadius: 4),
+          const ShimmerBox(width: 170, height: 15, borderRadius: 4),
           const SizedBox(height: 10),
           ...List.generate(4, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+              padding: EdgeInsets.only(bottom: 10),
               child: LedgerCard(
                 padding: EdgeInsets.all(16),
                 child: Row(
                   children: [
+                    ShimmerBox(width: 40, height: 40, borderRadius: 8),
+                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 130, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 120, height: 15, borderRadius: 4),
                           SizedBox(height: 6),
                           Row(
                             children: [
-                              ShimmerBox(width: 8, height: 8, borderRadius: 4),
+                              ShimmerBox(width: 6, height: 6, borderRadius: 4),
                               SizedBox(width: 6),
                               ShimmerBox(
-                                width: 70,
-                                height: 12,
+                                width: 64,
+                                height: 11,
                                 borderRadius: 4,
                               ),
                             ],
@@ -1006,28 +1164,24 @@ class AuditOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return const LedgerCard(
+            padding: EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: ShimmerBox(
-                        width: 180,
-                        height: 16,
-                        borderRadius: 4,
-                      ),
-                    ),
-                    ShimmerBox(width: 40, height: 12, borderRadius: 4),
+                    ShimmerBox(width: 170, height: 15, borderRadius: 4),
+                    ShimmerBox(width: 44, height: 11, borderRadius: 4),
                   ],
                 ),
                 SizedBox(height: 6),
-                ShimmerBox(width: 140, height: 12, borderRadius: 4),
+                ShimmerBox(width: 120, height: 11, borderRadius: 4),
                 SizedBox(height: 8),
-                ShimmerBox(width: double.infinity, height: 12, borderRadius: 4),
+                ShimmerBox(width: double.infinity, height: 11, borderRadius: 4),
               ],
             ),
           );
@@ -1048,26 +1202,22 @@ class ChecklistsOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: 3,
-        separatorBuilder: (_, _) => const SizedBox(height: 16),
+        separatorBuilder: (_, _) => const SizedBox(height: 14),
         itemBuilder: (context, index) {
           return LedgerCard(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: ShimmerBox(
-                        width: 160,
-                        height: 18,
-                        borderRadius: 4,
-                      ),
-                    ),
-                    LedgerChipShimmer(width: 72),
+                    ShimmerBox(width: 150, height: 16, borderRadius: 4),
+                    LedgerChipShimmer(width: 68),
                   ],
                 ),
                 const SizedBox(height: 6),
-                const ShimmerBox(width: 180, height: 12, borderRadius: 4),
+                const ShimmerBox(width: 160, height: 11, borderRadius: 4),
                 const SizedBox(height: 12),
                 const ShimmerBox(
                   width: double.infinity,
@@ -1077,13 +1227,13 @@ class ChecklistsOverviewShimmer extends StatelessWidget {
                 const SizedBox(height: 12),
                 ...List.generate(3, (i) {
                   return const Padding(
-                    padding: EdgeInsets.only(bottom: 10),
+                    padding: EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
-                        ShimmerBox(width: 20, height: 20, borderRadius: 4),
-                        SizedBox(width: 12),
+                        ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                        SizedBox(width: 10),
                         Expanded(
-                          child: ShimmerBox(height: 14, borderRadius: 4),
+                          child: ShimmerBox(height: 13, borderRadius: 4),
                         ),
                       ],
                     ),
@@ -1109,44 +1259,40 @@ class BranchesOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: 4,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return const LedgerCard(
+            padding: EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: ShimmerBox(
-                        width: 160,
-                        height: 18,
-                        borderRadius: 4,
-                      ),
-                    ),
-                    LedgerChipShimmer(width: 70),
+                    ShimmerBox(width: 150, height: 16, borderRadius: 4),
+                    LedgerChipShimmer(width: 68),
                   ],
                 ),
                 SizedBox(height: 10),
                 Row(
                   children: [
                     ShimmerBox(width: 16, height: 16, borderRadius: 4),
-                    SizedBox(width: 6),
-                    Expanded(child: ShimmerBox(height: 14, borderRadius: 4)),
+                    SizedBox(width: 8),
+                    Expanded(child: ShimmerBox(height: 12, borderRadius: 4)),
                   ],
                 ),
                 SizedBox(height: 6),
                 Row(
                   children: [
                     ShimmerBox(width: 16, height: 16, borderRadius: 4),
-                    SizedBox(width: 6),
-                    ShimmerBox(width: 120, height: 14, borderRadius: 4),
+                    SizedBox(width: 8),
+                    ShimmerBox(width: 120, height: 12, borderRadius: 4),
                   ],
                 ),
                 SizedBox(height: 10),
-                Divider(),
-                SizedBox(height: 6),
-                ShimmerBox(width: 110, height: 12, borderRadius: 4),
+                Divider(height: 1),
+                SizedBox(height: 8),
+                ShimmerBox(width: 100, height: 11, borderRadius: 4),
               ],
             ),
           );
@@ -1169,11 +1315,11 @@ class LegalOverviewShimmer extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                ShimmerBox(width: 140, height: 32, borderRadius: 8),
+                ShimmerBox(width: 130, height: 32, borderRadius: 8),
                 SizedBox(width: 8),
-                ShimmerBox(width: 160, height: 32, borderRadius: 8),
+                ShimmerBox(width: 150, height: 32, borderRadius: 8),
                 SizedBox(width: 8),
-                ShimmerBox(width: 120, height: 32, borderRadius: 8),
+                ShimmerBox(width: 110, height: 32, borderRadius: 8),
               ],
             ),
           ),
@@ -1184,21 +1330,21 @@ class LegalOverviewShimmer extends StatelessWidget {
               children: const [
                 Align(
                   alignment: Alignment.centerRight,
-                  child: ShimmerBox(width: 220, height: 44, borderRadius: 12),
+                  child: ShimmerBox(width: 200, height: 42, borderRadius: 12),
                 ),
                 SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: ShimmerBox(
                     width: double.infinity,
-                    height: 72,
+                    height: 76,
                     borderRadius: 12,
                   ),
                 ),
                 SizedBox(height: 12),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: ShimmerBox(width: 180, height: 40, borderRadius: 12),
+                  child: ShimmerBox(width: 170, height: 38, borderRadius: 12),
                 ),
               ],
             ),
@@ -1209,7 +1355,7 @@ class LegalOverviewShimmer extends StatelessWidget {
               children: [
                 Expanded(child: ShimmerBox(height: 44, borderRadius: 8)),
                 SizedBox(width: 8),
-                ShimmerBox(width: 40, height: 40, borderRadius: 8),
+                ShimmerBox(width: 44, height: 44, borderRadius: 8),
               ],
             ),
           ),
@@ -1234,13 +1380,13 @@ class ReportsOverviewShimmer extends StatelessWidget {
             padding: EdgeInsets.all(12),
             child: Column(
               children: [
-                ShimmerBox(width: double.infinity, height: 40, borderRadius: 8),
+                ShimmerBox(width: double.infinity, height: 38, borderRadius: 8),
                 SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(child: ShimmerBox(height: 40, borderRadius: 8)),
+                    Expanded(child: ShimmerBox(height: 38, borderRadius: 8)),
                     SizedBox(width: 8),
-                    Expanded(child: ShimmerBox(height: 40, borderRadius: 8)),
+                    Expanded(child: ShimmerBox(height: 38, borderRadius: 8)),
                   ],
                 ),
               ],
@@ -1250,33 +1396,34 @@ class ReportsOverviewShimmer extends StatelessWidget {
           const LedgerCard(
             padding: EdgeInsets.all(14),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ShimmerBox(width: 140, height: 16, borderRadius: 4),
-                Spacer(),
-                ShimmerBox(width: 90, height: 20, borderRadius: 4),
+                ShimmerBox(width: 130, height: 15, borderRadius: 4),
+                ShimmerBox(width: 85, height: 18, borderRadius: 4),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          const ShimmerBox(width: 160, height: 18, borderRadius: 4),
+          const SizedBox(height: 14),
+          const ShimmerBox(width: 150, height: 16, borderRadius: 4),
           const SizedBox(height: 10),
           ...List.generate(4, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.only(bottom: 8),
               child: LedgerCard(
+                padding: EdgeInsets.all(14),
                 child: Row(
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 110, height: 16, borderRadius: 4),
+                          ShimmerBox(width: 110, height: 15, borderRadius: 4),
                           SizedBox(height: 4),
-                          ShimmerBox(width: 90, height: 12, borderRadius: 4),
+                          ShimmerBox(width: 80, height: 11, borderRadius: 4),
                         ],
                       ),
                     ),
-                    LedgerChipShimmer(width: 70),
+                    LedgerChipShimmer(width: 68),
                   ],
                 ),
               ),
@@ -1299,14 +1446,21 @@ class MarketingCampaignsShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: 5,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return const LedgerCard(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(14),
             child: Row(
               children: [
                 Expanded(
-                  child: ShimmerBox(width: 160, height: 16, borderRadius: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(width: 150, height: 15, borderRadius: 4),
+                      SizedBox(height: 4),
+                      ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                    ],
+                  ),
                 ),
                 SizedBox(width: 8),
                 LedgerChipShimmer(width: 64),
@@ -1332,26 +1486,26 @@ class MarketingPostsShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: 4,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return const LedgerCard(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    LedgerChipShimmer(width: 70),
-                    Spacer(),
-                    LedgerChipShimmer(width: 80),
+                    LedgerChipShimmer(width: 68),
+                    LedgerChipShimmer(width: 76),
                   ],
                 ),
                 SizedBox(height: 10),
-                ShimmerBox(width: double.infinity, height: 14, borderRadius: 4),
+                ShimmerBox(width: double.infinity, height: 13, borderRadius: 4),
                 SizedBox(height: 6),
-                ShimmerBox(width: 220, height: 14, borderRadius: 4),
-                SizedBox(height: 16),
-                ShimmerBox(width: 120, height: 12, borderRadius: 4),
+                ShimmerBox(width: 210, height: 13, borderRadius: 4),
+                SizedBox(height: 12),
+                ShimmerBox(width: 110, height: 11, borderRadius: 4),
               ],
             ),
           );
@@ -1361,7 +1515,7 @@ class MarketingPostsShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон вкладок дашборда (P&L и подобные списки).
+/// Скелетон вкладок дашборда (P&L и подобные таблицы/списки).
 class DashboardSectionShimmer extends StatelessWidget {
   const DashboardSectionShimmer({super.key});
 
@@ -1372,7 +1526,7 @@ class DashboardSectionShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          const ShimmerBox(width: 80, height: 16, borderRadius: 4),
+          const ShimmerBox(width: 90, height: 15, borderRadius: 4),
           const SizedBox(height: 8),
           LedgerCard(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1384,18 +1538,158 @@ class DashboardSectionShimmer extends StatelessWidget {
                     child: Row(
                       children: [
                         Expanded(
-                          child: ShimmerBox(height: 14, borderRadius: 4),
+                          child: ShimmerBox(height: 13, borderRadius: 4),
                         ),
                         SizedBox(width: 12),
-                        ShimmerBox(width: 70, height: 14, borderRadius: 4),
+                        ShimmerBox(width: 68, height: 13, borderRadius: 4),
                         SizedBox(width: 8),
-                        ShimmerBox(width: 40, height: 12, borderRadius: 4),
+                        ShimmerBox(width: 38, height: 11, borderRadius: 4),
                       ],
                     ),
                   );
                 }),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Скелетон экрана «Ещё» (профиль, настройки, модули).
+class MoreOverviewShimmer extends StatelessWidget {
+  const MoreOverviewShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LedgerShimmer(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Profile card
+          const LedgerCard(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                ShimmerBox(width: 48, height: 48, borderRadius: 999),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(width: 140, height: 17, borderRadius: 4),
+                      SizedBox(height: 4),
+                      ShimmerBox(width: 100, height: 12, borderRadius: 4),
+                      SizedBox(height: 4),
+                      ShimmerBox(width: 80, height: 10, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const ShimmerBox(width: 160, height: 14, borderRadius: 4),
+          const SizedBox(height: 8),
+          // Biometrics card
+          const LedgerCard(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                SizedBox(width: 12),
+                Expanded(
+                  child: ShimmerBox(width: 120, height: 14, borderRadius: 4),
+                ),
+                ShimmerBox(width: 36, height: 20, borderRadius: 999),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Language selector
+          const LedgerCard(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(width: 60, height: 14, borderRadius: 4),
+                      SizedBox(height: 4),
+                      ShimmerBox(width: 80, height: 11, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          const ShimmerBox(width: 120, height: 14, borderRadius: 4),
+          const SizedBox(height: 8),
+          // Module tiles grid
+          Row(
+            children: [
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: const [
+                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                      SizedBox(width: 8),
+                      Expanded(child: ShimmerBox(height: 13, borderRadius: 4)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: const [
+                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                      SizedBox(width: 8),
+                      Expanded(child: ShimmerBox(height: 13, borderRadius: 4)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: const [
+                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                      SizedBox(width: 8),
+                      Expanded(child: ShimmerBox(height: 13, borderRadius: 4)),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: LedgerCard(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: const [
+                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                      SizedBox(width: 8),
+                      Expanded(child: ShimmerBox(height: 13, borderRadius: 4)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1422,11 +1716,11 @@ class LedgerNamedListShimmer extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ShimmerBox(width: 160, height: 16, borderRadius: 4),
-                SizedBox(height: 8),
-                ShimmerBox(width: 220, height: 12, borderRadius: 4),
+                ShimmerBox(width: 150, height: 15, borderRadius: 4),
                 SizedBox(height: 6),
-                ShimmerBox(width: 90, height: 12, borderRadius: 4),
+                ShimmerBox(width: 210, height: 12, borderRadius: 4),
+                SizedBox(height: 6),
+                ShimmerBox(width: 85, height: 11, borderRadius: 4),
               ],
             ),
           );

@@ -13,7 +13,6 @@ import '../../../features/auth/domain/app_access.dart';
 import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/payk_logo.dart';
 import '../../cash/bloc/cash_bloc.dart';
@@ -196,12 +195,7 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                16 + kLiquidNavClearance,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Профиль пользователя
@@ -377,7 +371,7 @@ class _MoreScreenState extends State<MoreScreen> {
         titleKey: 'more_group_system',
         modules: [
           (
-            capability: AppCapability.network,
+            capability: AppCapability.branches,
             icon: TablerIcons.building_store,
             titleKey: 'more_network',
             route: '/network',
@@ -535,10 +529,6 @@ class _MoreScreenState extends State<MoreScreen> {
       );
     }
 
-    final storeName = authState is AuthAuthenticated
-        ? authState.storeName
-        : null;
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -561,29 +551,6 @@ class _MoreScreenState extends State<MoreScreen> {
                 Text(profileName, style: textStyles.h2Sans),
                 const SizedBox(height: 2),
                 Text(roleLabel, style: textStyles.captionSans),
-                if (storeName != null && storeName.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        TablerIcons.building_store,
-                        size: 14,
-                        color: colors.brand,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          storeName,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.brand,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
@@ -594,7 +561,6 @@ class _MoreScreenState extends State<MoreScreen> {
 
   String _roleTranslationKey(UserRole role) {
     return switch (role) {
-      UserRole.owner => 'role_owner',
       UserRole.director => 'role_director',
       UserRole.manager => 'role_manager',
       UserRole.accountant => 'role_accountant',
