@@ -173,7 +173,6 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.watch<LanguageCubit>();
-    final canWrite = _canManageHr(context);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -230,14 +229,7 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
               ),
             ),
           ),
-          if (canWrite)
-            IconButton(
-              icon: const Icon(TablerIcons.user_plus, size: 20),
-              tooltip: localeCubit.translate('hr_hire_title'),
-              color: colors.brand,
-              onPressed: () => _showAddEmployeeBottomSheet(context),
-            ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -663,18 +655,24 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
               height: 44,
               child: ElevatedButton.icon(
                 onPressed: () => _showAddEmployeeBottomSheet(context),
-                icon: const Icon(TablerIcons.user_plus, size: 18),
+                icon: const Icon(TablerIcons.user_plus, size: 17),
                 label: Text(locale.translate('hr_hire_title')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: colors.brand,
                   foregroundColor: colors.surface,
                   elevation: 0,
+                  minimumSize: const Size.fromHeight(44),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   textStyle: textStyles.bodySans.copyWith(
+                    color: colors.surface,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14.5,
+                    fontSize: 13.5,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
               ),
@@ -1039,26 +1037,16 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: colors.brand.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(icon, size: 20, color: colors.brand),
-                  ),
-                  Icon(
-                    TablerIcons.chevron_right,
-                    size: 16,
-                    color: colors.textSecondary,
-                  ),
-                ],
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 19, color: colors.brand),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 title,
                 style: textStyles.bodySans.copyWith(

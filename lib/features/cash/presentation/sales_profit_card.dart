@@ -5,6 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
@@ -121,36 +122,22 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            for (var i = 0; i < _ProfitPeriod.values.length; i++) ...[
-              if (i > 0) const SizedBox(width: 6),
-              Expanded(
-                child: ChoiceChip(
-                  label: Text(
-                    language.translate(
-                      'cash_profit_${_ProfitPeriod.values[i].name}',
-                    ),
-                  ),
-                  labelStyle: textStyles.captionSans.copyWith(
-                    color: _period == _ProfitPeriod.values[i]
-                        ? Colors.white
-                        : colors.textPrimary,
-                    fontWeight: _period == _ProfitPeriod.values[i]
-                        ? FontWeight.w500
-                        : FontWeight.w400,
-                  ),
-                  checkmarkColor: Colors.white,
-                  selected: _period == _ProfitPeriod.values[i],
-                  onSelected: (val) {
-                    if (!val) return;
-                    setState(() => _period = _ProfitPeriod.values[i]);
-                    _load();
-                  },
+        LedgerSegmentedControl<_ProfitPeriod>(
+          height: 38,
+          segments: [
+            for (var i = 0; i < _ProfitPeriod.values.length; i++)
+              LedgerSegmentItem(
+                value: _ProfitPeriod.values[i],
+                label: language.translate(
+                  'cash_profit_${_ProfitPeriod.values[i].name}',
                 ),
               ),
-            ],
           ],
+          selectedValue: _period,
+          onValueChanged: (val) {
+            setState(() => _period = val);
+            _load();
+          },
         ),
         const SizedBox(height: 12),
         if (_failed)

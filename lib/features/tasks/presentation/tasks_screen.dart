@@ -589,24 +589,33 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
             Row(
               children: [
                 Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showPersonalTaskSheet(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.brand,
-                      foregroundColor: colors.surface,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: () => _showPersonalTaskSheet(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colors.brand,
+                        foregroundColor: colors.surface,
+                        elevation: 0,
+                        minimumSize: const Size.fromHeight(44),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                    ),
-                    icon: const Icon(TablerIcons.plus, size: 18),
-                    label: Text(
-                      language.translate('tasks_fab_personal'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                      icon: const Icon(TablerIcons.plus, size: 17),
+                      label: Text(
+                        language.translate('tasks_fab_personal'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.surface,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
@@ -614,30 +623,41 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                 if (canManage) ...[
                   const SizedBox(width: 8),
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showAddTaskBottomSheet(
-                        context,
-                        state.projects,
-                        state.assignees,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        side: BorderSide(color: colors.border),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showAddTaskBottomSheet(
+                          context,
+                          state.projects,
+                          state.assignees,
                         ),
-                      ),
-                      icon: Icon(
-                        TablerIcons.users_group,
-                        size: 18,
-                        color: colors.textPrimary,
-                      ),
-                      label: Text(
-                        language.translate('tasks_fab_team'),
-                        style: textStyles.captionSans.copyWith(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: colors.textPrimary,
+                          backgroundColor: colors.surface,
+                          side: BorderSide(color: colors.border),
+                          minimumSize: const Size.fromHeight(44),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        icon: Icon(
+                          TablerIcons.users_group,
+                          size: 17,
                           color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                        ),
+                        label: Text(
+                          language.translate('tasks_fab_team'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -654,12 +674,10 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                   child: _buildTaskHubCard(
                     context: context,
                     icon: TablerIcons.user_check,
-                    iconColor: colors.brand,
                     title: language.translate('tasks_tab_my_tasks'),
-                    badge: '$myTasksCount шт.',
                     subtitle: myOverdueCount > 0
-                        ? '$myOverdueCount ${language.translate('tasks_overdue')}'
-                        : language.translate('tasks_status_in_progress'),
+                        ? '$myTasksCount шт. ($myOverdueCount проср.)'
+                        : '$myTasksCount шт.',
                     onTap: () => _openTaskSection(context, TaskSection.myTasks),
                   ),
                 ),
@@ -668,10 +686,8 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                   child: _buildTaskHubCard(
                     context: context,
                     icon: TablerIcons.list_details,
-                    iconColor: colors.brand,
                     title: language.translate('tasks_tab_all_tasks'),
-                    badge: '$totalTasks шт.',
-                    subtitle: language.translate('tasks_all_projects'),
+                    subtitle: '$totalTasks шт.',
                     onTap: () =>
                         _openTaskSection(context, TaskSection.allTasks),
                   ),
@@ -685,9 +701,7 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                   child: _buildTaskHubCard(
                     context: context,
                     icon: TablerIcons.calendar_time,
-                    iconColor: colors.accentAmber,
                     title: language.translate('tasks_tab_calendar'),
-                    badge: 'Timeline',
                     subtitle: language.translate('tasks_calendar_gantt'),
                     onTap: () =>
                         _openTaskSection(context, TaskSection.calendar),
@@ -698,9 +712,7 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
                   child: _buildTaskHubCard(
                     context: context,
                     icon: TablerIcons.chart_dots_3,
-                    iconColor: colors.accentGreen,
                     title: language.translate('tasks_tab_analytics'),
-                    badge: 'AI CFO',
                     subtitle: language.translate('tasks_ai_insights'),
                     onTap: () =>
                         _openTaskSection(context, TaskSection.analytics),
@@ -816,80 +828,60 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
   Widget _buildTaskHubCard({
     required BuildContext context,
     required IconData icon,
-    required Color iconColor,
     required String title,
-    required String badge,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: colors.surface,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceNested,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    badge,
-                    style: textStyles.captionSans.copyWith(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11.5,
-                    ),
-                  ),
+                child: Icon(icon, size: 19, color: colors.brand),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  color: colors.textPrimary,
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: colors.textPrimary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-                fontSize: 12,
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

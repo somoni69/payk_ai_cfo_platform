@@ -219,10 +219,7 @@ class BranchesView extends StatelessWidget {
         },
         builder: (context, state) {
           if (state is BranchesLoading) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: LedgerListShimmer(itemCount: 4),
-            );
+            return const BranchesOverviewShimmer();
           }
           if (state is BranchesError) {
             return Center(child: Text(state.message));

@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
+import '../../../core/security/secure_storage_provider.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
 
@@ -16,7 +17,7 @@ class ApiNetworkRepository implements NetworkRepository {
 
   ApiNetworkRepository({ApiClient? apiClient, FlutterSecureStorage? storage})
     : _apiClient = apiClient ?? ApiClient(),
-      _storage = storage ?? const FlutterSecureStorage();
+      _storage = storage ?? AppSecureStorage.instance;
 
   @override
   Future<List<LoginStore>> fetchLoginStores() async {

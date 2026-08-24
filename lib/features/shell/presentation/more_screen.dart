@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:local_auth/local_auth.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/security/biometric_service.dart';
+import '../../../core/security/secure_storage_provider.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_event.dart';
@@ -15,7 +15,6 @@ import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
-import '../../../presentation/widgets/payk_logo.dart';
 import '../../cash/bloc/cash_bloc.dart';
 import '../../cash/bloc/cash_event.dart';
 import '../../dashboard/bloc/dashboard_bloc.dart';
@@ -24,7 +23,6 @@ import '../../tasks/bloc/tasks_bloc.dart';
 import '../../tasks/bloc/tasks_event.dart';
 import '../../warehouse/bloc/warehouse_bloc.dart';
 import '../../warehouse/bloc/warehouse_event.dart';
-import '../../notifications/presentation/notification_bell.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -34,7 +32,9 @@ class MoreScreen extends StatefulWidget {
 }
 
 class _MoreScreenState extends State<MoreScreen> {
-  final _storage = const FlutterSecureStorage();
+  final _storage = AppSecureStorage.instance;
+  final _biometricService = BiometricService();
+  BiometricKind _biometricKind = BiometricKind.none;
   bool _biometricEnabled = false;
 
   @override
@@ -70,8 +70,12 @@ class _MoreScreenState extends State<MoreScreen> {
   Future<void> _loadBiometricSettings() async {
     try {
       final value = await _storage.read(key: 'use_biometrics');
+      final kind = await _biometricService.getPrimaryBiometricKind();
       if (!mounted) return;
-      setState(() => _biometricEnabled = value == 'true');
+      setState(() {
+        _biometricEnabled = value == 'true';
+        _biometricKind = kind;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() => _biometricEnabled = false);
@@ -80,14 +84,12 @@ class _MoreScreenState extends State<MoreScreen> {
 
   void _onBiometricToggleChanged(bool val) async {
     final biometricReason = context.translate('more_biometric_reason');
+    final langCode = context.read<LanguageCubit>().state.languageCode;
 
     if (val) {
-      final localAuth = LocalAuthentication();
       try {
-        final isAvailable = await localAuth.canCheckBiometrics;
-        final isDeviceSupported = await localAuth.isDeviceSupported();
-
-        if (!isAvailable || !isDeviceSupported) {
+        final isAvailable = await _biometricService.isBiometricsAvailable();
+        if (!isAvailable) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -98,10 +100,9 @@ class _MoreScreenState extends State<MoreScreen> {
           return;
         }
 
-        final authenticated = await localAuth.authenticate(
+        final authenticated = await _biometricService.authenticate(
           localizedReason: biometricReason,
-          biometricOnly: true,
-          persistAcrossBackgrounding: true,
+          languageCode: langCode,
         );
 
         if (authenticated) {
@@ -149,6 +150,23 @@ class _MoreScreenState extends State<MoreScreen> {
     }
   }
 
+  String _getBiometricTitle(BuildContext context) {
+    return switch (_biometricKind) {
+      BiometricKind.faceId => 'Face ID',
+      BiometricKind.touchId => 'Touch ID',
+      BiometricKind.fingerprint => context.translate('biometric_fingerprint'),
+      BiometricKind.faceUnlock => context.translate('biometric_face'),
+      _ => context.translate('biometrics'),
+    };
+  }
+
+  IconData _getBiometricIcon() {
+    return switch (_biometricKind) {
+      BiometricKind.faceId || BiometricKind.faceUnlock => TablerIcons.scan,
+      _ => TablerIcons.fingerprint,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -179,31 +197,20 @@ class _MoreScreenState extends State<MoreScreen> {
               surfaceTintColor: Colors.transparent,
               elevation: 0,
               title: Text(
-                context.translate('more'),
+                context.translate('more_title'),
                 style: textStyles.h2Sans.copyWith(
                   fontSize: 19,
                   fontWeight: FontWeight.w600,
                   color: colors.textPrimary,
                 ),
               ),
-              actions: const [
-                NotificationBell(),
-                SizedBox(width: 8),
-                PaykLogo(height: 22),
-                SizedBox(width: 12),
-              ],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(1),
                 child: Container(height: 1, color: colors.border),
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                16,
-                8,
-                16,
-                16 + kLiquidNavClearance,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Профиль пользователя
@@ -211,27 +218,30 @@ class _MoreScreenState extends State<MoreScreen> {
                   const SizedBox(height: 16),
 
                   // Безопасность и настройки
-                  Text(
-                    context.translate('more_access_settings'),
-                    style: textStyles.bodySans.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15,
+                  if (_biometricKind != BiometricKind.none) ...[
+                    Text(
+                      context.translate('more_access_settings'),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.border),
+                    const SizedBox(height: 6),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: _buildSettingsToggleRow(
+                        icon: _getBiometricIcon(),
+                        title: _getBiometricTitle(context),
+                        value: _biometricEnabled,
+                        onChanged: _onBiometricToggleChanged,
+                      ),
                     ),
-                    child: _buildSettingsToggleRow(
-                      icon: TablerIcons.fingerprint,
-                      title: context.translate('biometrics'),
-                      value: _biometricEnabled,
-                      onChanged: _onBiometricToggleChanged,
-                    ),
-                  ),
+                    const SizedBox(height: 12),
+                  ],
                   const SizedBox(height: 12),
                   ExpansibleWidget<String>.selection(
                     cardPadding: const EdgeInsets.symmetric(
@@ -269,46 +279,6 @@ class _MoreScreenState extends State<MoreScreen> {
                     onSelected: (val) {
                       context.read<LanguageCubit>().setLanguage(val);
                     },
-                  ),
-                  const SizedBox(height: 12),
-
-                  InkWell(
-                    onTap: () => LedgerAiAssistantHost.open(context),
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            TablerIcons.message_circle,
-                            size: 20,
-                            color: colors.brand,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              context.translate('assistant_title'),
-                              style: textStyles.bodySans.copyWith(
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            TablerIcons.chevron_right,
-                            size: 18,
-                            color: colors.textTooltip,
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 16),
 

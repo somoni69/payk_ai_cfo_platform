@@ -2,41 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/core/theme/app_theme.dart';
 import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_card.dart';
-import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_pill.dart';
+import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_segmented_control.dart';
 
 void main() {
   group('Ledger Design System Widgets Tests', () {
-    testWidgets('LedgerPill displays text and uses given colors', (
-      WidgetTester tester,
-    ) async {
-      const pillText = 'Test Pill';
-      const bgColor = Colors.yellow;
-      const txColor = Colors.purple;
+    testWidgets(
+      'LedgerSegmentedControl displays segments and handles selection',
+      (WidgetTester tester) async {
+        int selected = 0;
+        final segments = [
+          const LedgerSegmentItem(value: 0, label: 'Day'),
+          const LedgerSegmentItem(value: 1, label: 'Month'),
+          const LedgerSegmentItem(value: 2, label: 'Year'),
+        ];
 
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: LedgerTheme.light,
-          home: const Scaffold(
-            body: LedgerPill(
-              text: pillText,
-              backgroundColor: bgColor,
-              textColor: txColor,
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: LedgerTheme.light,
+            home: Scaffold(
+              body: StatefulBuilder(
+                builder: (context, setState) {
+                  return LedgerSegmentedControl<int>(
+                    segments: segments,
+                    selectedValue: selected,
+                    onValueChanged: (v) => setState(() => selected = v),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      // Verify text is rendered
-      expect(find.text(pillText), findsOneWidget);
+        expect(find.text('Day'), findsOneWidget);
+        expect(find.text('Month'), findsOneWidget);
+        expect(find.text('Year'), findsOneWidget);
 
-      // Verify Container uses backgroundColor
-      final containerFinder = find.byType(Container);
-      expect(containerFinder, findsOneWidget);
-      final container = tester.widget<Container>(containerFinder);
-      final decoration = container.decoration as BoxDecoration;
-      expect(decoration.color, bgColor);
-      expect(decoration.borderRadius, BorderRadius.circular(999));
-    });
+        await tester.tap(find.text('Month'));
+        await tester.pumpAndSettle();
+        expect(selected, 1);
+      },
+    );
 
     testWidgets('LedgerCard displays child content and default styles', (
       WidgetTester tester,

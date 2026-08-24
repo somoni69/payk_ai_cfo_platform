@@ -15,7 +15,15 @@ class LedgerAiAssistantHost extends StatelessWidget {
 
   final Widget child;
 
-  static void open(BuildContext context) {
+  static void open(BuildContext context, {String? initialModule}) {
+    String module = initialModule ?? kAssistantGeneralModule;
+    if (initialModule == null) {
+      try {
+        final path = GoRouterState.of(context).uri.path;
+        module = assistantModuleForPath(path);
+      } catch (_) {}
+    }
+
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -26,7 +34,10 @@ class LedgerAiAssistantHost extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: SizedBox(
           height: MediaQuery.of(ctx).size.height * 0.88,
-          child: _AssistantPanel(onClose: () => Navigator.of(ctx).pop()),
+          child: _AssistantPanel(
+            initialModule: module,
+            onClose: () => Navigator.of(ctx).pop(),
+          ),
         ),
       ),
     );
@@ -81,9 +92,10 @@ class LedgerAiFloatingButton extends StatelessWidget {
 }
 
 class _AssistantPanel extends StatefulWidget {
-  const _AssistantPanel({required this.onClose});
+  const _AssistantPanel({required this.onClose, this.initialModule});
 
   final VoidCallback onClose;
+  final String? initialModule;
 
   @override
   State<_AssistantPanel> createState() => _AssistantPanelState();
@@ -97,27 +109,17 @@ class _AssistantPanelState extends State<_AssistantPanel> {
   bool _sending = false;
   String? _error;
   String? _pendingQuestion;
-  String _module = kAssistantGeneralModule;
-  String _moduleLabelKey = 'assistant_section_general';
+  late String _module;
+  late String _moduleLabelKey;
 
   @override
   void initState() {
     super.initState();
+    _module = widget.initialModule ?? kAssistantGeneralModule;
+    _moduleLabelKey = _labelKeyForModule(_module);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncModuleAndLoad();
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final path = GoRouterState.of(context).uri.path;
-    final next = assistantModuleForPath(path);
-    if (next != _module) {
-      _module = next;
-      _moduleLabelKey = _labelKeyForModule(next);
-      _syncModuleAndLoad();
-    }
   }
 
   String _presetQuestion(LanguageCubit language, String module, int n) {

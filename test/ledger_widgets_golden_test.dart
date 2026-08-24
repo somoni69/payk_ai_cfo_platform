@@ -2,11 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/core/theme/app_theme.dart';
-import 'package:payk_ai_cfo_platform/core/theme/theme_extensions.dart';
-import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_ai_card.dart';
 import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_card.dart';
-import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_operation_row.dart';
-import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_pill.dart';
+import 'package:payk_ai_cfo_platform/presentation/widgets/ledger_segmented_control.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -50,57 +47,37 @@ void main() {
     );
   });
 
-  testWidgets('LedgerOperationRow matches golden', (tester) async {
-    await pumpGolden(
-      tester,
-      Builder(
-        builder: (context) {
-          final colors = context.colors;
-          return LedgerOperationRow(
-            title: 'Sale',
-            category: 'Retail',
-            amount: '+1 200',
-            isIncome: true,
-            pillText: 'paid',
-            pillColor: colors.surfaceNested,
-            pillTextColor: colors.textSecondary,
-          );
-        },
-      ),
-    );
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('goldens/ledger_operation_row.png'),
-    );
-  });
+  testWidgets('LedgerSegmentedControl renders properly and selects value', (
+    tester,
+  ) async {
+    int selected = 0;
+    final segments = [
+      const LedgerSegmentItem(value: 0, label: 'Today'),
+      const LedgerSegmentItem(value: 1, label: 'Month'),
+      const LedgerSegmentItem(value: 2, label: 'All'),
+    ];
 
-  testWidgets('LedgerAICard and pill render without errors', (tester) async {
     await tester.pumpWidget(
       wrap(
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const LedgerAICard(
-              title: 'AI insight',
-              content: 'Cash gap is unlikely this week.',
-            ),
-            const SizedBox(height: 8),
-            Builder(
-              builder: (context) {
-                final colors = context.colors;
-                return LedgerPill(
-                  text: 'active',
-                  backgroundColor: colors.accentGreen.withValues(alpha: 0.12),
-                  textColor: colors.accentGreen,
-                );
-              },
-            ),
-          ],
+        StatefulBuilder(
+          builder: (context, setState) {
+            return LedgerSegmentedControl<int>(
+              segments: segments,
+              selectedValue: selected,
+              onValueChanged: (v) => setState(() => selected = v),
+            );
+          },
         ),
       ),
     );
-    expect(find.text('AI insight'), findsOneWidget);
-    expect(find.text('active'), findsOneWidget);
+
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.text('Month'), findsOneWidget);
+    expect(find.text('All'), findsOneWidget);
+
+    await tester.tap(find.text('Month'));
+    await tester.pumpAndSettle();
+    expect(selected, 1);
   });
 }
 

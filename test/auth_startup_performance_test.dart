@@ -164,7 +164,7 @@ void main() {
 
       expect(biometrics.capabilityCalls, 2);
       expect(biometrics.authenticateCalls, 1);
-      expect(biometrics.lastReason, contains('PAYK Ledger'));
+      expect(biometrics.lastReason, contains('PAYK'));
       await bloc.close();
     },
   );

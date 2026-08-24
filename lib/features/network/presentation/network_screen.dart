@@ -14,6 +14,7 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../bloc/network_bloc.dart';
 import '../bloc/network_event.dart';
@@ -433,61 +434,30 @@ class _NetworkViewState extends State<_NetworkView> {
   }
 
   Widget _buildPeriodSwitcher(BuildContext context, NetworkPeriod current) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
 
     final periods = [
-      (NetworkPeriod.today, language.translate('network_period_today')),
-      (NetworkPeriod.month, language.translate('network_period_month')),
-      (NetworkPeriod.all, language.translate('network_period_all')),
+      LedgerSegmentItem(
+        value: NetworkPeriod.today,
+        label: language.translate('network_period_today'),
+      ),
+      LedgerSegmentItem(
+        value: NetworkPeriod.month,
+        label: language.translate('network_period_month'),
+      ),
+      LedgerSegmentItem(
+        value: NetworkPeriod.all,
+        label: language.translate('network_period_all'),
+      ),
     ];
 
-    return Container(
+    return LedgerSegmentedControl<NetworkPeriod>(
       height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: colors.surfaceNested,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: colors.border),
-      ),
-      child: Row(
-        children: [
-          for (final (p, label) in periods)
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  if (p != current) {
-                    context.read<NetworkBloc>().add(LoadNetworkData(period: p));
-                  }
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 160),
-                  curve: Curves.easeInOut,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: p == current ? colors.surface : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: p == current
-                        ? Border.all(color: colors.border)
-                        : null,
-                  ),
-                  child: Text(
-                    label,
-                    style: textStyles.captionSans.copyWith(
-                      color: p == current ? colors.brand : colors.textSecondary,
-                      fontWeight: p == current
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+      segments: periods,
+      selectedValue: current,
+      onValueChanged: (p) {
+        context.read<NetworkBloc>().add(LoadNetworkData(period: p));
+      },
     );
   }
 

@@ -98,9 +98,12 @@ class LedgerTheme {
           backgroundColor: colors.brand,
           foregroundColor: colors.surface,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          textStyle: textStyles.bodySans.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
       ),
 
@@ -113,15 +116,19 @@ class LedgerTheme {
         ),
       ),
 
-      // Вторичные кнопки с границами: скругление 8px
+      // Вторичные кнопки с границами: скругление 8px, 1px нейтральная граница, темный текст
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: colors.brand,
+          foregroundColor: colors.textPrimary,
+          backgroundColor: colors.surface,
           elevation: 0,
-          side: BorderSide(color: colors.brand, width: 1.5),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          side: BorderSide(color: colors.border, width: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          textStyle: textStyles.bodySans.copyWith(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
         ),
       ),
 
@@ -175,6 +182,22 @@ class LedgerTheme {
         ),
         checkmarkColor: Colors.white,
         showCheckmark: true,
+      ),
+
+      // Настройка списков и раскрывающихся панелей (без серых Material 3 оверлеев)
+      listTileTheme: const ListTileThemeData(
+        tileColor: Colors.transparent,
+        selectedTileColor: Colors.transparent,
+        contentPadding: EdgeInsets.zero,
+        dense: true,
+      ),
+
+      expansionTileTheme: const ExpansionTileThemeData(
+        backgroundColor: Colors.transparent,
+        collapsedBackgroundColor: Colors.transparent,
+        tilePadding: EdgeInsets.zero,
+        shape: Border(),
+        collapsedShape: Border(),
       ),
 
       // Подключение кастомных расширений в контекст темы

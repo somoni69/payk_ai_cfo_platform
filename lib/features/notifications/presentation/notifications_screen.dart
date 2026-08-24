@@ -123,10 +123,7 @@ class _NotificationsViewState extends State<NotificationsView> {
         },
         builder: (context, state) {
           if (state is NotificationsLoading) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: InboxOverviewShimmer(),
-            );
+            return const InboxOverviewShimmer();
           }
 
           if (state is NotificationsError) {

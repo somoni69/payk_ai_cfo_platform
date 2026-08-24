@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:local_auth/local_auth.dart';
-
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
+import '../../../core/security/biometric_service.dart';
+import '../../../core/security/secure_storage_provider.dart';
 import '../data/api_auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -19,23 +19,23 @@ abstract interface class BiometricAuthenticator {
 }
 
 class DeviceBiometricAuthenticator implements BiometricAuthenticator {
-  final LocalAuthentication _localAuthentication;
+  final BiometricService _biometricService;
 
-  DeviceBiometricAuthenticator({LocalAuthentication? localAuthentication})
-    : _localAuthentication = localAuthentication ?? LocalAuthentication();
-
-  @override
-  Future<bool> canCheckBiometrics() => _localAuthentication.canCheckBiometrics;
+  DeviceBiometricAuthenticator({BiometricService? biometricService})
+    : _biometricService = biometricService ?? BiometricService();
 
   @override
-  Future<bool> isDeviceSupported() => _localAuthentication.isDeviceSupported();
+  Future<bool> canCheckBiometrics() => _biometricService.canCheckBiometrics();
+
+  @override
+  Future<bool> isDeviceSupported() => _biometricService.isDeviceSupported();
 
   @override
   Future<bool> authenticate({required String reason}) {
-    return _localAuthentication.authenticate(
+    final lang = ApiClient().interfaceLanguage;
+    return _biometricService.authenticate(
       localizedReason: reason,
-      biometricOnly: true,
-      persistAcrossBackgrounding: true,
+      languageCode: lang,
     );
   }
 }
@@ -61,7 +61,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }) : _authRepository = authRepository ?? ApiAuthRepository(),
        _biometricAuthenticator =
            biometricAuthenticator ?? DeviceBiometricAuthenticator(),
-       _storage = storage ?? const FlutterSecureStorage(),
+       _storage = storage ?? AppSecureStorage.instance,
        super(AuthInitial()) {
     on<AuthEvent>(
       _onAuthEvent,
@@ -318,8 +318,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   String _biometricReason() {
     return ApiClient().interfaceLanguage == 'tg'
-        ? 'Барои ворид шудан ба PAYK Ledger шахсияти худро тасдиқ кунед'
-        : 'Подтвердите личность для входа в PAYK Ledger';
+        ? 'Барои ворид шудан ба PAYK шахсияти худро тасдиқ кунед'
+        : 'Подтвердите личность для входа в PAYK';
   }
 
   void _emitAuthenticated(Emitter<AuthState> emit, AuthUser user) {

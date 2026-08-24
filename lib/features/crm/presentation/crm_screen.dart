@@ -317,25 +317,29 @@ class _CrmViewState extends State<CrmView> {
                 children: [
                   Expanded(
                     child: SizedBox(
-                      height: 38,
+                      height: 44,
                       child: ElevatedButton.icon(
                         onPressed: () => showCrmClientForm(context),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: colors.brand,
-                          foregroundColor: Colors.white,
+                          foregroundColor: colors.surface,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: const Size.fromHeight(44),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        icon: const Icon(TablerIcons.user_plus, size: 16),
+                        icon: const Icon(TablerIcons.user_plus, size: 17),
                         label: Text(
                           language.translate('crm_new_client'),
                           style: textStyles.captionSans.copyWith(
-                            color: Colors.white,
+                            color: colors.surface,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
+                            fontSize: 13,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -346,7 +350,7 @@ class _CrmViewState extends State<CrmView> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: SizedBox(
-                      height: 38,
+                      height: 44,
                       child: OutlinedButton.icon(
                         onPressed: () => showCrmDealForm(
                           context,
@@ -355,17 +359,29 @@ class _CrmViewState extends State<CrmView> {
                               : state.clients,
                         ),
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          foregroundColor: colors.textPrimary,
+                          backgroundColor: colors.surface,
+                          side: BorderSide(color: colors.border),
+                          minimumSize: const Size.fromHeight(44),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 10,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        icon: const Icon(TablerIcons.plus, size: 16),
+                        icon: Icon(
+                          TablerIcons.plus,
+                          size: 17,
+                          color: colors.textPrimary,
+                        ),
                         label: Text(
                           language.translate('crm_new_deal'),
                           style: textStyles.captionSans.copyWith(
+                            color: colors.textPrimary,
                             fontWeight: FontWeight.w600,
-                            fontSize: 12.5,
+                            fontSize: 13,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -375,7 +391,7 @@ class _CrmViewState extends State<CrmView> {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
             ],
 
             // 4. Section Grid Hub (2x2)

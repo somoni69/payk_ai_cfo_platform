@@ -114,6 +114,11 @@ class _MarketingViewState extends State<MarketingView> {
         },
         child: BlocBuilder<MarketingBloc, MarketingState>(
           builder: (context, state) {
+            if ((state.isCampaignsLoading || state.isPostsLoading) &&
+                state.campaigns.isEmpty &&
+                state.posts.isEmpty) {
+              return const MarketingOverviewShimmer();
+            }
             return _buildMarketingOverviewHub(context, state, canManage);
           },
         ),
@@ -384,11 +389,15 @@ class _MarketingViewState extends State<MarketingView> {
                     height: 44,
                     child: OutlinedButton.icon(
                       onPressed: () => _showCreateCampaignDialog(context),
-                      icon: const Icon(TablerIcons.plus, size: 17),
+                      icon: Icon(
+                        TablerIcons.plus,
+                        size: 17,
+                        color: colors.textPrimary,
+                      ),
                       label: Text(
                         locale.translate('marketing_action_campaign'),
                         style: textStyles.captionSans.copyWith(
-                          color: colors.brand,
+                          color: colors.textPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -396,11 +405,12 @@ class _MarketingViewState extends State<MarketingView> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.brand,
+                        foregroundColor: colors.textPrimary,
+                        backgroundColor: colors.surface,
                         side: BorderSide(color: colors.border),
                         minimumSize: const Size.fromHeight(44),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
+                          horizontal: 10,
                           vertical: 10,
                         ),
                         shape: RoundedRectangleBorder(
@@ -666,26 +676,16 @@ class _MarketingViewState extends State<MarketingView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: colors.brand.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(icon, size: 20, color: colors.brand),
-                  ),
-                  Icon(
-                    TablerIcons.chevron_right,
-                    size: 16,
-                    color: colors.textSecondary,
-                  ),
-                ],
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 19, color: colors.brand),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 title,
                 style: textStyles.bodySans.copyWith(

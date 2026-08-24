@@ -105,10 +105,7 @@ class _UsersViewState extends State<UsersView> {
         child: BlocBuilder<UsersBloc, UsersState>(
           builder: (context, state) {
             if (state.isLoading && state.users.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: LedgerListShimmer(itemCount: 5),
-              );
+              return const UsersOverviewShimmer();
             }
             return _buildUsersOverviewHub(context, state);
           },
@@ -362,11 +359,15 @@ class _UsersViewState extends State<UsersView> {
                       context,
                       UsersSection.permissionsMatrix,
                     ),
-                    icon: const Icon(TablerIcons.shield_lock, size: 17),
+                    icon: Icon(
+                      TablerIcons.shield_lock,
+                      size: 17,
+                      color: colors.textPrimary,
+                    ),
                     label: Text(
                       language.translate('users_action_matrix'),
                       style: textStyles.captionSans.copyWith(
-                        color: colors.brand,
+                        color: colors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
@@ -374,11 +375,12 @@ class _UsersViewState extends State<UsersView> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.brand,
+                      foregroundColor: colors.textPrimary,
+                      backgroundColor: colors.surface,
                       side: BorderSide(color: colors.border),
                       minimumSize: const Size.fromHeight(44),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 10,
                         vertical: 10,
                       ),
                       shape: RoundedRectangleBorder(
@@ -611,26 +613,16 @@ class _UsersViewState extends State<UsersView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: colors.brand.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(icon, size: 20, color: colors.brand),
-                  ),
-                  Icon(
-                    TablerIcons.chevron_right,
-                    size: 16,
-                    color: colors.textSecondary,
-                  ),
-                ],
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 19, color: colors.brand),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 title,
                 style: textStyles.bodySans.copyWith(
@@ -1139,7 +1131,7 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
             ],
             const SizedBox(height: 14),
             Text(
-              language.translate('users_matrix_legend_title'),
+              language.translate('users_matrix_roles_title'),
               style: textStyles.captionSans.copyWith(
                 fontWeight: FontWeight.w600,
                 color: colors.textSecondary,
@@ -1175,6 +1167,64 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
                     ),
                   );
                 }).toList(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        TablerIcons.info_circle,
+                        size: 16,
+                        color: colors.brand,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        language.translate('users_matrix_legend_title'),
+                        style: textStyles.captionSans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 6,
+                    children: [
+                      _buildLegendBadge(
+                        'R',
+                        language.translate('users_matrix_read'),
+                      ),
+                      _buildLegendBadge(
+                        'C',
+                        language.translate('users_matrix_create'),
+                      ),
+                      _buildLegendBadge(
+                        'U',
+                        language.translate('users_matrix_update'),
+                      ),
+                      _buildLegendBadge(
+                        'D',
+                        language.translate('users_matrix_delete'),
+                      ),
+                      _buildLegendBadge(
+                        'A',
+                        language.translate('users_matrix_action'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 14),
@@ -1320,6 +1370,44 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildLegendBadge(String letter, String label) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: colors.brand.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(color: colors.brand.withValues(alpha: 0.25)),
+          ),
+          child: Text(
+            letter,
+            style: textStyles.smallSans.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 10.5,
+              color: colors.brand,
+            ),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: textStyles.captionSans.copyWith(
+            color: colors.textSecondary,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../security/secure_storage_provider.dart';
 import 'expiring_request_cache.dart';
 import 'safe_retry_interceptor.dart';
 
@@ -14,7 +15,7 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   late final Dio dio;
-  final _storage = const FlutterSecureStorage();
+  final _storage = AppSecureStorage.instance;
 
   static const String _tokenKey = 'jwt_access_token';
   static const String _refreshTokenKey = 'jwt_refresh_token';

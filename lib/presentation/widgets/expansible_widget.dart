@@ -167,11 +167,25 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
         ? _buildSelectionChildren(context)
         : _buildClassicChildren(context);
 
+    final theme = Theme.of(context);
+
     return LedgerCard(
       padding: widget.cardPadding,
       borderRadius: widget.borderRadius ?? 16,
-      child: Material(
-        type: MaterialType.transparency,
+      child: Theme(
+        data: theme.copyWith(
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          listTileTheme: theme.listTileTheme.copyWith(
+            tileColor: Colors.transparent,
+            selectedTileColor: Colors.transparent,
+          ),
+          expansionTileTheme: theme.expansionTileTheme.copyWith(
+            backgroundColor: Colors.transparent,
+            collapsedBackgroundColor: Colors.transparent,
+          ),
+        ),
         child: ExpansionTile(
           shape: const Border(),
           collapsedShape: const Border(),

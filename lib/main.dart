@@ -3,9 +3,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:payk_ai_cfo_platform/core/security/secure_storage_provider.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_error_reporter.dart';
 import 'package:payk_ai_cfo_platform/core/di/app_repositories.dart';
 import 'package:payk_ai_cfo_platform/core/localization/language_cubit.dart';
@@ -124,7 +124,7 @@ class _MyAppState extends State<MyApp> {
           BlocProvider<PermissionsCubit>.value(value: _permissionsCubit),
           BlocProvider<LanguageCubit>(
             create: (context) => LanguageCubit(
-              storage: const FlutterSecureStorage(),
+              storage: AppSecureStorage.instance,
               initialLanguageCode: ApiClient().interfaceLanguage,
             ),
           ),

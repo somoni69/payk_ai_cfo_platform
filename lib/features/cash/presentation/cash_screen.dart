@@ -606,7 +606,7 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  icon: const Icon(TablerIcons.plus, size: 16),
+                  icon: const Icon(TablerIcons.plus, size: 17),
                   label: Text(
                     language.translate('cash_new_operation_btn'),
                     style: textStyles.bodySans.copyWith(
@@ -629,10 +629,8 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
                   child: _buildHubSectionCard(
                     context: context,
                     icon: TablerIcons.receipt,
-                    iconColor: colors.brand,
                     title: language.translate('cash_tab_operations'),
-                    badge: '$totalOps',
-                    subtitle: language.translate('cash_filter_all_types'),
+                    subtitle: '$totalOps операций',
                     onTap: () =>
                         _openCashSection(context, CashSection.operations),
                   ),
@@ -642,10 +640,10 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
                   child: _buildHubSectionCard(
                     context: context,
                     icon: TablerIcons.clock_hour_4,
-                    iconColor: isOpen ? colors.accentGreen : colors.accentAmber,
                     title: language.translate('cash_tab_shifts'),
-                    badge: '$openShiftsCount акт.',
-                    subtitle: language.translate('cash_col_status'),
+                    subtitle: isOpen
+                        ? 'Смена открыта'
+                        : '$openShiftsCount акт. смен',
                     onTap: () => _openCashSection(context, CashSection.shifts),
                   ),
                 ),
@@ -655,10 +653,8 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
             _buildHubSectionCard(
               context: context,
               icon: TablerIcons.building_bank,
-              iconColor: colors.brand,
               title: language.translate('cash_tab_summary'),
-              badge: '$totalRegisters касс',
-              subtitle: language.translate('cash_tab_registers'),
+              subtitle: '$totalRegisters касс',
               onTap: () => _openCashSection(context, CashSection.summary),
             ),
             const SizedBox(height: 10),
@@ -750,80 +746,60 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
   Widget _buildHubSectionCard({
     required BuildContext context,
     required IconData icon,
-    required Color iconColor,
     required String title,
-    required String badge,
     required String subtitle,
     required VoidCallback onTap,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    return InkWell(
-      onTap: onTap,
+    return Material(
+      color: colors.surface,
       borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: iconColor, size: 18),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: colors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.brand.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.surfaceNested,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    badge,
-                    style: textStyles.captionSans.copyWith(
-                      color: colors.textPrimary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 11.5,
-                    ),
-                  ),
+                child: Icon(icon, size: 19, color: colors.brand),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                title,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.5,
+                  color: colors.textPrimary,
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: textStyles.bodySans.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-                color: colors.textPrimary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-                fontSize: 12,
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

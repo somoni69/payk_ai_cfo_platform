@@ -204,10 +204,26 @@ class LedgerStatsShimmer extends StatelessWidget {
 
 /// Скелетон навигационной сетки 2x2 для Hub-экранов.
 class LedgerHubGridShimmer extends StatelessWidget {
-  const LedgerHubGridShimmer({super.key});
+  final int count;
+  const LedgerHubGridShimmer({super.key, this.count = 4});
 
   @override
   Widget build(BuildContext context) {
+    if (count == 3) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildTile()),
+              const SizedBox(width: 10),
+              Expanded(child: _buildTile()),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _buildTile(),
+        ],
+      );
+    }
     return Column(
       children: [
         Row(
@@ -229,25 +245,89 @@ class LedgerHubGridShimmer extends StatelessWidget {
     );
   }
 
-  Widget _buildTile() {
+  static Widget _buildTile() {
     return const LedgerCard(
-      padding: EdgeInsets.all(12),
+      padding: EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              ShimmerBox(width: 32, height: 32, borderRadius: 8),
-              LedgerChipShimmer(width: 44, height: 18),
-            ],
-          ),
-          SizedBox(height: 12),
-          ShimmerBox(width: 90, height: 14, borderRadius: 4),
+          ShimmerBox(width: 36, height: 36, borderRadius: 8),
+          SizedBox(height: 10),
+          ShimmerBox(width: 90, height: 14.5, borderRadius: 4),
           SizedBox(height: 4),
-          ShimmerBox(width: 110, height: 11, borderRadius: 4),
+          ShimmerBox(width: 110, height: 12.5, borderRadius: 4),
         ],
       ),
+    );
+  }
+}
+
+/// Скелетон плашки внимания / статуса (с иконкой 36x36 и стрелкой).
+class LedgerAttentionCardShimmer extends StatelessWidget {
+  const LedgerAttentionCardShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const LedgerCard(
+      padding: EdgeInsets.all(14),
+      child: Row(
+        children: [
+          ShimmerBox(width: 36, height: 36, borderRadius: 8),
+          SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(width: 140, height: 14.5, borderRadius: 4),
+                SizedBox(height: 4),
+                ShimmerBox(width: 190, height: 12.5, borderRadius: 4),
+              ],
+            ),
+          ),
+          ShimmerBox(width: 18, height: 18, borderRadius: 4),
+        ],
+      ),
+    );
+  }
+}
+
+/// Скелетон кнопок быстрых действий (1 или 2 кнопки высотой 44px).
+class LedgerQuickActionsShimmer extends StatelessWidget {
+  final int count;
+  const LedgerQuickActionsShimmer({super.key, this.count = 2});
+
+  @override
+  Widget build(BuildContext context) {
+    if (count == 1) {
+      return const ShimmerBox(
+        width: double.infinity,
+        height: 44,
+        borderRadius: 8,
+      );
+    }
+    return const Row(
+      children: [
+        Expanded(child: ShimmerBox(height: 44, borderRadius: 8)),
+        SizedBox(width: 8),
+        Expanded(child: ShimmerBox(height: 44, borderRadius: 8)),
+      ],
+    );
+  }
+}
+
+/// Скелетон заголовка ленты/списка с кнопкой «Все →».
+class LedgerFeedHeaderShimmer extends StatelessWidget {
+  final double titleWidth;
+  const LedgerFeedHeaderShimmer({super.key, this.titleWidth = 140});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        ShimmerBox(width: titleWidth, height: 16, borderRadius: 4),
+        const ShimmerBox(width: 80, height: 13, borderRadius: 4),
+      ],
     );
   }
 }
@@ -352,7 +432,7 @@ class LedgerAdviceShimmer extends StatelessWidget {
   }
 }
 
-/// Точный скелетон обзора дашборда: советы, ключевые метрики, продажи, курсы, график.
+/// Точный скелетон обзора дашборда: советы, ключевые метрики (Hero + 3 плитки), продажи, курсы, график, сетка отчетов.
 class DashboardOverviewShimmer extends StatelessWidget {
   const DashboardOverviewShimmer({super.key});
 
@@ -361,67 +441,91 @@ class DashboardOverviewShimmer extends StatelessWidget {
     return LedgerShimmer(
       child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. Advice Panel
             const LedgerAdviceShimmer(),
             const SizedBox(height: 16),
-            const ShimmerBox(width: 170, height: 15, borderRadius: 4),
-            const SizedBox(height: 10),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.45,
+
+            // 2. Hero Cash Balance Card
+            const LedgerCard(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerBox(width: 100, height: 12, borderRadius: 4),
+                        SizedBox(height: 8),
+                        ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                        SizedBox(height: 6),
+                        ShimmerBox(width: 130, height: 12, borderRadius: 4),
+                      ],
+                    ),
+                  ),
+                  ShimmerBox(width: 48, height: 48, borderRadius: 12),
+                ],
               ),
-              itemCount: 6,
-              itemBuilder: (context, index) {
-                return const LedgerCard(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
+            ),
+            const SizedBox(height: 12),
+
+            // 3. Row of 2 Metric Tiles (Net Profit, Expenses)
+            Row(
+              children: [
+                Expanded(child: _buildMetricTileShimmer()),
+                const SizedBox(width: 12),
+                Expanded(child: _buildMetricTileShimmer()),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // 4. Full-width Metric Tile (Revenue)
+            const LedgerCard(
+              padding: EdgeInsets.all(14),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ShimmerBox(width: 90, height: 11, borderRadius: 4),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
                         children: [
-                          ShimmerBox(width: 110, height: 18, borderRadius: 4),
-                          SizedBox(height: 4),
-                          ShimmerBox(width: 50, height: 10, borderRadius: 4),
+                          ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                          SizedBox(width: 8),
+                          ShimmerBox(width: 100, height: 12, borderRadius: 4),
                         ],
                       ),
+                      SizedBox(height: 8),
+                      ShimmerBox(width: 120, height: 18, borderRadius: 4),
                     ],
                   ),
-                );
-              },
+                  ShimmerBox(width: 54, height: 18, borderRadius: 6),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-            // Sales & profit card skeleton
+            const SizedBox(height: 24),
+
+            // 5. Sales & Profit Card
             const LedgerCard(
               padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
-                      SizedBox(width: 8),
-                      ShimmerBox(width: 140, height: 15, borderRadius: 4),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
-                      SizedBox(width: 6),
-                      Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
-                      SizedBox(width: 6),
-                      Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+                      Row(
+                        children: [
+                          ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                          SizedBox(width: 8),
+                          ShimmerBox(width: 140, height: 15, borderRadius: 4),
+                        ],
+                      ),
+                      ShimmerBox(width: 60, height: 12, borderRadius: 4),
                     ],
                   ),
                   SizedBox(height: 14),
@@ -449,11 +553,18 @@ class DashboardOverviewShimmer extends StatelessWidget {
                       ),
                     ],
                   ),
+                  SizedBox(height: 12),
+                  ShimmerBox(
+                    width: double.infinity,
+                    height: 6,
+                    borderRadius: 4,
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            // Currency board card skeleton
+            const SizedBox(height: 24),
+
+            // 6. Currency Board Card
             const LedgerCard(
               padding: EdgeInsets.all(16),
               child: Column(
@@ -469,38 +580,37 @@ class DashboardOverviewShimmer extends StatelessWidget {
                           ShimmerBox(width: 130, height: 15, borderRadius: 4),
                         ],
                       ),
-                      ShimmerBox(width: 60, height: 11, borderRadius: 4),
+                      ShimmerBox(width: 70, height: 11, borderRadius: 4),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                      Expanded(child: ShimmerBox(height: 48, borderRadius: 8)),
                       SizedBox(width: 8),
-                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                      Expanded(child: ShimmerBox(height: 48, borderRadius: 8)),
                       SizedBox(width: 8),
-                      Expanded(child: ShimmerBox(height: 52, borderRadius: 8)),
+                      Expanded(child: ShimmerBox(height: 48, borderRadius: 8)),
                     ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            // Cash flow chart card skeleton
-            const ShimmerBox(width: 210, height: 15, borderRadius: 4),
-            const SizedBox(height: 10),
+            const SizedBox(height: 24),
+
+            // 7. Financial Chart Card
             const LedgerCard(
               padding: EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ShimmerBox(width: 140, height: 15, borderRadius: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 150, height: 15, borderRadius: 4),
+                      ShimmerBox(width: 80, height: 12, borderRadius: 4),
+                    ],
+                  ),
                   SizedBox(height: 16),
                   ShimmerBox(
                     width: double.infinity,
@@ -510,6 +620,169 @@ class DashboardOverviewShimmer extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // 8. Reports Title + Reports Grid
+            const Row(
+              children: [
+                ShimmerBox(width: 32, height: 32, borderRadius: 8),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(width: 140, height: 16, borderRadius: 4),
+                      SizedBox(height: 4),
+                      ShimmerBox(width: 180, height: 11, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...List.generate(3, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: LedgerCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            ShimmerBox(width: 28, height: 28, borderRadius: 6),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: ShimmerBox(height: 14, borderRadius: 4),
+                            ),
+                            SizedBox(width: 6),
+                            ShimmerBox(width: 14, height: 14, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: LedgerCard(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        child: Row(
+                          children: [
+                            ShimmerBox(width: 28, height: 28, borderRadius: 6),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: ShimmerBox(height: 14, borderRadius: 4),
+                            ),
+                            SizedBox(width: 6),
+                            ShimmerBox(width: 14, height: 14, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildMetricTileShimmer() {
+    return const LedgerCard(
+      padding: EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ShimmerBox(width: 18, height: 18, borderRadius: 4),
+              SizedBox(width: 8),
+              ShimmerBox(width: 80, height: 12, borderRadius: 4),
+            ],
+          ),
+          SizedBox(height: 10),
+          ShimmerBox(width: 100, height: 18, borderRadius: 4),
+          SizedBox(height: 6),
+          ShimmerBox(width: 50, height: 11, borderRadius: 4),
+        ],
+      ),
+    );
+  }
+}
+
+/// Точный скелетон обзора кассы: Hero баланс смены, статус смены, кнопка быстрой операции, сетка 3 разделов, недавние операции.
+class CashOverviewShimmer extends StatelessWidget {
+  const CashOverviewShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LedgerShimmer(
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Shift & Cash Hero Balance Card
+            const LedgerHeroCardShimmer(hasActionButton: true),
+            const SizedBox(height: 12),
+
+            // 2. Attention Card (Active Shift status)
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 10),
+
+            // 3. Quick Action Button (Full-width)
+            const LedgerQuickActionsShimmer(count: 1),
+            const SizedBox(height: 10),
+
+            // 4. Navigation Grid (3 Section Cards)
+            const LedgerHubGridShimmer(count: 3),
+            const SizedBox(height: 10),
+
+            // 5. Recent Activity Header
+            const LedgerFeedHeaderShimmer(titleWidth: 100),
+            const SizedBox(height: 10),
+
+            // 6. Recent Operations List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 120, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          ShimmerBox(width: 76, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 50, height: 10, borderRadius: 4),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
           ],
         ),
       ),
@@ -517,425 +790,715 @@ class DashboardOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон кассы: поиск, фильтры и список операций.
-class CashOverviewShimmer extends StatelessWidget {
-  const CashOverviewShimmer({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return LedgerShimmer(
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        children: [
-          const ShimmerBox(width: double.infinity, height: 44, borderRadius: 8),
-          const SizedBox(height: 10),
-          const SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: NeverScrollableScrollPhysics(),
-            child: Row(
-              children: [
-                ShimmerBox(width: 135, height: 38, borderRadius: 8),
-                SizedBox(width: 8),
-                ShimmerBox(width: 160, height: 38, borderRadius: 8),
-                SizedBox(width: 8),
-                ShimmerBox(width: 140, height: 38, borderRadius: 8),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-          ...List.generate(6, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 6),
-              child: LedgerCardShimmer(),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-/// Скелетон кадров: список сотрудников с аватаром, должностью и зарплатой.
+/// Точный скелетон обзора кадров: Hero ФОТ и KPI, плашка внимания, быстрое действие, 6 хаб-карточек, список сотрудников.
 class HrOverviewShimmer extends StatelessWidget {
   const HrOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView.separated(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          return const LedgerCard(
-            padding: EdgeInsets.all(14),
-            child: Row(
-              children: [
-                ShimmerBox(width: 42, height: 42, borderRadius: 999),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Total Payroll & Staff Metrics
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      ShimmerBox(width: 140, height: 15, borderRadius: 4),
-                      SizedBox(height: 6),
-                      ShimmerBox(width: 170, height: 12, borderRadius: 4),
-                      SizedBox(height: 6),
-                      ShimmerBox(width: 100, height: 10, borderRadius: 4),
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention & Risks Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Button (Full-width)
+            const LedgerQuickActionsShimmer(count: 1),
+            const SizedBox(height: 14),
+
+            // 4. Main Navigation Grid (6 Hub Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 12),
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Staff Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Staff List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 40, height: 40, borderRadius: 999),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 130, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          ShimmerBox(width: 70, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 54, height: 18),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    LedgerChipShimmer(width: 68),
-                    SizedBox(height: 8),
-                    ShimmerBox(width: 76, height: 15, borderRadius: 4),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Скелетон CRM: три ячейки сводки, поиск, сегменты, карточки клиентов.
+/// Точный скелетон CRM: Hero сводка клиентов и воронки, плашка рисков оттока, 2 быстрых действия, 6 хаб-карточек, недавние сделки.
 class CrmOverviewShimmer extends StatelessWidget {
   const CrmOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Row(
-            children: [
-              Expanded(child: _CrmStatCellShimmer()),
-              SizedBox(width: 8),
-              Expanded(child: _CrmStatCellShimmer()),
-              SizedBox(width: 8),
-              Expanded(child: _CrmStatCellShimmer()),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const ShimmerBox(width: double.infinity, height: 44, borderRadius: 8),
-          const SizedBox(height: 10),
-          const Row(
-            children: [
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
-              SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
-              SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ...List.generate(5, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LedgerCard(
-                padding: EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ShimmerBox(width: 140, height: 15, borderRadius: 4),
-                        LedgerChipShimmer(width: 68),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    ShimmerBox(width: 110, height: 12, borderRadius: 4),
-                    SizedBox(height: 6),
-                    ShimmerBox(width: 80, height: 15, borderRadius: 4),
-                  ],
-                ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: CRM Stats & Funnel
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 130, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 70, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 170, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 100, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
               ),
-            );
-          }),
-        ],
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Attention & Churn Risks Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 16),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 14),
+
+            // 4. Section Grid Hub (6 Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 10),
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Deals Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 140),
+            const SizedBox(height: 10),
+
+            // 6. Recent Deals List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 100, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          ShimmerBox(width: 76, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 58, height: 18),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _CrmStatCellShimmer extends StatelessWidget {
-  const _CrmStatCellShimmer();
-
-  @override
-  Widget build(BuildContext context) {
-    return const LedgerCard(
-      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ShimmerBox(width: 56, height: 10, borderRadius: 4),
-          SizedBox(height: 6),
-          ShimmerBox(width: 48, height: 16, borderRadius: 4),
-        ],
-      ),
-    );
-  }
-}
-
-/// Скелетон фин. операций: заголовок и карточки счетов/переводов.
+/// Точный скелетон фин. операций: Hero сводка счетов/касс, плашка контроля казначейства, 2 быстрых действия, 6 хаб-карточек, недавние проводки.
 class FinOpsOverviewShimmer extends StatelessWidget {
   const FinOpsOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          const ShimmerBox(width: 160, height: 16, borderRadius: 4),
-          const SizedBox(height: 10),
-          ...List.generate(3, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 10),
-              child: LedgerCard(
-                padding: EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    ShimmerBox(width: 38, height: 38, borderRadius: 8),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Total Balance & Treasury Stats
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention & Treasury Control Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 4. Main Navigation Grid (6 Hub Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 12),
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Activity Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Transactions List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 130, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          ShimmerBox(width: 130, height: 15, borderRadius: 4),
-                          SizedBox(height: 5),
-                          ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          ShimmerBox(width: 76, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 56, height: 18),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        LedgerChipShimmer(width: 50, height: 20),
-                        SizedBox(height: 5),
-                        ShimmerBox(width: 80, height: 15, borderRadius: 4),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
-          const SizedBox(height: 12),
-          const ShimmerBox(width: 180, height: 16, borderRadius: 4),
-          const SizedBox(height: 10),
-          ...List.generate(4, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LedgerCardShimmer(),
-            );
-          }),
-        ],
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Скелетон стратегии: сегменты, кнопка анализа, раскрываемые блоки.
+/// Точный скелетон маркетинга: Hero бюджет, плашка внимания, быстрые действия (AI Копирайтер + Кампания), 6 хаб-карточек, недавние кампании.
+class MarketingOverviewShimmer extends StatelessWidget {
+  const MarketingOverviewShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LedgerShimmer(
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Marketing Budget & Active Campaigns
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 4. Main Navigation Grid (6 Hub Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 12),
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Campaigns Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Campaigns List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 100, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          ShimmerBox(width: 76, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 58, height: 18),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Точный скелетон стратегии: Hero сводка сценариев, плашка внимания, быстрые действия (What-If + Маркетинг), 6 хаб-карточек, недавние сценарии.
 class StrategyOverviewShimmer extends StatelessWidget {
   const StrategyOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Row(
-            children: [
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-              SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-              SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-            ],
-          ),
-          const SizedBox(height: 14),
-          const ShimmerBox(
-            width: double.infinity,
-            height: 48,
-            borderRadius: 12,
-          ),
-          const SizedBox(height: 16),
-          const ShimmerBox(width: 170, height: 14, borderRadius: 4),
-          const SizedBox(height: 10),
-          ...List.generate(4, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LedgerCard(
-                padding: EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Strategy Scenarios
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 120, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 4. Main Navigation Grid (6 Hub Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 12),
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Strategy Scenarios Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Strategy Scenarios List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 150, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 110, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          ShimmerBox(width: 160, height: 15, borderRadius: 4),
-                          SizedBox(height: 6),
-                          ShimmerBox(width: 110, height: 11, borderRadius: 4),
+                          ShimmerBox(width: 60, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 50, height: 18),
                         ],
                       ),
-                    ),
-                    ShimmerBox(width: 20, height: 20, borderRadius: 4),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
-        ],
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Скелетон задач: поиск + просрочено, фильтры проектов, карточки задач.
+/// Точный скелетон обзора задач: Hero сводка, плашка внимания, быстрые действия, 2х2 хаб-сетка, список срочных задач.
 class TasksOverviewShimmer extends StatelessWidget {
   const TasksOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-        children: [
-          const Row(
-            children: [
-              Expanded(child: ShimmerBox(height: 44, borderRadius: 8)),
-              SizedBox(width: 8),
-              ShimmerBox(width: 110, height: 44, borderRadius: 8),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: NeverScrollableScrollPhysics(),
-            child: Row(
-              children: [
-                ShimmerBox(width: 100, height: 32, borderRadius: 999),
-                SizedBox(width: 8),
-                ShimmerBox(width: 120, height: 32, borderRadius: 999),
-                SizedBox(width: 8),
-                ShimmerBox(width: 90, height: 32, borderRadius: 999),
-                SizedBox(width: 8),
-                ShimmerBox(width: 110, height: 32, borderRadius: 999),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          const ShimmerBox(width: 150, height: 14, borderRadius: 4),
-          const SizedBox(height: 8),
-          ...List.generate(5, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LedgerCard(
-                padding: EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Tasks Summary Hero Card
+            const LedgerCard(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        ShimmerBox(width: 18, height: 18, borderRadius: 4),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: ShimmerBox(
-                            width: 160,
-                            height: 15,
-                            borderRadius: 4,
-                          ),
+                        ShimmerBox(width: 110, height: 12, borderRadius: 4),
+                        SizedBox(height: 8),
+                        ShimmerBox(width: 140, height: 26, borderRadius: 6),
+                        SizedBox(height: 8),
+                        ShimmerBox(
+                          width: double.infinity,
+                          height: 6,
+                          borderRadius: 4,
                         ),
-                        SizedBox(width: 8),
-                        LedgerChipShimmer(width: 58, height: 20),
                       ],
                     ),
-                    SizedBox(height: 8),
-                    Padding(
-                      padding: EdgeInsets.only(left: 28),
-                      child: Row(
-                        children: [
-                          ShimmerBox(width: 80, height: 11, borderRadius: 4),
-                          SizedBox(width: 12),
-                          ShimmerBox(width: 64, height: 11, borderRadius: 4),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  SizedBox(width: 16),
+                  ShimmerBox(width: 48, height: 48, borderRadius: 12),
+                ],
               ),
-            );
-          }),
-        ],
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Attention Card (Overdue / On Track)
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 14),
+
+            // 4. Navigation Grid (2x2)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 20),
+
+            // 5. Recent Activity Header
+            const LedgerFeedHeaderShimmer(titleWidth: 140),
+            const SizedBox(height: 10),
+
+            // 6. Recent Tasks List items
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 20, height: 20, borderRadius: 4),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 160, height: 14, borderRadius: 4),
+                            SizedBox(height: 6),
+                            Row(
+                              children: [
+                                LedgerChipShimmer(width: 60, height: 18),
+                                SizedBox(width: 8),
+                                ShimmerBox(
+                                  width: 80,
+                                  height: 11,
+                                  borderRadius: 4,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Скелетон склада: две метрики и карточки товаров.
+/// Точный скелетон обзора склада: Hero статистика остатков, плашка внимания, быстрые кнопки, 2х2 сетка разделов, недавние движения.
 class WarehouseOverviewShimmer extends StatelessWidget {
   const WarehouseOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        children: [
-          const LedgerStatsShimmer(),
-          const SizedBox(height: 14),
-          ...List.generate(6, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LedgerCard(
-                padding: EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Stats Hero Card
+            const LedgerCard(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ShimmerBox(width: 120, height: 12, borderRadius: 4),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 12, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Attention Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 16),
+
+            // 3. Quick Action Buttons Row
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 14),
+
+            // 4. Section Grid Hub (2x2)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 20),
+
+            // 5. Recent Movements Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Movements List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 100, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          ShimmerBox(width: 150, height: 15, borderRadius: 4),
-                          SizedBox(height: 6),
-                          ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          ShimmerBox(width: 70, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 56, height: 18),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        LedgerChipShimmer(width: 68),
-                        SizedBox(height: 6),
-                        ShimmerBox(width: 76, height: 14, borderRadius: 4),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
-        ],
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
 /// Скелетон инбокса: счётчик и карточки с точкой непрочитанного.
+/// Точный скелетон экрана уведомлений: секции критических аномалий, рекомендаций ИИ и правового календаря.
 class InboxOverviewShimmer extends StatelessWidget {
   const InboxOverviewShimmer({super.key});
 
@@ -944,38 +1507,94 @@ class InboxOverviewShimmer extends StatelessWidget {
     return LedgerShimmer(
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
         children: [
-          const ShimmerBox(width: 130, height: 12, borderRadius: 4),
-          const SizedBox(height: 12),
-          ...List.generate(6, (index) {
+          // Section 1 Header
+          const Row(
+            children: [
+              ShimmerBox(width: 18, height: 18, borderRadius: 4),
+              SizedBox(width: 8),
+              ShimmerBox(width: 180, height: 15, borderRadius: 4),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...List.generate(2, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: 12),
               child: LedgerCard(
                 padding: EdgeInsets.all(14),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Padding(
-                      padding: EdgeInsets.only(top: 5),
-                      child: ShimmerBox(width: 8, height: 8, borderRadius: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ShimmerBox(width: 160, height: 15, borderRadius: 4),
+                        ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                      ],
                     ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ShimmerBox(width: 160, height: 15, borderRadius: 4),
-                          SizedBox(height: 6),
-                          ShimmerBox(
-                            width: double.infinity,
-                            height: 12,
-                            borderRadius: 4,
-                          ),
-                          SizedBox(height: 6),
-                          ShimmerBox(width: 90, height: 10, borderRadius: 4),
-                        ],
-                      ),
+                    SizedBox(height: 6),
+                    ShimmerBox(
+                      width: double.infinity,
+                      height: 12,
+                      borderRadius: 4,
+                    ),
+                    SizedBox(height: 4),
+                    ShimmerBox(width: 220, height: 12, borderRadius: 4),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ShimmerBox(width: 80, height: 12, borderRadius: 4),
+                        ShimmerBox(width: 50, height: 11, borderRadius: 4),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+
+          // Section 2 Header
+          const Row(
+            children: [
+              ShimmerBox(width: 18, height: 18, borderRadius: 4),
+              SizedBox(width: 8),
+              ShimmerBox(width: 160, height: 15, borderRadius: 4),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...List.generate(2, (index) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LedgerCard(
+                padding: EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ShimmerBox(width: 170, height: 15, borderRadius: 4),
+                        ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    ShimmerBox(
+                      width: double.infinity,
+                      height: 12,
+                      borderRadius: 4,
+                    ),
+                    SizedBox(height: 4),
+                    ShimmerBox(width: 190, height: 12, borderRadius: 4),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ShimmerBox(width: 80, height: 12, borderRadius: 4),
+                        ShimmerBox(width: 50, height: 11, borderRadius: 4),
+                      ],
                     ),
                   ],
                 ),
@@ -988,7 +1607,7 @@ class InboxOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон Meta: 4 канала и карточки диалогов.
+/// Точный скелетон Meta: переключатель каналов и карточки диалогов.
 class MetaOverviewShimmer extends StatelessWidget {
   const MetaOverviewShimmer({super.key});
 
@@ -1001,41 +1620,40 @@ class MetaOverviewShimmer extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
               SizedBox(width: 6),
-              Expanded(child: ShimmerBox(height: 34, borderRadius: 8)),
+              Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
             ],
           ),
           const SizedBox(height: 12),
           ...List.generate(6, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: 10),
               child: LedgerCard(
                 padding: EdgeInsets.all(14),
                 child: Row(
                   children: [
-                    ShimmerBox(width: 40, height: 40, borderRadius: 999),
-                    SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 130, height: 15, borderRadius: 4),
-                          SizedBox(height: 6),
-                          ShimmerBox(width: 180, height: 11, borderRadius: 4),
+                          ShimmerBox(width: 140, height: 15, borderRadius: 4),
+                          SizedBox(height: 5),
+                          ShimmerBox(width: 200, height: 12, borderRadius: 4),
                         ],
                       ),
                     ),
+                    SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         ShimmerBox(width: 36, height: 10, borderRadius: 4),
                         SizedBox(height: 6),
-                        LedgerChipShimmer(width: 22, height: 18),
+                        LedgerChipShimmer(width: 44, height: 18),
                       ],
                     ),
                   ],
@@ -1049,57 +1667,108 @@ class MetaOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон пользователей: поиск и карточки с ролью.
+/// Точный скелетон пользователей: Hero сводка, плашка неактивных, 2 быстрых действия, 2 хаб-карточки, список пользователей.
 class UsersOverviewShimmer extends StatelessWidget {
   const UsersOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 10, top: 4),
-            child: ShimmerBox(
-              width: double.infinity,
-              height: 44,
-              borderRadius: 8,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Users Count & Status
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          ...List.generate(6, (index) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: LedgerCard(
-                padding: EdgeInsets.all(14),
-                child: Row(
-                  children: [
-                    ShimmerBox(width: 38, height: 38, borderRadius: 999),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 4. Main Navigation Grid (2 Hub Cards)
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Users Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Users List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 40, height: 40, borderRadius: 999),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 130, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 110, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          ShimmerBox(width: 140, height: 15, borderRadius: 4),
-                          SizedBox(height: 5),
-                          ShimmerBox(width: 110, height: 11, borderRadius: 4),
+                          LedgerChipShimmer(width: 60, height: 18),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 44, height: 10, borderRadius: 4),
                         ],
                       ),
-                    ),
-                    LedgerChipShimmer(width: 76),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }),
-        ],
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Скелетон интеграций: заголовок и карточки систем со статусом.
+/// Точный скелетон интеграций: подключенные сервисы и журнал синхронизации.
 class IntegrationsOverviewShimmer extends StatelessWidget {
   const IntegrationsOverviewShimmer({super.key});
 
@@ -1110,38 +1779,59 @@ class IntegrationsOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          const ShimmerBox(width: 170, height: 15, borderRadius: 4),
+          const LedgerFeedHeaderShimmer(titleWidth: 170),
           const SizedBox(height: 10),
-          ...List.generate(4, (index) {
+          ...List.generate(3, (index) {
             return const Padding(
-              padding: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.only(bottom: 12),
               child: LedgerCard(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerBox(width: 130, height: 15, borderRadius: 4),
+                        SizedBox(height: 6),
+                        Row(
+                          children: [
+                            ShimmerBox(width: 8, height: 8, borderRadius: 4),
+                            SizedBox(width: 6),
+                            ShimmerBox(width: 60, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ],
+                    ),
+                    ShimmerBox(width: 80, height: 32, borderRadius: 8),
+                  ],
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 16),
+          const LedgerFeedHeaderShimmer(titleWidth: 160),
+          const SizedBox(height: 10),
+          ...List.generate(3, (index) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: LedgerCard(
+                padding: EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    ShimmerBox(width: 40, height: 40, borderRadius: 8),
-                    SizedBox(width: 12),
+                    ShimmerBox(width: 32, height: 32, borderRadius: 8),
+                    SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          ShimmerBox(width: 120, height: 15, borderRadius: 4),
-                          SizedBox(height: 6),
-                          Row(
-                            children: [
-                              ShimmerBox(width: 6, height: 6, borderRadius: 4),
-                              SizedBox(width: 6),
-                              ShimmerBox(
-                                width: 64,
-                                height: 11,
-                                borderRadius: 4,
-                              ),
-                            ],
-                          ),
+                          ShimmerBox(width: 120, height: 13, borderRadius: 4),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 80, height: 10, borderRadius: 4),
                         ],
                       ),
                     ),
-                    ShimmerBox(width: 72, height: 32, borderRadius: 8),
+                    LedgerChipShimmer(width: 54, height: 18),
                   ],
                 ),
               ),
@@ -1153,96 +1843,187 @@ class IntegrationsOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон аудита: действие, время, автор, детали.
+/// Точный скелетон аудита: Hero сводка логов, плашка аномалий, 2 быстрых действия, 2х2 хаб-сетка, недавние события безопасности.
 class AuditOverviewShimmer extends StatelessWidget {
   const AuditOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView.separated(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: 6,
-        separatorBuilder: (_, _) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          return const LedgerCard(
-            padding: EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ShimmerBox(width: 170, height: 15, borderRadius: 4),
-                    ShimmerBox(width: 44, height: 11, borderRadius: 4),
-                  ],
-                ),
-                SizedBox(height: 6),
-                ShimmerBox(width: 120, height: 11, borderRadius: 4),
-                SizedBox(height: 8),
-                ShimmerBox(width: double.infinity, height: 11, borderRadius: 4),
-              ],
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Security Logs & Severity
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 120, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          );
-        },
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 4. Main 2x2 Navigation Grid (4 Hub Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 20),
+
+            // 5. Recent Security Activity Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Audit Events List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          LedgerChipShimmer(width: 58, height: 18),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 44, height: 10, borderRadius: 4),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
 }
 
-/// Скелетон чек-листов: заголовок, прогресс и пункты.
+/// Точный скелетон операционных чек-листов: баннер статуса смен, быстрые действия, 3 карточки навигации, недавние регламенты.
 class ChecklistsOverviewShimmer extends StatelessWidget {
   const ChecklistsOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
     return LedgerShimmer(
-      child: ListView.separated(
+      child: SingleChildScrollView(
         physics: const NeverScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: 3,
-        separatorBuilder: (_, _) => const SizedBox(height: 14),
-        itemBuilder: (context, index) {
-          return LedgerCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ShimmerBox(width: 150, height: 16, borderRadius: 4),
-                    LedgerChipShimmer(width: 68),
-                  ],
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Attention / Shift Status Banner
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 2. Quick Action Buttons Row
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 3. Main Navigation Grid (3 Hub Cards)
+            const LedgerHubGridShimmer(count: 3),
+            const SizedBox(height: 20),
+
+            // 4. Recent Checklist Runs Header
+            const LedgerFeedHeaderShimmer(titleWidth: 160),
+            const SizedBox(height: 10),
+
+            // 5. Recent Checklist Runs Feed
+            ...List.generate(3, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          ShimmerBox(width: 150, height: 15, borderRadius: 4),
+                          LedgerChipShimmer(width: 68, height: 20),
+                        ],
+                      ),
+                      SizedBox(height: 6),
+                      ShimmerBox(width: 120, height: 11, borderRadius: 4),
+                      SizedBox(height: 12),
+                      ShimmerBox(
+                        width: double.infinity,
+                        height: 6,
+                        borderRadius: 4,
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: ShimmerBox(height: 13, borderRadius: 4),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Row(
+                        children: [
+                          ShimmerBox(width: 18, height: 18, borderRadius: 4),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: ShimmerBox(height: 13, borderRadius: 4),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
-                const ShimmerBox(width: 160, height: 11, borderRadius: 4),
-                const SizedBox(height: 12),
-                const ShimmerBox(
-                  width: double.infinity,
-                  height: 6,
-                  borderRadius: 4,
-                ),
-                const SizedBox(height: 12),
-                ...List.generate(3, (i) {
-                  return const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        ShimmerBox(width: 18, height: 18, borderRadius: 4),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: ShimmerBox(height: 13, borderRadius: 4),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          );
-        },
+              );
+            }),
+          ],
+        ),
       ),
     );
   }
@@ -1302,19 +2083,231 @@ class BranchesOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Скелетон сети магазинов / точек: сводка сети и карточки филиалов.
+/// Точный скелетон сети магазинов / точек: переключатель периода, Hero сводка чистой прибыли и маржи сети, карточки торговых точек.
 class NetworkOverviewShimmer extends StatelessWidget {
   const NetworkOverviewShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const BranchesOverviewShimmer();
+    return LedgerShimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Hero Card: Period + Net Profit + 3 Sub-metrics
+          const LedgerCard(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: ShimmerBox(height: 32, borderRadius: 8)),
+                    SizedBox(width: 6),
+                    Expanded(child: ShimmerBox(height: 32, borderRadius: 8)),
+                    SizedBox(width: 6),
+                    Expanded(child: ShimmerBox(height: 32, borderRadius: 8)),
+                  ],
+                ),
+                SizedBox(height: 16),
+                ShimmerBox(width: 120, height: 13, borderRadius: 4),
+                SizedBox(height: 6),
+                ShimmerBox(width: 190, height: 26, borderRadius: 6),
+                SizedBox(height: 14),
+                Divider(height: 1),
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(width: 60, height: 11, borderRadius: 4),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 80, height: 15, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(width: 60, height: 11, borderRadius: 4),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 80, height: 15, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(width: 50, height: 11, borderRadius: 4),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 60, height: 15, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // 2. Section Header
+          const LedgerFeedHeaderShimmer(titleWidth: 160),
+          const SizedBox(height: 10),
+
+          // 3. Store Cards List
+          ...List.generate(3, (index) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LedgerCard(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        ShimmerBox(width: 140, height: 16, borderRadius: 4),
+                        LedgerChipShimmer(width: 64, height: 20),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    ShimmerBox(width: 180, height: 12, borderRadius: 4),
+                    SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 110, height: 18, borderRadius: 4),
+                          ],
+                        ),
+                        ShimmerBox(width: 90, height: 34, borderRadius: 8),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
   }
 }
 
-/// Скелетон юриста: чипы-подсказки, пузыри чата и поле ввода.
+/// Точный скелетон юриста / правового центра: Hero дедлайны, плашка внимания, быстрые действия (ИИ Юрист + Закон), 6 хаб-карточек, недавние дедлайны.
 class LegalOverviewShimmer extends StatelessWidget {
   const LegalOverviewShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LedgerShimmer(
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Hero Card: Legal Deadlines & Laws Stats
+            const LedgerCard(
+              padding: EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      LedgerChipShimmer(width: 64, height: 20),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  ShimmerBox(width: 180, height: 26, borderRadius: 6),
+                  SizedBox(height: 12),
+                  Divider(height: 1),
+                  SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ShimmerBox(width: 16, height: 16, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                      SizedBox(width: 6),
+                      ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // 2. Actionable Attention Card
+            const LedgerAttentionCardShimmer(),
+            const SizedBox(height: 12),
+
+            // 3. Quick Action Buttons Row (2 buttons)
+            const LedgerQuickActionsShimmer(count: 2),
+            const SizedBox(height: 12),
+
+            // 4. Main Navigation Grid (6 Hub Cards)
+            const LedgerHubGridShimmer(count: 4),
+            const SizedBox(height: 12),
+            const LedgerHubGridShimmer(count: 2),
+            const SizedBox(height: 20),
+
+            // 5. Recent Deadlines Feed Header
+            const LedgerFeedHeaderShimmer(titleWidth: 150),
+            const SizedBox(height: 10),
+
+            // 6. Recent Deadlines List
+            ...List.generate(4, (index) {
+              return const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      ShimmerBox(width: 36, height: 36, borderRadius: 8),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 150, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 100, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          ShimmerBox(width: 60, height: 14, borderRadius: 4),
+                          SizedBox(height: 4),
+                          LedgerChipShimmer(width: 50, height: 18),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Скелетон чата с AI Юристом: чипы-подсказки, пузыри чата и поле ввода.
+class LegalChatShimmer extends StatelessWidget {
+  const LegalChatShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
