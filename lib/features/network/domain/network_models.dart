@@ -180,3 +180,27 @@ class ActingStore extends Equatable {
   @override
   List<Object?> get props => [id, name];
 }
+
+/// Результат удаления или отключения магазина.
+class StoreDeleteResult extends Equatable {
+  final bool deleted;
+  final bool deactivated;
+  final String message;
+
+  const StoreDeleteResult({
+    required this.deleted,
+    required this.deactivated,
+    required this.message,
+  });
+
+  factory StoreDeleteResult.fromJson(Map<String, dynamic> json) {
+    return StoreDeleteResult(
+      deleted: json['deleted'] as bool? ?? false,
+      deactivated: json['deactivated'] as bool? ?? false,
+      message: (json['message'] as String?)?.trim() ?? '',
+    );
+  }
+
+  @override
+  List<Object?> get props => [deleted, deactivated, message];
+}

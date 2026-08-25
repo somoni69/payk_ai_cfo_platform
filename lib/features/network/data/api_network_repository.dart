@@ -127,6 +127,45 @@ class ApiNetworkRepository implements NetworkRepository {
   }
 
   @override
+  Future<StoreDeleteResult> deleteStore(int id) async {
+    try {
+      final response = await _apiClient.dio.delete<dynamic>(
+        '/network/stores/$id',
+      );
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      return StoreDeleteResult.fromJson(data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
+  Future<void> resetDirectorPassword(
+    int id, {
+    String? username,
+    required String password,
+  }) async {
+    try {
+      await _apiClient.dio.post<dynamic>(
+        '/network/stores/$id/director-password',
+        data: {
+          if (username != null && username.trim().isNotEmpty)
+            'username': username.trim(),
+          'password': password.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
   Future<ActingStore> enterStore(int storeId) async {
     try {
       final response = await _apiClient.dio.post<dynamic>(

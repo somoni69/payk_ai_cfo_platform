@@ -93,3 +93,128 @@ class UpdateBrandGuideRequested extends MarketingEvent {
   @override
   List<Object?> get props => [brandGuide];
 }
+
+// Marketing AI Studio Events
+class LoadAiStudioDataRequested extends MarketingEvent {
+  final String lang;
+  final bool forceRefresh;
+
+  const LoadAiStudioDataRequested({
+    this.lang = 'ru',
+    this.forceRefresh = false,
+  });
+
+  @override
+  List<Object?> get props => [lang, forceRefresh];
+}
+
+class GenerateAiStudioIdeasRequested extends MarketingEvent {
+  final String lang;
+
+  const GenerateAiStudioIdeasRequested({this.lang = 'ru'});
+
+  @override
+  List<Object?> get props => [lang];
+}
+
+class CreateAiStudioCampaignRequested extends MarketingEvent {
+  final String name;
+  final String? product;
+  final int? goalQty;
+  final int? goalDays;
+  final String? briefText;
+  final String? ideaSource;
+
+  const CreateAiStudioCampaignRequested({
+    required this.name,
+    this.product,
+    this.goalQty,
+    this.goalDays,
+    this.briefText,
+    this.ideaSource,
+  });
+
+  @override
+  List<Object?> get props => [
+    name,
+    product,
+    goalQty,
+    goalDays,
+    briefText,
+    ideaSource,
+  ];
+}
+
+class GenerateAiStudioConceptsRequested extends MarketingEvent {
+  final String campaignId;
+
+  const GenerateAiStudioConceptsRequested(this.campaignId);
+
+  @override
+  List<Object?> get props => [campaignId];
+}
+
+class ReviseAiStudioConceptRequested extends MarketingEvent {
+  final String campaignId;
+  final List<String> baseIds;
+  final String note;
+
+  const ReviseAiStudioConceptRequested({
+    required this.campaignId,
+    required this.baseIds,
+    required this.note,
+  });
+
+  @override
+  List<Object?> get props => [campaignId, baseIds, note];
+}
+
+class ApproveAiStudioConceptRequested extends MarketingEvent {
+  final String conceptId;
+
+  const ApproveAiStudioConceptRequested(this.conceptId);
+
+  @override
+  List<Object?> get props => [conceptId];
+}
+
+class GenerateAiStudioScriptRequested extends MarketingEvent {
+  final String conceptId;
+
+  const GenerateAiStudioScriptRequested(this.conceptId);
+
+  @override
+  List<Object?> get props => [conceptId];
+}
+
+class GenerateAiStudioMediaRequested extends MarketingEvent {
+  final String mediaId;
+  final String kind;
+  final bool confirm;
+
+  const GenerateAiStudioMediaRequested({
+    required this.mediaId,
+    required this.kind,
+    this.confirm = true,
+  });
+
+  @override
+  List<Object?> get props => [mediaId, kind, confirm];
+}
+
+class RejectAiStudioMediaRequested extends MarketingEvent {
+  final String mediaId;
+  final String reason;
+
+  const RejectAiStudioMediaRequested({
+    required this.mediaId,
+    required this.reason,
+  });
+
+  @override
+  List<Object?> get props => [mediaId, reason];
+}
+
+class LoadAiStudioReportRequested extends MarketingEvent {
+  const LoadAiStudioReportRequested();
+}

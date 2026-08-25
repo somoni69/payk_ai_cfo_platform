@@ -58,6 +58,20 @@ abstract class WarehouseRepository {
   /// AI-разбор остатков и сроков (5–10 с, long timeout).
   Future<WarehouseStockAnalysis> getStockAnalysis();
 
+  /// Присвоить товару валидный EAN-13 штрих-код (`POST /warehouse/products/{id}/barcode`)
+  Future<WarehouseProduct> assignBarcode(String productId);
+
+  /// Выдать недостающие EAN-13 коды всем товарам магазина (`POST /warehouse/barcodes/generate-missing`)
+  Future<int> assignMissingBarcodes();
+
+  /// Скачать PDF с этикетками товаров (`GET /warehouse/barcodes/labels`)
+  /// [sheet]: 'a4' (сетка 3x8) или 'label' (термолента 58 мм)
+  Future<List<int>> downloadBarcodeLabelsPdf({
+    required List<String> productIds,
+    String sheet = 'a4',
+    int copies = 1,
+  });
+
   /// Run expiry detectors now (`POST /warehouse/run-expiry-check`).
   /// Returns number of new alerts created.
   Future<int> runExpiryCheck();

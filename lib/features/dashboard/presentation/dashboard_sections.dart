@@ -196,6 +196,11 @@ Widget _buildOverviewHome(
       TablerIcons.bulb,
       language.translate('dashboard_tab_ai_insights'),
     ),
+    (
+      DashboardSection.onec,
+      TablerIcons.arrows_exchange,
+      language.translate('dashboard_tab_onec'),
+    ),
   ];
 
   return RefreshIndicator(

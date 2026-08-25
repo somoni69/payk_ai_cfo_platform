@@ -91,4 +91,33 @@ class MockIntegrationsRepository implements IntegrationsRepository {
       message: 'Синхронизация завершена успешно.',
     );
   }
+
+  @override
+  Future<SmsTestResult> testSms(String phone) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return SmsTestResult(ok: true, phone: phone);
+  }
+
+  @override
+  Future<AiProbeResult> testAi() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return const AiProbeResult(
+      ok: true,
+      model: 'claude-3-5-sonnet',
+      code: 'success',
+    );
+  }
+
+  @override
+  Future<TelegramLinkInfo> getTelegramLink() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return const TelegramLinkInfo(
+      url: 'https://t.me/payk_bot?start=mock_token_123',
+      appUrl: 'tg://resolve?domain=payk_bot&start=mock_token_123',
+      bot: 'payk_bot',
+      token: 'mock_token_123',
+      connected: false,
+      available: true,
+    );
+  }
 }

@@ -14,17 +14,19 @@ import '../../../features/marketing/bloc/marketing_event.dart';
 import '../../../features/marketing/bloc/marketing_state.dart';
 import '../../../features/marketing/domain/marketing_models.dart';
 import '../../../features/marketing/domain/marketing_repository.dart';
+import 'marketing_ai_studio_screen.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
-enum MarketingSection { aiWriter, campaigns, posts, brandGuide }
+enum MarketingSection { aiStudio, aiWriter, campaigns, posts, brandGuide }
 
 String _marketingSectionTitle(
   LanguageCubit language,
   MarketingSection section,
 ) {
   return language.translate(switch (section) {
+    MarketingSection.aiStudio => 'marketing_tab_ai_studio',
     MarketingSection.aiWriter => 'marketing_tab_ai_writer',
     MarketingSection.campaigns => 'marketing_tab_campaigns',
     MarketingSection.posts => 'marketing_tab_posts',
@@ -34,6 +36,17 @@ String _marketingSectionTitle(
 
 void _openMarketingSection(BuildContext context, MarketingSection section) {
   final bloc = context.read<MarketingBloc>();
+  if (section == MarketingSection.aiStudio) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: bloc,
+          child: const MarketingAiStudioScreen(),
+        ),
+      ),
+    );
+    return;
+  }
   Navigator.of(context, rootNavigator: true).push(
     MaterialPageRoute(
       builder: (_) => BlocProvider.value(
@@ -256,6 +269,91 @@ class _MarketingViewState extends State<MarketingView> {
                   ],
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 1.5. AI Marketing Studio Banner
+          InkWell(
+            onTap: () =>
+                _openMarketingSection(context, MarketingSection.aiStudio),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.brand.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: colors.brand.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      TablerIcons.video,
+                      color: colors.brand,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              locale.translate('marketing_tab_ai_studio'),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                                color: colors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.brand,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'VEO 2',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          locale.translate('marketing_ai_studio_subtitle'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    TablerIcons.chevron_right,
+                    size: 18,
+                    color: colors.brand,
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -787,6 +885,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
           ? _buildSectionFab(context, locale)
           : null,
       body: switch (widget.section) {
+        MarketingSection.aiStudio => const MarketingAiStudioScreen(),
         MarketingSection.aiWriter => _buildAiWriterTab(context),
         MarketingSection.campaigns => _buildCampaignsTab(context),
         MarketingSection.posts => _buildPostsTab(context),

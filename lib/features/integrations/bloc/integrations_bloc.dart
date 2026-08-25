@@ -12,6 +12,9 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
   IntegrationsBloc(this._repository) : super(const IntegrationsState()) {
     on<LoadIntegrationsData>(_onLoadIntegrationsData);
     on<TriggerSyncRequested>(_onTriggerSyncRequested);
+    on<TestSmsRequested>(_onTestSmsRequested);
+    on<TestAiRequested>(_onTestAiRequested);
+    on<LoadTelegramLinkRequested>(_onLoadTelegramLinkRequested);
   }
 
   final IntegrationsRepository _repository;
@@ -98,6 +101,71 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
           errorMessage: userFacingError(
             error,
             fallback: 'Не удалось завершить синхронизацию. Повторите попытку.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onTestSmsRequested(
+    TestSmsRequested event,
+    Emitter<IntegrationsState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        isTestingSms: true,
+        clearError: true,
+        clearSmsResult: true,
+      ),
+    );
+    try {
+      final result = await _repository.testSms(event.phone);
+      emit(state.copyWith(isTestingSms: false, smsResult: result));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isTestingSms: false,
+          errorMessage: userFacingError(e, fallback: 'Ошибка отправки SMS'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onTestAiRequested(
+    TestAiRequested event,
+    Emitter<IntegrationsState> emit,
+  ) async {
+    emit(
+      state.copyWith(isTestingAi: true, clearError: true, clearAiResult: true),
+    );
+    try {
+      final result = await _repository.testAi();
+      emit(state.copyWith(isTestingAi: false, aiResult: result));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isTestingAi: false,
+          errorMessage: userFacingError(e, fallback: 'Ошибка диагностики AI'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadTelegramLinkRequested(
+    LoadTelegramLinkRequested event,
+    Emitter<IntegrationsState> emit,
+  ) async {
+    emit(state.copyWith(isLoadingTelegramLink: true, clearError: true));
+    try {
+      final result = await _repository.getTelegramLink();
+      emit(state.copyWith(isLoadingTelegramLink: false, telegramLink: result));
+    } catch (e) {
+      emit(
+        state.copyWith(
+          isLoadingTelegramLink: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось загрузить ссылку Telegram',
           ),
         ),
       );

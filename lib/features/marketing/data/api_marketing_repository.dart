@@ -3,6 +3,7 @@ import '../../../core/network/user_facing_error.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
+import '../domain/marketing_ai_models.dart';
 import '../domain/marketing_models.dart';
 import '../domain/marketing_repository.dart';
 
@@ -286,6 +287,190 @@ class ApiMarketingRepository
       }
     } catch (_) {}
     return brandGuide;
+  }
+
+  @override
+  Future<List<MarketingIdea>> getAiIdeas({String lang = 'ru'}) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/marketing/ai/ideas',
+        queryParameters: {'lang': lang},
+        options: ApiClient.longRunningOptions(),
+      );
+      final list = response.data as List<dynamic>? ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map(MarketingIdea.fromJson)
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<MarketingCampaignAi> createAiCampaign({
+    required String name,
+    String? product,
+    int? goalQty,
+    int? goalDays,
+    String? briefText,
+    String? ideaSource,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'name': name,
+        'product': ?product,
+        'goal_qty': ?goalQty,
+        'goal_days': ?goalDays,
+        'brief_text': ?briefText,
+        'idea_source': ?ideaSource,
+      };
+      final response = await _apiClient.dio.post(
+        '/marketing/ai/campaigns',
+        data: payload,
+      );
+      return MarketingCampaignAi.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<MarketingConcept>> generateAiConcepts(String campaignId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/marketing/ai/campaigns/$campaignId/concepts',
+        options: ApiClient.longRunningOptions(),
+      );
+      final list = response.data as List<dynamic>? ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map(MarketingConcept.fromJson)
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<MarketingConcept> reviseAiConcept({
+    required String campaignId,
+    required List<String> baseIds,
+    required String note,
+  }) async {
+    try {
+      final intBaseIds = baseIds
+          .map((e) => int.tryParse(e))
+          .whereType<int>()
+          .toList();
+      final response = await _apiClient.dio.post(
+        '/marketing/ai/campaigns/$campaignId/revise',
+        data: {'base_ids': intBaseIds, 'note': note},
+        options: ApiClient.longRunningOptions(),
+      );
+      return MarketingConcept.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<MarketingConcept> approveAiConcept(String conceptId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/marketing/ai/concepts/$conceptId/approve',
+      );
+      return MarketingConcept.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<MarketingMediaAsset> generateAiScript(String conceptId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/marketing/ai/concepts/$conceptId/script',
+        options: ApiClient.longRunningOptions(),
+      );
+      return MarketingMediaAsset.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<MarketingVideoQuota> getVideoQuota() async {
+    try {
+      final response = await _apiClient.dio.get('/marketing/ai/media/quota');
+      return MarketingVideoQuota.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      return const MarketingVideoQuota(
+        month: '',
+        videoUsed: 0,
+        videoLimit: 10,
+        videoLeft: 10,
+      );
+    }
+  }
+
+  @override
+  Future<MarketingMediaAsset> generateAiMedia({
+    required String mediaId,
+    required String kind,
+    bool confirm = true,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/marketing/ai/media/$mediaId/generate',
+        queryParameters: {'kind': kind, 'confirm': confirm},
+        options: ApiClient.longRunningOptions(),
+      );
+      return MarketingMediaAsset.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> rejectAiMedia({
+    required String mediaId,
+    required String reason,
+  }) async {
+    try {
+      await _apiClient.dio.post(
+        '/marketing/ai/media/$mediaId/reject',
+        data: {'reason': reason},
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<MarketingPublicationStats>> getPublicationStats() async {
+    try {
+      final response = await _apiClient.dio.get('/marketing/ai/report');
+      final list = response.data as List<dynamic>? ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map(MarketingPublicationStats.fromJson)
+          .toList();
+    } catch (e) {
+      return const [];
+    }
   }
 
   @override

@@ -851,7 +851,7 @@ class _StatsBar extends StatelessWidget {
     Widget cell(String label, String value, {String? hint, Color? accent}) {
       return Expanded(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: colors.surface,
             border: Border.all(color: colors.border),
@@ -862,27 +862,33 @@ class _StatsBar extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: textStyles.smallSans.copyWith(
+                style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
-                  fontWeight: FontWeight.w400,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12.5,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 value,
                 style: textStyles.bodyMono.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: accent,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                  color: accent ?? colors.textPrimary,
                 ),
               ),
               if (hint != null) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   hint,
-                  style: textStyles.smallSans.copyWith(
-                    color: colors.textTooltip,
-                    fontWeight: FontWeight.w400,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontSize: 11.5,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ],
@@ -891,9 +897,8 @@ class _StatsBar extends StatelessWidget {
       );
     }
 
-    // Web StatsBar: clients, LTV(+ROI), reactivation, churn.
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
         children: [
           Row(
@@ -903,10 +908,10 @@ class _StatsBar extends StatelessWidget {
                 '${stats.clientsTotal}',
                 hint: language.translate(
                   'crm_stat_active_hint',
-                  params: {'n': stats.activeClients},
+                  params: {'n': '${stats.activeClients}'},
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               cell(
                 language.translate('crm_stat_total_ltv'),
                 oCcy.format(stats.ltvTotal),
@@ -917,7 +922,7 @@ class _StatsBar extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
               cell(
@@ -926,7 +931,7 @@ class _StatsBar extends StatelessWidget {
                 hint: language.translate('crm_stat_reactivation_hint'),
                 accent: colors.brand,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               cell(
                 language.translate('crm_stat_churn'),
                 '${stats.churnCount}',
@@ -969,13 +974,16 @@ class _ClientsTab extends StatelessWidget {
         : ((state.clientsTotal + state.clientsSize - 1) ~/ state.clientsSize)
               .clamp(1, 9999);
 
+    final options = crmLoyaltyOptions(language);
+    final selectedValue = state.clientFilters.level ?? '';
+
     return RefreshIndicator(
       onRefresh: onRefresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(0, 12, 0, 88),
         children: [
           _StatsBar(stats: state.stats),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: TextField(
@@ -985,50 +993,70 @@ class _ClientsTab extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: language.translate('crm_search_placeholder'),
                 prefixIcon: const Icon(TablerIcons.search, size: 20),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                filled: true,
+                fillColor: colors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: colors.border),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: colors.brand, width: 1.5),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Builder(
-              builder: (context) {
-                final options = crmLoyaltyOptions(language);
-                final selectedValue = state.clientFilters.level ?? '';
-                final selected = options.firstWhere(
-                  (o) => o.value == selectedValue,
-                  orElse: () => options.first,
-                );
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      language.translate('crm_filter_all_levels'),
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w500,
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: options.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final opt = options[index];
+                final isSelected = opt.value == selectedValue;
+                return GestureDetector(
+                  onTap: () {
+                    context.read<CrmBloc>().add(
+                      ClientFiltersChanged(
+                        level: opt.value.isEmpty ? null : opt.value,
+                      ),
+                    );
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? colors.brand : colors.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? colors.brand : colors.border,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    ExpansibleWidget<({String value, String label})>.selection(
-                      key: ValueKey('crm-level-$selectedValue'),
-                      title: Text(
-                        selected.label,
-                        style: textStyles.bodySans.copyWith(
-                          color: selectedValue.isEmpty
-                              ? colors.textTooltip
-                              : colors.textPrimary,
-                        ),
+                    child: Text(
+                      opt.label,
+                      style: textStyles.captionSans.copyWith(
+                        color: isSelected ? colors.surface : colors.textPrimary,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        fontSize: 13,
                       ),
-                      items: options,
-                      selectedValue: selected,
-                      itemLabelBuilder: (o) => o.label,
-                      onSelected: (o) {
-                        context.read<CrmBloc>().add(
-                          ClientFiltersChanged(level: o.value),
-                        );
-                      },
                     ),
-                  ],
+                  ),
                 );
               },
             ),
@@ -1040,13 +1068,49 @@ class _ClientsTab extends StatelessWidget {
               children: [
                 if (state.clients.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 48),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 48,
+                      horizontal: 16,
+                    ),
                     child: Center(
-                      child: Text(
-                        language.translate('crm_no_clients'),
-                        style: textStyles.bodySans.copyWith(
-                          color: colors.textTooltip,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: colors.surfaceNested,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: colors.border),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              TablerIcons.users,
+                              size: 28,
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            language.translate('crm_no_clients'),
+                            style: textStyles.h2Sans.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: colors.textPrimary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            language.translate('crm_clients_empty_desc'),
+                            style: textStyles.captionSans.copyWith(
+                              fontSize: 13,
+                              color: colors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     ),
                   )
@@ -1330,21 +1394,46 @@ class _LoyaltyTab extends StatelessWidget {
         children: [
           Text(
             language.translate('crm_loyalty_summary'),
-            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            style: textStyles.h2Sans.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+              color: colors.textPrimary,
+            ),
           ),
           const SizedBox(height: 12),
           if (state.loyaltySummary.isEmpty)
-            Text(
-              language.translate('crm_no_loyalty'),
-              style: textStyles.bodySans.copyWith(color: colors.textTooltip),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                language.translate('crm_no_loyalty'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13.5,
+                ),
+              ),
             )
           else
-            ...state.loyaltySummary.map((row) {
-              final lc = crmLoyaltyColors(colors, row.level);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.25,
+              ),
+              itemCount: state.loyaltySummary.length,
+              itemBuilder: (context, index) {
+                final row = state.loyaltySummary[index];
+                final lc = crmLoyaltyColors(colors, row.level);
+                return Container(
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: colors.surface,
                     borderRadius: BorderRadius.circular(12),
@@ -1352,6 +1441,7 @@ class _LoyaltyTab extends StatelessWidget {
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -1371,49 +1461,90 @@ class _LoyaltyTab extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        language.translate(
-                          'crm_loyalty_clients_count',
-                          params: {'count': row.clients},
-                        ),
-                        style: textStyles.captionSans.copyWith(fontSize: 13),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        language.translate(
-                          'crm_loyalty_spent',
-                          params: {'amount': oCcy.format(row.totalSpent)},
-                        ),
-                        style: textStyles.bodyMono.copyWith(
-                          fontSize: 13,
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        language.translate(
-                          'crm_loyalty_bonus_total',
-                          params: {'amount': oCcy.format(row.bonusPoints)},
-                        ),
-                        style: textStyles.bodyMono.copyWith(
-                          fontSize: 13,
-                          color: colors.brand,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                TablerIcons.users,
+                                size: 14,
+                                color: colors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                language.translate(
+                                  'crm_loyalty_clients_count',
+                                  params: {'count': '${row.clients}'},
+                                ),
+                                style: textStyles.captionSans.copyWith(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            language.translate(
+                              'crm_loyalty_spent',
+                              params: {'amount': oCcy.format(row.totalSpent)},
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              fontSize: 11.5,
+                              color: colors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            language.translate(
+                              'crm_loyalty_bonus_total',
+                              params: {'amount': oCcy.format(row.bonusPoints)},
+                            ),
+                            style: textStyles.bodyMono.copyWith(
+                              fontSize: 12.5,
+                              color: colors.brand,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              );
-            }),
-          const SizedBox(height: 16),
-          Text(
-            language.translate('crm_loyalty_history_title'),
-            style: textStyles.bodySans.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
+                );
+              },
             ),
+          const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                language.translate('crm_loyalty_history_title'),
+                style: textStyles.h2Sans.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: colors.textPrimary,
+                ),
+              ),
+              if (canWrite && pick.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () => showCrmBonusSheet(context, clients: pick),
+                  icon: const Icon(TablerIcons.plus, size: 15),
+                  label: Text(language.translate('crm_add_bonus')),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colors.brand,
+                    textStyle: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 8),
           Builder(
@@ -1437,7 +1568,8 @@ class _LoyaltyTab extends StatelessWidget {
                     language.translate('crm_loyalty_filter_client'),
                     style: textStyles.bodySans.copyWith(
                       fontWeight: FontWeight.w500,
-                      fontSize: 13.5,
+                      fontSize: 13,
+                      color: colors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -1466,14 +1598,6 @@ class _LoyaltyTab extends StatelessWidget {
               );
             },
           ),
-          if (canWrite && pick.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: () => showCrmBonusSheet(context, clients: pick),
-              icon: const Icon(TablerIcons.gift, size: 18),
-              label: Text(language.translate('crm_add_bonus')),
-            ),
-          ],
           const SizedBox(height: 12),
           if (state.loyaltyTxnsLoading)
             const Padding(
@@ -1481,9 +1605,70 @@ class _LoyaltyTab extends StatelessWidget {
               child: LinearProgressIndicator(),
             )
           else if (state.loyaltyTxns.isEmpty)
-            Text(
-              language.translate('crm_no_history'),
-              style: textStyles.captionSans.copyWith(color: colors.textTooltip),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: colors.surfaceNested,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colors.border),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        TablerIcons.gift,
+                        size: 26,
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      language.translate('crm_no_history'),
+                      style: textStyles.h2Sans.copyWith(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      language.translate('crm_loyalty_empty_desc'),
+                      style: textStyles.captionSans.copyWith(
+                        fontSize: 12.5,
+                        color: colors.textSecondary,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    if (canWrite && pick.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: () =>
+                            showCrmBonusSheet(context, clients: pick),
+                        icon: const Icon(TablerIcons.plus, size: 16),
+                        label: Text(language.translate('crm_add_bonus')),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colors.brand,
+                          foregroundColor: colors.surface,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 9,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             )
           else
             ...state.loyaltyTxns.map((t) {

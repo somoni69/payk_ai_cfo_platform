@@ -85,4 +85,42 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
+
+  @override
+  Future<SmsTestResult> testSms(String phone) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/integrations/sms/test',
+        queryParameters: {'phone': phone},
+      );
+      final map = response.data as Map<String, dynamic>;
+      return SmsTestResult.fromJson(map, phone);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+    }
+  }
+
+  @override
+  Future<AiProbeResult> testAi() async {
+    try {
+      final response = await _apiClient.dio.post('/integrations/ai/test');
+      final map = response.data as Map<String, dynamic>;
+      return AiProbeResult.fromJson(map);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+    }
+  }
+
+  @override
+  Future<TelegramLinkInfo> getTelegramLink() async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/integrations/telegram/link/me',
+      );
+      final map = response.data as Map<String, dynamic>;
+      return TelegramLinkInfo.fromJson(map);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
 }

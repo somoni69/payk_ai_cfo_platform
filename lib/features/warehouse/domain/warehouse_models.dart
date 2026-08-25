@@ -3,6 +3,7 @@ class WarehouseProduct {
   final String id;
   final String name;
   final String? sku;
+  final String? barcode;
   final String unit;
   final double price;
   final double? costPrice;
@@ -13,6 +14,7 @@ class WarehouseProduct {
     required this.id,
     required this.name,
     this.sku,
+    this.barcode,
     required this.unit,
     required this.price,
     this.costPrice,
@@ -24,6 +26,7 @@ class WarehouseProduct {
     String? id,
     String? name,
     String? sku,
+    String? barcode,
     String? unit,
     double? price,
     double? costPrice,
@@ -34,6 +37,7 @@ class WarehouseProduct {
       id: id ?? this.id,
       name: name ?? this.name,
       sku: sku ?? this.sku,
+      barcode: barcode ?? this.barcode,
       unit: unit ?? this.unit,
       price: price ?? this.price,
       costPrice: costPrice ?? this.costPrice,

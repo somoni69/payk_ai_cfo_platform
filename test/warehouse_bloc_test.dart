@@ -205,6 +205,41 @@ class MockWarehouseRepository implements WarehouseRepository {
     if (shouldFail) throw Exception('Expiry check error');
     return 0;
   }
+
+  @override
+  Future<WarehouseProduct> assignBarcode(String productId) async {
+    if (shouldFail) throw Exception('Assign barcode error');
+    final index = products.indexWhere((p) => p.id == productId);
+    final updated =
+        (index >= 0
+                ? products[index]
+                : const WarehouseProduct(
+                    id: '1',
+                    name: 'Test',
+                    unit: 'шт',
+                    price: 10,
+                    stockQty: 5,
+                  ))
+            .copyWith(barcode: '2001000000018');
+    if (index >= 0) products[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<int> assignMissingBarcodes() async {
+    if (shouldFail) throw Exception('Generate missing barcodes error');
+    return 3;
+  }
+
+  @override
+  Future<List<int>> downloadBarcodeLabelsPdf({
+    required List<String> productIds,
+    String sheet = 'a4',
+    int copies = 1,
+  }) async {
+    if (shouldFail) throw Exception('Download labels PDF error');
+    return [0x25, 0x50, 0x44, 0x46]; // '%PDF'
+  }
 }
 
 void main() {
@@ -396,5 +431,45 @@ void main() {
         );
       },
     );
+
+    test(
+      'AssignProductBarcodeRequested updates barcode in product and shows success',
+      () async {
+        bloc.add(LoadWarehouseData());
+        await bloc.stream.firstWhere((s) => s is WarehouseLoaded);
+
+        bloc.add(const AssignProductBarcodeRequested(productId: '1'));
+        final loaded =
+            await bloc.stream.firstWhere(
+                  (s) =>
+                      s is WarehouseLoaded && s.products.first.barcode != null,
+                )
+                as WarehouseLoaded;
+
+        expect(loaded.products.first.barcode, '2001000000018');
+        expect(loaded.successMessage, 'warehouse_barcode_assigned');
+      },
+    );
+
+    test('DownloadBarcodeLabelsPdfRequested downloads PDF bytes', () async {
+      bloc.add(LoadWarehouseData());
+      await bloc.stream.firstWhere((s) => s is WarehouseLoaded);
+
+      bloc.add(
+        const DownloadBarcodeLabelsPdfRequested(
+          productIds: ['1'],
+          sheet: 'a4',
+          copies: 2,
+        ),
+      );
+      final loaded =
+          await bloc.stream.firstWhere(
+                (s) => s is WarehouseLoaded && s.pdfBytes != null,
+              )
+              as WarehouseLoaded;
+
+      expect(loaded.pdfBytes, isNotEmpty);
+      expect(loaded.isPdfDownloading, false);
+    });
   });
 }

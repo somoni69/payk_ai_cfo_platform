@@ -17,6 +17,7 @@ enum DashboardSection {
   accountsRates,
   clients,
   aiInsights,
+  onec,
 }
 
 class CreatePlanRequested extends DashboardEvent {
@@ -123,4 +124,29 @@ class LoadDashboardSection extends DashboardEvent {
 
   @override
   List<Object?> get props => [section, forceRefresh];
+}
+
+class SaveOneCLinkRequested extends DashboardEvent {
+  final String onecName;
+  final String? kind;
+  final int? targetId;
+
+  const SaveOneCLinkRequested({
+    required this.onecName,
+    this.kind,
+    this.targetId,
+  });
+
+  @override
+  List<Object?> get props => [onecName, kind, targetId];
+}
+
+class RefreshOneCReconcileRequested extends DashboardEvent {
+  final String? day;
+  final Completer<void>? completion;
+
+  const RefreshOneCReconcileRequested({this.day, this.completion});
+
+  @override
+  List<Object?> get props => [day];
 }

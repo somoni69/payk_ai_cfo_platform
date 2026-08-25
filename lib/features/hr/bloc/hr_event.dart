@@ -178,3 +178,92 @@ class DeleteContractRequested extends HrEvent {
   @override
   List<Object?> get props => [id];
 }
+
+// --- KPI Events ---
+
+class CreateKpiRequested extends HrEvent {
+  final String employeeId;
+  final String period;
+  final String metric;
+  final double planValue;
+  final double factValue;
+
+  const CreateKpiRequested({
+    required this.employeeId,
+    required this.period,
+    required this.metric,
+    required this.planValue,
+    required this.factValue,
+  });
+
+  @override
+  List<Object?> get props => [employeeId, period, metric, planValue, factValue];
+}
+
+class UpdateKpiRequested extends HrEvent {
+  final String kpiId;
+  final String? metric;
+  final double? planValue;
+  final double? factValue;
+
+  const UpdateKpiRequested({
+    required this.kpiId,
+    this.metric,
+    this.planValue,
+    this.factValue,
+  });
+
+  @override
+  List<Object?> get props => [kpiId, metric, planValue, factValue];
+}
+
+class DeleteKpiRequested extends HrEvent {
+  final String kpiId;
+
+  const DeleteKpiRequested(this.kpiId);
+
+  @override
+  List<Object?> get props => [kpiId];
+}
+
+// --- Employee Lifecycle & iiko Events ---
+
+class BlockEmployeeRequested extends HrEvent {
+  final String employeeId;
+
+  const BlockEmployeeRequested(this.employeeId);
+
+  @override
+  List<Object?> get props => [employeeId];
+}
+
+class UnblockEmployeeRequested extends HrEvent {
+  final String employeeId;
+
+  const UnblockEmployeeRequested(this.employeeId);
+
+  @override
+  List<Object?> get props => [employeeId];
+}
+
+class ArchiveEmployeeRequested extends HrEvent {
+  final String employeeId;
+
+  const ArchiveEmployeeRequested(this.employeeId);
+
+  @override
+  List<Object?> get props => [employeeId];
+}
+
+class RestoreEmployeeRequested extends HrEvent {
+  final String employeeId;
+
+  const RestoreEmployeeRequested(this.employeeId);
+
+  @override
+  List<Object?> get props => [employeeId];
+}
+
+class SyncIikoEmployeesRequested extends HrEvent {
+  const SyncIikoEmployeesRequested();
+}

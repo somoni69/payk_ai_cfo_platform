@@ -8,6 +8,7 @@ class HrBloc extends Bloc<HrEvent, HrState> {
   final HrRepository _repository;
 
   List<Employee> _cachedEmployees = [];
+  List<KpiRecord> _cachedKpiRecords = [];
   List<KpiAlert> _cachedKpiAlerts = [];
   List<SalaryRecord> _cachedSalaries = [];
   final Map<String, Future<List<Object>>> _loadRequests = {};
@@ -18,6 +19,14 @@ class HrBloc extends Bloc<HrEvent, HrState> {
     on<LoadHrData>(_onLoadHrData);
     on<LoadHrSection>(_onLoadHrSection);
     on<CreateEmployeeRequested>(_onCreateEmployeeRequested);
+    on<BlockEmployeeRequested>(_onBlockEmployeeRequested);
+    on<UnblockEmployeeRequested>(_onUnblockEmployeeRequested);
+    on<ArchiveEmployeeRequested>(_onArchiveEmployeeRequested);
+    on<RestoreEmployeeRequested>(_onRestoreEmployeeRequested);
+    on<SyncIikoEmployeesRequested>(_onSyncIikoEmployeesRequested);
+    on<CreateKpiRequested>(_onCreateKpiRequested);
+    on<UpdateKpiRequested>(_onUpdateKpiRequested);
+    on<DeleteKpiRequested>(_onDeleteKpiRequested);
     on<RecalcSalaryRequested>(_onRecalcSalaryRequested);
     on<CreateAttendanceRequested>(_onCreateAttendance);
     on<DeleteAttendanceRequested>(_onDeleteAttendance);
@@ -59,6 +68,10 @@ class HrBloc extends Bloc<HrEvent, HrState> {
           event.period,
           forceRefresh: event.forceRefresh,
         ),
+        _repository.getKpis(
+          period: event.period,
+          forceRefresh: event.forceRefresh,
+        ),
       ]);
       _loadRequests[event.period] = request;
     }
@@ -70,10 +83,12 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       _cachedEmployees = (results[0] as List).cast<Employee>();
       _cachedKpiAlerts = (results[1] as List).cast<KpiAlert>();
       _cachedSalaries = (results[2] as List).cast<SalaryRecord>();
+      _cachedKpiRecords = (results[3] as List).cast<KpiRecord>();
 
       emit(
         HrLoaded(
           employees: _cachedEmployees,
+          kpiRecords: _cachedKpiRecords,
           kpiAlerts: _cachedKpiAlerts,
           salaryRecords: _cachedSalaries,
           period: event.period,
@@ -522,6 +537,199 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       if (state is HrLoaded) {
         emit((state as HrLoaded).copyWith(errorMessage: e.toString()));
       }
+    }
+  }
+
+  Future<void> _onCreateKpiRequested(
+    CreateKpiRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      final created = await _repository.createKpi(
+        employeeId: event.employeeId,
+        period: event.period,
+        metric: event.metric,
+        planValue: event.planValue,
+        factValue: event.factValue,
+      );
+      _cachedKpiRecords = [created, ..._cachedKpiRecords];
+      emit(
+        current.copyWith(
+          kpiRecords: _cachedKpiRecords,
+          successMessage: 'hr_toast_kpi_created',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateKpiRequested(
+    UpdateKpiRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      final updated = await _repository.updateKpi(
+        kpiId: event.kpiId,
+        metric: event.metric,
+        planValue: event.planValue,
+        factValue: event.factValue,
+      );
+      _cachedKpiRecords = _cachedKpiRecords
+          .map((k) => k.id == event.kpiId ? updated : k)
+          .toList();
+      emit(
+        current.copyWith(
+          kpiRecords: _cachedKpiRecords,
+          successMessage: 'hr_toast_kpi_updated',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteKpiRequested(
+    DeleteKpiRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      await _repository.deleteKpi(event.kpiId);
+      _cachedKpiRecords = _cachedKpiRecords
+          .where((k) => k.id != event.kpiId)
+          .toList();
+      emit(
+        current.copyWith(
+          kpiRecords: _cachedKpiRecords,
+          successMessage: 'hr_toast_kpi_deleted',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onBlockEmployeeRequested(
+    BlockEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      await _repository.blockEmployee(event.employeeId);
+      _cachedEmployees = _cachedEmployees
+          .map(
+            (e) =>
+                e.id == event.employeeId ? e.copyWith(status: 'inactive') : e,
+          )
+          .toList();
+      emit(
+        current.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_employee_blocked',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onUnblockEmployeeRequested(
+    UnblockEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      await _repository.unblockEmployee(event.employeeId);
+      _cachedEmployees = _cachedEmployees
+          .map(
+            (e) => e.id == event.employeeId ? e.copyWith(status: 'active') : e,
+          )
+          .toList();
+      emit(
+        current.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_employee_unblocked',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onArchiveEmployeeRequested(
+    ArchiveEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      await _repository.archiveEmployee(event.employeeId);
+      _cachedEmployees = _cachedEmployees
+          .map(
+            (e) => e.id == event.employeeId ? e.copyWith(isArchived: true) : e,
+          )
+          .toList();
+      emit(
+        current.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_employee_archived',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onRestoreEmployeeRequested(
+    RestoreEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      await _repository.restoreEmployee(event.employeeId);
+      _cachedEmployees = _cachedEmployees
+          .map(
+            (e) => e.id == event.employeeId ? e.copyWith(isArchived: false) : e,
+          )
+          .toList();
+      emit(
+        current.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_employee_restored',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onSyncIikoEmployeesRequested(
+    SyncIikoEmployeesRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final current = state as HrLoaded;
+    try {
+      await _repository.syncIikoEmployees();
+      final fresh = await _repository.getEmployees(forceRefresh: true);
+      _cachedEmployees = fresh;
+      emit(
+        current.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_iiko_synced',
+        ),
+      );
+    } catch (e) {
+      emit(current.copyWith(errorMessage: e.toString()));
     }
   }
 }

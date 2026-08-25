@@ -7,6 +7,7 @@ class Employee {
   final String? email;
   final double baseSalary;
   final String status; // 'active', 'vacation', 'fired', 'inactive'
+  final bool isArchived;
   final String? departmentName;
   final String? managerName;
   final DateTime createdAt;
@@ -20,6 +21,7 @@ class Employee {
     this.email,
     required this.baseSalary,
     required this.status,
+    this.isArchived = false,
     this.departmentName,
     this.managerName,
     required this.createdAt,
@@ -34,6 +36,7 @@ class Employee {
     String? email,
     double? baseSalary,
     String? status,
+    bool? isArchived,
     String? departmentName,
     String? managerName,
     DateTime? createdAt,
@@ -47,6 +50,7 @@ class Employee {
       email: email ?? this.email,
       baseSalary: baseSalary ?? this.baseSalary,
       status: status ?? this.status,
+      isArchived: isArchived ?? this.isArchived,
       departmentName: departmentName ?? this.departmentName,
       managerName: managerName ?? this.managerName,
       createdAt: createdAt ?? this.createdAt,
@@ -146,6 +150,7 @@ class LaborContract {
   final String status;
   final int? daysLeft;
   final bool isExpiring;
+  final String? fileUrl;
 
   const LaborContract({
     required this.id,
@@ -157,6 +162,7 @@ class LaborContract {
     required this.status,
     this.daysLeft,
     this.isExpiring = false,
+    this.fileUrl,
   });
 }
 
@@ -182,6 +188,51 @@ class MovementReport {
   final List<MovementRow> fired;
 
   const MovementReport({this.hired = const [], this.fired = const []});
+}
+
+/// Показатель KPI сотрудника (план / факт / процент выполнения).
+class KpiRecord {
+  final String id;
+  final String employeeId;
+  final String? employeeName;
+  final String period;
+  final String metric;
+  final double planValue;
+  final double factValue;
+  final double? completion; // факт/план, %
+
+  const KpiRecord({
+    required this.id,
+    required this.employeeId,
+    this.employeeName,
+    required this.period,
+    required this.metric,
+    required this.planValue,
+    required this.factValue,
+    this.completion,
+  });
+
+  KpiRecord copyWith({
+    String? id,
+    String? employeeId,
+    String? employeeName,
+    String? period,
+    String? metric,
+    double? planValue,
+    double? factValue,
+    double? completion,
+  }) {
+    return KpiRecord(
+      id: id ?? this.id,
+      employeeId: employeeId ?? this.employeeId,
+      employeeName: employeeName ?? this.employeeName,
+      period: period ?? this.period,
+      metric: metric ?? this.metric,
+      planValue: planValue ?? this.planValue,
+      factValue: factValue ?? this.factValue,
+      completion: completion ?? this.completion,
+    );
+  }
 }
 
 /// Модель нарушения или предупреждения по KPI сотрудника.
@@ -220,6 +271,7 @@ class SalaryRecord {
   final double baseAmount;
   final double bonusAmount;
   final double deductions;
+  final double aidDeduction; // удержанные авансы
   final double totalAmount;
   final String? bonusFormula;
 
@@ -231,7 +283,25 @@ class SalaryRecord {
     required this.baseAmount,
     required this.bonusAmount,
     required this.deductions,
+    this.aidDeduction = 0.0,
     required this.totalAmount,
     this.bonusFormula,
+  });
+}
+
+/// Документ сотрудника.
+class EmployeeDocument {
+  final String id;
+  final String employeeId;
+  final String name;
+  final String url;
+  final DateTime createdAt;
+
+  const EmployeeDocument({
+    required this.id,
+    required this.employeeId,
+    required this.name,
+    required this.url,
+    required this.createdAt,
   });
 }

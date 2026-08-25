@@ -595,4 +595,43 @@ class ApiFinanceRepository implements FinanceRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
+
+  @override
+  Future<OneCReconcileReport> getOneCReconcile({
+    String? day,
+    bool forceRefresh = false,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/finance/onec/reconcile',
+        queryParameters: day != null ? {'day': day} : null,
+      );
+      final data = Map<String, dynamic>.from(response.data as Map);
+      return OneCReconcileReport.fromJson(data);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<OneCTarget>> getOneCTargets({bool forceRefresh = false}) async {
+    try {
+      final response = await _dio.get('/finance/onec/targets');
+      final list = response.data as List<dynamic>;
+      return list
+          .map((e) => OneCTarget.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<void> saveOneCLink(OneCLinkInput input) async {
+    try {
+      await _dio.put('/finance/onec/link', data: input.toJson());
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
 }

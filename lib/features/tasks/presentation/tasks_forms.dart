@@ -60,12 +60,35 @@ extension _TasksFormBuilders on _TasksViewMixin {
                 ),
               ),
               const SizedBox(height: 16),
-              Text(
-                language.translate('tasks_field_project'),
-                style: textStyles.bodySans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 14,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    language.translate('tasks_field_project'),
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () =>
+                        _showManageProjectsBottomSheet(context, projects),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      child: Text(
+                        language.translate('tasks_projects_title'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
               ExpansibleWidget<TaskProject?>.selection(
@@ -680,5 +703,268 @@ extension _TasksFormBuilders on _TasksViewMixin {
         desc.dispose();
       });
     }
+  }
+
+  Future<void> _showManageProjectsBottomSheet(
+    BuildContext context,
+    List<TaskProject> projects,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final tasksBloc = context.read<TasksBloc>();
+
+    await LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('tasks_projects_title'),
+      builder: (sheetContext, setSheetState) {
+        final currentProjects = (tasksBloc.state is TasksLoaded)
+            ? (tasksBloc.state as TasksLoaded).projects
+            : projects;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _showCreateProjectDialog(sheetContext),
+              icon: const Icon(TablerIcons.plus, size: 18),
+              label: Text(language.translate('tasks_new_project')),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                side: BorderSide(color: colors.brand),
+                foregroundColor: colors.brand,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (currentProjects.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    language.translate('tasks_no_project'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...currentProjects.map(
+                (p) => Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(TablerIcons.folder, size: 20, color: colors.brand),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              p.name,
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            if (p.description != null &&
+                                p.description!.isNotEmpty)
+                              Text(
+                                p.description!,
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          TablerIcons.edit,
+                          size: 18,
+                          color: colors.textSecondary,
+                        ),
+                        tooltip: language.translate('tasks_edit_project'),
+                        onPressed: () =>
+                            _showEditProjectDialog(sheetContext, p),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          TablerIcons.trash,
+                          size: 18,
+                          color: colors.accentRed,
+                        ),
+                        tooltip: language.translate('tasks_delete_project'),
+                        onPressed: () =>
+                            _showDeleteProjectDialog(sheetContext, p),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showCreateProjectDialog(BuildContext context) {
+    final language = context.read<LanguageCubit>();
+    final tasksBloc = context.read<TasksBloc>();
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (dlgContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(language.translate('tasks_new_project')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: language.translate('tasks_project_name_label'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descCtrl,
+              decoration: InputDecoration(
+                labelText: language.translate('tasks_project_desc_label'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgContext),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              tasksBloc.add(
+                CreateProjectRequested(
+                  name: name,
+                  description: descCtrl.text.trim().isNotEmpty
+                      ? descCtrl.text.trim()
+                      : null,
+                ),
+              );
+              Navigator.pop(dlgContext);
+            },
+            child: Text(language.translate('common_create')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProjectDialog(BuildContext context, TaskProject project) {
+    final language = context.read<LanguageCubit>();
+    final tasksBloc = context.read<TasksBloc>();
+    final nameCtrl = TextEditingController(text: project.name);
+    final descCtrl = TextEditingController(text: project.description ?? '');
+
+    showDialog<void>(
+      context: context,
+      builder: (dlgContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(language.translate('tasks_edit_project')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: language.translate('tasks_project_name_label'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descCtrl,
+              decoration: InputDecoration(
+                labelText: language.translate('tasks_project_desc_label'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgContext),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              tasksBloc.add(
+                UpdateProjectRequested(
+                  projectId: project.id,
+                  name: name,
+                  description: descCtrl.text.trim().isNotEmpty
+                      ? descCtrl.text.trim()
+                      : null,
+                ),
+              );
+              Navigator.pop(dlgContext);
+            },
+            child: Text(language.translate('common_save')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteProjectDialog(BuildContext context, TaskProject project) {
+    final language = context.read<LanguageCubit>();
+    final tasksBloc = context.read<TasksBloc>();
+    final colors = context.colors;
+
+    showDialog<void>(
+      context: context,
+      builder: (dlgContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(language.translate('tasks_delete_project')),
+        content: Text(language.translate('tasks_delete_project_confirm')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlgContext),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.accentRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              tasksBloc.add(DeleteProjectRequested(project.id));
+              Navigator.pop(dlgContext);
+            },
+            child: Text(language.translate('common_delete')),
+          ),
+        ],
+      ),
+    );
   }
 }

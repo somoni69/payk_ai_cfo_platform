@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/bloc/marketing_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/bloc/marketing_event.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/bloc/marketing_state.dart';
+import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_ai_models.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_models.dart';
 import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_repository.dart';
 
@@ -133,6 +134,156 @@ class MockMarketingTestRepository implements MarketingRepository {
     brandGuide = updated;
     return brandGuide;
   }
+
+  @override
+  Future<List<MarketingIdea>> getAiIdeas({String lang = 'ru'}) async {
+    if (shouldFail) throw Exception('AI Ideas failed');
+    return [
+      const MarketingIdea(
+        source: 'season',
+        tag: 'Сезон',
+        title: 'Сезонная акция',
+        reason: 'Летний сезон',
+      ),
+    ];
+  }
+
+  @override
+  Future<MarketingCampaignAi> createAiCampaign({
+    required String name,
+    String? product,
+    int? goalQty,
+    int? goalDays,
+    String? briefText,
+    String? ideaSource,
+  }) async {
+    if (shouldFail) throw Exception('Create AI Campaign failed');
+    return MarketingCampaignAi(
+      id: 'ai-1',
+      name: name,
+      product: product,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<List<MarketingConcept>> generateAiConcepts(String campaignId) async {
+    if (shouldFail) throw Exception('Generate Concepts failed');
+    return [
+      MarketingConcept(
+        id: 'conc-1',
+        campaignId: campaignId,
+        variant: 'A',
+        roundNo: 1,
+        title: 'Concept A',
+        status: 'draft',
+        createdAt: DateTime.now(),
+      ),
+    ];
+  }
+
+  @override
+  Future<MarketingConcept> reviseAiConcept({
+    required String campaignId,
+    required List<String> baseIds,
+    required String note,
+  }) async {
+    if (shouldFail) throw Exception('Revise Concept failed');
+    return MarketingConcept(
+      id: 'conc-rev',
+      campaignId: campaignId,
+      variant: 'Rev',
+      roundNo: 2,
+      title: 'Revised: $note',
+      status: 'draft',
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<MarketingConcept> approveAiConcept(String conceptId) async {
+    if (shouldFail) throw Exception('Approve Concept failed');
+    return MarketingConcept(
+      id: conceptId,
+      campaignId: 'ai-1',
+      variant: 'A',
+      roundNo: 1,
+      title: 'Approved Concept',
+      status: 'approved',
+      approvedAt: DateTime.now(),
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<MarketingMediaAsset> generateAiScript(String conceptId) async {
+    if (shouldFail) throw Exception('Generate Script failed');
+    return MarketingMediaAsset(
+      id: 'media-1',
+      conceptId: conceptId,
+      kind: 'video',
+      version: 1,
+      script: 'Test Script',
+      status: 'ready',
+      cost: 0.0,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<MarketingVideoQuota> getVideoQuota() async {
+    if (shouldFail) throw Exception('Video Quota failed');
+    return const MarketingVideoQuota(
+      month: '2026-08',
+      videoUsed: 1,
+      videoLimit: 10,
+      videoLeft: 9,
+    );
+  }
+
+  @override
+  Future<MarketingMediaAsset> generateAiMedia({
+    required String mediaId,
+    required String kind,
+    bool confirm = true,
+  }) async {
+    if (shouldFail) throw Exception('Generate Media failed');
+    return MarketingMediaAsset(
+      id: mediaId,
+      conceptId: 'conc-1',
+      kind: kind,
+      version: 1,
+      status: 'ready',
+      cost: 10.0,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> rejectAiMedia({
+    required String mediaId,
+    required String reason,
+  }) async {
+    if (shouldFail) throw Exception('Reject Media failed');
+  }
+
+  @override
+  Future<List<MarketingPublicationStats>> getPublicationStats() async {
+    if (shouldFail) throw Exception('Publication Stats failed');
+    return [
+      const MarketingPublicationStats(
+        publicationId: '1',
+        comments: 10,
+        authors: 8,
+        intents: 5,
+        prepaid: 2,
+        purchases: 3,
+        revenue: 1000.0,
+        spend: 200.0,
+        roiPercent: 400.0,
+      ),
+    ];
+  }
 }
 
 void main() {
@@ -255,6 +406,35 @@ void main() {
         expect(completed, true);
         expect(bloc.state.campaigns, isNotEmpty);
         expect(bloc.state.posts, isNotEmpty);
+      },
+    );
+
+    test('LoadAiStudioDataRequested loads AI ideas and video quota', () async {
+      bloc.add(const LoadAiStudioDataRequested());
+      final state = await bloc.stream.firstWhere(
+        (s) => s.aiIdeas.isNotEmpty && s.videoQuota != null,
+      );
+
+      expect(state.aiIdeas.first.title, 'Сезонная акция');
+      expect(state.videoQuota?.videoLimit, 10);
+    });
+
+    test(
+      'CreateAiStudioCampaignRequested creates campaign and sets currentAiCampaign',
+      () async {
+        bloc.add(
+          const CreateAiStudioCampaignRequested(
+            name: 'Summer Sale',
+            product: 'Cement',
+            goalDays: 7,
+          ),
+        );
+        final state = await bloc.stream.firstWhere(
+          (s) => s.currentAiCampaign != null,
+        );
+
+        expect(state.currentAiCampaign?.name, 'Summer Sale');
+        expect(state.studioSuccessMessage, 'marketing_campaign_created');
       },
     );
   });

@@ -420,4 +420,64 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<void> refreshRates() async {}
+
+  @override
+  Future<OneCReconcileReport> getOneCReconcile({
+    String? day,
+    bool forceRefresh = false,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    return const OneCReconcileReport(
+      date: '2026-08-25',
+      totalOnec: 125400.0,
+      totalPayk: 125400.0,
+      rows: [
+        OneCRow(
+          onecName: 'Основная касса (1С)',
+          onecAmount: 45000.0,
+          paykKind: 'register',
+          paykId: 1,
+          paykName: 'Главная касса',
+          paykAmount: 45000.0,
+          difference: 0.0,
+          matchedBy: 'auto',
+        ),
+        OneCRow(
+          onecName: 'Р/с Алиф Банк (1С)',
+          onecAmount: 80400.0,
+          paykKind: 'account',
+          paykId: 1,
+          paykName: 'Расчетный сомоневый (Алиф Банк)',
+          paykAmount: 80400.0,
+          difference: 0.0,
+          matchedBy: 'manual',
+        ),
+      ],
+      notInOnec: [],
+    );
+  }
+
+  @override
+  Future<List<OneCTarget>> getOneCTargets({bool forceRefresh = false}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return const [
+      OneCTarget(
+        kind: 'register',
+        id: 1,
+        name: 'Главная касса',
+        amount: 45000.0,
+      ),
+      OneCTarget(
+        kind: 'account',
+        id: 1,
+        name: 'Расчетный сомоневый (Алиф Банк)',
+        amount: 80400.0,
+      ),
+    ];
+  }
+
+  @override
+  Future<void> saveOneCLink(OneCLinkInput input) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
 }

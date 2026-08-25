@@ -35,6 +35,9 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     on<SubmitTaskRequested>(_onSubmitTask);
     on<AcceptTaskRequested>(_onAcceptTask);
     on<RejectTaskRequested>(_onRejectTask);
+    on<CreateProjectRequested>(_onCreateProject);
+    on<UpdateProjectRequested>(_onUpdateProject);
+    on<DeleteProjectRequested>(_onDeleteProject);
   }
 
   Future<void> _onLoadTasks(LoadTasks event, Emitter<TasksState> emit) async {
@@ -545,6 +548,88 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
         updated,
         messageKey: 'tasks_review_toast_rejected',
       );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onCreateProject(
+    CreateProjectRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      final project = await _repository.createProject(
+        event.name,
+        description: event.description,
+      );
+      _cachedProjects = null;
+      _referenceDataRequest = null;
+      if (state is TasksLoaded) {
+        final current = state as TasksLoaded;
+        emit(
+          current.copyWith(
+            projects: [...current.projects, project],
+            actionMessage: 'Проект создан',
+          ),
+        );
+      }
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onUpdateProject(
+    UpdateProjectRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      final updated = await _repository.updateProject(
+        event.projectId,
+        name: event.name,
+        description: event.description,
+      );
+      _cachedProjects = null;
+      _referenceDataRequest = null;
+      if (state is TasksLoaded) {
+        final current = state as TasksLoaded;
+        final updatedProjects = current.projects
+            .map((p) => p.id == updated.id ? updated : p)
+            .toList();
+        emit(
+          current.copyWith(
+            projects: updatedProjects,
+            actionMessage: 'Проект обновлен',
+          ),
+        );
+      }
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
+      }
+    }
+  }
+
+  Future<void> _onDeleteProject(
+    DeleteProjectRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    try {
+      await _repository.deleteProject(event.projectId);
+      _cachedProjects = null;
+      _referenceDataRequest = null;
+      if (state is TasksLoaded) {
+        final current = state as TasksLoaded;
+        final remaining = current.projects
+            .where((p) => p.id != event.projectId)
+            .toList();
+        emit(
+          current.copyWith(projects: remaining, actionMessage: 'Проект удален'),
+        );
+      }
     } catch (e) {
       if (state is TasksLoaded) {
         emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));

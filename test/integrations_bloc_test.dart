@@ -59,6 +59,30 @@ class MockIntegrationsTestRepository implements IntegrationsRepository {
       message: 'Sync done',
     );
   }
+
+  @override
+  Future<SmsTestResult> testSms(String phone) async {
+    if (shouldFail) throw Exception('Sms failed');
+    return SmsTestResult(ok: true, phone: phone);
+  }
+
+  @override
+  Future<AiProbeResult> testAi() async {
+    if (shouldFail) throw Exception('Ai failed');
+    return const AiProbeResult(ok: true, model: 'claude-3-5-sonnet');
+  }
+
+  @override
+  Future<TelegramLinkInfo> getTelegramLink() async {
+    if (shouldFail) throw Exception('Telegram failed');
+    return const TelegramLinkInfo(
+      url: 'https://t.me/test_bot',
+      appUrl: 'tg://resolve?domain=test_bot',
+      token: '123',
+      connected: false,
+      available: true,
+    );
+  }
 }
 
 void main() {
@@ -139,6 +163,58 @@ void main() {
       expect(completed, true);
       expect(bloc.state.integrations, isNotEmpty);
       expect(bloc.state.logs, isNotEmpty);
+    });
+
+    test('TestSmsRequested tests SMS delivery', () async {
+      final expected = [
+        isA<IntegrationsState>().having(
+          (s) => s.isTestingSms,
+          'isTestingSms',
+          true,
+        ),
+        isA<IntegrationsState>()
+            .having((s) => s.isTestingSms, 'isTestingSms', false)
+            .having((s) => s.smsResult?.ok, 'sms ok', true),
+      ];
+
+      expectLater(bloc.stream, emitsInOrder(expected));
+      bloc.add(const TestSmsRequested('992900000000'));
+    });
+
+    test('TestAiRequested tests AI model diagnostics', () async {
+      final expected = [
+        isA<IntegrationsState>().having(
+          (s) => s.isTestingAi,
+          'isTestingAi',
+          true,
+        ),
+        isA<IntegrationsState>()
+            .having((s) => s.isTestingAi, 'isTestingAi', false)
+            .having((s) => s.aiResult?.model, 'model', 'claude-3-5-sonnet'),
+      ];
+
+      expectLater(bloc.stream, emitsInOrder(expected));
+      bloc.add(const TestAiRequested());
+    });
+
+    test('LoadTelegramLinkRequested fetches telegram bot link', () async {
+      final expected = [
+        isA<IntegrationsState>().having(
+          (s) => s.isLoadingTelegramLink,
+          'isLoadingTelegramLink',
+          true,
+        ),
+        isA<IntegrationsState>()
+            .having(
+              (s) => s.isLoadingTelegramLink,
+              'isLoadingTelegramLink',
+              false,
+            )
+            .having((s) => s.telegramLink?.token, 'token', '123'),
+      ];
+
+      expectLater(bloc.stream, emitsInOrder(expected));
+      bloc.add(const LoadTelegramLinkRequested());
     });
   });
 }

@@ -152,6 +152,44 @@ class MockTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<TaskProject> createProject(String name, {String? description}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final p = TaskProject(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name,
+      description: description,
+    );
+    _projects.add(p);
+    return p;
+  }
+
+  @override
+  Future<TaskProject> updateProject(
+    String projectId, {
+    required String name,
+    String? description,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _projects.indexWhere((p) => p.id == projectId);
+    if (index != -1) {
+      final updated = TaskProject(
+        id: projectId,
+        name: name,
+        description: description,
+      );
+      _projects[index] = updated;
+      return updated;
+    }
+    return TaskProject(id: projectId, name: name, description: description);
+  }
+
+  @override
+  Future<void> deleteProject(String projectId) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _projects.removeWhere((p) => p.id == projectId);
+  }
+
+  @override
   Future<List<TaskAssignee>> getAssignees() async {
     await Future.delayed(const Duration(milliseconds: 80));
     return const [

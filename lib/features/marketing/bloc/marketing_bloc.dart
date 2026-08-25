@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/user_facing_error.dart';
+import '../domain/marketing_ai_models.dart';
 import '../domain/marketing_models.dart';
 import '../domain/marketing_repository.dart';
 import 'marketing_event.dart';
@@ -18,6 +19,16 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     on<GenerateIdeasRequested>(_onGenerateIdeasRequested);
     on<GenerateTextRequested>(_onGenerateTextRequested);
     on<UpdateBrandGuideRequested>(_onUpdateBrandGuideRequested);
+    on<LoadAiStudioDataRequested>(_onLoadAiStudioDataRequested);
+    on<GenerateAiStudioIdeasRequested>(_onGenerateAiStudioIdeasRequested);
+    on<CreateAiStudioCampaignRequested>(_onCreateAiStudioCampaignRequested);
+    on<GenerateAiStudioConceptsRequested>(_onGenerateAiStudioConceptsRequested);
+    on<ReviseAiStudioConceptRequested>(_onReviseAiStudioConceptRequested);
+    on<ApproveAiStudioConceptRequested>(_onApproveAiStudioConceptRequested);
+    on<GenerateAiStudioScriptRequested>(_onGenerateAiStudioScriptRequested);
+    on<GenerateAiStudioMediaRequested>(_onGenerateAiStudioMediaRequested);
+    on<RejectAiStudioMediaRequested>(_onRejectAiStudioMediaRequested);
+    on<LoadAiStudioReportRequested>(_onLoadAiStudioReportRequested);
   }
 
   final MarketingRepository _repository;
@@ -237,6 +248,385 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           errorMessage: userFacingError(
             error,
             fallback: 'Не удалось сохранить бренд-гайд.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadAiStudioDataRequested(
+    LoadAiStudioDataRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final ideasFuture = _repository.getAiIdeas(lang: event.lang);
+      final quotaFuture = _repository.getVideoQuota();
+      final statsFuture = _repository.getPublicationStats();
+      final results = await Future.wait<Object>([
+        ideasFuture,
+        quotaFuture,
+        statsFuture,
+      ]);
+      if (emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          aiIdeas: results[0] as List<MarketingIdea>,
+          videoQuota: results[1] as MarketingVideoQuota,
+          publicationStats: results[2] as List<MarketingPublicationStats>,
+        ),
+      );
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось загрузить данные AI-Студии.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateAiStudioIdeasRequested(
+    GenerateAiStudioIdeasRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final ideas = await _repository.getAiIdeas(lang: event.lang);
+      if (emit.isDone) return;
+      emit(state.copyWith(isStudioLoading: false, aiIdeas: ideas));
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось сгенерировать идеи маркетинга.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateAiStudioCampaignRequested(
+    CreateAiStudioCampaignRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final campaign = await _repository.createAiCampaign(
+        name: event.name,
+        product: event.product,
+        goalQty: event.goalQty,
+        goalDays: event.goalDays,
+        briefText: event.briefText,
+        ideaSource: event.ideaSource,
+      );
+      if (emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          currentAiCampaign: campaign,
+          studioSuccessMessage: 'marketing_campaign_created',
+        ),
+      );
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось создать кампанию.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateAiStudioConceptsRequested(
+    GenerateAiStudioConceptsRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final concepts = await _repository.generateAiConcepts(event.campaignId);
+      if (emit.isDone) return;
+      if (state.currentAiCampaign != null) {
+        final updated = MarketingCampaignAi(
+          id: state.currentAiCampaign!.id,
+          name: state.currentAiCampaign!.name,
+          product: state.currentAiCampaign!.product,
+          goalQty: state.currentAiCampaign!.goalQty,
+          goalDays: state.currentAiCampaign!.goalDays,
+          briefText: state.currentAiCampaign!.briefText,
+          ideaSource: state.currentAiCampaign!.ideaSource,
+          aiStatus: 'concepts_generated',
+          createdAt: state.currentAiCampaign!.createdAt,
+          concepts: concepts,
+        );
+        emit(
+          state.copyWith(
+            isStudioLoading: false,
+            currentAiCampaign: updated,
+            studioSuccessMessage: 'marketing_concepts_generated',
+          ),
+        );
+      } else {
+        emit(state.copyWith(isStudioLoading: false));
+      }
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось сгенерировать концепции.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onReviseAiStudioConceptRequested(
+    ReviseAiStudioConceptRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final revised = await _repository.reviseAiConcept(
+        campaignId: event.campaignId,
+        baseIds: event.baseIds,
+        note: event.note,
+      );
+      if (emit.isDone) return;
+      if (state.currentAiCampaign != null) {
+        final currentConcepts = List<MarketingConcept>.from(
+          state.currentAiCampaign!.concepts,
+        )..add(revised);
+        final updated = MarketingCampaignAi(
+          id: state.currentAiCampaign!.id,
+          name: state.currentAiCampaign!.name,
+          product: state.currentAiCampaign!.product,
+          goalQty: state.currentAiCampaign!.goalQty,
+          goalDays: state.currentAiCampaign!.goalDays,
+          briefText: state.currentAiCampaign!.briefText,
+          ideaSource: state.currentAiCampaign!.ideaSource,
+          aiStatus: 'revised',
+          createdAt: state.currentAiCampaign!.createdAt,
+          concepts: currentConcepts,
+        );
+        emit(
+          state.copyWith(
+            isStudioLoading: false,
+            currentAiCampaign: updated,
+            studioSuccessMessage: 'marketing_concept_revised',
+          ),
+        );
+      } else {
+        emit(state.copyWith(isStudioLoading: false));
+      }
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось пересмотреть концепцию.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onApproveAiStudioConceptRequested(
+    ApproveAiStudioConceptRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final approved = await _repository.approveAiConcept(event.conceptId);
+      if (emit.isDone) return;
+      if (state.currentAiCampaign != null) {
+        final updatedConcepts = state.currentAiCampaign!.concepts.map((c) {
+          return c.id == event.conceptId ? approved : c;
+        }).toList();
+        final updated = MarketingCampaignAi(
+          id: state.currentAiCampaign!.id,
+          name: state.currentAiCampaign!.name,
+          product: state.currentAiCampaign!.product,
+          goalQty: state.currentAiCampaign!.goalQty,
+          goalDays: state.currentAiCampaign!.goalDays,
+          briefText: state.currentAiCampaign!.briefText,
+          ideaSource: state.currentAiCampaign!.ideaSource,
+          aiStatus: 'approved',
+          createdAt: state.currentAiCampaign!.createdAt,
+          concepts: updatedConcepts,
+        );
+        emit(
+          state.copyWith(
+            isStudioLoading: false,
+            currentAiCampaign: updated,
+            studioSuccessMessage: 'marketing_concept_approved',
+          ),
+        );
+      } else {
+        emit(state.copyWith(isStudioLoading: false));
+      }
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось утвердить концепцию.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateAiStudioScriptRequested(
+    GenerateAiStudioScriptRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final script = await _repository.generateAiScript(event.conceptId);
+      if (emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          currentScript: script,
+          currentMedia: script,
+          studioSuccessMessage: 'marketing_script_generated',
+        ),
+      );
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось сгенерировать сценарий.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateAiStudioMediaRequested(
+    GenerateAiStudioMediaRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final media = await _repository.generateAiMedia(
+        mediaId: event.mediaId,
+        kind: event.kind,
+        confirm: event.confirm,
+      );
+      final quota = await _repository.getVideoQuota();
+      if (emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          currentMedia: media,
+          videoQuota: quota,
+          studioSuccessMessage: 'marketing_media_generated',
+        ),
+      );
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось сгенерировать медиафайл.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRejectAiStudioMediaRequested(
+    RejectAiStudioMediaRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      await _repository.rejectAiMedia(
+        mediaId: event.mediaId,
+        reason: event.reason,
+      );
+      if (emit.isDone) return;
+      if (state.currentMedia != null) {
+        final rejected = MarketingMediaAsset(
+          id: state.currentMedia!.id,
+          conceptId: state.currentMedia!.conceptId,
+          kind: state.currentMedia!.kind,
+          fileUrl: state.currentMedia!.fileUrl,
+          version: state.currentMedia!.version,
+          script: state.currentMedia!.script,
+          postText: state.currentMedia!.postText,
+          firstComment: state.currentMedia!.firstComment,
+          status: 'rejected',
+          rejectReason: event.reason,
+          cost: state.currentMedia!.cost,
+          createdAt: state.currentMedia!.createdAt,
+        );
+        emit(
+          state.copyWith(
+            isStudioLoading: false,
+            currentMedia: rejected,
+            studioSuccessMessage: 'marketing_media_rejected',
+          ),
+        );
+      } else {
+        emit(state.copyWith(isStudioLoading: false));
+      }
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось отклонить медиа.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onLoadAiStudioReportRequested(
+    LoadAiStudioReportRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isStudioLoading: true, clearError: true));
+    try {
+      final stats = await _repository.getPublicationStats();
+      if (emit.isDone) return;
+      emit(state.copyWith(isStudioLoading: false, publicationStats: stats));
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isStudioLoading: false,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось загрузить отчёт по ROI.',
           ),
         ),
       );

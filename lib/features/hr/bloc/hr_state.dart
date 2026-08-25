@@ -12,6 +12,7 @@ class HrLoading extends HrState {}
 
 class HrLoaded extends HrState {
   final List<Employee> employees;
+  final List<KpiRecord> kpiRecords;
   final List<KpiAlert> kpiAlerts;
   final List<SalaryRecord> salaryRecords;
   final String period;
@@ -36,6 +37,7 @@ class HrLoaded extends HrState {
 
   const HrLoaded({
     required this.employees,
+    this.kpiRecords = const [],
     required this.kpiAlerts,
     required this.salaryRecords,
     required this.period,
@@ -59,6 +61,7 @@ class HrLoaded extends HrState {
 
   HrLoaded copyWith({
     List<Employee>? employees,
+    List<KpiRecord>? kpiRecords,
     List<KpiAlert>? kpiAlerts,
     List<SalaryRecord>? salaryRecords,
     String? period,
@@ -83,6 +86,7 @@ class HrLoaded extends HrState {
   }) {
     return HrLoaded(
       employees: employees ?? this.employees,
+      kpiRecords: kpiRecords ?? this.kpiRecords,
       kpiAlerts: kpiAlerts ?? this.kpiAlerts,
       salaryRecords: salaryRecords ?? this.salaryRecords,
       period: period ?? this.period,
@@ -110,6 +114,7 @@ class HrLoaded extends HrState {
   @override
   List<Object?> get props => [
     employees,
+    kpiRecords,
     kpiAlerts,
     salaryRecords,
     period,

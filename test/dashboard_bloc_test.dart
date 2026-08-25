@@ -218,6 +218,32 @@ class MockFinanceTestRepository implements FinanceRepository {
 
   @override
   Future<void> refreshRates() async {}
+
+  @override
+  Future<OneCReconcileReport> getOneCReconcile({
+    String? day,
+    bool forceRefresh = false,
+  }) async {
+    if (shouldFail) throw Exception('OneC fail');
+    return const OneCReconcileReport(
+      date: '2026-08-25',
+      totalOnec: 1000.0,
+      totalPayk: 1000.0,
+      rows: [],
+      notInOnec: [],
+    );
+  }
+
+  @override
+  Future<List<OneCTarget>> getOneCTargets({bool forceRefresh = false}) async {
+    if (shouldFail) throw Exception('Targets fail');
+    return const [];
+  }
+
+  @override
+  Future<void> saveOneCLink(OneCLinkInput input) async {
+    if (shouldFail) throw Exception('Save link fail');
+  }
 }
 
 void main() {
@@ -450,6 +476,36 @@ void main() {
       final state = bloc.state as DashboardLoaded;
       expect(state.metrics.cashBalance, 1000);
       expect(state.overviewError, 'error_load_failed');
+    });
+
+    test('loads OneC reconciliation section and handles save link', () async {
+      final overview = bloc.stream.firstWhere(
+        (state) => state is DashboardLoaded,
+      );
+      bloc.add(const LoadDashboardData());
+      await overview;
+
+      final onecLoaded = bloc.stream.firstWhere(
+        (state) => state is DashboardLoaded && state.onec != null,
+      );
+      bloc.add(const LoadDashboardSection(DashboardSection.onec));
+      final loadedState = await onecLoaded as DashboardLoaded;
+
+      expect(loadedState.onec, isNotNull);
+      expect(loadedState.onec!.totalOnec, 1000.0);
+      expect(loadedState.onec!.totalPayk, 1000.0);
+      expect(loadedState.onecTargets, isNotNull);
+
+      bloc.add(
+        const SaveOneCLinkRequested(
+          onecName: 'Касса 1',
+          kind: 'register',
+          targetId: 1,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final stateAfterSave = bloc.state as DashboardLoaded;
+      expect(stateAfterSave.onec, isNotNull);
     });
   });
 }

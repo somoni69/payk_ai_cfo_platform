@@ -51,3 +51,49 @@ class LeaveStoreRequested extends NetworkEvent {
 
   const LeaveStoreRequested({this.completion});
 }
+
+class UpdateStoreRequested extends NetworkEvent {
+  final int storeId;
+  final String? name;
+  final String? location;
+  final bool? isActive;
+  final Completer<bool>? completion;
+
+  const UpdateStoreRequested({
+    required this.storeId,
+    this.name,
+    this.location,
+    this.isActive,
+    this.completion,
+  });
+
+  @override
+  List<Object?> get props => [storeId, name, location, isActive];
+}
+
+class DeleteStoreRequested extends NetworkEvent {
+  final int storeId;
+  final Completer<bool>? completion;
+
+  const DeleteStoreRequested({required this.storeId, this.completion});
+
+  @override
+  List<Object?> get props => [storeId];
+}
+
+class ResetDirectorPasswordRequested extends NetworkEvent {
+  final int storeId;
+  final String? username;
+  final String password;
+  final Completer<bool>? completion;
+
+  const ResetDirectorPasswordRequested({
+    required this.storeId,
+    this.username,
+    required this.password,
+    this.completion,
+  });
+
+  @override
+  List<Object?> get props => [storeId, username, password];
+}

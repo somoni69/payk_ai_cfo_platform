@@ -71,4 +71,16 @@ abstract class FinanceRepository {
   Future<ConvertResult> convertAmount(double amount, String base);
 
   Future<void> refreshRates();
+
+  /// Получить отчет сверки с 1С на дату
+  Future<OneCReconcileReport> getOneCReconcile({
+    String? day,
+    bool forceRefresh = false,
+  });
+
+  /// Получить список касс и счетов для ручной привязки
+  Future<List<OneCTarget>> getOneCTargets({bool forceRefresh = false});
+
+  /// Сохранить или удалить привязку строки 1С к кассе/счету
+  Future<void> saveOneCLink(OneCLinkInput input);
 }

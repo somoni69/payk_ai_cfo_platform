@@ -93,10 +93,7 @@ class _ChecklistsViewState extends State<ChecklistsView> {
       body: BlocBuilder<ChecklistsBloc, ChecklistsState>(
         builder: (context, state) {
           if (state is ChecklistsLoading) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: LedgerListShimmer(itemCount: 5),
-            );
+            return const ChecklistsOverviewShimmer();
           }
           if (state is ChecklistsError) {
             return Center(child: Text(state.message));

@@ -470,6 +470,9 @@ class _NetworkViewState extends State<_NetworkView> {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
+    final authState = context.watch<AuthBloc>().state;
+    final isOwner =
+        authState is AuthAuthenticated && authState.role == UserRole.owner;
     final isEntering = _enteringStoreId == store.id;
 
     Future<void> enterStore() async {
@@ -614,6 +617,78 @@ class _NetworkViewState extends State<_NetworkView> {
                   ),
                 ),
               ),
+              if (isOwner) ...[
+                const SizedBox(width: 4),
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    TablerIcons.dots_vertical,
+                    size: 18,
+                    color: colors.textSecondary,
+                  ),
+                  tooltip: language.translate('network_store_options'),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: colors.border),
+                  ),
+                  onSelected: (val) {
+                    if (val == 'edit') {
+                      _showEditStoreDialog(context, store);
+                    } else if (val == 'reset_pwd') {
+                      _showResetDirectorPasswordDialog(context, store);
+                    } else if (val == 'delete') {
+                      _showDeleteStoreDialog(context, store);
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(TablerIcons.edit, size: 16, color: colors.brand),
+                          const SizedBox(width: 8),
+                          Text(
+                            language.translate('network_store_edit'),
+                            style: textStyles.bodySans.copyWith(fontSize: 13.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'reset_pwd',
+                      child: Row(
+                        children: [
+                          Icon(TablerIcons.key, size: 16, color: colors.brand),
+                          const SizedBox(width: 8),
+                          Text(
+                            language.translate('network_director_reset_pwd'),
+                            style: textStyles.bodySans.copyWith(fontSize: 13.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            TablerIcons.trash,
+                            size: 16,
+                            color: colors.accentRed,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            language.translate('network_store_delete'),
+                            style: textStyles.bodySans.copyWith(
+                              fontSize: 13.5,
+                              color: colors.accentRed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -992,6 +1067,174 @@ class _NetworkViewState extends State<_NetworkView> {
           ),
         );
       },
+    );
+  }
+
+  void _showEditStoreDialog(BuildContext context, NetworkStore store) {
+    final language = context.read<LanguageCubit>();
+    final bloc = context.read<NetworkBloc>();
+    final nameCtrl = TextEditingController(text: store.name);
+    final locCtrl = TextEditingController(text: store.location ?? '');
+    var isActive = store.isActive;
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('network_store_edit_title'),
+      builder: (sheetContext, setSheetState) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: language.translate('network_store_name_label'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: locCtrl,
+                decoration: InputDecoration(
+                  labelText: language.translate('network_store_location_label'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: isActive,
+                title: Text(
+                  language.translate('network_store_status_active'),
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  language.translate('network_store_status_hint'),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                onChanged: (val) {
+                  setSheetState(() => isActive = val);
+                },
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty) return;
+                  final done = Completer<bool>();
+                  bloc.add(
+                    UpdateStoreRequested(
+                      storeId: store.id,
+                      name: nameCtrl.text.trim(),
+                      location: locCtrl.text.trim().isNotEmpty
+                          ? locCtrl.text.trim()
+                          : null,
+                      isActive: isActive,
+                      completion: done,
+                    ),
+                  );
+                  final ok = await done.future;
+                  if (ok && sheetContext.mounted) {
+                    Navigator.of(sheetContext).pop();
+                  }
+                },
+                child: Text(language.translate('common_save')),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showResetDirectorPasswordDialog(
+    BuildContext context,
+    NetworkStore store,
+  ) {
+    final language = context.read<LanguageCubit>();
+    final bloc = context.read<NetworkBloc>();
+    final passCtrl = TextEditingController();
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('network_director_reset_pwd_title'),
+      builder: (sheetContext, setSheetState) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '${language.translate('login_store_label')}: ${store.name}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: language.translate(
+                    'network_director_new_pwd_label',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () async {
+                  if (passCtrl.text.trim().length < 8) return;
+                  final done = Completer<bool>();
+                  bloc.add(
+                    ResetDirectorPasswordRequested(
+                      storeId: store.id,
+                      password: passCtrl.text.trim(),
+                      completion: done,
+                    ),
+                  );
+                  final ok = await done.future;
+                  if (ok && sheetContext.mounted) {
+                    Navigator.of(sheetContext).pop();
+                  }
+                },
+                child: Text(
+                  language.translate('network_director_reset_pwd_btn'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDeleteStoreDialog(BuildContext context, NetworkStore store) {
+    final language = context.read<LanguageCubit>();
+    final bloc = context.read<NetworkBloc>();
+    final colors = context.colors;
+
+    showDialog<void>(
+      context: context,
+      builder: (dlgContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(language.translate('network_store_delete_confirm_title')),
+        content: Text(language.translate('network_store_delete_confirm_desc')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dlgContext).pop(),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: colors.accentRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(dlgContext).pop();
+              bloc.add(DeleteStoreRequested(storeId: store.id));
+            },
+            child: Text(language.translate('network_store_delete_btn')),
+          ),
+        ],
+      ),
     );
   }
 }

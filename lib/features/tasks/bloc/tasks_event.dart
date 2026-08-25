@@ -135,3 +135,37 @@ class RejectTaskRequested extends TasksEvent {
   @override
   List<Object?> get props => [taskId, reason];
 }
+
+class CreateProjectRequested extends TasksEvent {
+  final String name;
+  final String? description;
+
+  const CreateProjectRequested({required this.name, this.description});
+
+  @override
+  List<Object?> get props => [name, description];
+}
+
+class UpdateProjectRequested extends TasksEvent {
+  final String projectId;
+  final String name;
+  final String? description;
+
+  const UpdateProjectRequested({
+    required this.projectId,
+    required this.name,
+    this.description,
+  });
+
+  @override
+  List<Object?> get props => [projectId, name, description];
+}
+
+class DeleteProjectRequested extends TasksEvent {
+  final String projectId;
+
+  const DeleteProjectRequested(this.projectId);
+
+  @override
+  List<Object?> get props => [projectId];
+}

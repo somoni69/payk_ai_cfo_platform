@@ -6,4 +6,7 @@ abstract class IntegrationsRepository {
   });
   Future<List<SyncLog>> getSyncLogs({bool forceRefresh = false});
   Future<SyncResult> triggerSync(String system);
+  Future<SmsTestResult> testSms(String phone);
+  Future<AiProbeResult> testAi();
+  Future<TelegramLinkInfo> getTelegramLink();
 }

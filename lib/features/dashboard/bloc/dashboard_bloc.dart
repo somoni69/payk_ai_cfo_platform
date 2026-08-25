@@ -19,6 +19,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   AiInsightsReport? _cachedAiInsights;
   PlanFactReport? _cachedPlanFact;
   ClientAnalysisReport? _cachedClients;
+  OneCReconcileReport? _cachedOnec;
+  List<OneCTarget>? _cachedOnecTargets;
   String _currentCurrency = 'TJS';
 
   final Set<DashboardSection> _loadingSections = {};
@@ -39,6 +41,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     on<DeleteAccountRequested>(_onDeleteAccount);
     on<ZeroOutAccountRequested>(_onZeroOutAccount);
     on<RefreshRatesRequested>(_onRefreshRates);
+    on<SaveOneCLinkRequested>(_onSaveOneCLink);
+    on<RefreshOneCReconcileRequested>(_onRefreshOneCReconcile);
   }
 
   Future<void> _onLoadDashboardData(
@@ -56,6 +60,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedAiInsights = null;
       _cachedPlanFact = null;
       _cachedClients = null;
+      _cachedOnec = null;
+      _cachedOnecTargets = null;
       _overviewRequest = null;
       _sectionRequests.clear();
       _loadingSections.clear();
@@ -69,6 +75,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       _cachedAiInsights = null;
       _cachedPlanFact = null;
       _cachedClients = null;
+      _cachedOnec = null;
+      _cachedOnecTargets = null;
       _overviewRequest = null;
       _sectionRequests.clear();
     }
@@ -196,6 +204,14 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         case DashboardSection.aiInsights:
           _cachedAiInsights = await _repository.getAiInsights();
           break;
+        case DashboardSection.onec:
+          final values = await Future.wait<Object>([
+            _repository.getOneCReconcile(forceRefresh: forceRefresh),
+            _repository.getOneCTargets(forceRefresh: forceRefresh),
+          ]);
+          _cachedOnec = values[0] as OneCReconcileReport;
+          _cachedOnecTargets = values[1] as List<OneCTarget>;
+          break;
       }
       if (abcRevision == null || abcRevision == _abcRevision) {
         _sectionErrors.remove(section);
@@ -243,6 +259,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         _cachedBankAccounts != null && _cachedRates != null,
       DashboardSection.clients => _cachedClients != null,
       DashboardSection.aiInsights => _cachedAiInsights != null,
+      DashboardSection.onec =>
+        _cachedOnec != null && _cachedOnecTargets != null,
     };
   }
 
@@ -351,6 +369,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         aiInsights: _cachedAiInsights,
         planFact: _convertPlanFact(_cachedPlanFact, currency),
         clients: _cachedClients,
+        onec: _cachedOnec,
+        onecTargets: _cachedOnecTargets,
         loadingSections: Set.unmodifiable(_loadingSections),
         sectionErrors: Map.unmodifiable(_sectionErrors),
         overviewError: overviewError,
@@ -609,5 +629,48 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           ),
         )
         .toList(growable: false);
+  }
+
+  Future<void> _onSaveOneCLink(
+    SaveOneCLinkRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    try {
+      await _repository.saveOneCLink(
+        OneCLinkInput(
+          onecName: event.onecName,
+          kind: event.kind,
+          targetId: event.targetId,
+        ),
+      );
+      _cachedOnec = await _repository.getOneCReconcile(forceRefresh: true);
+      _emitCurrentState(emit);
+    } catch (_) {
+      _sectionErrors[DashboardSection.onec] = ErrorKeys.saveFailed;
+      _emitCurrentState(emit);
+    }
+  }
+
+  Future<void> _onRefreshOneCReconcile(
+    RefreshOneCReconcileRequested event,
+    Emitter<DashboardState> emit,
+  ) async {
+    _loadingSections.add(DashboardSection.onec);
+    _sectionErrors.remove(DashboardSection.onec);
+    _emitCurrentState(emit);
+    try {
+      final values = await Future.wait<Object>([
+        _repository.getOneCReconcile(day: event.day, forceRefresh: true),
+        _repository.getOneCTargets(forceRefresh: true),
+      ]);
+      _cachedOnec = values[0] as OneCReconcileReport;
+      _cachedOnecTargets = values[1] as List<OneCTarget>;
+    } catch (_) {
+      _sectionErrors[DashboardSection.onec] = ErrorKeys.loadFailed;
+    } finally {
+      _loadingSections.remove(DashboardSection.onec);
+      _emitCurrentState(emit);
+      if (event.completion?.isCompleted == false) event.completion!.complete();
+    }
   }
 }

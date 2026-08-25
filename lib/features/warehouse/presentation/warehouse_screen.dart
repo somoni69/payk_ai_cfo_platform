@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -803,6 +806,44 @@ class WarehouseSectionScreen extends StatelessWidget {
             elevation: 0,
             scrolledUnderElevation: 0,
             actions: [
+              if (section == WarehouseSection.products &&
+                  loadedState != null) ...[
+                IconButton(
+                  tooltip: language.translate('warehouse_print_labels_btn'),
+                  onPressed: () => _showPrintLabelsBottomSheet(
+                    context,
+                    loadedState.products,
+                  ),
+                  icon: const Icon(TablerIcons.printer, size: 20),
+                ),
+                if (canManage)
+                  PopupMenuButton<String>(
+                    icon: const Icon(TablerIcons.dots_vertical, size: 20),
+                    onSelected: (val) {
+                      if (val == 'generate_missing_barcodes') {
+                        context.read<WarehouseBloc>().add(
+                          const AssignMissingBarcodesRequested(),
+                        );
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'generate_missing_barcodes',
+                        child: Row(
+                          children: [
+                            const Icon(TablerIcons.barcode, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              language.translate(
+                                'warehouse_generate_missing_barcodes_btn',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
               if (section == WarehouseSection.analysis)
                 IconButton(
                   tooltip: language.translate('warehouse_analysis_rerun'),
@@ -880,27 +921,50 @@ class WarehouseSectionScreen extends StatelessWidget {
                   _ => null,
                 }
               : null,
-          body: loadedState != null
-              ? switch (section) {
-                  WarehouseSection.products => _buildProductsTab(
-                    context,
-                    loadedState,
-                  ),
-                  WarehouseSection.movements => _buildMovementsTab(
-                    context,
-                    loadedState,
-                  ),
-                  WarehouseSection.batches => _buildBatchesTab(
-                    context,
-                    loadedState,
-                    canManage: canManage,
-                  ),
-                  WarehouseSection.analysis => _buildAnalysisTab(
-                    context,
-                    loadedState,
-                  ),
-                }
-              : const WarehouseOverviewShimmer(),
+          body: BlocListener<WarehouseBloc, WarehouseState>(
+            listener: (context, state) {
+              if (state is WarehouseLoaded &&
+                  state.pdfBytes != null &&
+                  state.pdfBytes!.isNotEmpty) {
+                final bytes = state.pdfBytes!;
+                () async {
+                  try {
+                    final tempDir = await getTemporaryDirectory();
+                    final file = File(
+                      '${tempDir.path}/warehouse_labels_${DateTime.now().millisecondsSinceEpoch}.pdf',
+                    );
+                    await file.writeAsBytes(bytes);
+                    await SharePlus.instance.share(
+                      ShareParams(
+                        files: [XFile(file.path, mimeType: 'application/pdf')],
+                      ),
+                    );
+                  } catch (_) {}
+                }();
+              }
+            },
+            child: loadedState != null
+                ? switch (section) {
+                    WarehouseSection.products => _buildProductsTab(
+                      context,
+                      loadedState,
+                    ),
+                    WarehouseSection.movements => _buildMovementsTab(
+                      context,
+                      loadedState,
+                    ),
+                    WarehouseSection.batches => _buildBatchesTab(
+                      context,
+                      loadedState,
+                      canManage: canManage,
+                    ),
+                    WarehouseSection.analysis => _buildAnalysisTab(
+                      context,
+                      loadedState,
+                    ),
+                  }
+                : const WarehouseOverviewShimmer(),
+          ),
         );
       },
     );
@@ -1115,6 +1179,29 @@ Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
                             ),
                           ],
                         ),
+                        if (product.barcode != null &&
+                            product.barcode!.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Icon(
+                                TablerIcons.barcode,
+                                size: 13,
+                                color: colors.textSecondary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                product.barcode!,
+                                style: textStyles.captionSans.copyWith(
+                                  fontFamily: 'monospace',
+                                  color: colors.textSecondary,
+                                  fontSize: 11.5,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -2997,4 +3084,168 @@ Future<void> _showAddMovementDialog(BuildContext context) async {
     amountController.dispose();
     noteController.dispose();
   }
+}
+
+void _showPrintLabelsBottomSheet(
+  BuildContext context,
+  List<WarehouseProduct> products,
+) {
+  final language = context.read<LanguageCubit>();
+  final warehouseBloc = context.read<WarehouseBloc>();
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+
+  String sheetFormat = 'a4'; // 'a4' or 'label'
+  int copies = 1;
+  WarehouseProduct? selectedProduct; // null = all products
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: language.translate('warehouse_print_labels_title'),
+    builder: (context, setSheetState) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            language.translate('warehouse_print_format_label'),
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: ChoiceChip(
+                  label: Text(
+                    'Сетка А4 (3×8, 24 шт)',
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: sheetFormat == 'a4'
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  selected: sheetFormat == 'a4',
+                  onSelected: (sel) {
+                    if (sel) {
+                      setSheetState(() => sheetFormat = 'a4');
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ChoiceChip(
+                  label: Text(
+                    'Термолента 58 мм',
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: sheetFormat == 'label'
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  selected: sheetFormat == 'label',
+                  onSelected: (sel) {
+                    if (sel) {
+                      setSheetState(() => sheetFormat = 'label');
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            language.translate('warehouse_print_product_scope'),
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ExpansibleWidget<WarehouseProduct?>.selection(
+            cardPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
+            title: Text(
+              selectedProduct == null
+                  ? 'Все товары (${products.length} шт)'
+                  : '${selectedProduct!.name} (${selectedProduct!.barcode ?? 'без кода'})',
+              style: textStyles.bodySans,
+            ),
+            items: [null, ...products],
+            selectedValue: selectedProduct,
+            itemLabelBuilder: (p) => p == null
+                ? 'Все товары (${products.length} шт)'
+                : '${p.name} (${p.barcode ?? 'без кода'})',
+            onSelected: (p) {
+              setSheetState(() {
+                selectedProduct = p;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Копий на каждый товар: $copies',
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [1, 2, 5, 10].map((c) {
+              final isSel = copies == c;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text('$c шт'),
+                  selected: isSel,
+                  onSelected: (sel) {
+                    if (sel) setSheetState(() => copies = c);
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      );
+    },
+    footerBuilder: (context, setSheetState) {
+      return ElevatedButton.icon(
+        onPressed: () {
+          final ids = selectedProduct != null
+              ? [selectedProduct!.id]
+              : products.map((p) => p.id).toList();
+          if (ids.isEmpty) return;
+
+          warehouseBloc.add(
+            DownloadBarcodeLabelsPdfRequested(
+              productIds: ids,
+              sheet: sheetFormat,
+              copies: copies,
+            ),
+          );
+          Navigator.pop(context);
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colors.brand,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(TablerIcons.printer, size: 18),
+        label: Text(
+          language.translate('warehouse_download_labels_pdf_btn'),
+          style: textStyles.bodySans.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    },
+  );
 }

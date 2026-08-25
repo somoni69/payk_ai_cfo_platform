@@ -19,6 +19,8 @@ class WarehouseLoaded extends WarehouseState {
   final WarehouseStockAnalysis? stockAnalysis;
   final bool isAnalysisLoading;
   final String? analysisError;
+  final bool isPdfDownloading;
+  final List<int>? pdfBytes;
   final String? errorMessage;
   final String? successMessage;
 
@@ -31,6 +33,8 @@ class WarehouseLoaded extends WarehouseState {
     this.stockAnalysis,
     this.isAnalysisLoading = false,
     this.analysisError,
+    this.isPdfDownloading = false,
+    this.pdfBytes,
     this.errorMessage,
     this.successMessage,
   });
@@ -44,12 +48,15 @@ class WarehouseLoaded extends WarehouseState {
     WarehouseStockAnalysis? stockAnalysis,
     bool? isAnalysisLoading,
     String? analysisError,
+    bool? isPdfDownloading,
+    List<int>? pdfBytes,
     String? errorMessage,
     String? successMessage,
     bool clearError = false,
     bool clearSuccess = false,
     bool clearAnalysis = false,
     bool clearAnalysisError = false,
+    bool clearPdf = false,
   }) {
     return WarehouseLoaded(
       products: products ?? this.products,
@@ -64,6 +71,8 @@ class WarehouseLoaded extends WarehouseState {
       analysisError: clearAnalysisError
           ? null
           : (analysisError ?? this.analysisError),
+      isPdfDownloading: isPdfDownloading ?? this.isPdfDownloading,
+      pdfBytes: clearPdf ? null : (pdfBytes ?? this.pdfBytes),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       successMessage: clearSuccess
           ? null
@@ -81,6 +90,8 @@ class WarehouseLoaded extends WarehouseState {
     stockAnalysis,
     isAnalysisLoading,
     analysisError,
+    isPdfDownloading,
+    pdfBytes,
     errorMessage,
     successMessage,
   ];

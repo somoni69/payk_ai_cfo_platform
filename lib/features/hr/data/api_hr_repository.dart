@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
@@ -11,6 +12,9 @@ class ApiHrRepository implements HrRepository {
   final ApiClient _apiClient = ApiClient();
   final _employeesCache = ExpiringRequestCache<List<Employee>>();
   final _kpiCaches = BoundedPeriodRequestCache<List<KpiAlert>>(capacity: 8);
+  final _kpiRecordsCaches = BoundedPeriodRequestCache<List<KpiRecord>>(
+    capacity: 8,
+  );
   final _salaryCaches = BoundedPeriodRequestCache<List<SalaryRecord>>(
     capacity: 8,
   );
@@ -30,15 +34,20 @@ class ApiHrRepository implements HrRepository {
   }
 
   @override
-  Future<List<Employee>> getEmployees({bool forceRefresh = false}) =>
-      _employeesCache.get(_fetchEmployees, forceRefresh: forceRefresh);
+  Future<List<Employee>> getEmployees({
+    bool forceRefresh = false,
+    bool archived = false,
+  }) => _employeesCache.get(
+    () => _fetchEmployees(archived: archived),
+    forceRefresh: forceRefresh,
+  );
 
-  Future<List<Employee>> _fetchEmployees() async {
+  Future<List<Employee>> _fetchEmployees({bool archived = false}) async {
     try {
       // Запрашиваем первую страницу с большим размером для мобильного списка
       final response = await _apiClient.dio.get(
         '/hr/employees',
-        queryParameters: {'page': 1, 'size': 100},
+        queryParameters: {'page': 1, 'size': 100, 'archived': archived},
       );
       final dataMap = response.data as Map<String, dynamic>;
       final list = (dataMap['items'] ?? []) as List<dynamic>;
@@ -61,6 +70,7 @@ class ApiHrRepository implements HrRepository {
       email: map['email']?.toString(),
       baseSalary: _toDouble(map['base_salary']),
       status: map['status'] ?? 'active',
+      isArchived: map['is_archived'] == true,
       departmentName: map['department_name']?.toString(),
       managerName: map['manager_name']?.toString(),
       createdAt: DateTime.parse(
@@ -117,7 +127,7 @@ class ApiHrRepository implements HrRepository {
     try {
       final response = await _apiClient.dio.get(
         '/hr/kpi/alerts',
-        queryParameters: {'period': period},
+        queryParameters: {'period': period, 'with_ai': true},
       );
       final list = response.data as List<dynamic>;
 
@@ -138,6 +148,148 @@ class ApiHrRepository implements HrRepository {
       }).toList();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<KpiRecord>> getKpis({
+    String? period,
+    String? employeeId,
+    bool forceRefresh = false,
+  }) {
+    final cacheKey = '${period ?? 'all'}_${employeeId ?? 'all'}';
+    return _kpiRecordsCaches.get(
+      cacheKey,
+      () => _fetchKpis(period: period, employeeId: employeeId),
+      forceRefresh: forceRefresh,
+    );
+  }
+
+  Future<List<KpiRecord>> _fetchKpis({
+    String? period,
+    String? employeeId,
+  }) async {
+    try {
+      final params = <String, dynamic>{};
+      if (period != null) params['period'] = period;
+      if (employeeId != null) {
+        params['employee_id'] = _requirePositiveId(employeeId, 'employeeId');
+      }
+      final response = await _apiClient.dio.get(
+        '/hr/kpi',
+        queryParameters: params,
+      );
+      final list = response.data as List<dynamic>? ?? [];
+
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        return KpiRecord(
+          id: (map['id'] ?? '').toString(),
+          employeeId: (map['employee_id'] ?? '').toString(),
+          employeeName: map['employee_name']?.toString(),
+          period: map['period'] ?? '',
+          metric: map['metric'] ?? '',
+          planValue: _toDouble(map['plan_value']),
+          factValue: _toDouble(map['fact_value']),
+          completion: map['completion'] != null
+              ? _toDouble(map['completion'])
+              : null,
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<KpiRecord> createKpi({
+    required String employeeId,
+    required String period,
+    required String metric,
+    required double planValue,
+    required double factValue,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/hr/kpi',
+        data: {
+          'employee_id': _requirePositiveId(employeeId, 'employeeId'),
+          'period': period,
+          'metric': metric,
+          'plan_value': planValue,
+          'fact_value': factValue,
+        },
+      );
+      final map = response.data as Map<String, dynamic>;
+      _kpiRecordsCaches.invalidate('${period}_all');
+      _kpiCaches.invalidate(period);
+
+      return KpiRecord(
+        id: (map['id'] ?? '').toString(),
+        employeeId: (map['employee_id'] ?? employeeId).toString(),
+        employeeName: map['employee_name']?.toString(),
+        period: map['period'] ?? period,
+        metric: map['metric'] ?? metric,
+        planValue: _toDouble(map['plan_value']),
+        factValue: _toDouble(map['fact_value']),
+        completion: map['completion'] != null
+            ? _toDouble(map['completion'])
+            : null,
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<KpiRecord> updateKpi({
+    required String kpiId,
+    String? metric,
+    double? planValue,
+    double? factValue,
+  }) async {
+    try {
+      final payload = <String, dynamic>{};
+      if (metric != null) payload['metric'] = metric;
+      if (planValue != null) payload['plan_value'] = planValue;
+      if (factValue != null) payload['fact_value'] = factValue;
+
+      final response = await _apiClient.dio.patch(
+        '/hr/kpi/${_requirePositiveId(kpiId, 'kpiId')}',
+        data: payload,
+      );
+      final map = response.data as Map<String, dynamic>;
+      final period = map['period']?.toString() ?? '';
+      if (period.isNotEmpty) {
+        _kpiRecordsCaches.invalidate('${period}_all');
+        _kpiCaches.invalidate(period);
+      }
+
+      return KpiRecord(
+        id: (map['id'] ?? kpiId).toString(),
+        employeeId: (map['employee_id'] ?? '').toString(),
+        employeeName: map['employee_name']?.toString(),
+        period: period,
+        metric: map['metric'] ?? '',
+        planValue: _toDouble(map['plan_value']),
+        factValue: _toDouble(map['fact_value']),
+        completion: map['completion'] != null
+            ? _toDouble(map['completion'])
+            : null,
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteKpi(String kpiId) async {
+    try {
+      await _apiClient.dio.delete(
+        '/hr/kpi/${_requirePositiveId(kpiId, 'kpiId')}',
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 
@@ -169,6 +321,7 @@ class ApiHrRepository implements HrRepository {
           baseAmount: _toDouble(map['base_amount']),
           bonusAmount: _toDouble(map['bonus_amount']),
           deductions: _toDouble(map['deductions']),
+          aidDeduction: _toDouble(map['aid_deduction']),
           totalAmount: _toDouble(map['total_amount']),
           bonusFormula: map['bonus_formula']?.toString(),
         );
@@ -210,9 +363,24 @@ class ApiHrRepository implements HrRepository {
         baseAmount: _toDouble(map['base_amount']),
         bonusAmount: _toDouble(map['bonus_amount']),
         deductions: _toDouble(map['deductions']),
+        aidDeduction: _toDouble(map['aid_deduction']),
         totalAmount: _toDouble(map['total_amount']),
         bonusFormula: map['bonus_formula']?.toString(),
       );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<int>> downloadSalaryCertificatePdf(String employeeId) async {
+    try {
+      final response = await _apiClient.dio.get<List<int>>(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/salary-certificate',
+        queryParameters: {'fmt': 'pdf'},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? <int>[];
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -239,6 +407,91 @@ class ApiHrRepository implements HrRepository {
       _employeesCache.invalidate();
 
       return _mapEmployee(map);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<void> blockEmployee(String employeeId) async {
+    try {
+      await _apiClient.dio.post(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/block',
+      );
+      _employeesCache.invalidate();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> unblockEmployee(String employeeId) async {
+    try {
+      await _apiClient.dio.post(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/unblock',
+      );
+      _employeesCache.invalidate();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> archiveEmployee(String employeeId) async {
+    try {
+      await _apiClient.dio.post(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/archive',
+      );
+      _employeesCache.invalidate();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> restoreEmployee(String employeeId) async {
+    try {
+      await _apiClient.dio.post(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/restore',
+      );
+      _employeesCache.invalidate();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<int> syncIikoEmployees() async {
+    try {
+      final response = await _apiClient.dio.post('/hr/employees/sync-iiko');
+      _employeesCache.invalidate();
+      final data = response.data;
+      if (data is Map && data['records'] is num) {
+        return (data['records'] as num).toInt();
+      }
+      return 0;
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<EmployeeDocument>> getEmployeeDocuments(String employeeId) async {
+    try {
+      final response = await _apiClient.dio.get(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/documents',
+      );
+      final list = response.data as List<dynamic>? ?? [];
+      return list.whereType<Map>().map((item) {
+        final map = Map<String, dynamic>.from(item);
+        return EmployeeDocument(
+          id: (map['id'] ?? '').toString(),
+          employeeId: (map['employee_id'] ?? employeeId).toString(),
+          name: map['name']?.toString() ?? 'Документ',
+          url: map['url']?.toString() ?? '',
+          createdAt: _parseDate(map['created_at']) ?? DateTime.now(),
+        );
+      }).toList();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -490,9 +743,15 @@ class ApiHrRepository implements HrRepository {
   }
 
   @override
-  Future<List<LaborContract>> getContracts({bool forceRefresh = false}) async {
+  Future<List<LaborContract>> getContracts({
+    bool forceRefresh = false,
+    bool expiring = false,
+  }) async {
     try {
-      final response = await _apiClient.dio.get('/hr/contracts');
+      final response = await _apiClient.dio.get(
+        '/hr/contracts',
+        queryParameters: expiring ? {'expiring': true} : null,
+      );
       final list = response.data as List<dynamic>? ?? [];
       return list.whereType<Map>().map((item) {
         final map = Map<String, dynamic>.from(item);
@@ -506,6 +765,7 @@ class ApiHrRepository implements HrRepository {
           status: map['status']?.toString() ?? 'active',
           daysLeft: (map['days_left'] as num?)?.toInt(),
           isExpiring: map['is_expiring'] == true,
+          fileUrl: map['file_url']?.toString(),
         );
       }).toList();
     } catch (e) {
@@ -541,6 +801,7 @@ class ApiHrRepository implements HrRepository {
         status: map['status']?.toString() ?? 'active',
         daysLeft: (map['days_left'] as num?)?.toInt(),
         isExpiring: map['is_expiring'] == true,
+        fileUrl: map['file_url']?.toString(),
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
@@ -598,6 +859,27 @@ class ApiHrRepository implements HrRepository {
         hired: parseList(map['hired'], true),
         fired: parseList(map['fired'], false),
       );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<int>> downloadMovementReportPdf({
+    required String dateFrom,
+    required String dateTo,
+  }) async {
+    try {
+      final response = await _apiClient.dio.get<List<int>>(
+        '/hr/reports/movement',
+        queryParameters: {
+          'date_from': dateFrom,
+          'date_to': dateTo,
+          'fmt': 'pdf',
+        },
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? <int>[];
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }

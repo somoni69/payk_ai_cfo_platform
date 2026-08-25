@@ -12,6 +12,9 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
   NetworkBloc(this._repository) : super(const NetworkLoading()) {
     on<LoadNetworkData>(_onLoadNetworkData);
     on<CreateStoreRequested>(_onCreateStoreRequested);
+    on<UpdateStoreRequested>(_onUpdateStoreRequested);
+    on<DeleteStoreRequested>(_onDeleteStoreRequested);
+    on<ResetDirectorPasswordRequested>(_onResetDirectorPasswordRequested);
     on<EnterStoreRequested>(_onEnterStoreRequested);
     on<LeaveStoreRequested>(_onLeaveStoreRequested);
   }
@@ -142,6 +145,154 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
         );
       }
       event.completion?.complete(true);
+    } catch (e) {
+      if (current != null) {
+        emit(
+          current.copyWith(
+            isSubmitting: false,
+            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+          ),
+        );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(false);
+      }
+    }
+  }
+
+  Future<void> _onUpdateStoreRequested(
+    UpdateStoreRequested event,
+    Emitter<NetworkState> emit,
+  ) async {
+    final current = state is NetworkLoaded ? state as NetworkLoaded : null;
+    if (current != null) {
+      emit(current.copyWith(isSubmitting: true));
+    }
+
+    try {
+      final updated = await _repository.updateStore(
+        event.storeId,
+        name: event.name,
+        location: event.location,
+        isActive: event.isActive,
+      );
+
+      if (current != null) {
+        final updatedStores = current.stores
+            .map((s) => s.id == updated.id ? updated : s)
+            .toList();
+        emit(
+          current.copyWith(
+            stores: updatedStores,
+            isSubmitting: false,
+            actionMessage: () => 'network_store_updated',
+          ),
+        );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(true);
+      }
+    } catch (e) {
+      if (current != null) {
+        emit(
+          current.copyWith(
+            isSubmitting: false,
+            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+          ),
+        );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(false);
+      }
+    }
+  }
+
+  Future<void> _onDeleteStoreRequested(
+    DeleteStoreRequested event,
+    Emitter<NetworkState> emit,
+  ) async {
+    final current = state is NetworkLoaded ? state as NetworkLoaded : null;
+    if (current != null) {
+      emit(current.copyWith(isSubmitting: true));
+    }
+
+    try {
+      final result = await _repository.deleteStore(event.storeId);
+      _summaryCache.clear();
+
+      if (current != null) {
+        final updatedStores = result.deleted
+            ? current.stores.where((s) => s.id != event.storeId).toList()
+            : current.stores.map((s) {
+                if (s.id == event.storeId) {
+                  return NetworkStore(
+                    id: s.id,
+                    name: s.name,
+                    location: s.location,
+                    isActive: false,
+                    usersCount: s.usersCount,
+                  );
+                }
+                return s;
+              }).toList();
+
+        emit(
+          current.copyWith(
+            stores: updatedStores,
+            isSubmitting: false,
+            actionMessage: () => result.message.isNotEmpty
+                ? result.message
+                : (result.deleted
+                      ? 'network_store_deleted'
+                      : 'network_store_deactivated'),
+          ),
+        );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(true);
+      }
+    } catch (e) {
+      if (current != null) {
+        emit(
+          current.copyWith(
+            isSubmitting: false,
+            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+          ),
+        );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(false);
+      }
+    }
+  }
+
+  Future<void> _onResetDirectorPasswordRequested(
+    ResetDirectorPasswordRequested event,
+    Emitter<NetworkState> emit,
+  ) async {
+    final current = state is NetworkLoaded ? state as NetworkLoaded : null;
+    if (current != null) {
+      emit(current.copyWith(isSubmitting: true));
+    }
+
+    try {
+      await _repository.resetDirectorPassword(
+        event.storeId,
+        username: event.username,
+        password: event.password,
+      );
+
+      if (current != null) {
+        emit(
+          current.copyWith(
+            isSubmitting: false,
+            actionMessage: () => 'network_director_password_reset_success',
+          ),
+        );
+      }
+      if (event.completion != null && !event.completion!.isCompleted) {
+        event.completion!.complete(true);
+      }
     } catch (e) {
       if (current != null) {
         emit(

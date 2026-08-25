@@ -67,6 +67,23 @@ class MockTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<TaskProject> createProject(String name, {String? description}) async {
+    return TaskProject(id: 'new_p', name: name, description: description);
+  }
+
+  @override
+  Future<TaskProject> updateProject(
+    String projectId, {
+    required String name,
+    String? description,
+  }) async {
+    return TaskProject(id: projectId, name: name, description: description);
+  }
+
+  @override
+  Future<void> deleteProject(String projectId) async {}
+
+  @override
   Future<List<TaskAssignee>> getAssignees() async {
     assigneeRequestCount++;
     return [];
@@ -490,6 +507,31 @@ void main() {
       expect(emittedStates, isNotEmpty);
       final lastEmitted = emittedStates.last as TasksLoaded;
       expect(lastEmitted.tasks.firstWhere((t) => t.id == '1').title, 'Task 1');
+    });
+
+    test('Project CRUD creates, updates, and deletes projects', () async {
+      bloc.add(const LoadTasks());
+      await bloc.stream.firstWhere((state) => state is TasksLoaded);
+
+      bloc.add(const CreateProjectRequested(name: 'Brand New Project'));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      var loaded = bloc.state as TasksLoaded;
+      expect(loaded.projects.any((p) => p.name == 'Brand New Project'), true);
+
+      bloc.add(
+        const UpdateProjectRequested(
+          projectId: 'new_p',
+          name: 'Renamed Project',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      loaded = bloc.state as TasksLoaded;
+      expect(loaded.projects.any((p) => p.name == 'Renamed Project'), true);
+
+      bloc.add(const DeleteProjectRequested('new_p'));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      loaded = bloc.state as TasksLoaded;
+      expect(loaded.projects.any((p) => p.id == 'new_p'), false);
     });
   });
 }

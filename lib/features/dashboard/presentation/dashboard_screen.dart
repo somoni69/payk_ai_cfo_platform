@@ -33,6 +33,7 @@ part 'dashboard_tab_abc.dart';
 part 'dashboard_tab_accounts.dart';
 part 'dashboard_tab_clients.dart';
 part 'dashboard_tab_ai.dart';
+part 'dashboard_tab_onec.dart';
 part 'dashboard_chart.dart';
 
 /// Входная точка экрана аналитики с внедрением DashboardBloc.
@@ -99,6 +100,7 @@ String _reportTitle(LanguageCubit language, DashboardSection section) {
     DashboardSection.accountsRates => 'dashboard_tab_accounts_rates',
     DashboardSection.clients => 'dashboard_tab_clients',
     DashboardSection.aiInsights => 'dashboard_tab_ai_insights',
+    DashboardSection.onec => 'dashboard_tab_onec',
   });
 }
 
@@ -154,6 +156,19 @@ Widget _buildOpenedReport(BuildContext context, DashboardSection section) {
       section: DashboardSection.aiInsights,
       select: (loaded) => loaded.aiInsights,
       contentBuilder: _buildAiInsightsTab,
+    ),
+    DashboardSection.onec => _buildLazyDashboardSection<_OneCData>(
+      section: DashboardSection.onec,
+      select: (loaded) {
+        final onec = loaded.onec;
+        final targets = loaded.onecTargets;
+        return onec == null || targets == null
+            ? null
+            : _OneCData(onec, targets);
+      },
+      contentBuilder: (context, data, currency) {
+        return _buildOneCTab(context, data.onec, data.targets);
+      },
     ),
   };
 }

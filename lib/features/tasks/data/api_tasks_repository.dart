@@ -170,6 +170,55 @@ class ApiTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<TaskProject> createProject(String name, {String? description}) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/tasks/projects',
+        data: {'name': name.trim(), 'description': description?.trim()},
+      );
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return TaskProject(
+        id: (map['id'] ?? '').toString(),
+        name: map['name'] ?? '',
+        description: map['description'],
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<TaskProject> updateProject(
+    String projectId, {
+    required String name,
+    String? description,
+  }) async {
+    try {
+      final response = await _apiClient.dio.patch(
+        '/tasks/projects/$projectId',
+        data: {'name': name.trim(), 'description': description?.trim()},
+      );
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return TaskProject(
+        id: (map['id'] ?? '').toString(),
+        name: map['name'] ?? '',
+        description: map['description'],
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteProject(String projectId) async {
+    try {
+      await _apiClient.dio.delete('/tasks/projects/$projectId');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
   Future<List<TaskAssignee>> getAssignees() async {
     try {
       final response = await _apiClient.dio.get(

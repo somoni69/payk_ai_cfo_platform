@@ -1,3 +1,4 @@
+import '../domain/marketing_ai_models.dart';
 import '../domain/marketing_models.dart';
 import '../domain/marketing_repository.dart';
 
@@ -167,5 +168,238 @@ class MockMarketingRepository implements MarketingRepository {
     await Future.delayed(const Duration(milliseconds: 200));
     _brandGuide = brandGuide;
     return _brandGuide;
+  }
+
+  @override
+  Future<List<MarketingIdea>> getAiIdeas({String lang = 'ru'}) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return [
+      const MarketingIdea(
+        source: 'season',
+        tag: 'Сезон',
+        title: 'Сезонное промо стройматериалов',
+        reason: 'Пик строительного сезона, высокий спрос на цемент и арматуру',
+      ),
+      const MarketingIdea(
+        source: 'sales_drop',
+        tag: 'Спад продаж',
+        title: 'Спецпредложение на смеси М300',
+        reason: 'Падение спроса на 15% за последние 14 дней',
+      ),
+      const MarketingIdea(
+        source: 'stale_stock',
+        tag: 'Склад',
+        title: 'Ликвидация остатков кафеля',
+        reason: 'На складе хранится более 45 дней без движения',
+      ),
+    ];
+  }
+
+  @override
+  Future<MarketingCampaignAi> createAiCampaign({
+    required String name,
+    String? product,
+    int? goalQty,
+    int? goalDays,
+    String? briefText,
+    String? ideaSource,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return MarketingCampaignAi(
+      id: 'ai-camp-1',
+      name: name,
+      product: product,
+      goalQty: goalQty,
+      goalDays: goalDays,
+      briefText: briefText,
+      ideaSource: ideaSource,
+      aiStatus: 'ideas_ready',
+      createdAt: DateTime.now(),
+      concepts: [
+        MarketingConcept(
+          id: 'concept-1',
+          campaignId: 'ai-camp-1',
+          variant: 'A',
+          roundNo: 1,
+          title: 'Эмоциональный ролик: Дом вашей мечты',
+          storyline: 'Семья выбирает материалы для нового дома.',
+          theses: 'Качество, долговечность, доставка за 2 часа.',
+          tone: 'Вдохновляющий',
+          format: 'Reels / Shorts 9:16',
+          durationSec: 15,
+          cta: 'Заказывайте в приложении со скидкой 5%',
+          status: 'draft',
+          createdAt: DateTime.now(),
+        ),
+        MarketingConcept(
+          id: 'concept-2',
+          campaignId: 'ai-camp-1',
+          variant: 'B',
+          roundNo: 1,
+          title: 'Экспертный обзор: Почему М400 надежнее',
+          storyline: 'Прораб на стройке тестирует бетон на прочность.',
+          theses: 'Лабораторные испытания, ГОСТ стандарты.',
+          tone: 'Деловой',
+          format: 'Reels / Shorts 9:16',
+          durationSec: 20,
+          cta: 'Получите расчет сметы бесплатно',
+          status: 'draft',
+          createdAt: DateTime.now(),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Future<List<MarketingConcept>> generateAiConcepts(String campaignId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return [
+      MarketingConcept(
+        id: 'concept-1',
+        campaignId: campaignId,
+        variant: 'A',
+        roundNo: 1,
+        title: 'Эмоциональный ролик: Надежный фундамент',
+        storyline: 'Показ процессов стройки с акцентом на надежность.',
+        theses: 'Гарантия 20 лет, быстрая отгрузка.',
+        tone: 'Вдохновляющий',
+        format: 'Reels 9:16',
+        durationSec: 15,
+        cta: 'Оставьте заявку сегодня',
+        status: 'draft',
+        createdAt: DateTime.now(),
+      ),
+      MarketingConcept(
+        id: 'concept-2',
+        campaignId: campaignId,
+        variant: 'B',
+        roundNo: 1,
+        title: 'Прямое сравнение цен и выгоды',
+        storyline: 'Калькулятор экономии при оптовом заказе.',
+        theses: 'Оптовые цены от 10 тонн.',
+        tone: 'Практичный',
+        format: 'Пост с каруселью',
+        durationSec: null,
+        cta: 'Смотреть прайс-лист',
+        status: 'draft',
+        createdAt: DateTime.now(),
+      ),
+    ];
+  }
+
+  @override
+  Future<MarketingConcept> reviseAiConcept({
+    required String campaignId,
+    required List<String> baseIds,
+    required String note,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return MarketingConcept(
+      id: 'concept-rev-1',
+      campaignId: campaignId,
+      variant: 'Rev',
+      roundNo: 2,
+      title: 'Объединенный концепт с правками: $note',
+      storyline: 'Комбинация эмоциональной подачи и экспертных расчетов.',
+      theses: 'Надежность + калькулятор выгоды.',
+      tone: 'Уверенный',
+      format: 'Reels 9:16',
+      durationSec: 18,
+      cta: 'Узнайте вашу скидку в боте',
+      status: 'draft',
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<MarketingConcept> approveAiConcept(String conceptId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return MarketingConcept(
+      id: conceptId,
+      campaignId: 'ai-camp-1',
+      variant: 'A',
+      roundNo: 1,
+      title: 'Утвержденный концепт',
+      status: 'approved',
+      approvedAt: DateTime.now(),
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<MarketingMediaAsset> generateAiScript(String conceptId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return MarketingMediaAsset(
+      id: 'media-1',
+      conceptId: conceptId,
+      kind: 'video',
+      version: 1,
+      script:
+          '0-3с: Крупный план заливки бетона.\n3-8с: Текст: Доставка за 2 часа.\n8-15с: Заказывайте в PAYK CFO!',
+      postText:
+          'Строите дом или объект? Заказывайте бетон высшей пробы с гарантией прочности. Доставка в день заказа по всему Душанбе!',
+      firstComment:
+          '📍 Наш адрес: Душанбе, ул. Айни 45\n📞 Связаться: +992 93 123 4567',
+      status: 'ready',
+      cost: 0.0,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<MarketingVideoQuota> getVideoQuota() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return const MarketingVideoQuota(
+      month: '2026-08',
+      videoUsed: 2,
+      videoLimit: 10,
+      videoLeft: 8,
+    );
+  }
+
+  @override
+  Future<MarketingMediaAsset> generateAiMedia({
+    required String mediaId,
+    required String kind,
+    bool confirm = true,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return MarketingMediaAsset(
+      id: mediaId,
+      conceptId: 'concept-1',
+      kind: kind,
+      version: 1,
+      fileUrl: 'https://example.com/generated_video.mp4',
+      status: 'ready',
+      cost: kind == 'video' ? 15.0 : 2.0,
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> rejectAiMedia({
+    required String mediaId,
+    required String reason,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+  }
+
+  @override
+  Future<List<MarketingPublicationStats>> getPublicationStats() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return [
+      const MarketingPublicationStats(
+        publicationId: '101',
+        comments: 48,
+        authors: 35,
+        intents: 18,
+        prepaid: 8,
+        purchases: 12,
+        revenue: 8400.0,
+        spend: 1200.0,
+        roiPercent: 600.0,
+        period: '2026-08-01 - 2026-08-15',
+      ),
+    ];
   }
 }

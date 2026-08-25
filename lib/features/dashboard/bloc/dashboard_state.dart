@@ -23,6 +23,8 @@ class DashboardLoaded extends DashboardState {
   final AiInsightsReport? aiInsights;
   final PlanFactReport? planFact;
   final ClientAnalysisReport? clients;
+  final OneCReconcileReport? onec;
+  final List<OneCTarget>? onecTargets;
   final Set<DashboardSection> loadingSections;
   final Map<DashboardSection, String> sectionErrors;
   final String? overviewError;
@@ -40,6 +42,8 @@ class DashboardLoaded extends DashboardState {
     this.aiInsights,
     this.planFact,
     this.clients,
+    this.onec,
+    this.onecTargets,
     this.loadingSections = const {},
     this.sectionErrors = const {},
     this.overviewError,
@@ -58,6 +62,8 @@ class DashboardLoaded extends DashboardState {
     AiInsightsReport? aiInsights,
     PlanFactReport? planFact,
     ClientAnalysisReport? clients,
+    OneCReconcileReport? onec,
+    List<OneCTarget>? onecTargets,
     Set<DashboardSection>? loadingSections,
     Map<DashboardSection, String>? sectionErrors,
     String? overviewError,
@@ -77,6 +83,8 @@ class DashboardLoaded extends DashboardState {
       aiInsights: aiInsights ?? this.aiInsights,
       planFact: planFact ?? this.planFact,
       clients: clients ?? this.clients,
+      onec: onec ?? this.onec,
+      onecTargets: onecTargets ?? this.onecTargets,
       loadingSections: loadingSections ?? this.loadingSections,
       sectionErrors: sectionErrors ?? this.sectionErrors,
       overviewError: clearOverviewError
@@ -101,6 +109,8 @@ class DashboardLoaded extends DashboardState {
     aiInsights,
     planFact,
     clients,
+    onec,
+    onecTargets,
     loadingSections,
     sectionErrors,
     overviewError,

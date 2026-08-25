@@ -325,3 +325,172 @@ class ConvertResult {
     required this.values,
   });
 }
+
+/// Строка сопоставления 1С и PAYK для экрана сверки
+class OneCRow {
+  final String onecName;
+  final double onecAmount;
+  final String? paykKind; // 'register' | 'account'
+  final int? paykId;
+  final String? paykName;
+  final double? paykAmount;
+  final double? difference;
+  final String? matchedBy; // 'manual' | 'auto' | null
+
+  const OneCRow({
+    required this.onecName,
+    required this.onecAmount,
+    this.paykKind,
+    this.paykId,
+    this.paykName,
+    this.paykAmount,
+    this.difference,
+    this.matchedBy,
+  });
+
+  factory OneCRow.fromJson(Map<String, dynamic> json) {
+    return OneCRow(
+      onecName: (json['onec_name'] ?? '').toString(),
+      onecAmount: (json['onec_amount'] as num?)?.toDouble() ?? 0.0,
+      paykKind: json['payk_kind']?.toString(),
+      paykId: (json['payk_id'] as num?)?.toInt(),
+      paykName: json['payk_name']?.toString(),
+      paykAmount: (json['payk_amount'] as num?)?.toDouble(),
+      difference: (json['difference'] as num?)?.toDouble(),
+      matchedBy: json['matched_by']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'onec_name': onecName,
+    'onec_amount': onecAmount,
+    'payk_kind': paykKind,
+    'payk_id': paykId,
+    'payk_name': paykName,
+    'payk_amount': paykAmount,
+    'difference': difference,
+    'matched_by': matchedBy,
+  };
+}
+
+/// Целевая касса или счет для привязки строки 1С
+class OneCTarget {
+  final String kind; // 'register' | 'account'
+  final int id;
+  final String name;
+  final double amount;
+
+  const OneCTarget({
+    required this.kind,
+    required this.id,
+    required this.name,
+    this.amount = 0.0,
+  });
+
+  factory OneCTarget.fromJson(Map<String, dynamic> json) {
+    return OneCTarget(
+      kind: (json['kind'] ?? 'register').toString(),
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: (json['name'] ?? '').toString(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'kind': kind,
+    'id': id,
+    'name': name,
+    'amount': amount,
+  };
+}
+
+/// Позиция PAYK, отсутствующая в выгрузке 1С
+class OneCNotInOnecItem {
+  final String name;
+  final double amount;
+  final String kind;
+  final int id;
+
+  const OneCNotInOnecItem({
+    required this.name,
+    required this.amount,
+    required this.kind,
+    required this.id,
+  });
+
+  factory OneCNotInOnecItem.fromJson(Map<String, dynamic> json) {
+    return OneCNotInOnecItem(
+      name: (json['name'] ?? '').toString(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      kind: (json['kind'] ?? 'register').toString(),
+      id: (json['id'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'amount': amount,
+    'kind': kind,
+    'id': id,
+  };
+}
+
+/// Отчет сверки остатков с 1С
+class OneCReconcileReport {
+  final String date;
+  final List<OneCRow> rows;
+  final List<OneCNotInOnecItem> notInOnec;
+  final double totalOnec;
+  final double totalPayk;
+
+  const OneCReconcileReport({
+    required this.date,
+    required this.rows,
+    required this.notInOnec,
+    required this.totalOnec,
+    required this.totalPayk,
+  });
+
+  factory OneCReconcileReport.fromJson(Map<String, dynamic> json) {
+    final rowsList =
+        (json['rows'] as List<dynamic>?)
+            ?.map((e) => OneCRow.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+    final notInList =
+        (json['not_in_onec'] as List<dynamic>?)
+            ?.map((e) => OneCNotInOnecItem.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [];
+    return OneCReconcileReport(
+      date: (json['date'] ?? '').toString(),
+      rows: rowsList,
+      notInOnec: notInList,
+      totalOnec: (json['total_onec'] as num?)?.toDouble() ?? 0.0,
+      totalPayk: (json['total_payk'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'date': date,
+    'rows': rows.map((e) => e.toJson()).toList(),
+    'not_in_onec': notInOnec.map((e) => e.toJson()).toList(),
+    'total_onec': totalOnec,
+    'total_payk': totalPayk,
+  };
+}
+
+/// Запрос на ручную привязку или отвязку строки 1С
+class OneCLinkInput {
+  final String onecName;
+  final String? kind; // 'register' | 'account' | null
+  final int? targetId;
+
+  const OneCLinkInput({required this.onecName, this.kind, this.targetId});
+
+  Map<String, dynamic> toJson() => {
+    'onec_name': onecName,
+    if (kind != null) 'kind': kind,
+    if (targetId != null) 'target_id': targetId,
+  };
+}

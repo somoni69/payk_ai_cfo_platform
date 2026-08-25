@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/app_colors.dart';
@@ -1113,6 +1117,21 @@ class _HrSectionScreenState extends State<HrSectionScreen>
             color: colors.textPrimary,
           ),
         ),
+        actions: [
+          if (widget.section == HrNavSection.staff && canWrite)
+            IconButton(
+              icon: const Icon(TablerIcons.refresh, size: 20),
+              tooltip: locale.translate('hr_sync_iiko'),
+              onPressed: () => _showSyncIikoDialog(context),
+            ),
+          if (widget.section == HrNavSection.movement)
+            IconButton(
+              icon: const Icon(TablerIcons.file_download, size: 20),
+              tooltip: locale.translate('hr_export_pdf'),
+              onPressed: () => _exportMovementPdf(context),
+            ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: colors.border),
@@ -1168,6 +1187,11 @@ class _HrSectionScreenState extends State<HrSectionScreen>
         TablerIcons.user_plus,
         locale.translate('hr_hire_title'),
         () => _showAddEmployeeBottomSheet(context),
+      ),
+      HrNavSection.kpi => (
+        TablerIcons.plus,
+        locale.translate('hr_kpi_add'),
+        () => _showAddKpiBottomSheet(context, state),
       ),
       HrNavSection.attendance => (
         TablerIcons.plus,

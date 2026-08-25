@@ -17,6 +17,19 @@ abstract class TasksRepository {
   /// Получить список всех проектов для задач
   Future<List<TaskProject>> getProjects();
 
+  /// Создать проект
+  Future<TaskProject> createProject(String name, {String? description});
+
+  /// Обновить (переименовать) проект
+  Future<TaskProject> updateProject(
+    String projectId, {
+    required String name,
+    String? description,
+  });
+
+  /// Удалить проект
+  Future<void> deleteProject(String projectId);
+
   /// Получить список исполнителей (GET /users?size=200, как в веб-клиенте)
   Future<List<TaskAssignee>> getAssignees();
 

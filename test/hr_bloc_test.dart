@@ -8,12 +8,16 @@ import 'package:payk_ai_cfo_platform/features/hr/domain/hr_repository.dart';
 class MockHrRepository implements HrRepository {
   List<Employee> employees = [];
   List<KpiAlert> kpiAlerts = [];
+  List<KpiRecord> kpis = [];
   List<SalaryRecord> salaryRecords = [];
 
   bool shouldFail = false;
 
   @override
-  Future<List<Employee>> getEmployees({bool forceRefresh = false}) async {
+  Future<List<Employee>> getEmployees({
+    bool archived = false,
+    bool forceRefresh = false,
+  }) async {
     if (shouldFail) throw Exception('Get employees error');
     return List.from(employees);
   }
@@ -25,6 +29,77 @@ class MockHrRepository implements HrRepository {
   }) async {
     if (shouldFail) throw Exception('Get KPI alerts error');
     return List.from(kpiAlerts);
+  }
+
+  @override
+  Future<List<KpiRecord>> getKpis({
+    String? period,
+    String? employeeId,
+    bool forceRefresh = false,
+  }) async {
+    if (shouldFail) throw Exception('Get KPIs error');
+    return List.from(kpis);
+  }
+
+  @override
+  Future<KpiRecord> createKpi({
+    required String employeeId,
+    required String period,
+    required String metric,
+    required double planValue,
+    double factValue = 0.0,
+  }) async {
+    final kpi = KpiRecord(
+      id: 'kpi-${kpis.length + 1}',
+      employeeId: employeeId,
+      employeeName: employees
+          .firstWhere(
+            (e) => e.id == employeeId,
+            orElse: () => Employee(
+              id: employeeId,
+              fullName: 'Emp',
+              baseSalary: 0,
+              status: 'active',
+              createdAt: DateTime.now(),
+            ),
+          )
+          .fullName,
+      period: period,
+      metric: metric,
+      planValue: planValue,
+      factValue: factValue,
+      completion: planValue > 0 ? (factValue / planValue * 100) : 0,
+    );
+    kpis.add(kpi);
+    return kpi;
+  }
+
+  @override
+  Future<KpiRecord> updateKpi({
+    required String kpiId,
+    String? metric,
+    double? planValue,
+    double? factValue,
+  }) async {
+    final index = kpis.indexWhere((k) => k.id == kpiId);
+    if (index == -1) throw Exception('KPI not found');
+    final updated = kpis[index].copyWith(
+      metric: metric,
+      planValue: planValue,
+      factValue: factValue,
+      completion: (planValue ?? kpis[index].planValue) > 0
+          ? ((factValue ?? kpis[index].factValue) /
+                (planValue ?? kpis[index].planValue) *
+                100)
+          : 0,
+    );
+    kpis[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<void> deleteKpi(String id) async {
+    kpis.removeWhere((k) => k.id == id);
   }
 
   @override
@@ -64,6 +139,69 @@ class MockHrRepository implements HrRepository {
     final newEmp = employee.copyWith(id: (employees.length + 1).toString());
     employees.add(newEmp);
     return newEmp;
+  }
+
+  @override
+  Future<Employee> blockEmployee(String id) async {
+    final index = employees.indexWhere((e) => e.id == id);
+    final updated = employees[index].copyWith(status: 'inactive');
+    employees[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Employee> unblockEmployee(String id) async {
+    final index = employees.indexWhere((e) => e.id == id);
+    final updated = employees[index].copyWith(status: 'active');
+    employees[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Employee> archiveEmployee(String id) async {
+    final index = employees.indexWhere((e) => e.id == id);
+    final updated = employees[index].copyWith(isArchived: true);
+    employees[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Employee> restoreEmployee(String id) async {
+    final index = employees.indexWhere((e) => e.id == id);
+    final updated = employees[index].copyWith(isArchived: false);
+    employees[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<int> syncIikoEmployees() async {
+    return employees.length;
+  }
+
+  @override
+  Future<List<EmployeeDocument>> getEmployeeDocuments(String employeeId) async {
+    return [
+      EmployeeDocument(
+        id: 'doc-1',
+        employeeId: employeeId,
+        name: 'Passport.pdf',
+        url: 'https://example.com/passport.pdf',
+        createdAt: DateTime.now(),
+      ),
+    ];
+  }
+
+  @override
+  Future<List<int>> downloadSalaryCertificatePdf(String employeeId) async {
+    return [37, 80, 68, 70]; // %PDF
+  }
+
+  @override
+  Future<List<int>> downloadMovementReportPdf({
+    required String dateFrom,
+    required String dateTo,
+  }) async {
+    return [37, 80, 68, 70]; // %PDF
   }
 
   @override
@@ -159,8 +297,10 @@ class MockHrRepository implements HrRepository {
   }
 
   @override
-  Future<List<LaborContract>> getContracts({bool forceRefresh = false}) async =>
-      const [];
+  Future<List<LaborContract>> getContracts({
+    bool expiring = false,
+    bool forceRefresh = false,
+  }) async => const [];
 
   @override
   Future<LaborContract> createContract({
@@ -220,6 +360,18 @@ void main() {
           triggered: true,
         ),
       ];
+      repository.kpis = [
+        const KpiRecord(
+          id: 'kpi-1',
+          employeeId: '1',
+          employeeName: 'Иван Иванов',
+          period: '2026-06',
+          metric: 'Выручка',
+          planValue: 50000.0,
+          factValue: 52000.0,
+          completion: 104.0,
+        ),
+      ];
       repository.salaryRecords = [
         const SalaryRecord(
           id: '1',
@@ -249,6 +401,7 @@ void main() {
         isA<HrLoaded>()
             .having((s) => s.employees.length, 'employees count', 1)
             .having((s) => s.kpiAlerts.length, 'KPI alerts count', 1)
+            .having((s) => s.kpiRecords.length, 'KPI records count', 1)
             .having((s) => s.salaryRecords.length, 'salary records count', 1),
       ];
 
@@ -284,6 +437,51 @@ void main() {
       expect(loaded.employees.length, 2);
       expect(loaded.employees.last.fullName, 'Пётр Петров');
     });
+
+    test('BlockEmployeeRequested updates employee status', () async {
+      bloc.add(const LoadHrData('2026-06'));
+      await bloc.stream.firstWhere((s) => s is HrLoaded);
+
+      bloc.add(const BlockEmployeeRequested('1'));
+
+      final List<HrState> emitted = [];
+      final sub = bloc.stream.listen(emitted.add);
+
+      await Future.delayed(const Duration(milliseconds: 50));
+      sub.cancel();
+
+      expect(emitted, isNotEmpty);
+      final loaded = emitted.first as HrLoaded;
+      expect(loaded.employees.first.status, 'inactive');
+    });
+
+    test(
+      'CreateKpiRequested and DeleteKpiRequested update kpiRecords',
+      () async {
+        bloc.add(const LoadHrData('2026-06'));
+        await bloc.stream.firstWhere((s) => s is HrLoaded);
+
+        bloc.add(
+          const CreateKpiRequested(
+            employeeId: '1',
+            period: '2026-06',
+            metric: 'Средний чек',
+            planValue: 200.0,
+            factValue: 210.0,
+          ),
+        );
+
+        await Future.delayed(const Duration(milliseconds: 50));
+        var loaded = bloc.state as HrLoaded;
+        expect(loaded.kpiRecords.length, 2);
+        expect(loaded.kpiRecords.first.metric, 'Средний чек');
+
+        bloc.add(DeleteKpiRequested(loaded.kpiRecords.first.id));
+        await Future.delayed(const Duration(milliseconds: 50));
+        loaded = bloc.state as HrLoaded;
+        expect(loaded.kpiRecords.length, 1);
+      },
+    );
 
     test('RecalcSalaryRequested updates employee salary worksheet', () async {
       bloc.add(const LoadHrData('2026-06'));

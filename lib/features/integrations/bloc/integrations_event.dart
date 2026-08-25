@@ -24,3 +24,20 @@ class TriggerSyncRequested extends IntegrationsEvent {
   @override
   List<Object?> get props => [system];
 }
+
+class TestSmsRequested extends IntegrationsEvent {
+  final String phone;
+
+  const TestSmsRequested(this.phone);
+
+  @override
+  List<Object?> get props => [phone];
+}
+
+class TestAiRequested extends IntegrationsEvent {
+  const TestAiRequested();
+}
+
+class LoadTelegramLinkRequested extends IntegrationsEvent {
+  const LoadTelegramLinkRequested();
+}

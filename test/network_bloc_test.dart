@@ -100,6 +100,25 @@ class FakeNetworkRepository implements NetworkRepository {
   }
 
   @override
+  Future<StoreDeleteResult> deleteStore(int id) async {
+    final index = stores.indexWhere((s) => s.id == id);
+    if (index == -1) throw Exception('Store not found');
+    final removed = stores.removeAt(index);
+    return StoreDeleteResult(
+      deleted: true,
+      deactivated: false,
+      message: 'Магазин «${removed.name}» удален',
+    );
+  }
+
+  @override
+  Future<void> resetDirectorPassword(
+    int id, {
+    String? username,
+    required String password,
+  }) async {}
+
+  @override
   Future<ActingStore> enterStore(int storeId) async {
     final store = stores.firstWhere((s) => s.id == storeId);
     actingStore = ActingStore(id: store.id, name: store.name);
@@ -279,6 +298,51 @@ void main() {
         loaded = bloc.state as NetworkLoaded;
         expect(loaded.actingStore, isNull);
         expect(loaded.actionMessage, 'network_left');
+      },
+    );
+
+    test(
+      'UpdateStoreRequested, DeleteStoreRequested, ResetDirectorPasswordRequested work',
+      () async {
+        final loadDone = Completer<void>();
+        bloc.add(LoadNetworkData(completion: loadDone));
+        await loadDone.future;
+
+        final updateDone = Completer<bool>();
+        bloc.add(
+          UpdateStoreRequested(
+            storeId: 1,
+            name: 'Store 1 Renamed',
+            location: 'New Location',
+            isActive: false,
+            completion: updateDone,
+          ),
+        );
+        final updateSuccess = await updateDone.future;
+        expect(updateSuccess, isTrue);
+        var loaded = bloc.state as NetworkLoaded;
+        expect(
+          loaded.stores.firstWhere((s) => s.id == 1).name,
+          'Store 1 Renamed',
+        );
+
+        final pwdDone = Completer<bool>();
+        bloc.add(
+          ResetDirectorPasswordRequested(
+            storeId: 1,
+            password: 'new_password123',
+            completion: pwdDone,
+          ),
+        );
+        final pwdSuccess = await pwdDone.future;
+        expect(pwdSuccess, isTrue);
+
+        final deleteDone = Completer<bool>();
+        bloc.add(DeleteStoreRequested(storeId: 1, completion: deleteDone));
+        final deleteSuccess = await deleteDone.future;
+        expect(deleteSuccess, isTrue);
+        loaded = bloc.state as NetworkLoaded;
+        expect(loaded.stores.any((s) => s.id == 1), isFalse);
       },
     );
   });

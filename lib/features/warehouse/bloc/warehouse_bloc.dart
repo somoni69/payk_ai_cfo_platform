@@ -37,6 +37,9 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     on<ApplyBatchDiscountRequested>(_onApplyBatchDiscountRequested);
     on<RunStockAnalysisRequested>(_onRunStockAnalysisRequested);
     on<RunExpiryCheckRequested>(_onRunExpiryCheckRequested);
+    on<AssignProductBarcodeRequested>(_onAssignProductBarcodeRequested);
+    on<AssignMissingBarcodesRequested>(_onAssignMissingBarcodesRequested);
+    on<DownloadBarcodeLabelsPdfRequested>(_onDownloadBarcodeLabelsPdfRequested);
   }
 
   Future<void> reload() {
@@ -442,6 +445,75 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
               isAnalysisLoading: false,
               analysisError: userFacingError(e, fallback: ErrorKeys.loadFailed),
             ),
+      );
+    }
+  }
+
+  Future<void> _onAssignProductBarcodeRequested(
+    AssignProductBarcodeRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      final updated = await _repository.assignBarcode(event.productId);
+      final idx = _cachedProducts.indexWhere((p) => p.id == event.productId);
+      if (idx != -1) {
+        _cachedProducts = List<WarehouseProduct>.from(_cachedProducts)
+          ..[idx] = updated;
+      }
+      _emitLoaded(emit, successMessage: 'warehouse_barcode_assigned');
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAssignMissingBarcodesRequested(
+    AssignMissingBarcodesRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    try {
+      final count = await _repository.assignMissingBarcodes();
+      _cachedProducts = await _repository.getProducts();
+      _emitLoaded(emit, successMessage: 'warehouse_barcodes_generated|$count');
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDownloadBarcodeLabelsPdfRequested(
+    DownloadBarcodeLabelsPdfRequested event,
+    Emitter<WarehouseState> emit,
+  ) async {
+    if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
+    emit(current.copyWith(isPdfDownloading: true, clearError: true));
+    try {
+      final bytes = await _repository.downloadBarcodeLabelsPdf(
+        productIds: event.productIds,
+        sheet: event.sheet,
+        copies: event.copies,
+      );
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          isPdfDownloading: false,
+          pdfBytes: bytes,
+        ),
+      );
+    } catch (e) {
+      emit(
+        (state as WarehouseLoaded).copyWith(
+          isPdfDownloading: false,
+          errorMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
+        ),
       );
     }
   }

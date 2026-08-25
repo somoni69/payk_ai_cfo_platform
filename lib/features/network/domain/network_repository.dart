@@ -24,6 +24,16 @@ abstract class NetworkRepository {
     bool? isActive,
   });
 
+  /// Удаление магазина (физическое для пустых, деактивация для магазинов с данными).
+  Future<StoreDeleteResult> deleteStore(int id);
+
+  /// Сброс пароля директора магазина.
+  Future<void> resetDirectorPassword(
+    int id, {
+    String? username,
+    required String password,
+  });
+
   /// Вход владельца сети в конкретный магазин без второго пароля.
   /// Возвращает модель [ActingStore].
   Future<ActingStore> enterStore(int storeId);

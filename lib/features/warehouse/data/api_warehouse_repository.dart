@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/warehouse_models.dart';
@@ -33,6 +34,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
           id: (map['id'] ?? '').toString(),
           name: map['name'] ?? '',
           sku: map['sku']?.toString(),
+          barcode: map['barcode']?.toString(),
           unit: map['unit'] ?? 'шт',
           price: _toDouble(map['price']),
           costPrice: map['cost_price'] == null && map['costPrice'] == null
@@ -460,6 +462,71 @@ class ApiWarehouseRepository implements WarehouseRepository {
       };
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<WarehouseProduct> assignBarcode(String productId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/warehouse/products/${_requirePositiveId(productId, 'id')}/barcode',
+      );
+      final map = response.data as Map<String, dynamic>;
+      return WarehouseProduct(
+        id: (map['id'] ?? productId).toString(),
+        name: map['name'] ?? '',
+        sku: map['sku']?.toString(),
+        barcode: map['barcode']?.toString(),
+        unit: map['unit'] ?? 'шт',
+        price: _toDouble(map['price']),
+        costPrice: map['cost_price'] == null && map['costPrice'] == null
+            ? null
+            : _toDouble(map['cost_price'] ?? map['costPrice']),
+        stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+        externalId: map['external_id']?.toString(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<int> assignMissingBarcodes() async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/warehouse/barcodes/generate-missing',
+      );
+      final map = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final gen = map['generated'];
+      return switch (gen) {
+        int v => v,
+        num v => v.toInt(),
+        String v => int.tryParse(v) ?? 0,
+        _ => 0,
+      };
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<int>> downloadBarcodeLabelsPdf({
+    required List<String> productIds,
+    String sheet = 'a4',
+    int copies = 1,
+  }) async {
+    try {
+      final idsParam = productIds.join(',');
+      final response = await _apiClient.dio.get<List<int>>(
+        '/warehouse/barcodes/labels',
+        queryParameters: {'ids': idsParam, 'sheet': sheet, 'copies': copies},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? <int>[];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 }

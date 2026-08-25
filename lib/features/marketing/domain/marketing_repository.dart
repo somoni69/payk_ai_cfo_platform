@@ -1,3 +1,4 @@
+import 'marketing_ai_models.dart';
 import 'marketing_models.dart';
 
 abstract class MarketingRepository {
@@ -29,6 +30,42 @@ abstract class MarketingRepository {
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false});
 
   Future<BrandGuide> updateBrandGuide(BrandGuide brandGuide);
+
+  // Marketing AI Studio (Zero-Spend 3-Phase Pipeline)
+  Future<List<MarketingIdea>> getAiIdeas({String lang = 'ru'});
+
+  Future<MarketingCampaignAi> createAiCampaign({
+    required String name,
+    String? product,
+    int? goalQty,
+    int? goalDays,
+    String? briefText,
+    String? ideaSource,
+  });
+
+  Future<List<MarketingConcept>> generateAiConcepts(String campaignId);
+
+  Future<MarketingConcept> reviseAiConcept({
+    required String campaignId,
+    required List<String> baseIds,
+    required String note,
+  });
+
+  Future<MarketingConcept> approveAiConcept(String conceptId);
+
+  Future<MarketingMediaAsset> generateAiScript(String conceptId);
+
+  Future<MarketingVideoQuota> getVideoQuota();
+
+  Future<MarketingMediaAsset> generateAiMedia({
+    required String mediaId,
+    required String kind,
+    bool confirm = true,
+  });
+
+  Future<void> rejectAiMedia({required String mediaId, required String reason});
+
+  Future<List<MarketingPublicationStats>> getPublicationStats();
 }
 
 abstract interface class CancellableMarketingRepository {

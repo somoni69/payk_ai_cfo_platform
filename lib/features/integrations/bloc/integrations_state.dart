@@ -8,6 +8,12 @@ class IntegrationsState extends Equatable {
   final bool isSyncing;
   final String? syncMessage;
   final String? errorMessage;
+  final bool isTestingSms;
+  final SmsTestResult? smsResult;
+  final bool isTestingAi;
+  final AiProbeResult? aiResult;
+  final bool isLoadingTelegramLink;
+  final TelegramLinkInfo? telegramLink;
 
   const IntegrationsState({
     this.integrations = const [],
@@ -16,6 +22,12 @@ class IntegrationsState extends Equatable {
     this.isSyncing = false,
     this.syncMessage,
     this.errorMessage,
+    this.isTestingSms = false,
+    this.smsResult,
+    this.isTestingAi = false,
+    this.aiResult,
+    this.isLoadingTelegramLink = false,
+    this.telegramLink,
   });
 
   IntegrationsState copyWith({
@@ -25,8 +37,16 @@ class IntegrationsState extends Equatable {
     bool? isSyncing,
     String? syncMessage,
     String? errorMessage,
+    bool? isTestingSms,
+    SmsTestResult? smsResult,
+    bool? isTestingAi,
+    AiProbeResult? aiResult,
+    bool? isLoadingTelegramLink,
+    TelegramLinkInfo? telegramLink,
     bool clearSyncMessage = false,
     bool clearError = false,
+    bool clearSmsResult = false,
+    bool clearAiResult = false,
   }) {
     return IntegrationsState(
       integrations: integrations ?? this.integrations,
@@ -35,6 +55,13 @@ class IntegrationsState extends Equatable {
       isSyncing: isSyncing ?? this.isSyncing,
       syncMessage: clearSyncMessage ? null : (syncMessage ?? this.syncMessage),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      isTestingSms: isTestingSms ?? this.isTestingSms,
+      smsResult: clearSmsResult ? null : (smsResult ?? this.smsResult),
+      isTestingAi: isTestingAi ?? this.isTestingAi,
+      aiResult: clearAiResult ? null : (aiResult ?? this.aiResult),
+      isLoadingTelegramLink:
+          isLoadingTelegramLink ?? this.isLoadingTelegramLink,
+      telegramLink: telegramLink ?? this.telegramLink,
     );
   }
 
@@ -46,5 +73,11 @@ class IntegrationsState extends Equatable {
     isSyncing,
     syncMessage,
     errorMessage,
+    isTestingSms,
+    smsResult,
+    isTestingAi,
+    aiResult,
+    isLoadingTelegramLink,
+    telegramLink,
   ];
 }

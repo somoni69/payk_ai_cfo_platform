@@ -148,3 +148,34 @@ class RunStockAnalysisRequested extends WarehouseEvent {
 class RunExpiryCheckRequested extends WarehouseEvent {
   const RunExpiryCheckRequested();
 }
+
+/// Присвоить EAN-13 штрих-код товару
+class AssignProductBarcodeRequested extends WarehouseEvent {
+  final String productId;
+
+  const AssignProductBarcodeRequested({required this.productId});
+
+  @override
+  List<Object?> get props => [productId];
+}
+
+/// Выдать недостающие EAN-13 коды всем товарам
+class AssignMissingBarcodesRequested extends WarehouseEvent {
+  const AssignMissingBarcodesRequested();
+}
+
+/// Скачать PDF этикеток для печати
+class DownloadBarcodeLabelsPdfRequested extends WarehouseEvent {
+  final List<String> productIds;
+  final String sheet;
+  final int copies;
+
+  const DownloadBarcodeLabelsPdfRequested({
+    required this.productIds,
+    this.sheet = 'a4',
+    this.copies = 1,
+  });
+
+  @override
+  List<Object?> get props => [productIds, sheet, copies];
+}
