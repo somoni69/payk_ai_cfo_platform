@@ -62,8 +62,9 @@ class ResponsibleOption extends Equatable {
     this.position,
   });
 
-  String get label =>
-      position == null || position!.isEmpty ? fullName : '$fullName — $position';
+  String get label => position == null || position!.isEmpty
+      ? fullName
+      : '$fullName — $position';
 
   factory ResponsibleOption.fromJson(Map<String, dynamic> json) {
     return ResponsibleOption(

@@ -1861,7 +1861,8 @@ const Map<String, String> kTajikCatalog = {
   'checklists_all_branches': 'Ҳамаи филиалҳо',
   'scan_barcode_title': 'Сканери штрих-код',
   'scan_barcode_hint': 'Камераро ба штрих-код равона кунед',
-  'scan_barcode_camera_denied': 'Дастрасӣ ба камера нест. Онро дар танзимоти телефон иҷозат диҳед.',
+  'scan_barcode_camera_denied':
+      'Дастрасӣ ба камера нест. Онро дар танзимоти телефон иҷозат диҳед.',
   'backups_create': 'Сохтани нусха',
   'backups_empty': 'Нусхаҳои эҳтиётӣ ҳанӯз нест',
   'backups_created': 'Нусха сохта шуд {file}',

@@ -987,9 +987,7 @@ class AuditSectionScreen extends StatelessWidget {
                         },
                         child: Text(
                           language.translate(
-                            alt.isResolved
-                                ? 'audit_reopen'
-                                : 'audit_resolve',
+                            alt.isResolved ? 'audit_reopen' : 'audit_resolve',
                           ),
                         ),
                       ),

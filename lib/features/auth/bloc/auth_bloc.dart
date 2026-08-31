@@ -323,7 +323,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         : 'Подтвердите личность для входа в PAYK';
   }
 
-  Future<void> _emitAuthenticated(Emitter<AuthState> emit, AuthUser user) async {
+  Future<void> _emitAuthenticated(
+    Emitter<AuthState> emit,
+    AuthUser user,
+  ) async {
     _pendingTwoFactor = null;
     var storeId = user.storeId;
     var storeName = user.storeName;

@@ -152,7 +152,9 @@ class ApiFinOpsRepository implements FinOpsRepository {
   @override
   Future<List<ResponsibleOption>> getResponsibleOptions() async {
     try {
-      final response = await _client.dio.get('/finance-ops/responsible-options');
+      final response = await _client.dio.get(
+        '/finance-ops/responsible-options',
+      );
       final list = response.data is List ? response.data as List : const [];
       return list
           .whereType<Map>()

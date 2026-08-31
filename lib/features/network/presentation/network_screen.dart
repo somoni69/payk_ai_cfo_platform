@@ -1348,9 +1348,7 @@ class _NetworkViewState extends State<_NetworkView> {
         title: Text(language.translate('network_store_delete_confirm_title')),
         content: Text(
           language.translate(
-            store.hasData
-                ? 'network_delete_has_data'
-                : 'network_delete_empty',
+            store.hasData ? 'network_delete_has_data' : 'network_delete_empty',
           ),
         ),
         actions: [

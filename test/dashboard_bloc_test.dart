@@ -50,11 +50,7 @@ class MockFinanceTestRepository implements FinanceRepository {
 
   @override
   Future<MetricBreakdown> getBreakdown(String metric) async {
-    return MetricBreakdown(
-      metric: metric,
-      value: 0,
-      period: '',
-    );
+    return MetricBreakdown(metric: metric, value: 0, period: '');
   }
 
   @override

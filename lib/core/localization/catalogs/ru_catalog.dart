@@ -1848,7 +1848,8 @@ const Map<String, String> kRussianCatalog = {
   'checklists_all_branches': 'Все филиалы',
   'scan_barcode_title': 'Сканер штрих-кода',
   'scan_barcode_hint': 'Наведите камеру на штрих-код',
-  'scan_barcode_camera_denied': 'Нет доступа к камере. Разрешите её в настройках телефона.',
+  'scan_barcode_camera_denied':
+      'Нет доступа к камере. Разрешите её в настройках телефона.',
   'backups_create': 'Создать копию',
   'backups_empty': 'Резервных копий пока нет',
   'backups_created': 'Создана копия {file}',

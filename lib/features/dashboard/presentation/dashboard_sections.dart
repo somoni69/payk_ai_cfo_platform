@@ -494,9 +494,7 @@ Widget _buildPlanMonthStrip(BuildContext context, String currentPeriod) {
     final d = DateTime(now.year, now.month - i, 1);
     return '${d.year}-${d.month.toString().padLeft(2, '0')}';
   }).reversed.toList();
-  final selected = months.contains(currentPeriod)
-      ? currentPeriod
-      : months.last;
+  final selected = months.contains(currentPeriod) ? currentPeriod : months.last;
   return SingleChildScrollView(
     scrollDirection: Axis.horizontal,
     child: Row(

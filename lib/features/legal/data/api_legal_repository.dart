@@ -350,11 +350,7 @@ class ApiLegalRepository
   }) async {
     final response = await _apiClient.dio.patch(
       '/legal/templates/$id',
-      data: {
-        'name': ?name,
-        'body': ?body,
-        'category': ?category,
-      },
+      data: {'name': ?name, 'body': ?body, 'category': ?category},
     );
     _templatesCache.invalidate();
     return _mapTemplate(Map<String, dynamic>.from(response.data as Map));

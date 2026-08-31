@@ -400,14 +400,15 @@ class ApiHrRepository implements HrRepository {
         'email': employee.email,
         'base_salary': employee.baseSalary,
         'status': employee.status,
-        'hire_date':
-            (employee.hireDate ?? DateTime.now()).toIso8601String().substring(
-              0,
-              10,
-            ),
-        if (employee.departmentId != null) 'department_id': int.tryParse(employee.departmentId!),
-        if (employee.managerId != null) 'manager_id': int.tryParse(employee.managerId!),
-        if (employee.branchId != null) 'branch_id': int.tryParse(employee.branchId!),
+        'hire_date': (employee.hireDate ?? DateTime.now())
+            .toIso8601String()
+            .substring(0, 10),
+        if (employee.departmentId != null)
+          'department_id': int.tryParse(employee.departmentId!),
+        if (employee.managerId != null)
+          'manager_id': int.tryParse(employee.managerId!),
+        if (employee.branchId != null)
+          'branch_id': int.tryParse(employee.branchId!),
         if (employee.photoUrl != null) 'photo_url': employee.photoUrl,
       };
 

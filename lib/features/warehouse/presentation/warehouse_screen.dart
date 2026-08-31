@@ -1006,323 +1006,332 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
 
   @override
   Widget build(BuildContext context) {
-  final state = widget.state;
-  final colors = context.colors;
-  final textStyles = context.textStyles;
-  final localeCubit = context.read<LanguageCubit>();
-  final oCcy = localizedDecimalFormat(context);
-  final filtered = _filtered;
+    final state = widget.state;
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final oCcy = localizedDecimalFormat(context);
+    final filtered = _filtered;
 
-  return RefreshIndicator(
-    onRefresh: context.read<WarehouseBloc>().reload,
-    child: ListView.separated(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
-      itemCount: filtered.isEmpty ? 3 : filtered.length + 2,
-      separatorBuilder: (context, index) =>
-          SizedBox(height: index == 0 ? 16 : 12),
-      itemBuilder: (context, index) {
-        if (index == 1) {
-          return TextField(
-            controller: _search,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: localeCubit.translate('warehouse_search_hint'),
-              prefixIcon: Icon(
-                TablerIcons.search,
-                size: 18,
-                color: colors.textSecondary,
-              ),
-              suffixIcon: IconButton(
-                tooltip: localeCubit.translate('scan_barcode_title'),
-                onPressed: () async {
-                  final code = await LedgerBarcodeScanner.open(context);
-                  if (code == null || !mounted) return;
-                  setState(() => _search.text = code);
-                },
-                icon: Icon(TablerIcons.camera, color: colors.brand),
-              ),
-            ),
-          );
-        }
-        if (index == 0) {
-          return Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localeCubit.translate('warehouse_stats_count'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '${state.summary.productsCount}',
-                          style: textStyles.h1Sans.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+    return RefreshIndicator(
+      onRefresh: context.read<WarehouseBloc>().reload,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          16,
+          16,
+          16,
+          16 + kLiquidNavClearance,
+        ),
+        itemCount: filtered.isEmpty ? 3 : filtered.length + 2,
+        separatorBuilder: (context, index) =>
+            SizedBox(height: index == 0 ? 16 : 12),
+        itemBuilder: (context, index) {
+          if (index == 1) {
+            return TextField(
+              controller: _search,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: localeCubit.translate('warehouse_search_hint'),
+                prefixIcon: Icon(
+                  TablerIcons.search,
+                  size: 18,
+                  color: colors.textSecondary,
+                ),
+                suffixIcon: IconButton(
+                  tooltip: localeCubit.translate('scan_barcode_title'),
+                  onPressed: () async {
+                    final code = await LedgerBarcodeScanner.open(context);
+                    if (code == null || !mounted) return;
+                    setState(() => _search.text = code);
+                  },
+                  icon: Icon(TablerIcons.camera, color: colors.brand),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                flex: 3,
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localeCubit.translate('warehouse_stats_value'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          localeCubit.translate(
-                            'warehouse_amount_tjs',
-                            params: {
-                              'amount': oCcy.format(
-                                state.summary.totalStockValue,
-                              ),
-                            },
-                          ),
-                          style: textStyles.h1Sans.copyWith(
-                            color: colors.accentGreen,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 20,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          );
-        }
-
-        if (filtered.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 64.0),
-              child: Text(
-                localeCubit.translate('warehouse_empty_products'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.textTooltip,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          );
-        }
-
-        final product = filtered[index - 2];
-        final auth = context.watch<AuthBloc>().state;
-        final canWrite =
-            auth is AuthAuthenticated &&
-            auth.role.canWrite(AppCapability.warehouse);
-
-        final isOutOfStock = product.stockQty <= 0;
-        final isLowStock = !isOutOfStock && product.stockQty <= 5;
-
-        final stockStatusColor = isOutOfStock
-            ? colors.accentRed
-            : (isLowStock ? colors.accentAmber : colors.accentGreen);
-
-        return Material(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: canWrite
-                ? () => _showEditProductSheet(context, product)
-                : null,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.border),
-              ),
-              child: Row(
-                children: [
-                  // Product icon container
-                  Container(
-                    width: 44,
-                    height: 44,
+            );
+          }
+          if (index == 0) {
+            return Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: colors.brand.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(10),
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
                     ),
-                    alignment: Alignment.center,
-                    child: Icon(TablerIcons.box, size: 22, color: colors.brand),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          localeCubit.translateMessage(product.name),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15.5,
+                          localeCubit.translate('warehouse_stats_count'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            if (product.sku != null &&
-                                product.sku!.isNotEmpty) ...[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: colors.surfaceNested,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  product.sku!,
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.textSecondary,
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
-                            Text(
-                              localeCubit.translate(
-                                'warehouse_product_price',
-                                params: {'price': oCcy.format(product.price)},
-                              ),
-                              style: textStyles.captionSans.copyWith(
-                                color: colors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 13,
-                              ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '${state.summary.productsCount}',
+                            style: textStyles.h1Sans.copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
                             ),
-                          ],
-                        ),
-                        if (product.barcode != null &&
-                            product.barcode!.isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              Icon(
-                                TablerIcons.barcode,
-                                size: 13,
-                                color: colors.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                product.barcode!,
-                                style: textStyles.captionSans.copyWith(
-                                  fontFamily: 'monospace',
-                                  color: colors.textSecondary,
-                                  fontSize: 11.5,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
                           ),
-                        ],
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 3,
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: colors.border),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          localeCubit.translate('warehouse_stats_value'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
-                        decoration: BoxDecoration(
-                          color: stockStatusColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(6),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            localeCubit.translate(
+                              'warehouse_amount_tjs',
+                              params: {
+                                'amount': oCcy.format(
+                                  state.summary.totalStockValue,
+                                ),
+                              },
+                            ),
+                            style: textStyles.h1Sans.copyWith(
+                              color: colors.accentGreen,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 20,
+                            ),
+                          ),
                         ),
-                        child: Text(
-                          localeCubit.translate(
-                            'warehouse_quantity_with_unit',
-                            params: {
-                              'quantity': formatLocalizedNumber(
-                                context,
-                                product.stockQty,
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          if (filtered.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 64.0),
+                child: Text(
+                  localeCubit.translate('warehouse_empty_products'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textTooltip,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          final product = filtered[index - 2];
+          final auth = context.watch<AuthBloc>().state;
+          final canWrite =
+              auth is AuthAuthenticated &&
+              auth.role.canWrite(AppCapability.warehouse);
+
+          final isOutOfStock = product.stockQty <= 0;
+          final isLowStock = !isOutOfStock && product.stockQty <= 5;
+
+          final stockStatusColor = isOutOfStock
+              ? colors.accentRed
+              : (isLowStock ? colors.accentAmber : colors.accentGreen);
+
+          return Material(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: canWrite
+                  ? () => _showEditProductSheet(context, product)
+                  : null,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Row(
+                  children: [
+                    // Product icon container
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: colors.brand.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        TablerIcons.box,
+                        size: 22,
+                        color: colors.brand,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            localeCubit.translateMessage(product.name),
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              if (product.sku != null &&
+                                  product.sku!.isNotEmpty) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceNested,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    product.sku!,
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.textSecondary,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                              ],
+                              Text(
+                                localeCubit.translate(
+                                  'warehouse_product_price',
+                                  params: {'price': oCcy.format(product.price)},
+                                ),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 13,
+                                ),
                               ),
-                              'unit': localeCubit.translateMessage(
-                                product.unit,
+                            ],
+                          ),
+                          if (product.barcode != null &&
+                              product.barcode!.isNotEmpty) ...[
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Icon(
+                                  TablerIcons.barcode,
+                                  size: 13,
+                                  color: colors.textSecondary,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  product.barcode!,
+                                  style: textStyles.captionSans.copyWith(
+                                    fontFamily: 'monospace',
+                                    color: colors.textSecondary,
+                                    fontSize: 11.5,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: stockStatusColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            localeCubit.translate(
+                              'warehouse_quantity_with_unit',
+                              params: {
+                                'quantity': formatLocalizedNumber(
+                                  context,
+                                  product.stockQty,
+                                ),
+                                'unit': localeCubit.translateMessage(
+                                  product.unit,
+                                ),
+                              },
+                            ),
+                            style: textStyles.captionSans.copyWith(
+                              color: stockStatusColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          localeCubit.translate(
+                            'warehouse_amount_tjs',
+                            params: {
+                              'amount': oCcy.format(
+                                product.stockQty * product.price,
                               ),
                             },
                           ),
                           style: textStyles.captionSans.copyWith(
-                            color: stockStatusColor,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                            color: colors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        localeCubit.translate(
-                          'warehouse_amount_tjs',
-                          params: {
-                            'amount': oCcy.format(
-                              product.stockQty * product.price,
-                            ),
-                          },
-                        ),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
+          );
+        },
+      ),
+    );
   }
 }
 

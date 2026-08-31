@@ -962,11 +962,7 @@ class ApiCashRepository implements CashRepository {
     try {
       await _dio.put(
         '/cash/onec/link',
-        data: {
-          'scope': scope,
-          'onec_name': onecName,
-          'target_id': targetId,
-        },
+        data: {'scope': scope, 'onec_name': onecName, 'target_id': targetId},
         options: _writeOptions(),
       );
     } catch (e) {

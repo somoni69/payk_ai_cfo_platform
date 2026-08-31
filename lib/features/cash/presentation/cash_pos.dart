@@ -82,8 +82,7 @@ class _CashPosViewState extends State<CashPosView> {
     } catch (_) {}
   }
 
-  double get _total =>
-      _lines.fold<double>(0, (sum, line) => sum + line.amount);
+  double get _total => _lines.fold<double>(0, (sum, line) => sum + line.amount);
 
   bool get _cashierNeedsShift {
     final auth = context.read<AuthBloc>().state;
@@ -134,9 +133,9 @@ class _CashPosViewState extends State<CashPosView> {
       return;
     }
     try {
-      final found = await context.read<CashRepository>().getSaleProductByBarcode(
-        code,
-      );
+      final found = await context
+          .read<CashRepository>()
+          .getSaleProductByBarcode(code);
       if (!mounted) return;
       _addProduct(found);
     } catch (_) {
@@ -251,9 +250,7 @@ class _CashPosViewState extends State<CashPosView> {
             ElevatedButton(
               onPressed: () {
                 final got =
-                    double.tryParse(
-                      _gotController.text.replaceAll(',', '.'),
-                    ) ??
+                    double.tryParse(_gotController.text.replaceAll(',', '.')) ??
                     _total;
                 final change = got - _total;
                 Navigator.pop(dlg, true);
@@ -289,8 +286,7 @@ class _CashPosViewState extends State<CashPosView> {
                 final q = _scanController.text.trim().toLowerCase();
                 return p.name.toLowerCase().contains(q) ||
                     (p.sku?.toLowerCase().contains(q) ?? false) ||
-                    (p.barcode?.contains(_scanController.text.trim()) ??
-                        false);
+                    (p.barcode?.contains(_scanController.text.trim()) ?? false);
               })
               .take(12)
               .toList();
@@ -332,10 +328,7 @@ class _CashPosViewState extends State<CashPosView> {
             items: registers.map((r) => r.id).toList(),
             selectedValue: _registerId,
             itemLabelBuilder: (id) => registers
-                .firstWhere(
-                  (r) => r.id == id,
-                  orElse: () => registers.first,
-                )
+                .firstWhere((r) => r.id == id, orElse: () => registers.first)
                 .name,
             onSelected: (id) => setState(() => _registerId = id),
           ),

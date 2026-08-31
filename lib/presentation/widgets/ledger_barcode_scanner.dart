@@ -90,7 +90,9 @@ class _LedgerBarcodeScannerState extends State<LedgerBarcodeScanner> {
                       const SizedBox(height: 12),
                       Text(
                         language.translate('scan_barcode_camera_denied'),
-                        style: textStyles.bodySans.copyWith(color: Colors.white),
+                        style: textStyles.bodySans.copyWith(
+                          color: Colors.white,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ],

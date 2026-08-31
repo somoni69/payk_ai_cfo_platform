@@ -44,7 +44,13 @@ class AuditLoaded extends AuditState {
   }
 
   @override
-  List<Object?> get props => [logs, alerts, isRunningDetectors, message, weekly];
+  List<Object?> get props => [
+    logs,
+    alerts,
+    isRunningDetectors,
+    message,
+    weekly,
+  ];
 }
 
 class AuditError extends AuditState {

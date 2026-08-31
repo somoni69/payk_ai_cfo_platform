@@ -54,10 +54,7 @@ class ApiAuditRepository implements AuditRepository {
     ),
   ];
 
-  List<T> _parsePage<T>(
-    dynamic data,
-    T Function(Map<String, dynamic>) map,
-  ) {
+  List<T> _parsePage<T>(dynamic data, T Function(Map<String, dynamic>) map) {
     if (data is List) {
       return data
           .whereType<Map>()
@@ -104,10 +101,7 @@ class ApiAuditRepository implements AuditRepository {
     try {
       final response = await _client.dio.get(
         '/audit/alerts',
-        queryParameters: {
-          'resolved': ?resolved,
-          'size': 100,
-        },
+        queryParameters: {'resolved': ?resolved, 'size': 100},
       );
       if (response.statusCode == 200) {
         final parsed = _parsePage(response.data, AuditAlert.fromJson);
@@ -141,7 +135,9 @@ class ApiAuditRepository implements AuditRepository {
       data: {'is_resolved': isResolved},
     );
     if (response.data is Map) {
-      return AuditAlert.fromJson(Map<String, dynamic>.from(response.data as Map));
+      return AuditAlert.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
     }
     return AuditAlert(
       id: id,

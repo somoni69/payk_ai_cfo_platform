@@ -1134,7 +1134,8 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 onTap: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: endDate ?? startDate.add(const Duration(days: 365)),
+                    initialDate:
+                        endDate ?? startDate.add(const Duration(days: 365)),
                     firstDate: startDate,
                     lastDate: DateTime.now().add(const Duration(days: 3650)),
                   );

@@ -1047,7 +1047,9 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
             child: Center(
               child: Text(
                 language.translate('cash_onec_kkm_empty'),
-                style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+                style: textStyles.bodySans.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ),
           ),
@@ -1068,7 +1070,9 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
             children: [
               Text(
                 language.translate('cash_tab_onec_kkm'),
-                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 4),
               Text(

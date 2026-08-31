@@ -21,14 +21,16 @@ class AuditLog extends Equatable {
     final changes = json['changes'];
     return AuditLog(
       id: (json['id'] ?? '').toString(),
-      timestamp: DateTime.tryParse(
+      timestamp:
+          DateTime.tryParse(
             (json['created_at'] ?? json['timestamp'] ?? '').toString(),
           ) ??
           DateTime.now(),
       userName: (json['user_name'] ?? json['userName'] ?? '').toString(),
       action: (json['action'] ?? '').toString(),
       entityType: (json['entity'] ?? json['entity_type'] ?? '').toString(),
-      details: json['details']?.toString() ??
+      details:
+          json['details']?.toString() ??
           (changes == null ? '' : changes.toString()),
     );
   }
@@ -78,7 +80,8 @@ class AuditAlert extends Equatable {
       type: (json['type'] ?? json['title'] ?? '').toString(),
       severity: (json['severity'] ?? 'low').toString(),
       message: (json['message'] ?? json['title'] ?? '').toString(),
-      timestamp: DateTime.tryParse(
+      timestamp:
+          DateTime.tryParse(
             (json['created_at'] ?? json['timestamp'] ?? '').toString(),
           ) ??
           DateTime.now(),
@@ -97,7 +100,14 @@ class AuditAlert extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, type, severity, message, timestamp, isResolved];
+  List<Object?> get props => [
+    id,
+    type,
+    severity,
+    message,
+    timestamp,
+    isResolved,
+  ];
 }
 
 class EntityHistoryItem {
