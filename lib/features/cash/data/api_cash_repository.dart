@@ -70,10 +70,39 @@ class ApiCashRepository implements CashRepository {
     return double.tryParse(val.toString()) ?? 0.0;
   }
 
+  List<OneCKkmMappingRow> _mapOneCMappingRows(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((item) {
+      final m = Map<String, dynamic>.from(item);
+      return OneCKkmMappingRow(
+        onecName: (m['onec_name'] ?? '').toString(),
+        targetId: (m['target_id'] as num?)?.toInt(),
+        targetName: m['target_name']?.toString(),
+        matchedBy: m['matched_by']?.toString(),
+      );
+    }).toList();
+  }
+
+  List<OneCKkmTargetOption> _mapOneCTargets(dynamic raw) {
+    if (raw is! List) return const [];
+    return raw.whereType<Map>().map((item) {
+      final m = Map<String, dynamic>.from(item);
+      return OneCKkmTargetOption(
+        id: (m['id'] as num?)?.toInt() ?? 0,
+        name: (m['name'] ?? '').toString(),
+      );
+    }).toList();
+  }
+
   @override
-  Future<List<Transaction>> getTransactions() async {
+  Future<List<Transaction>> getTransactions({
+    CashOperationFilters filters = const CashOperationFilters(),
+  }) async {
     try {
-      final response = await _dio.get('/cash/operations');
+      final response = await _dio.get(
+        '/cash/operations',
+        queryParameters: filters.toQuery(),
+      );
       final body = response.data as Map<String, dynamic>;
       final list = body['items'] as List<dynamic>? ?? [];
 
@@ -304,11 +333,41 @@ class ApiCashRepository implements CashRepository {
           id: (map['id'] ?? '').toString(),
           name: (map['name'] ?? '').toString(),
           sku: map['sku']?.toString(),
+          barcode: map['barcode']?.toString(),
           unit: (map['unit'] ?? '').toString(),
           price: _toDouble(map['price']),
           stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
         );
       }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<SaleProduct> getSaleProductByBarcode(String code) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+    try {
+      final response = await _dio.get(
+        '/cash/sale-products/by-barcode/${Uri.encodeComponent(trimmed)}',
+      );
+      final map = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      return SaleProduct(
+        id: (map['id'] ?? '').toString(),
+        name: (map['name'] ?? '').toString(),
+        sku: map['sku']?.toString(),
+        barcode: map['barcode']?.toString() ?? trimmed,
+        unit: (map['unit'] ?? '').toString(),
+        price: _toDouble(map['price']),
+        stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+      );
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
@@ -777,6 +836,139 @@ class ApiCashRepository implements CashRepository {
         return int.tryParse(n.toString()) ?? 0;
       }
       return 0;
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<CashierLookup>> lookupCashiers() async {
+    try {
+      final response = await _dio.get('/users/lookup');
+      final list = response.data is List ? response.data as List : const [];
+      return list
+          .whereType<Map>()
+          .map((raw) => Map<String, dynamic>.from(raw))
+          .where((m) => (m['role'] ?? '').toString() == 'cashier')
+          .map(
+            (m) => CashierLookup(
+              id: (m['id'] ?? '').toString(),
+              name: (m['full_name'] ?? m['name'] ?? '').toString(),
+            ),
+          )
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Future<OneCKkmOverview> getOneCKkmShifts({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    bool refresh = true,
+  }) async {
+    try {
+      String? iso(DateTime? d) => d == null
+          ? null
+          : '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final response = await _dio.get(
+        '/cash/onec/shifts',
+        queryParameters: {
+          if (iso(dateFrom) != null) 'date_from': iso(dateFrom),
+          if (iso(dateTo) != null) 'date_to': iso(dateTo),
+          'refresh': refresh,
+        },
+        options: ApiClient.longRunningOptions(),
+      );
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final shiftsRaw = data['shifts'] as List? ?? [];
+      final mapping = data['mapping'] is Map
+          ? Map<String, dynamic>.from(data['mapping'] as Map)
+          : <String, dynamic>{};
+      final targets = data['targets'] is Map
+          ? Map<String, dynamic>.from(data['targets'] as Map)
+          : <String, dynamic>{};
+      final reconcileRaw = data['reconcile'] as List? ?? [];
+      return OneCKkmOverview(
+        source: (data['source'] ?? 'live').toString(),
+        error: data['error']?.toString(),
+        syncedAt: data['synced_at']?.toString(),
+        totals: data['totals'] is Map
+            ? Map<String, dynamic>.from(data['totals'] as Map)
+            : const {},
+        mapping: mapping,
+        targets: targets,
+        mappingRegisters: _mapOneCMappingRows(mapping['registers']),
+        mappingDepartments: _mapOneCMappingRows(mapping['departments']),
+        mappingCards: _mapOneCMappingRows(mapping['cards']),
+        targetRegisters: _mapOneCTargets(targets['registers']),
+        targetBranches: _mapOneCTargets(targets['branches']),
+        targetBanks: _mapOneCTargets(targets['banks']),
+        reconcile: reconcileRaw.whereType<Map>().map((raw) {
+          final m = Map<String, dynamic>.from(raw);
+          return OneCKkmReconcileRow(
+            docDate: (m['doc_date'] ?? '').toString(),
+            onecRegister: (m['onec_register'] ?? '').toString(),
+            paykRegisterName: m['payk_register_name']?.toString(),
+            shiftsCount: (m['shifts_count'] as num?)?.toInt() ?? 0,
+            onecTotal: _toDouble(m['onec_total']),
+            paykTotal: m['payk_total'] == null
+                ? null
+                : _toDouble(m['payk_total']),
+            diffTotal: m['diff_total'] == null
+                ? null
+                : _toDouble(m['diff_total']),
+          );
+        }).toList(),
+        shifts: shiftsRaw.whereType<Map>().map((raw) {
+          final m = Map<String, dynamic>.from(raw);
+          final paymentsRaw = m['payments'] as List? ?? [];
+          return OneCKkmShift(
+            number: (m['number'] ?? '').toString(),
+            registerName: (m['register_name'] ?? '').toString(),
+            cashierName: (m['cashier_name'] ?? '').toString(),
+            departmentName: m['department_name']?.toString(),
+            closedAt: m['closed_at']?.toString(),
+            total: _toDouble(m['total']),
+            cashTotal: _toDouble(m['cash_total']),
+            cashlessTotal: _toDouble(m['cashless_total']),
+            paykRegisterName: m['payk_register_name']?.toString(),
+            payments: paymentsRaw.whereType<Map>().map((pRaw) {
+              final p = Map<String, dynamic>.from(pRaw);
+              return OneCKkmPayment(
+                kind: (p['kind'] ?? '').toString(),
+                card: (p['card'] ?? '').toString(),
+                amount: _toDouble(p['amount']),
+                bankName: p['bank_name']?.toString(),
+              );
+            }).toList(),
+          );
+        }).toList(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<void> saveOneCKkmLink({
+    required String scope,
+    required String onecName,
+    int? targetId,
+  }) async {
+    try {
+      await _dio.put(
+        '/cash/onec/link',
+        data: {
+          'scope': scope,
+          'onec_name': onecName,
+          'target_id': targetId,
+        },
+        options: _writeOptions(),
+      );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }

@@ -6,6 +6,10 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../audit/domain/audit_models.dart';
+import '../../audit/domain/audit_repository.dart';
+import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
 
 /// Modern fintech transaction card with visual category icon and clean detail drawer.
@@ -25,8 +29,67 @@ class CashTransactionTile extends StatefulWidget {
   State<CashTransactionTile> createState() => _CashTransactionTileState();
 }
 
+Future<void> _showOperationHistory(BuildContext context, String id) async {
+  final language = context.read<LanguageCubit>();
+  var items = const <EntityHistoryItem>[];
+  try {
+    items = await context.read<AuditRepository>().getEntityHistory(
+      'cash_operation',
+      id,
+    );
+  } catch (_) {}
+  if (!context.mounted) return;
+  await LedgerBottomSheet.show(
+    context: context,
+    title: language.translate('more_audit'),
+    builder: (ctx, setState) {
+      if (items.isEmpty) {
+        return Text(language.translate('dashboard_breakdown_empty'));
+      }
+      return Column(
+        children: [
+          for (final item in items)
+            ListTile(
+              dense: true,
+              title: Text(item.action),
+              subtitle: Text('${item.userName} · ${item.createdAt}'),
+            ),
+        ],
+      );
+    },
+  );
+}
+
 class _CashTransactionTileState extends State<CashTransactionTile> {
   bool _expanded = false;
+  Transaction? _detail;
+  bool _loadingDetail = false;
+
+  Transaction get _tx => _detail ?? widget.transaction;
+
+  Future<void> _toggle() async {
+    setState(() => _expanded = !_expanded);
+    if (!_expanded ||
+        widget.transaction.lines.isNotEmpty ||
+        _detail != null ||
+        _loadingDetail) {
+      return;
+    }
+    setState(() => _loadingDetail = true);
+    try {
+      final detailed = await context.read<CashRepository>().getOperation(
+        widget.transaction.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        _detail = detailed;
+        _loadingDetail = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingDetail = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +97,7 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final oCcy = localizedDecimalFormat(context);
-    final tx = widget.transaction;
+    final tx = _tx;
 
     final amountFormatted =
         '${tx.isIncome ? '+' : '-'}${oCcy.format(tx.amount)}';
@@ -60,7 +123,7 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
       color: colors.surface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        onTap: () => setState(() => _expanded = !_expanded),
+        onTap: _toggle,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -259,6 +322,15 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
                             language.translate('cash_edit_operation'),
                           ),
                         ),
+                      IconButton(
+                        tooltip: language.translate('more_audit'),
+                        onPressed: () => _showOperationHistory(context, tx.id),
+                        icon: Icon(
+                          TablerIcons.history,
+                          size: 18,
+                          color: colors.brand,
+                        ),
+                      ),
                       const Spacer(),
                       if (widget.onDelete != null)
                         IconButton(

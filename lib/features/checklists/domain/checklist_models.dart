@@ -6,6 +6,7 @@ class ChecklistEntry extends Equatable {
   final String text;
   final bool isDone;
   final DateTime? createdAt;
+  final String? doneByName;
 
   const ChecklistEntry({
     required this.id,
@@ -13,6 +14,7 @@ class ChecklistEntry extends Equatable {
     required this.text,
     this.isDone = false,
     this.createdAt,
+    this.doneByName,
   });
 
   ChecklistEntry copyWith({bool? isDone, String? text}) {
@@ -22,6 +24,7 @@ class ChecklistEntry extends Equatable {
       text: text ?? this.text,
       isDone: isDone ?? this.isDone,
       createdAt: createdAt,
+      doneByName: doneByName,
     );
   }
 
@@ -36,11 +39,12 @@ class ChecklistEntry extends Equatable {
           : (json['created_at'] != null
                 ? DateTime.tryParse(json['created_at'].toString())
                 : null),
+      doneByName: json['done_by_name']?.toString(),
     );
   }
 
   @override
-  List<Object?> get props => [id, runId, text, isDone, createdAt];
+  List<Object?> get props => [id, runId, text, isDone, createdAt, doneByName];
 }
 
 class ChecklistRun extends Equatable {
@@ -51,6 +55,7 @@ class ChecklistRun extends Equatable {
   final List<ChecklistEntry> entries;
   final String? regulationText;
   final String? regulationName;
+  final String? regulationUrl;
 
   const ChecklistRun({
     required this.id,
@@ -60,6 +65,7 @@ class ChecklistRun extends Equatable {
     required this.entries,
     this.regulationText,
     this.regulationName,
+    this.regulationUrl,
   });
 
   int get doneCount => entries.where((e) => e.isDone).length;
@@ -77,6 +83,7 @@ class ChecklistRun extends Equatable {
       responsiblePerson: (json['responsible_person'] ?? '').toString(),
       regulationText: json['regulation_text']?.toString(),
       regulationName: json['regulation_name']?.toString(),
+      regulationUrl: json['regulation_url']?.toString(),
       entries: entriesRaw
           .whereType<Map>()
           .map(
@@ -98,6 +105,7 @@ class ChecklistRun extends Equatable {
       entries: entries ?? this.entries,
       regulationText: regulationText,
       regulationName: regulationName,
+      regulationUrl: regulationUrl,
     );
   }
 
@@ -110,6 +118,7 @@ class ChecklistRun extends Equatable {
     entries,
     regulationText,
     regulationName,
+    regulationUrl,
   ];
 }
 
@@ -144,6 +153,8 @@ class ChecklistTemplate extends Equatable {
   final bool isActive;
   final String? regulationText;
   final String? regulationName;
+  final String? regulationUrl;
+  final String? branchId;
   final List<ChecklistTemplateItem> items;
 
   const ChecklistTemplate({
@@ -151,9 +162,11 @@ class ChecklistTemplate extends Equatable {
     required this.name,
     this.description,
     this.branchName,
+    this.branchId,
     this.isActive = true,
     this.regulationText,
     this.regulationName,
+    this.regulationUrl,
     this.items = const [],
   });
 
@@ -164,9 +177,11 @@ class ChecklistTemplate extends Equatable {
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString(),
       branchName: json['branch_name']?.toString(),
+      branchId: json['branch_id']?.toString(),
       isActive: json['is_active'] != false,
       regulationText: json['regulation_text']?.toString(),
       regulationName: json['regulation_name']?.toString(),
+      regulationUrl: json['regulation_url']?.toString(),
       items: itemsRaw
           .whereType<Map>()
           .map(
@@ -182,9 +197,11 @@ class ChecklistTemplate extends Equatable {
     name,
     description,
     branchName,
+    branchId,
     isActive,
     regulationText,
     regulationName,
+    regulationUrl,
     items,
   ];
 }

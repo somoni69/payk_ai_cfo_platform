@@ -101,7 +101,17 @@ class MockFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<PnlReport> getPnlReport() async {
+  Future<MetricBreakdown> getBreakdown(String metric) async {
+    return MetricBreakdown(
+      metric: metric,
+      value: 0,
+      period: '',
+      rows: const [],
+    );
+  }
+
+  @override
+  Future<PnlReport> getPnlReport({DateTime? dateFrom, DateTime? dateTo}) async {
     await Future.delayed(const Duration(milliseconds: 150));
     return const PnlReport(
       income: [
@@ -121,7 +131,10 @@ class MockFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<BreakEvenAnalysis> getBreakEvenAnalysis() async {
+  Future<BreakEvenAnalysis> getBreakEvenAnalysis({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 100));
     return const BreakEvenAnalysis(
       revenue: 320800.0,
@@ -134,7 +147,11 @@ class MockFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
+  Future<AbcAnalysis> getAbcAnalysis(
+    String dimension, {
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     if (AbcDimensions.toApi(dimension) == AbcDimensions.counterparty) {
       return const AbcAnalysis(
@@ -277,7 +294,7 @@ class MockFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<PlanFactReport> getPlanFactReport() async {
+  Future<PlanFactReport> getPlanFactReport({String? period}) async {
     await Future.delayed(const Duration(milliseconds: 100));
     return const PlanFactReport(
       period: '2026-07',

@@ -37,6 +37,8 @@ import '../../features/reports/data/api_reports_repository.dart';
 import '../../features/reports/domain/reports_repository.dart';
 import '../../features/strategy/data/api_strategy_repository.dart';
 import '../../features/strategy/domain/strategy_repository.dart';
+import '../../features/system/data/api_system_repository.dart';
+import '../../features/system/domain/system_repository.dart';
 import '../../features/tasks/data/api_tasks_repository.dart';
 import '../../features/tasks/domain/tasks_repository.dart';
 import '../../features/users/data/api_users_repository.dart';
@@ -94,6 +96,7 @@ abstract final class AppRepositories {
     RepositoryProvider<PermissionsRepository>(
       create: (_) => ApiPermissionsRepository(),
     ),
+    RepositoryProvider<SystemRepository>(create: (_) => ApiSystemRepository()),
   ];
 
   /// Wraps [child] with the production repository graph.

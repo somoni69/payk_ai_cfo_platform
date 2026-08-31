@@ -16,18 +16,28 @@ class LoadFinOpsData extends FinOpsEvent {
 }
 
 class CreateEncashmentRequested extends FinOpsEvent {
-  final String bankName;
+  final String registerId;
+  final String responsibleEmployeeId;
   final double amount;
-  final String responsiblePerson;
+  final String? bankId;
+  final String? note;
 
   const CreateEncashmentRequested({
-    required this.bankName,
+    required this.registerId,
+    required this.responsibleEmployeeId,
     required this.amount,
-    required this.responsiblePerson,
+    this.bankId,
+    this.note,
   });
 
   @override
-  List<Object?> get props => [bankName, amount, responsiblePerson];
+  List<Object?> get props => [
+    registerId,
+    responsibleEmployeeId,
+    amount,
+    bankId,
+    note,
+  ];
 }
 
 class CreateStoreTransferRequested extends FinOpsEvent {
@@ -59,16 +69,20 @@ class UpdateTransferStatusRequested extends FinOpsEvent {
 }
 
 class CreateFinancialAidRequested extends FinOpsEvent {
-  final String employeeName;
+  final String employeeId;
   final double amount;
+  final bool deductFromSalary;
+  final String? registerId;
 
   const CreateFinancialAidRequested({
-    required this.employeeName,
+    required this.employeeId,
     required this.amount,
+    this.deductFromSalary = true,
+    this.registerId,
   });
 
   @override
-  List<Object?> get props => [employeeName, amount];
+  List<Object?> get props => [employeeId, amount, deductFromSalary, registerId];
 }
 
 class RepayFinancialAidRequested extends FinOpsEvent {

@@ -130,6 +130,29 @@ class MockLegalTestRepository implements LegalRepository {
       variables: const [],
     );
   }
+
+  @override
+  Future<ContractTemplate> updateTemplate({
+    required String id,
+    String? name,
+    String? body,
+    String? category,
+  }) async {
+    return ContractTemplate(
+      id: id,
+      name: name ?? '',
+      body: body ?? '',
+      category: category,
+      variables: const [],
+    );
+  }
+
+  @override
+  Future<void> deleteTemplate(String id) async {}
+
+  @override
+  Future<List<int>> exportGeneratedContract(String contractId) async =>
+      const [];
 }
 
 void main() {

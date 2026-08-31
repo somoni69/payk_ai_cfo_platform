@@ -20,6 +20,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
   String _currentFilterType = 'all';
   String _currentPaymentMethod = 'all';
   String _currentRegisterId = 'all';
+  String _currentCashierId = 'all';
   DateTime? _currentDateFrom;
   DateTime? _currentDateTo;
   Future<List<Object>>? _loadRequest;
@@ -48,7 +49,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         emit(CashLoading());
       }
       request = Future.wait<Object>([
-        _repository.getTransactions(),
+        _repository.getTransactions(filters: _currentFilters()),
         _repository.getSummary(),
         _repository.getShifts(),
         _repository.getRegisters(),
@@ -101,6 +102,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         event.filterType == _currentFilterType &&
         event.paymentMethod == _currentPaymentMethod &&
         event.registerId == _currentRegisterId &&
+        event.cashierId == _currentCashierId &&
         event.dateFrom == _currentDateFrom &&
         event.dateTo == _currentDateTo &&
         event.query != _currentQuery;
@@ -112,9 +114,35 @@ class CashBloc extends Bloc<CashEvent, CashState> {
     _currentFilterType = event.filterType;
     _currentPaymentMethod = event.paymentMethod;
     _currentRegisterId = event.registerId;
+    _currentCashierId = event.cashierId;
     _currentDateFrom = event.dateFrom;
     _currentDateTo = event.dateTo;
+    if (!onlyQueryChanged) {
+      try {
+        _cachedTransactions = await _repository.getTransactions(
+          filters: _currentFilters(),
+        );
+      } catch (_) {}
+    }
     _emitCurrentState(emit);
+  }
+
+  CashOperationFilters _currentFilters() {
+    return CashOperationFilters(
+      registerId: _currentRegisterId == 'all'
+          ? null
+          : int.tryParse(_currentRegisterId),
+      type: _currentFilterType == 'all' ? null : _currentFilterType,
+      paymentMethod: _currentPaymentMethod == 'all'
+          ? null
+          : _currentPaymentMethod,
+      cashierId: _currentCashierId == 'all'
+          ? null
+          : int.tryParse(_currentCashierId),
+      dateFrom: _currentDateFrom,
+      dateTo: _currentDateTo,
+      query: _currentQuery,
+    );
   }
 
   void _onAddTransactionRequested(
@@ -365,6 +393,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         filterType: _currentFilterType,
         paymentMethod: _currentPaymentMethod,
         registerId: _currentRegisterId,
+        cashierId: _currentCashierId,
         dateFrom: _currentDateFrom,
         dateTo: _currentDateTo,
         errorMessage: errorMessage,

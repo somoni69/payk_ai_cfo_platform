@@ -61,6 +61,11 @@ class MockTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<void> deleteTask(String taskId) async {
+    tasks.removeWhere((t) => t.id == taskId);
+  }
+
+  @override
   Future<List<TaskProject>> getProjects() async {
     projectRequestCount++;
     return [];

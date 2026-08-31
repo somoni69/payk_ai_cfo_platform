@@ -225,13 +225,7 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
             ? current.stores.where((s) => s.id != event.storeId).toList()
             : current.stores.map((s) {
                 if (s.id == event.storeId) {
-                  return NetworkStore(
-                    id: s.id,
-                    name: s.name,
-                    location: s.location,
-                    isActive: false,
-                    usersCount: s.usersCount,
-                  );
+                  return s.copyWith(isActive: false);
                 }
                 return s;
               }).toList();

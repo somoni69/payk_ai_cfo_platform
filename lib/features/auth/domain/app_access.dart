@@ -133,7 +133,8 @@ extension UserRoleAccess on UserRole {
   bool canDelete(AppCapability capability) => canManage(capability);
 
   String get landingLocation => switch (this) {
-    UserRole.owner => '/dashboard',
+    // Owner starts in the network root — store modules are empty until enter.
+    UserRole.owner => '/network',
     UserRole.cashier => '/cash',
     UserRole.hr => '/tasks',
     // Dashboard shows revenue — marketer starts in marketing (web parity).

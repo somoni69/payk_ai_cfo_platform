@@ -24,6 +24,7 @@ import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/shell/presentation/more_screen.dart';
 import '../../features/shell/presentation/shell_screen.dart';
 import '../../features/strategy/presentation/strategy_screen.dart';
+import '../../features/system/presentation/backups_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
 import '../../features/users/presentation/users_screen.dart';
 import '../../features/warehouse/presentation/warehouse_screen.dart';
@@ -176,6 +177,12 @@ GoRouter createRouter(
         path: '/integrations',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const IntegrationsScreen(),
+      ),
+
+      GoRoute(
+        path: '/backups',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const BackupsScreen(),
       ),
 
       // Управление доступом (SYS-02...07)

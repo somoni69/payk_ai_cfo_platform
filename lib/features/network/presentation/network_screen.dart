@@ -105,8 +105,7 @@ class _NetworkViewState extends State<_NetworkView> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(text),
-                backgroundColor:
-                    msg.contains('created') || msg.contains('entered')
+                backgroundColor: _isNetworkSuccess(msg)
                     ? colors.accentGreen
                     : colors.accentRed,
               ),
@@ -157,7 +156,7 @@ class _NetworkViewState extends State<_NetworkView> {
                       ),
                       const SizedBox(height: 10),
                       if (state.stores.isEmpty)
-                        _buildEmptyStores(context)
+                        _buildEmptyStores(context, isOwner: isOwner)
                       else
                         for (final store in state.stores) ...[
                           _buildStoreCard(
@@ -308,7 +307,7 @@ class _NetworkViewState extends State<_NetworkView> {
                     const SizedBox(height: 4),
                     Text(
                       _formatMoney(context, state.totalProfit),
-                      style: textStyles.h1Sans.copyWith(
+                      style: textStyles.displayMono.copyWith(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
                         color: state.totalProfit >= 0
@@ -376,6 +375,7 @@ class _NetworkViewState extends State<_NetworkView> {
                           fontWeight: FontWeight.w600,
                           fontSize: 13.5,
                           color: colors.textPrimary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -420,6 +420,7 @@ class _NetworkViewState extends State<_NetworkView> {
                           fontWeight: FontWeight.w600,
                           fontSize: 13.5,
                           color: colors.textPrimary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -427,6 +428,14 @@ class _NetworkViewState extends State<_NetworkView> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            '${language.translate('network_operations_short')}: ${state.totalOperations}',
+            style: textStyles.smallMono.copyWith(
+              color: colors.textSecondary,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
@@ -755,6 +764,26 @@ class _NetworkViewState extends State<_NetworkView> {
                     ),
                   ],
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        TablerIcons.receipt,
+                        size: 13,
+                        color: colors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${language.translate('network_operations_short')}: ${summary.operationsCount}',
+                        style: textStyles.smallMono.copyWith(
+                          color: colors.textSecondary,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -800,6 +829,29 @@ class _NetworkViewState extends State<_NetworkView> {
                       ),
                     ],
                   ),
+                ),
+              ),
+            )
+          else if (!store.isActive)
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: OutlinedButton(
+                onPressed: null,
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.border),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  language.translate('network_enter_disabled_hint'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
             )
@@ -884,10 +936,11 @@ class _NetworkViewState extends State<_NetworkView> {
             Flexible(
               child: Text(
                 value,
-                style: textStyles.captionSans.copyWith(
+                style: textStyles.bodyMono.copyWith(
                   fontWeight: isBold ? FontWeight.w700 : FontWeight.w600,
                   fontSize: 13,
                   color: valueColor,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -899,7 +952,22 @@ class _NetworkViewState extends State<_NetworkView> {
     );
   }
 
-  Widget _buildEmptyStores(BuildContext context) {
+  bool _isNetworkSuccess(String msg) {
+    final lower = msg.toLowerCase();
+    if (msg.startsWith('error_') || lower.contains('exception')) {
+      return false;
+    }
+    if (msg.startsWith('network_err')) return false;
+    if (msg.startsWith('network_')) return true;
+    return lower.contains('создан') ||
+        lower.contains('обновл') ||
+        lower.contains('удал') ||
+        lower.contains('отключ') ||
+        lower.contains('парол') ||
+        lower.contains('директор');
+  }
+
+  Widget _buildEmptyStores(BuildContext context, {required bool isOwner}) {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
@@ -909,10 +977,19 @@ class _NetworkViewState extends State<_NetworkView> {
         padding: const EdgeInsets.all(32.0),
         child: Column(
           children: [
-            Icon(
-              TablerIcons.building_store,
-              size: 48,
-              color: colors.textSecondary.withValues(alpha: 0.5),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: colors.brand.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                TablerIcons.building_store,
+                size: 32,
+                color: colors.brand,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -920,6 +997,14 @@ class _NetworkViewState extends State<_NetworkView> {
               style: textStyles.bodySans.copyWith(color: colors.textSecondary),
               textAlign: TextAlign.center,
             ),
+            if (isOwner) ...[
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => _showCreateStoreDialog(context),
+                icon: const Icon(TablerIcons.plus, size: 18),
+                label: Text(language.translate('network_empty_cta')),
+              ),
+            ],
           ],
         ),
       ),
@@ -1033,7 +1118,27 @@ class _NetworkViewState extends State<_NetworkView> {
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
+                    if (nameCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            language.translate('network_create_name_required'),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (dirUserCtrl.text.trim().isNotEmpty &&
+                        dirPassCtrl.text.trim().length < 8) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            language.translate('network_err_short_password'),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
                     final done = Completer<bool>();
                     bloc.add(
                       CreateStoreRequested(
@@ -1153,6 +1258,7 @@ class _NetworkViewState extends State<_NetworkView> {
     final language = context.read<LanguageCubit>();
     final bloc = context.read<NetworkBloc>();
     final passCtrl = TextEditingController();
+    final userCtrl = TextEditingController();
 
     LedgerBottomSheet.show(
       context: context,
@@ -1170,6 +1276,18 @@ class _NetworkViewState extends State<_NetworkView> {
               ),
               const SizedBox(height: 12),
               TextField(
+                controller: userCtrl,
+                decoration: InputDecoration(
+                  labelText: language.translate(
+                    'network_director_username_label',
+                  ),
+                  hintText: language.translate(
+                    'network_director_username_hint',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
                 controller: passCtrl,
                 obscureText: true,
                 decoration: InputDecoration(
@@ -1181,11 +1299,23 @@ class _NetworkViewState extends State<_NetworkView> {
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () async {
-                  if (passCtrl.text.trim().length < 8) return;
+                  if (passCtrl.text.trim().length < 8) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          language.translate('network_err_short_password'),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
                   final done = Completer<bool>();
                   bloc.add(
                     ResetDirectorPasswordRequested(
                       storeId: store.id,
+                      username: userCtrl.text.trim().isEmpty
+                          ? null
+                          : userCtrl.text.trim(),
                       password: passCtrl.text.trim(),
                       completion: done,
                     ),
@@ -1214,9 +1344,15 @@ class _NetworkViewState extends State<_NetworkView> {
     showDialog<void>(
       context: context,
       builder: (dlgContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(language.translate('network_store_delete_confirm_title')),
-        content: Text(language.translate('network_store_delete_confirm_desc')),
+        content: Text(
+          language.translate(
+            store.hasData
+                ? 'network_delete_has_data'
+                : 'network_delete_empty',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dlgContext).pop(),
@@ -1231,7 +1367,13 @@ class _NetworkViewState extends State<_NetworkView> {
               Navigator.of(dlgContext).pop();
               bloc.add(DeleteStoreRequested(storeId: store.id));
             },
-            child: Text(language.translate('network_store_delete_btn')),
+            child: Text(
+              language.translate(
+                store.hasData
+                    ? 'network_disable_confirm'
+                    : 'network_store_delete_btn',
+              ),
+            ),
           ),
         ],
       ),

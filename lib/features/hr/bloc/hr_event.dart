@@ -49,6 +49,24 @@ class CreateEmployeeRequested extends HrEvent {
   List<Object?> get props => [employee];
 }
 
+class UpdateEmployeeRequested extends HrEvent {
+  final Employee employee;
+
+  const UpdateEmployeeRequested(this.employee);
+
+  @override
+  List<Object?> get props => [employee];
+}
+
+class DeleteEmployeeRequested extends HrEvent {
+  final String employeeId;
+
+  const DeleteEmployeeRequested(this.employeeId);
+
+  @override
+  List<Object?> get props => [employeeId];
+}
+
 class RecalcSalaryRequested extends HrEvent {
   final String employeeId;
   final String period;

@@ -16,6 +16,8 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     on<CreateCampaignRequested>(_onCreateCampaignRequested);
     on<CreatePostRequested>(_onCreatePostRequested);
     on<PublishPostRequested>(_onPublishPostRequested);
+    on<DeleteCampaignRequested>(_onDeleteCampaignRequested);
+    on<DeletePostRequested>(_onDeletePostRequested);
     on<GenerateIdeasRequested>(_onGenerateIdeasRequested);
     on<GenerateTextRequested>(_onGenerateTextRequested);
     on<UpdateBrandGuideRequested>(_onUpdateBrandGuideRequested);
@@ -156,6 +158,56 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           errorMessage: userFacingError(
             error,
             fallback: 'Не удалось создать публикацию. Проверьте данные.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteCampaignRequested(
+    DeleteCampaignRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(clearError: true));
+    try {
+      await _repository.deleteCampaign(event.id);
+      emit(
+        state.copyWith(
+          campaigns: state.campaigns
+              .where((campaign) => campaign.id != event.id)
+              .toList(),
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось удалить кампанию. Повторите попытку.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeletePostRequested(
+    DeletePostRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(clearError: true));
+    try {
+      await _repository.deletePost(event.id);
+      emit(
+        state.copyWith(
+          posts: state.posts.where((post) => post.id != event.id).toList(),
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось удалить публикацию. Повторите попытку.',
           ),
         ),
       );

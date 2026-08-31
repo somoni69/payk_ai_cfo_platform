@@ -5,6 +5,7 @@ extension _CashTabBuilders on _CashViewMixin {
       _selectedType != 'all' ||
       _selectedPaymentMethod != 'all' ||
       _selectedRegister != 'all' ||
+      _selectedCashier != 'all' ||
       _dateFrom != null ||
       _dateTo != null;
 
@@ -50,16 +51,7 @@ extension _CashTabBuilders on _CashViewMixin {
               controller: _searchController,
               style: textStyles.bodySans,
               onChanged: (val) {
-                context.read<CashBloc>().add(
-                  SearchFilterChanged(
-                    query: val,
-                    filterType: state.filterType,
-                    paymentMethod: _selectedPaymentMethod,
-                    registerId: _selectedRegister,
-                    dateFrom: _dateFrom,
-                    dateTo: _dateTo,
-                  ),
-                );
+                context.read<CashBloc>().add(_filterEvent(query: val));
               },
               decoration: InputDecoration(
                 hintText: language.translate('cash_search_counterparty_hint'),
@@ -348,12 +340,21 @@ extension _CashTabBuilders on _CashViewMixin {
   void _showFiltersSheet(BuildContext context, CashLoaded state) {
     final language = context.read<LanguageCubit>();
     final textStyles = context.textStyles;
+    final colors = context.colors;
     final registerIds = ['all', ...state.registers.map((r) => r.id)];
+    final repo = context.read<CashRepository>();
+    if (_cashiers.isEmpty) {
+      repo.lookupCashiers().then((list) {
+        if (!mounted) return;
+        _rebuild(() => _cashiers = list);
+      });
+    }
 
     LedgerBottomSheet.show(
       context: context,
       title: language.translate('cash_filters'),
       builder: (context, setSheetState) {
+        final cashierIds = ['all', ..._cashiers.map((c) => c.id)];
         return Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -379,16 +380,7 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedType = val);
                 _rebuild();
-                context.read<CashBloc>().add(
-                  SearchFilterChanged(
-                    query: state.query,
-                    filterType: val,
-                    paymentMethod: _selectedPaymentMethod,
-                    registerId: _selectedRegister,
-                    dateFrom: _dateFrom,
-                    dateTo: _dateTo,
-                  ),
-                );
+                context.read<CashBloc>().add(_filterEvent());
               },
             ),
             const SizedBox(height: 8),
@@ -407,16 +399,7 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedPaymentMethod = val);
                 _rebuild();
-                context.read<CashBloc>().add(
-                  SearchFilterChanged(
-                    query: state.query,
-                    filterType: _selectedType,
-                    paymentMethod: val,
-                    registerId: _selectedRegister,
-                    dateFrom: _dateFrom,
-                    dateTo: _dateTo,
-                  ),
-                );
+                context.read<CashBloc>().add(_filterEvent());
               },
             ),
             const SizedBox(height: 8),
@@ -446,17 +429,92 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedRegister = val);
                 _rebuild();
-                context.read<CashBloc>().add(
-                  SearchFilterChanged(
-                    query: state.query,
-                    filterType: _selectedType,
-                    paymentMethod: _selectedPaymentMethod,
-                    registerId: val,
-                    dateFrom: _dateFrom,
-                    dateTo: _dateTo,
-                  ),
-                );
+                context.read<CashBloc>().add(_filterEvent());
               },
+            ),
+            const SizedBox(height: 8),
+            ExpansibleWidget<String>.selection(
+              title: Text(
+                _selectedCashier == 'all'
+                    ? language.translate('cash_filter_all_cashiers')
+                    : (_cashiers
+                              .where((c) => c.id == _selectedCashier)
+                              .map((c) => c.name)
+                              .firstOrNull ??
+                          language.translate('cash_filter_all_cashiers')),
+                style: textStyles.bodySans,
+              ),
+              items: cashierIds,
+              selectedValue: _selectedCashier,
+              itemLabelBuilder: (item) {
+                if (item == 'all') {
+                  return language.translate('cash_filter_all_cashiers');
+                }
+                return _cashiers
+                        .where((c) => c.id == item)
+                        .map((c) => c.name)
+                        .firstOrNull ??
+                    item;
+              },
+              onSelected: (val) {
+                setSheetState(() => _selectedCashier = val);
+                _rebuild();
+                context.read<CashBloc>().add(_filterEvent());
+              },
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _dateFrom ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                );
+                if (picked == null) return;
+                setSheetState(() => _dateFrom = picked);
+                _rebuild();
+                if (context.mounted) {
+                  context.read<CashBloc>().add(_filterEvent());
+                }
+              },
+              icon: Icon(
+                TablerIcons.calendar,
+                size: 16,
+                color: colors.textSecondary,
+              ),
+              label: Text(
+                _dateFrom == null
+                    ? language.translate('cash_filter_date_from')
+                    : '${language.translate('cash_filter_date_from')}: ${formatLocalizedDateTime(context, _dateFrom!, style: LocalizedDateTimeStyle.date)}',
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _dateTo ?? DateTime.now(),
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                );
+                if (picked == null) return;
+                setSheetState(() => _dateTo = picked);
+                _rebuild();
+                if (context.mounted) {
+                  context.read<CashBloc>().add(_filterEvent());
+                }
+              },
+              icon: Icon(
+                TablerIcons.calendar_event,
+                size: 16,
+                color: colors.textSecondary,
+              ),
+              label: Text(
+                _dateTo == null
+                    ? language.translate('cash_filter_date_to')
+                    : '${language.translate('cash_filter_date_to')}: ${formatLocalizedDateTime(context, _dateTo!, style: LocalizedDateTimeStyle.date)}',
+              ),
             ),
           ],
         );
@@ -794,6 +852,476 @@ extension _CashTabBuilders on _CashViewMixin {
           ),
         ),
       ],
+    );
+  }
+}
+
+class CashOneCKkmView extends StatefulWidget {
+  const CashOneCKkmView({super.key});
+
+  @override
+  State<CashOneCKkmView> createState() => _CashOneCKkmViewState();
+}
+
+class _CashOneCKkmViewState extends State<CashOneCKkmView> {
+  OneCKkmOverview? _data;
+  String? _error;
+  var _loading = true;
+  DateTime _dateFrom = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
+  DateTime _dateTo = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+  );
+
+  bool get _canLink {
+    final auth = context.read<AuthBloc>().state;
+    if (auth is! AuthAuthenticated) return false;
+    return const {
+      UserRole.owner,
+      UserRole.director,
+      UserRole.manager,
+      UserRole.accountant,
+    }.contains(auth.role);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load({bool refresh = true}) async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final data = await context.read<CashRepository>().getOneCKkmShifts(
+        dateFrom: _dateFrom,
+        dateTo: _dateTo,
+        refresh: refresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _data = data;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = e.toString().replaceAll('Exception: ', '');
+      });
+    }
+  }
+
+  Future<void> _pickDate({required bool from}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: from ? _dateFrom : _dateTo,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (from) {
+        _dateFrom = picked;
+      } else {
+        _dateTo = picked;
+      }
+    });
+    await _load(refresh: true);
+  }
+
+  Future<void> _link({
+    required String scope,
+    required String onecName,
+    int? targetId,
+  }) async {
+    final language = context.read<LanguageCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await context.read<CashRepository>().saveOneCKkmLink(
+        scope: scope,
+        onecName: onecName,
+        targetId: targetId,
+      );
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translate('cash_onec_linked'))),
+      );
+      await _load(refresh: true);
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translateMessage(e.toString()))),
+      );
+    }
+  }
+
+  double _num(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final period = Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _pickDate(from: true),
+              child: Text(
+                '${language.translate('cash_onec_date_from')}: ${formatLocalizedDateTime(context, _dateFrom, style: LocalizedDateTimeStyle.date)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _pickDate(from: false),
+              child: Text(
+                '${language.translate('cash_onec_date_to')}: ${formatLocalizedDateTime(context, _dateTo, style: LocalizedDateTimeStyle.date)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (_loading) {
+      return Column(
+        children: [
+          period,
+          const Expanded(
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+        ],
+      );
+    }
+    if (_error != null) {
+      return Column(
+        children: [
+          period,
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(language.translateMessage(_error!)),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _load,
+                      child: Text(language.translate('common_retry')),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    final data = _data;
+    if (data == null) {
+      return Column(
+        children: [
+          period,
+          Expanded(
+            child: Center(
+              child: Text(
+                language.translate('cash_onec_kkm_empty'),
+                style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final onecTotal = _num(data.totals['onec_total']);
+    final paykTotal = _num(data.totals['payk_total']);
+    final diff = onecTotal - paykTotal;
+    final children = <Widget>[
+      period,
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: LedgerCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                language.translate('cash_tab_onec_kkm'),
+                style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${data.source}${data.syncedAt != null ? ' • ${data.syncedAt}' : ''}${data.error != null ? ' • ${data.error}' : ''}',
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _metricRow(
+                context,
+                language.translate('cash_onec_total_onec'),
+                formatLocalizedNumber(context, onecTotal),
+              ),
+              const SizedBox(height: 6),
+              _metricRow(
+                context,
+                language.translate('cash_onec_total_payk'),
+                formatLocalizedNumber(context, paykTotal),
+              ),
+              const SizedBox(height: 6),
+              _metricRow(
+                context,
+                language.translate('cash_onec_total_diff'),
+                formatLocalizedNumber(context, diff),
+                valueColor: diff.abs() < 0.01
+                    ? colors.accentGreen
+                    : colors.accentRed,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+
+    for (final shift in data.shifts) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: LedgerCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${shift.registerName} · #${shift.number}',
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    shift.cashierName,
+                    if (shift.departmentName != null &&
+                        shift.departmentName!.isNotEmpty)
+                      shift.departmentName,
+                    if (shift.paykRegisterName != null)
+                      '${language.translate('cash_onec_our')}: ${shift.paykRegisterName}',
+                  ].join(' • '),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  formatLocalizedNumber(context, shift.total),
+                  style: textStyles.bodyMono.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${language.translate('cash_onec_cash')}: ${formatLocalizedNumber(context, shift.cashTotal)}  •  ${language.translate('cash_onec_cashless')}: ${formatLocalizedNumber(context, shift.cashlessTotal)}',
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                if (shift.payments.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...shift.payments.map(
+                    (p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              p.card.isEmpty ? p.kind : p.card,
+                              style: textStyles.captionSans,
+                            ),
+                          ),
+                          Text(
+                            formatLocalizedNumber(context, p.amount),
+                            style: textStyles.captionSans.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (data.shifts.isEmpty) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Text(
+              language.translate('cash_onec_kkm_empty'),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (data.mappingRegisters.isNotEmpty ||
+        data.mappingDepartments.isNotEmpty ||
+        data.mappingCards.isNotEmpty) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: LedgerCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  language.translate('cash_onec_mapping'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _mappingGroup(
+                  context,
+                  title: language.translate('cash_onec_map_registers'),
+                  rows: data.mappingRegisters,
+                  options: data.targetRegisters,
+                  scope: 'kkm_register',
+                ),
+                _mappingGroup(
+                  context,
+                  title: language.translate('cash_onec_map_departments'),
+                  rows: data.mappingDepartments,
+                  options: data.targetBranches,
+                  scope: 'kkm_department',
+                ),
+                _mappingGroup(
+                  context,
+                  title: language.translate('cash_onec_map_cards'),
+                  rows: data.mappingCards,
+                  options: data.targetBanks,
+                  scope: 'kkm_card',
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: () => _load(refresh: true),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 24 + kLiquidNavClearance),
+        children: children,
+      ),
+    );
+  }
+
+  Widget _metricRow(
+    BuildContext context,
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+        Text(
+          value,
+          style: textStyles.bodyMono.copyWith(
+            fontWeight: FontWeight.w600,
+            color: valueColor ?? colors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _mappingGroup(
+    BuildContext context, {
+    required String title,
+    required List<OneCKkmMappingRow> rows,
+    required List<OneCKkmTargetOption> options,
+    required String scope,
+  }) {
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final language = context.read<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final canLink = _canLink;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: textStyles.captionSans.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          ...rows.map((row) {
+            final items = <int?>[null, ...options.map((o) => o.id)];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ExpansibleWidget<int?>.selection(
+                title: Text(
+                  '${row.onecName}${row.matchedBy == 'auto' ? ' · ${language.translate('cash_onec_auto')}' : ''}',
+                  style: textStyles.bodySans,
+                ),
+                items: items,
+                selectedValue: row.targetId,
+                itemLabelBuilder: (id) {
+                  if (id == null) {
+                    return language.translate('cash_onec_not_linked');
+                  }
+                  return options
+                          .where((o) => o.id == id)
+                          .map((o) => o.name)
+                          .firstOrNull ??
+                      language.translate('cash_onec_not_linked');
+                },
+                onSelected: (id) {
+                  if (!canLink) return;
+                  _link(scope: scope, onecName: row.onecName, targetId: id);
+                },
+              ),
+            );
+          }),
+        ],
+      ),
     );
   }
 }

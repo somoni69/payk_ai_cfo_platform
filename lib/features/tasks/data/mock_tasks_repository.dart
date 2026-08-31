@@ -146,6 +146,12 @@ class MockTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<void> deleteTask(String taskId) async {
+    await Future.delayed(const Duration(milliseconds: 40));
+    _tasks.removeWhere((t) => t.id == taskId);
+  }
+
+  @override
   Future<List<TaskProject>> getProjects() async {
     await Future.delayed(const Duration(milliseconds: 100));
     return List.from(_projects);

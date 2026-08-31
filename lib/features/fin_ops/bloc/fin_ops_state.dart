@@ -19,6 +19,8 @@ class FinOpsLoaded extends FinOpsState {
   final List<StoreTransfer> storeTransfers;
   final List<FinancialAid> financialAids;
   final List<Branch> branches;
+  final List<BranchBalance> branchBalances;
+  final List<ResponsibleOption> responsibleOptions;
   final String? message;
 
   const FinOpsLoaded({
@@ -27,6 +29,8 @@ class FinOpsLoaded extends FinOpsState {
     required this.storeTransfers,
     required this.financialAids,
     required this.branches,
+    this.branchBalances = const [],
+    this.responsibleOptions = const [],
     this.message,
   });
 
@@ -37,6 +41,8 @@ class FinOpsLoaded extends FinOpsState {
     storeTransfers,
     financialAids,
     branches,
+    branchBalances,
+    responsibleOptions,
     message,
   ];
 }

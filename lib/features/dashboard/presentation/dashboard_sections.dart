@@ -213,16 +213,19 @@ Widget _buildOverviewHome(
         children: [
           const LedgerAdvicePanel(module: 'finance'),
           const SizedBox(height: 16),
-          LedgerHero(
-            label: language.translate('dashboard_metric_cash_balance'),
-            value: money(m.cashBalance),
-            caption: caption,
-            captionColor: profitOk ? colors.accentGreen : colors.accentRed,
-            trailing: LedgerIconBadge(
-              icon: TablerIcons.wallet,
-              color: colors.brand,
-              size: 48,
-              iconSize: 24,
+          GestureDetector(
+            onTap: () => _showMetricBreakdown(context, 'balance'),
+            child: LedgerHero(
+              label: language.translate('dashboard_metric_cash_balance'),
+              value: money(m.cashBalance),
+              caption: caption,
+              captionColor: profitOk ? colors.accentGreen : colors.accentRed,
+              trailing: LedgerIconBadge(
+                icon: TablerIcons.wallet,
+                color: colors.brand,
+                size: 48,
+                iconSize: 24,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -236,8 +239,7 @@ Widget _buildOverviewHome(
                   value: money(m.netProfit),
                   delta: deltaLabel(m.netProfitDelta),
                   deltaColor: deltaColor(m.netProfitDelta),
-                  onTap: () =>
-                      _openDashboardReport(context, DashboardSection.pnl),
+                  onTap: () => _showMetricBreakdown(context, 'profit'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -249,8 +251,7 @@ Widget _buildOverviewHome(
                   value: money(m.expenses),
                   delta: deltaLabel(m.expensesDelta),
                   deltaColor: deltaColor(m.expensesDelta, inverse: true),
-                  onTap: () =>
-                      _openDashboardReport(context, DashboardSection.pnl),
+                  onTap: () => _showMetricBreakdown(context, 'expenses'),
                 ),
               ),
             ],
@@ -263,6 +264,31 @@ Widget _buildOverviewHome(
             value: money(m.revenue),
             delta: deltaLabel(m.revenueDelta),
             deltaColor: deltaColor(m.revenueDelta),
+            onTap: () => _showMetricBreakdown(context, 'revenue'),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: LedgerMetricTile(
+                  icon: TablerIcons.receipt,
+                  iconColor: colors.brand,
+                  label: language.translate('dashboard_metric_operations'),
+                  value: '${m.operationsCount}',
+                  onTap: () => _showMetricBreakdown(context, 'operations'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: LedgerMetricTile(
+                  icon: TablerIcons.receipt_2,
+                  iconColor: colors.accentGreen,
+                  label: language.translate('dashboard_metric_avg_check'),
+                  value: money(m.avgCheck),
+                  onTap: () => _showMetricBreakdown(context, 'avg_check'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           const SalesProfitCard(hideOnError: true, wrapCard: false),
@@ -345,6 +371,147 @@ Widget _buildOverviewHome(
             ),
         ],
       ),
+    ),
+  );
+}
+
+void _showMetricBreakdown(BuildContext context, String metric) {
+  final language = context.read<LanguageCubit>();
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  final repo = context.read<FinanceRepository>();
+  final currency = context.read<DashboardBloc>().state is DashboardLoaded
+      ? (context.read<DashboardBloc>().state as DashboardLoaded).currency
+      : 'TJS';
+
+  LedgerBottomSheet.show(
+    context: context,
+    title: language.translate('dashboard_breakdown_title'),
+    builder: (ctx, setSheetState) {
+      return FutureBuilder<MetricBreakdown>(
+        future: repo.getBreakdown(metric),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          }
+          if (snapshot.hasError || snapshot.data == null) {
+            return Text(
+              language.translate('dashboard_load_error'),
+              style: textStyles.bodySans.copyWith(color: colors.accentRed),
+            );
+          }
+          final data = snapshot.data!;
+          if (data.rows.isEmpty) {
+            return Text(
+              language.translate('dashboard_breakdown_empty'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            );
+          }
+          return Column(
+            children: [
+              for (final row in data.rows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          language.translateMessage(row.label),
+                          style: textStyles.bodySans,
+                        ),
+                      ),
+                      Text(
+                        '${_formatAmount(context, row.value)} $currency',
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _buildFinancePeriodStrip(BuildContext context) {
+  final language = context.read<LanguageCubit>();
+  final loaded = context.read<DashboardBloc>().state;
+  DateTime? from;
+  DateTime? to;
+  if (loaded is DashboardLoaded) {
+    from = loaded.reportDateFrom;
+    to = loaded.reportDateTo;
+  }
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final monthStart = DateTime(now.year, now.month, 1);
+  final yearStart = DateTime(now.year, 1, 1);
+
+  String keyOf(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return 'all';
+    if (a == today && b == today) return 'today';
+    if (a == monthStart && b == today) return 'month';
+    if (a == yearStart && b == today) return 'year';
+    return 'custom';
+  }
+
+  final current = keyOf(from, to);
+  final items = [
+    ('month', language.translate('network_period_month'), monthStart, today),
+    ('today', language.translate('network_period_today'), today, today),
+    ('year', language.translate('dashboard_period_year'), yearStart, today),
+    ('all', language.translate('network_period_all'), null, null),
+  ];
+
+  return LedgerSegmentedControl<String>(
+    height: 36,
+    selectedValue: current == 'custom' ? 'month' : current,
+    onValueChanged: (key) {
+      final item = items.firstWhere((e) => e.$1 == key);
+      context.read<DashboardBloc>().add(
+        SetFinanceReportPeriod(dateFrom: item.$3, dateTo: item.$4),
+      );
+    },
+    segments: [
+      for (final item in items)
+        LedgerSegmentItem(value: item.$1, label: item.$2),
+    ],
+  );
+}
+
+Widget _buildPlanMonthStrip(BuildContext context, String currentPeriod) {
+  final now = DateTime.now();
+  final months = List.generate(6, (i) {
+    final d = DateTime(now.year, now.month - i, 1);
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}';
+  }).reversed.toList();
+  final selected = months.contains(currentPeriod)
+      ? currentPeriod
+      : months.last;
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    child: Row(
+      children: [
+        for (final month in months) ...[
+          ChoiceChip(
+            label: Text(month),
+            selected: selected == month,
+            onSelected: (_) {
+              context.read<DashboardBloc>().add(SetPlanFactPeriod(month));
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
+      ],
     ),
   );
 }

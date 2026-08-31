@@ -61,6 +61,9 @@ class MockStrategyRepository implements StrategyRepository {
   }
 
   @override
+  Future<void> deleteAnalysis(String id) async {}
+
+  @override
   Future<List<MacroIndicator>> getMacroIndicators() async {
     if (shouldFail) throw Exception('Macro request failed');
     return [
@@ -75,6 +78,24 @@ class MockStrategyRepository implements StrategyRepository {
   }
 
   @override
+  Future<MacroIndicator> createMacroIndicator({
+    required String name,
+    required double value,
+    String? unit,
+  }) async {
+    return MacroIndicator(
+      id: 'new',
+      name: name,
+      value: value,
+      unit: unit,
+      indicatorDate: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> deleteMacroIndicator(String id) async {}
+
+  @override
   Future<List<StrategyScenario>> getScenarios({String? quarter}) async {
     if (shouldFail) throw Exception('Scenarios request failed');
     return [
@@ -86,6 +107,9 @@ class MockStrategyRepository implements StrategyRepository {
       ),
     ];
   }
+
+  @override
+  Future<void> deleteScenario(String id) async {}
 
   @override
   Future<List<StrategyScenario>> generateScenarios(String quarter) async {

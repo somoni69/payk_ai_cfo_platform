@@ -111,6 +111,25 @@ class ChangeAbcDimension extends DashboardEvent {
   List<Object?> get props => [dimension];
 }
 
+class SetFinanceReportPeriod extends DashboardEvent {
+  final DateTime? dateFrom;
+  final DateTime? dateTo;
+
+  const SetFinanceReportPeriod({this.dateFrom, this.dateTo});
+
+  @override
+  List<Object?> get props => [dateFrom, dateTo];
+}
+
+class SetPlanFactPeriod extends DashboardEvent {
+  final String period;
+
+  const SetPlanFactPeriod(this.period);
+
+  @override
+  List<Object?> get props => [period];
+}
+
 class LoadDashboardSection extends DashboardEvent {
   final DashboardSection section;
   final bool forceRefresh;

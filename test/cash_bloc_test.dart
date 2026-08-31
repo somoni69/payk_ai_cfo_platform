@@ -36,7 +36,9 @@ class MockCashTestRepository implements CashRepository {
   int registerReads = 0;
 
   @override
-  Future<List<Transaction>> getTransactions() async {
+  Future<List<Transaction>> getTransactions({
+    CashOperationFilters filters = const CashOperationFilters(),
+  }) async {
     transactionReads++;
     if (shouldFail) throw Exception('Get tx error');
     final gate = transactionGate;
@@ -45,8 +47,30 @@ class MockCashTestRepository implements CashRepository {
   }
 
   @override
+  Future<List<CashierLookup>> lookupCashiers() async => const [];
+
+  @override
+  Future<OneCKkmOverview> getOneCKkmShifts({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    bool refresh = true,
+  }) async => const OneCKkmOverview();
+
+  @override
+  Future<void> saveOneCKkmLink({
+    required String scope,
+    required String onecName,
+    int? targetId,
+  }) async {}
+
+  @override
   Future<List<SaleProduct>> getSaleProducts({String? search}) async {
     return const [];
+  }
+
+  @override
+  Future<SaleProduct> getSaleProductByBarcode(String code) async {
+    throw Exception('not found');
   }
 
   @override

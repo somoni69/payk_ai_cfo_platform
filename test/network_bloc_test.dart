@@ -158,6 +158,8 @@ void main() {
         'location': 'Худжанд',
         'is_active': true,
         'users_count': 8,
+        'operations_count': 12,
+        'has_data': true,
       };
       final store = NetworkStore.fromJson(json);
 
@@ -166,6 +168,8 @@ void main() {
       expect(store.location, 'Худжанд');
       expect(store.isActive, isTrue);
       expect(store.usersCount, 8);
+      expect(store.operationsCount, 12);
+      expect(store.hasData, isTrue);
       expect(store.toJson(), json);
     });
 

@@ -43,6 +43,17 @@ abstract class LegalRepository {
     required String body,
     String? category,
   });
+
+  Future<ContractTemplate> updateTemplate({
+    required String id,
+    String? name,
+    String? body,
+    String? category,
+  });
+
+  Future<void> deleteTemplate(String id);
+
+  Future<List<int>> exportGeneratedContract(String contractId);
 }
 
 abstract interface class CancellableLegalRepository {

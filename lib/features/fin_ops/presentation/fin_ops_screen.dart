@@ -14,6 +14,10 @@ import '../../../features/fin_ops/domain/fin_ops_models.dart';
 import '../../../features/fin_ops/domain/fin_ops_repository.dart';
 import '../../../features/branches/domain/branch_models.dart';
 import '../../../features/branches/domain/branches_repository.dart';
+import '../../../features/cash/domain/cash_repository.dart';
+import '../../../features/cash/domain/transaction_model.dart';
+import '../../../features/hr/domain/hr_models.dart';
+import '../../../features/hr/domain/hr_repository.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
@@ -368,8 +372,7 @@ class _FinOpsViewState extends State<FinOpsView> {
                   child: SizedBox(
                     height: 44,
                     child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _showEncashmentModal(context, state.bankAccounts),
+                      onPressed: () => _showEncashmentModal(context, state),
                       icon: const Icon(TablerIcons.cash_banknote, size: 17),
                       label: Text(
                         locale.translate('fin_ops_new_encashment'),
@@ -497,6 +500,61 @@ class _FinOpsViewState extends State<FinOpsView> {
               ),
             ],
           ),
+          if (state.branchBalances.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              locale.translate('fin_ops_branch_balances'),
+              style: textStyles.h2Sans.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 10),
+            ...state.branchBalances.map(
+              (b) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          locale.translateMessage(b.branchName),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${oCcy.format(b.balance)} TJS',
+                            style: textStyles.bodyMono.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (b.inTransit > 0)
+                            Text(
+                              '${locale.translate('fin_ops_in_transit')}: ${oCcy.format(b.inTransit)}',
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.brand,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
 
           // 5. Recent Bank Accounts Feed
@@ -809,12 +867,12 @@ class FinOpsSectionScreen extends StatelessWidget {
       FinOpsSection.aid => (
         TablerIcons.plus,
         locale.translate('fin_ops_new_aid'),
-        () => _showAidModal(context),
+        () => _showAidModal(context, state),
       ),
       FinOpsSection.encashments => (
         TablerIcons.plus,
         locale.translate('fin_ops_new_encashment'),
-        () => _showEncashmentModal(context, state.bankAccounts),
+        () => _showEncashmentModal(context, state),
       ),
     };
 
@@ -972,7 +1030,11 @@ class FinOpsSectionScreen extends StatelessWidget {
     final locale = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
-    if (state.storeTransfers.isEmpty) {
+    final headerCount = state.branchBalances.isEmpty
+        ? 0
+        : 1 + state.branchBalances.length;
+
+    if (state.storeTransfers.isEmpty && state.branchBalances.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32.0),
@@ -990,11 +1052,61 @@ class FinOpsSectionScreen extends StatelessWidget {
       },
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
-        itemCount: state.storeTransfers.length,
+        itemCount: headerCount + state.storeTransfers.length,
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          final tr = state.storeTransfers[index];
-          final isPending = tr.status == 'pending';
+          if (headerCount > 0 && index == 0) {
+            return Text(
+              locale.translate('fin_ops_branch_balances'),
+              style: textStyles.h2Sans.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            );
+          }
+          if (index < headerCount) {
+            final b = state.branchBalances[index - 1];
+            return Container(
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      locale.translateMessage(b.branchName),
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${oCcy.format(b.balance)} TJS',
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (b.inTransit > 0)
+                        Text(
+                          '${locale.translate('fin_ops_in_transit')}: ${oCcy.format(b.inTransit)}',
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.brand,
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
+          final tr = state.storeTransfers[index - headerCount];
+          final isPending = tr.status == 'pending' || tr.status == 'sent';
 
           return Container(
             padding: const EdgeInsets.all(14),
@@ -1134,7 +1246,7 @@ class FinOpsSectionScreen extends StatelessWidget {
         separatorBuilder: (context, index) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           final aid = state.financialAids[index];
-          final isActive = aid.status == 'active';
+          final isActive = aid.deductFromSalary && aid.remainingAmount > 0;
 
           return Container(
             padding: const EdgeInsets.all(14),
@@ -1169,9 +1281,11 @@ class FinOpsSectionScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isActive
-                            ? locale.translate('fin_ops_status_active')
-                            : locale.translate('fin_ops_status_repaid'),
+                        aid.deductFromSalary
+                            ? (isActive
+                                  ? locale.translate('fin_ops_aid_advance')
+                                  : locale.translate('fin_ops_aid_closed'))
+                            : locale.translate('fin_ops_aid_grant'),
                         style: textStyles.captionSans.copyWith(
                           color: isActive
                               ? colors.accentAmber
@@ -1210,31 +1324,45 @@ class FinOpsSectionScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                if (isActive && canManage) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          context.read<FinOpsBloc>().add(
-                            RepayFinancialAidRequested(
-                              aidId: aid.id,
-                              amount: aid.remainingAmount,
+                if (aid.deductFromSalary) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    locale.translate(
+                      'fin_ops_aid_remaining',
+                      params: {'amount': oCcy.format(aid.remainingAmount)},
+                    ),
+                    style: textStyles.captionSans.copyWith(
+                      color: isActive ? colors.accentRed : colors.accentGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                if (aid.repayments.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    locale.translate('fin_ops_aid_repayments'),
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  ...aid.repayments.map(
+                    (rep) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(rep.period, style: textStyles.captionSans),
+                          Text(
+                            oCcy.format(rep.amount),
+                            style: textStyles.captionSans.copyWith(
+                              fontWeight: FontWeight.w600,
                             ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.brand,
-                          foregroundColor: colors.surface,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                        child: Text(locale.translate('fin_ops_repay_action')),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ],
@@ -1291,10 +1419,14 @@ class FinOpsSectionScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      locale.translate(
-                        'fin_ops_encashment_to',
-                        params: {'bank': locale.translateMessage(enc.bankName)},
-                      ),
+                      enc.registerName != null && enc.registerName!.isNotEmpty
+                          ? enc.registerName!
+                          : locale.translate(
+                              'fin_ops_encashment_to',
+                              params: {
+                                'bank': locale.translateMessage(enc.bankName),
+                              },
+                            ),
                       style: textStyles.bodySans.copyWith(
                         fontWeight: FontWeight.w600,
                         fontSize: 14.5,
@@ -1303,7 +1435,11 @@ class FinOpsSectionScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      locale.translateMessage(enc.responsiblePerson),
+                      [
+                        locale.translateMessage(enc.responsiblePerson),
+                        if (enc.bankName.isNotEmpty)
+                          locale.translateMessage(enc.bankName),
+                      ].join(' • '),
                       style: textStyles.captionSans.copyWith(
                         color: colors.textSecondary,
                         fontSize: 12.5,
@@ -1328,76 +1464,107 @@ class FinOpsSectionScreen extends StatelessWidget {
   }
 }
 
-void _showEncashmentModal(BuildContext context, List<BankAccount> banks) {
+void _showEncashmentModal(BuildContext context, FinOpsLoaded state) {
   final locale = context.read<LanguageCubit>();
   final textStyles = context.textStyles;
-
-  BankAccount? selectedBank = banks.isNotEmpty ? banks.first : null;
+  final cashRepo = context.read<CashRepository>();
   final amountCtrl = TextEditingController();
-  final respCtrl = TextEditingController();
+  CashRegister? selectedRegister;
+  ResponsibleOption? selectedResponsible;
+  var registers = <CashRegister>[];
+  var loaded = false;
 
   LedgerBottomSheet.show(
     context: context,
     title: locale.translate('fin_ops_new_encashment'),
-    builder: (context, setSheetState) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          locale.translate('fin_ops_bank_credit'),
-          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 6),
-        ExpansibleWidget<BankAccount>.selection(
-          borderRadius: 8.0,
-          title: Text(
-            locale.translateMessage(
-              selectedBank?.bankName ?? 'mock_bank_oriyon',
+    builder: (context, setSheetState) {
+      if (!loaded) {
+        loaded = true;
+        cashRepo.getRegisters().then((list) {
+          setSheetState(() {
+            registers = list;
+            selectedRegister = list.isNotEmpty ? list.first : null;
+          });
+        });
+        if (state.responsibleOptions.isNotEmpty) {
+          selectedResponsible = state.responsibleOptions.first;
+        }
+      }
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            locale.translate('fin_ops_register'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 6),
+          ExpansibleWidget<CashRegister?>.selection(
+            borderRadius: 8.0,
+            title: Text(
+              selectedRegister?.name ??
+                  locale.translate('fin_ops_select_register'),
+              style: textStyles.bodySans,
             ),
-            style: textStyles.bodySans,
+            items: registers,
+            selectedValue: selectedRegister,
+            itemLabelBuilder: (r) => r?.name ?? '',
+            onSelected: (val) => setSheetState(() => selectedRegister = val),
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            tilePadding: EdgeInsets.zero,
           ),
-          items: banks,
-          selectedValue: selectedBank,
-          itemLabelBuilder: (b) => locale.translateMessage(b.bankName),
-          onSelected: (val) {
-            setSheetState(() => selectedBank = val);
-          },
-          cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-          tilePadding: EdgeInsets.zero,
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: amountCtrl,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: locale.translate('fin_ops_encashment_amount'),
+          const SizedBox(height: 12),
+          Text(
+            locale.translate('fin_ops_responsible'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
           ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: respCtrl,
-          decoration: InputDecoration(
-            labelText: locale.translate('fin_ops_responsible'),
+          const SizedBox(height: 6),
+          ExpansibleWidget<ResponsibleOption?>.selection(
+            borderRadius: 8.0,
+            title: Text(
+              selectedResponsible?.label ??
+                  locale.translate('fin_ops_select_responsible'),
+              style: textStyles.bodySans,
+            ),
+            items: state.responsibleOptions,
+            selectedValue: selectedResponsible,
+            itemLabelBuilder: (r) => r?.label ?? '',
+            onSelected: (val) => setSheetState(() => selectedResponsible = val),
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            tilePadding: EdgeInsets.zero,
           ),
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () {
-            final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-            if (amt == null || amt <= 0) return;
-            context.read<FinOpsBloc>().add(
-              CreateEncashmentRequested(
-                bankName: selectedBank?.bankName ?? 'mock_bank_oriyon',
-                amount: amt,
-                responsiblePerson: respCtrl.text.trim(),
-              ),
-            );
-            Navigator.pop(context);
-          },
-          child: Text(locale.translate('save_to_ledger')),
-        ),
-      ],
-    ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: amountCtrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: locale.translate('fin_ops_encashment_amount'),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
+              if (amt == null ||
+                  amt <= 0 ||
+                  selectedRegister == null ||
+                  selectedResponsible == null) {
+                return;
+              }
+              context.read<FinOpsBloc>().add(
+                CreateEncashmentRequested(
+                  registerId: selectedRegister!.id,
+                  responsibleEmployeeId: selectedResponsible!.id,
+                  amount: amt,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('save_to_ledger')),
+          ),
+        ],
+      );
+    },
   );
 }
 
@@ -1528,8 +1695,8 @@ void _showTransferModal(BuildContext context, List<Branch> branches) {
             }
             context.read<FinOpsBloc>().add(
               CreateStoreTransferRequested(
-                fromBranch: selectedFromBranch!.name,
-                toBranch: selectedToBranch!.name,
+                fromBranch: selectedFromBranch!.id,
+                toBranch: selectedToBranch!.id,
                 amount: amt,
               ),
             );
@@ -1542,50 +1709,121 @@ void _showTransferModal(BuildContext context, List<Branch> branches) {
   );
 }
 
-void _showAidModal(BuildContext context) {
+void _showAidModal(BuildContext context, FinOpsLoaded state) {
   final locale = context.read<LanguageCubit>();
-  final empCtrl = TextEditingController();
+  final textStyles = context.textStyles;
   final amountCtrl = TextEditingController();
+  final hrRepo = context.read<HrRepository>();
+  Employee? selectedEmployee;
+  var employees = <Employee>[];
+  var loaded = false;
+  var deduct = true;
+  CashRegister? selectedRegister;
+  var registers = <CashRegister>[];
 
   LedgerBottomSheet.show(
     context: context,
     title: locale.translate('fin_ops_new_aid'),
-    builder: (context, setSheetState) => Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: empCtrl,
-          decoration: InputDecoration(
-            labelText: locale.translate('fin_ops_employee_name'),
+    builder: (context, setSheetState) {
+      if (!loaded) {
+        loaded = true;
+        hrRepo.getEmployees().then((list) {
+          setSheetState(() {
+            employees = list.where((e) => !e.isArchived).toList();
+            selectedEmployee = employees.isNotEmpty ? employees.first : null;
+          });
+        });
+        context.read<CashRepository>().getRegisters().then((list) {
+          setSheetState(() {
+            registers = list;
+            selectedRegister = list.isNotEmpty ? list.first : null;
+          });
+        });
+      }
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            locale.translate('fin_ops_select_employee'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
           ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: amountCtrl,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: locale.translate('fin_ops_aid_amount'),
+          const SizedBox(height: 6),
+          ExpansibleWidget<Employee?>.selection(
+            borderRadius: 8.0,
+            title: Text(
+              selectedEmployee?.fullName ??
+                  locale.translate('fin_ops_select_employee'),
+              style: textStyles.bodySans,
+            ),
+            items: employees,
+            selectedValue: selectedEmployee,
+            itemLabelBuilder: (e) => e?.fullName ?? '',
+            onSelected: (val) => setSheetState(() => selectedEmployee = val),
+            cardPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+            tilePadding: EdgeInsets.zero,
           ),
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () {
-            final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
-            if (amt == null || amt <= 0 || empCtrl.text.trim().isEmpty) {
-              return;
-            }
-            context.read<FinOpsBloc>().add(
-              CreateFinancialAidRequested(
-                employeeName: empCtrl.text.trim(),
-                amount: amt,
+          const SizedBox(height: 12),
+          TextField(
+            controller: amountCtrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: locale.translate('fin_ops_aid_amount'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(
+              locale.translate('fin_ops_aid_deduct'),
+              style: textStyles.bodySans,
+            ),
+            value: deduct,
+            onChanged: (v) => setSheetState(() => deduct = v),
+          ),
+          if (registers.isNotEmpty) ...[
+            Text(
+              locale.translate('fin_ops_register'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 6),
+            ExpansibleWidget<CashRegister?>.selection(
+              borderRadius: 8.0,
+              title: Text(
+                selectedRegister?.name ??
+                    locale.translate('fin_ops_select_register'),
+                style: textStyles.bodySans,
               ),
-            );
-            Navigator.pop(context);
-          },
-          child: Text(locale.translate('save_to_ledger')),
-        ),
-      ],
-    ),
+              items: registers,
+              selectedValue: selectedRegister,
+              itemLabelBuilder: (r) => r?.name ?? '',
+              onSelected: (val) => setSheetState(() => selectedRegister = val),
+              cardPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 2,
+              ),
+              tilePadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 12),
+          ],
+          ElevatedButton(
+            onPressed: () {
+              final amt = parseLocalizedNumber(context, amountCtrl.text.trim());
+              if (amt == null || amt <= 0 || selectedEmployee == null) return;
+              context.read<FinOpsBloc>().add(
+                CreateFinancialAidRequested(
+                  employeeId: selectedEmployee!.id,
+                  amount: amt,
+                  deductFromSalary: deduct,
+                  registerId: selectedRegister?.id,
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('save_to_ledger')),
+          ),
+        ],
+      );
+    },
   );
 }

@@ -19,6 +19,8 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
     on<DeleteLawRequested>(_onDeleteLaw);
     on<CreateDeadlineRequested>(_onCreateDeadline);
     on<CreateTemplateRequested>(_onCreateTemplate);
+    on<DeleteTemplateRequested>(_onDeleteTemplate);
+    on<ExportGeneratedContractRequested>(_onExportGeneratedContract);
   }
 
   static const List<Map<String, String>> _welcomeHistory = [
@@ -337,6 +339,69 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
         latest.copyWith(
           isMutating: false,
           templates: [template, ...latest.templates],
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteTemplate(
+    DeleteTemplateRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
+    try {
+      await _repository.deleteTemplate(event.id);
+      if (emit.isDone || state is! LegalLoaded) return;
+      final latest = state as LegalLoaded;
+      emit(
+        latest.copyWith(
+          isMutating: false,
+          templates: latest.templates
+              .where((template) => template.id != event.id)
+              .toList(),
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onExportGeneratedContract(
+    ExportGeneratedContractRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
+    try {
+      final bytes = await _repository.exportGeneratedContract(event.contractId);
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          successMessage: bytes.isEmpty
+              ? ErrorKeys.saveFailed
+              : 'legal_export_ok',
         ),
       );
     } catch (error) {

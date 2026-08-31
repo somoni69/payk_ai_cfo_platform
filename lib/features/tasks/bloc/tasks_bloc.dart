@@ -27,6 +27,7 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     on<UpdateTaskStatusRequested>(_onUpdateTaskStatusRequested);
     on<CreateTaskRequested>(_onCreateTaskRequested);
     on<UpdateTaskRequested>(_onUpdateTaskRequested);
+    on<DeleteTaskRequested>(_onDeleteTaskRequested);
     on<LoadMyTasks>(_onLoadMyTasks);
     on<CreatePersonalTaskRequested>(_onCreatePersonalTask);
     on<UpdatePersonalTaskRequested>(_onUpdatePersonalTask);
@@ -330,6 +331,32 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
           return t.id == event.task.id ? originalTask : t;
         }).toList();
         emit(latestState.copyWith(tasks: revertedTasks));
+      }
+    }
+  }
+
+  Future<void> _onDeleteTaskRequested(
+    DeleteTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) return;
+    try {
+      await _repository.deleteTask(event.taskId);
+      if (state is! TasksLoaded) return;
+      final latest = state as TasksLoaded;
+      emit(
+        latest.copyWith(
+          tasks: latest.tasks.where((t) => t.id != event.taskId).toList(),
+          myTasks: latest.myTasks.where((t) => t.id != event.taskId).toList(),
+          assignedToMe: latest.assignedToMe
+              .where((t) => t.id != event.taskId)
+              .toList(),
+          actionMessage: 'tasks_my_toast_deleted',
+        ),
+      );
+    } catch (e) {
+      if (state is TasksLoaded) {
+        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
       }
     }
   }

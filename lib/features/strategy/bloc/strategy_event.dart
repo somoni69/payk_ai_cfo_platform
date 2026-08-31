@@ -79,6 +79,45 @@ class GenerateScenariosRequested extends StrategyEvent {
   List<Object?> get props => [quarter];
 }
 
+class DeleteAnalysisRequested extends StrategyEvent {
+  final String id;
+  const DeleteAnalysisRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class DeleteScenarioRequested extends StrategyEvent {
+  final String id;
+  const DeleteScenarioRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class CreateMacroIndicatorRequested extends StrategyEvent {
+  final String name;
+  final double value;
+  final String? unit;
+
+  const CreateMacroIndicatorRequested({
+    required this.name,
+    required this.value,
+    this.unit,
+  });
+
+  @override
+  List<Object?> get props => [name, value, unit];
+}
+
+class DeleteMacroIndicatorRequested extends StrategyEvent {
+  final String id;
+  const DeleteMacroIndicatorRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
 class LoadDailySummary extends StrategyEvent {
   final bool forceRefresh;
   const LoadDailySummary({this.forceRefresh = false});

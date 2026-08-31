@@ -361,6 +361,15 @@ class ApiTasksRepository implements TasksRepository {
   }
 
   @override
+  Future<void> deleteTask(String taskId) async {
+    try {
+      await _apiClient.dio.delete('/tasks/$taskId');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
   Future<void> deletePersonalTask(String taskId) async {
     try {
       await _apiClient.dio.delete('/tasks/personal/$taskId');

@@ -107,6 +107,8 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
         name: event.name,
         description: event.description,
         regulationText: event.regulationText,
+        regulationUrl: event.regulationUrl,
+        branchId: event.branchId,
         items: event.items,
       );
       await _reload(emit, msg: 'checklists_toast_template_created');

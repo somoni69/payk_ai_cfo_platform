@@ -90,6 +90,15 @@ class UpdatePersonalTaskRequested extends TasksEvent {
   List<Object?> get props => [taskId, input];
 }
 
+class DeleteTaskRequested extends TasksEvent {
+  final String taskId;
+
+  const DeleteTaskRequested(this.taskId);
+
+  @override
+  List<Object?> get props => [taskId];
+}
+
 class DeletePersonalTaskRequested extends TasksEvent {
   final String taskId;
 

@@ -56,6 +56,7 @@ class SaleProduct {
   final String id;
   final String name;
   final String? sku;
+  final String? barcode;
   final String unit;
   final double price;
   final double stockQty;
@@ -64,6 +65,7 @@ class SaleProduct {
     required this.id,
     required this.name,
     this.sku,
+    this.barcode,
     required this.unit,
     required this.price,
     required this.stockQty,

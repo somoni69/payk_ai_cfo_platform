@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -26,6 +28,7 @@ class MetaScreen extends StatefulWidget {
 
 class _MetaScreenState extends State<MetaScreen> {
   static const _metaChannels = ['', 'facebook', 'instagram', 'whatsapp'];
+  static const _pollEvery = Duration(seconds: 15);
 
   MetaStatus? _status;
   List<MetaThread> _threads = const [];
@@ -37,15 +40,21 @@ class _MetaScreenState extends State<MetaScreen> {
   bool _loadingMessages = false;
   bool _sending = false;
   final _replyController = TextEditingController();
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _pollTimer = Timer.periodic(_pollEvery, (_) {
+      if (!mounted || _loading) return;
+      _load(silent: true);
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _replyController.dispose();
     super.dispose();
   }
@@ -59,11 +68,8 @@ class _MetaScreenState extends State<MetaScreen> {
     }
     try {
       final repo = context.read<MetaRepository>();
-      final statusFuture = _status == null
-          ? repo.getStatus()
-          : Future<MetaStatus>.value(_status!);
       final results = await Future.wait<Object>([
-        statusFuture,
+        repo.getStatus(),
         repo.getThreads(channel: _channel.isEmpty ? null : _channel),
       ]);
       if (!mounted) return;
@@ -73,6 +79,16 @@ class _MetaScreenState extends State<MetaScreen> {
         _loading = false;
         _error = null;
       });
+      final selected = _selected;
+      if (silent && selected != null) {
+        try {
+          final messages = await context.read<MetaRepository>().getMessages(
+            selected.id,
+          );
+          if (!mounted) return;
+          setState(() => _messages = messages);
+        } catch (_) {}
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -350,6 +366,133 @@ class _MetaScreenState extends State<MetaScreen> {
     );
   }
 
+  String get _webhookUrl {
+    final base = ApiClient.configuredBaseUrl.replaceAll(RegExp(r'/+$'), '');
+    return '$base/meta/webhook';
+  }
+
+  Future<void> _copyWebhookUrl() async {
+    await Clipboard.setData(ClipboardData(text: _webhookUrl));
+    if (!mounted) return;
+    final language = context.read<LanguageCubit>();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(language.translate('meta_webhook_copied'))),
+    );
+  }
+
+  Widget _buildWebhookCard(
+    LanguageCubit language,
+    LedgerColors colors,
+    LedgerTextStyles textStyles,
+  ) {
+    final connected = _status?.connected == true;
+    final tone = connected ? colors.accentGreen : colors.accentAmber;
+    final channels = _status?.channels ?? const <String>[];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tone.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                connected ? TablerIcons.circle_check : TablerIcons.webhook,
+                color: tone,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  language.translate('meta_webhook_title'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: tone.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  language.translate(
+                    connected
+                        ? 'meta_status_connected'
+                        : 'meta_status_disconnected',
+                  ),
+                  style: textStyles.captionSans.copyWith(
+                    color: tone,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (channels.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              channels
+                  .map((ch) => language.translate('meta_channel_$ch'))
+                  .join(' · '),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
+          if (!connected) ...[
+            const SizedBox(height: 8),
+            Text(
+              _status?.note?.isNotEmpty == true
+                  ? _status!.note!
+                  : language.translate('meta_not_connected'),
+              style: textStyles.captionSans.copyWith(color: tone),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Text(
+            language.translate('meta_webhook_url'),
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _webhookUrl,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: language.translate('meta_webhook_copy'),
+                onPressed: _copyWebhookUrl,
+                icon: Icon(TablerIcons.copy, size: 18, color: colors.brand),
+              ),
+            ],
+          ),
+          Text(
+            language.translate('meta_webhook_hint'),
+            style: textStyles.captionSans.copyWith(
+              color: colors.textSecondary,
+              height: 1.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildThreadList(
     BuildContext context,
     LanguageCubit language,
@@ -382,8 +525,7 @@ class _MetaScreenState extends State<MetaScreen> {
       );
     }
 
-    final showBanner = _status != null && !_status!.connected;
-    final headerCount = showBanner ? 2 : 1;
+    const headerCount = 2;
     final itemCount = headerCount + (_threads.isEmpty ? 1 : _threads.length);
 
     return RefreshIndicator(
@@ -394,45 +536,13 @@ class _MetaScreenState extends State<MetaScreen> {
         itemCount: itemCount,
         itemBuilder: (context, index) {
           var cursor = index;
-          if (showBanner) {
-            if (cursor == 0) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: colors.accentAmber.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        TablerIcons.info_circle,
-                        color: colors.accentAmber,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _status!.note?.isNotEmpty == true
-                              ? _status!.note!
-                              : language.translate('meta_not_connected'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.accentAmber,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
-            cursor -= 1;
+          if (cursor == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildWebhookCard(language, colors, textStyles),
+            );
           }
+          cursor -= 1;
           if (cursor == 0) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),

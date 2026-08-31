@@ -9,6 +9,10 @@ abstract class HrRepository {
 
   Future<Employee> createEmployee(Employee employee);
 
+  Future<Employee> updateEmployee(Employee employee);
+
+  Future<void> deleteEmployee(String employeeId);
+
   Future<void> blockEmployee(String employeeId);
 
   Future<void> unblockEmployee(String employeeId);
@@ -20,6 +24,22 @@ abstract class HrRepository {
   Future<int> syncIikoEmployees();
 
   Future<List<EmployeeDocument>> getEmployeeDocuments(String employeeId);
+
+  Future<EmployeeDocument> uploadEmployeeDocument({
+    required String employeeId,
+    required String filename,
+    required List<int> bytes,
+  });
+
+  Future<List<int>> downloadEmployeeDocument({
+    required String employeeId,
+    required String documentId,
+  });
+
+  Future<void> deleteEmployeeDocument({
+    required String employeeId,
+    required String documentId,
+  });
 
   // --- KPI Management (HR-04 / HR-10) ---
 
@@ -125,6 +145,14 @@ abstract class HrRepository {
     required String number,
     required DateTime startDate,
     DateTime? endDate,
+  });
+
+  Future<LaborContract> updateContract({
+    required String id,
+    String? number,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
   });
 
   Future<void> deleteContract(String id);

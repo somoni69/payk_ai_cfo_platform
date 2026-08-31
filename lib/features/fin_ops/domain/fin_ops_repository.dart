@@ -15,10 +15,16 @@ abstract class FinOpsRepository {
   Future<void> deleteBank(String id);
 
   Future<Encashment> createEncashment({
-    required String bankName,
+    required String registerId,
+    required String responsibleEmployeeId,
     required double amount,
-    required String responsiblePerson,
+    String? bankId,
+    String? note,
   });
+
+  Future<List<BranchBalance>> getBranchBalances();
+
+  Future<List<ResponsibleOption>> getResponsibleOptions();
 
   Future<StoreTransfer> createStoreTransfer({
     required String fromBranch,
@@ -34,8 +40,11 @@ abstract class FinOpsRepository {
   Future<void> cancelStoreTransfer(String transferId);
 
   Future<FinancialAid> createFinancialAid({
-    required String employeeName,
+    required String employeeId,
     required double amount,
+    bool deductFromSalary = true,
+    String? registerId,
+    String? note,
   });
 
   Future<void> repayFinancialAid({

@@ -1257,6 +1257,50 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                               ),
                             ),
                           ),
+                          if (_canManageMarketing(context))
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: Icon(
+                                TablerIcons.trash,
+                                size: 18,
+                                color: colors.accentRed,
+                              ),
+                              onPressed: () async {
+                                final ok = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: Text(
+                                      localeCubit.translate('common_delete'),
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, false),
+                                        child: Text(
+                                          localeCubit.translate(
+                                            'common_cancel',
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(ctx, true),
+                                        child: Text(
+                                          localeCubit.translate(
+                                            'common_delete',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (ok == true && context.mounted) {
+                                  context.read<MarketingBloc>().add(
+                                    DeleteCampaignRequested(campaign.id),
+                                  );
+                                }
+                              },
+                            ),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -1437,23 +1481,42 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                             color: colors.textSecondary,
                           ),
                         ),
-                        if (!isPublished && canManage)
-                          TextButton.icon(
-                            onPressed: () {
-                              context.read<MarketingBloc>().add(
-                                PublishPostRequested(post.id),
-                              );
-                            },
-                            icon: const Icon(TablerIcons.send, size: 14),
-                            label: Text(
-                              localeCubit.translate(
-                                'marketing_publish_telegram',
+                        if (canManage)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!isPublished)
+                                TextButton.icon(
+                                  onPressed: () {
+                                    context.read<MarketingBloc>().add(
+                                      PublishPostRequested(post.id),
+                                    );
+                                  },
+                                  icon: const Icon(TablerIcons.send, size: 14),
+                                  label: Text(
+                                    localeCubit.translate(
+                                      'marketing_publish_telegram',
+                                    ),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.brand,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              IconButton(
+                                visualDensity: VisualDensity.compact,
+                                icon: Icon(
+                                  TablerIcons.trash,
+                                  size: 18,
+                                  color: colors.accentRed,
+                                ),
+                                onPressed: () {
+                                  context.read<MarketingBloc>().add(
+                                    DeletePostRequested(post.id),
+                                  );
+                                },
                               ),
-                              style: textStyles.captionSans.copyWith(
-                                color: colors.brand,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            ],
                           ),
                       ],
                     ),

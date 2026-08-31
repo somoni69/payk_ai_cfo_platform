@@ -13,6 +13,8 @@ class FinanceMetrics {
   final double? expensesDelta;
   final double? netProfitDelta;
   final double? cashForecastDelta;
+  final int operationsCount;
+  final double avgCheck;
 
   const FinanceMetrics({
     required this.cashBalance,
@@ -26,6 +28,34 @@ class FinanceMetrics {
     required this.expensesDelta,
     required this.netProfitDelta,
     required this.cashForecastDelta,
+    this.operationsCount = 0,
+    this.avgCheck = 0,
+  });
+}
+
+class MetricBreakdownRow {
+  final String label;
+  final double value;
+  final double share;
+
+  const MetricBreakdownRow({
+    required this.label,
+    required this.value,
+    this.share = 0,
+  });
+}
+
+class MetricBreakdown {
+  final String metric;
+  final double value;
+  final String period;
+  final List<MetricBreakdownRow> rows;
+
+  const MetricBreakdown({
+    required this.metric,
+    required this.value,
+    required this.period,
+    this.rows = const [],
   });
 }
 

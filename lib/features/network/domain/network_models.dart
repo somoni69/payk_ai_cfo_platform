@@ -36,15 +36,27 @@ class NetworkStore extends Equatable {
   final bool isActive;
   final int usersCount;
 
+  /// All-time operations (not the period summary count).
+  final int operationsCount;
+
+  /// True when the store has operations/products/clients/employees.
+  /// Backend deactivates such stores instead of deleting them.
+  final bool hasData;
+
   const NetworkStore({
     required this.id,
     required this.name,
     this.location,
     this.isActive = true,
     this.usersCount = 0,
+    this.operationsCount = 0,
+    this.hasData = false,
   });
 
   factory NetworkStore.fromJson(Map<String, dynamic> json) {
+    final ops = json['operations_count'] is int
+        ? json['operations_count'] as int
+        : int.tryParse('${json['operations_count']}') ?? 0;
     return NetworkStore(
       id: json['id'] is int
           ? json['id'] as int
@@ -55,6 +67,8 @@ class NetworkStore extends Equatable {
       usersCount: json['users_count'] is int
           ? json['users_count'] as int
           : int.tryParse('${json['users_count']}') ?? 0,
+      operationsCount: ops,
+      hasData: json['has_data'] as bool? ?? ops > 0,
     );
   }
 
@@ -64,10 +78,40 @@ class NetworkStore extends Equatable {
     'location': location,
     'is_active': isActive,
     'users_count': usersCount,
+    'operations_count': operationsCount,
+    'has_data': hasData,
   };
 
+  NetworkStore copyWith({
+    int? id,
+    String? name,
+    String? location,
+    bool? isActive,
+    int? usersCount,
+    int? operationsCount,
+    bool? hasData,
+  }) {
+    return NetworkStore(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      location: location ?? this.location,
+      isActive: isActive ?? this.isActive,
+      usersCount: usersCount ?? this.usersCount,
+      operationsCount: operationsCount ?? this.operationsCount,
+      hasData: hasData ?? this.hasData,
+    );
+  }
+
   @override
-  List<Object?> get props => [id, name, location, isActive, usersCount];
+  List<Object?> get props => [
+    id,
+    name,
+    location,
+    isActive,
+    usersCount,
+    operationsCount,
+    hasData,
+  ];
 }
 
 /// Сводная строка финансовых показателей магазина.

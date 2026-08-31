@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../features/branches/domain/branch_models.dart';
+import '../../../features/branches/domain/branches_repository.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -11,6 +14,7 @@ import '../../../features/checklists/bloc/checklists_event.dart';
 import '../../../features/checklists/bloc/checklists_state.dart';
 import '../../../features/checklists/domain/checklist_models.dart';
 import '../../../features/checklists/domain/checklists_repository.dart';
+import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
@@ -770,7 +774,11 @@ class ChecklistSectionScreen extends StatelessWidget {
           }
 
           return switch (section) {
-            ChecklistSection.runs => _buildRunsTab(context, state.todayRuns),
+            ChecklistSection.runs => _buildRunsTab(
+              context,
+              state.todayRuns,
+              canManage,
+            ),
             ChecklistSection.templates => _buildTemplatesTab(
               context,
               state.templates,
@@ -786,7 +794,11 @@ class ChecklistSectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRunsTab(BuildContext context, List<ChecklistRun> runs) {
+  Widget _buildRunsTab(
+    BuildContext context,
+    List<ChecklistRun> runs,
+    bool canManage,
+  ) {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
@@ -866,6 +878,28 @@ class ChecklistSectionScreen extends StatelessWidget {
                     fontSize: 12.5,
                   ),
                 ),
+                if (run.regulationUrl != null &&
+                    run.regulationUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () {
+                      final uri = Uri.tryParse(run.regulationUrl!);
+                      if (uri != null) {
+                        launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Text(
+                      run.regulationName ??
+                          context.read<LanguageCubit>().translate(
+                            'checklists_open_regulation',
+                          ),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(3),
@@ -893,6 +927,34 @@ class ChecklistSectionScreen extends StatelessWidget {
                             : colors.textPrimary,
                       ),
                     ),
+                    subtitle: entry.doneByName == null
+                        ? null
+                        : Text(
+                            entry.doneByName!,
+                            style: textStyles.captionSans.copyWith(
+                              color: colors.textSecondary,
+                            ),
+                          ),
+                    secondary: canManage
+                        ? IconButton(
+                            tooltip: context.read<LanguageCubit>().translate(
+                              'common_delete',
+                            ),
+                            icon: Icon(
+                              TablerIcons.trash,
+                              size: 16,
+                              color: colors.accentRed,
+                            ),
+                            onPressed: () {
+                              context.read<ChecklistsBloc>().add(
+                                DeleteEntryRequested(
+                                  runId: run.id,
+                                  entryId: entry.id,
+                                ),
+                              );
+                            },
+                          )
+                        : null,
                     value: entry.isDone,
                     activeColor: colors.brand,
                     onChanged: (val) {
@@ -908,6 +970,23 @@ class ChecklistSectionScreen extends StatelessWidget {
                     },
                   ),
                 ),
+                if (canManage)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: () => _promptAddChecklistEntry(context, run),
+                      icon: Icon(TablerIcons.plus, size: 16, color: colors.brand),
+                      label: Text(
+                        context.read<LanguageCubit>().translate(
+                          'checklists_add_entry',
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           );
@@ -1010,6 +1089,24 @@ class ChecklistSectionScreen extends StatelessWidget {
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (t.regulationUrl != null && t.regulationUrl!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () {
+                      final uri = Uri.tryParse(t.regulationUrl!);
+                      if (uri != null) {
+                        launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    child: Text(
+                      locale.translate('checklists_open_regulation'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.brand,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -1156,23 +1253,88 @@ class ChecklistSectionScreen extends StatelessWidget {
   }
 }
 
+Future<void> _promptAddChecklistEntry(
+  BuildContext context,
+  ChecklistRun run,
+) async {
+  final locale = context.read<LanguageCubit>();
+  final controller = TextEditingController();
+  try {
+    final text = await LedgerBottomSheet.show<String>(
+      context: context,
+      title: locale.translate('checklists_add_entry'),
+      builder: (sheetContext, setSheetState) {
+        return TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            labelText: locale.translate('checklists_entry_hint'),
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              Navigator.pop(sheetContext, value.trim());
+            }
+          },
+        );
+      },
+      footerBuilder: (sheetContext, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final value = controller.text.trim();
+            if (value.isEmpty) return;
+            Navigator.pop(sheetContext, value);
+          },
+          child: Text(locale.translate('common_save')),
+        );
+      },
+    );
+    if (text != null && text.trim().isNotEmpty && context.mounted) {
+      context.read<ChecklistsBloc>().add(
+        AddEntryRequested(runId: run.id, text: text.trim()),
+      );
+    }
+  } finally {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.dispose();
+    });
+  }
+}
+
 void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
   final checklistsBloc = context.read<ChecklistsBloc>();
   final colors = context.colors;
   final locale = context.read<LanguageCubit>();
   final titleCtrl = TextEditingController(text: template?.name ?? '');
   final regCtrl = TextEditingController(text: template?.regulationText ?? '');
+  final urlCtrl = TextEditingController(text: template?.regulationUrl ?? '');
   final itemCtrl = TextEditingController();
   final List<String> items = List<String>.from(
     template?.items.map((i) => i.text) ?? [],
   );
+  var branches = <Branch>[];
+  Branch? selectedBranch;
+  var branchesLoaded = false;
 
   LedgerBottomSheet.show(
     context: context,
     title: template == null
         ? locale.translate('checklists_new_template')
         : template.name,
-    builder: (context, setSheetState) => Column(
+    builder: (context, setSheetState) {
+      if (!branchesLoaded) {
+        branchesLoaded = true;
+        context.read<BranchesRepository>().getBranches().then((list) {
+          setSheetState(() {
+            branches = list;
+            if (template?.branchId != null) {
+              selectedBranch = list
+                  .where((b) => b.id == template!.branchId)
+                  .firstOrNull;
+            }
+          });
+        });
+      }
+      return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1183,11 +1345,33 @@ void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
           ),
         ),
         const SizedBox(height: 12),
+        if (branches.isNotEmpty) ...[
+          ExpansibleWidget<Branch?>.selection(
+            borderRadius: 8,
+            title: Text(
+              selectedBranch?.name ??
+                  locale.translate('checklists_all_branches'),
+            ),
+            items: [null, ...branches],
+            selectedValue: selectedBranch,
+            itemLabelBuilder: (b) =>
+                b?.name ?? locale.translate('checklists_all_branches'),
+            onSelected: (b) => setSheetState(() => selectedBranch = b),
+          ),
+          const SizedBox(height: 12),
+        ],
         TextField(
           controller: regCtrl,
           maxLines: 2,
           decoration: InputDecoration(
             labelText: locale.translate('checklists_regulation'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: urlCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('checklists_regulation_url'),
           ),
         ),
         const SizedBox(height: 16),
@@ -1246,6 +1430,10 @@ void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
                   regulationText: regCtrl.text.trim().isEmpty
                       ? null
                       : regCtrl.text.trim(),
+                  regulationUrl: urlCtrl.text.trim().isEmpty
+                      ? null
+                      : urlCtrl.text.trim(),
+                  branchId: selectedBranch?.id,
                   items: items,
                 ),
               );
@@ -1283,6 +1471,7 @@ void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
           ),
         ],
       ],
-    ),
+    );
+    },
   );
 }

@@ -114,3 +114,21 @@ class CreateTemplateRequested extends LegalEvent {
   @override
   List<Object?> get props => [name, body, category];
 }
+
+class DeleteTemplateRequested extends LegalEvent {
+  final String id;
+
+  const DeleteTemplateRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class ExportGeneratedContractRequested extends LegalEvent {
+  final String contractId;
+
+  const ExportGeneratedContractRequested(this.contractId);
+
+  @override
+  List<Object?> get props => [contractId];
+}

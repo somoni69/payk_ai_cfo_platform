@@ -22,13 +22,23 @@ abstract class FinanceRepository {
   Future<List<CashFlowPoint>> getCashFlowHistory();
 
   /// Получить отчет P&L за период
-  Future<PnlReport> getPnlReport();
+  Future<PnlReport> getPnlReport({DateTime? dateFrom, DateTime? dateTo});
 
   /// Получить точку безубыточности
-  Future<BreakEvenAnalysis> getBreakEvenAnalysis();
+  Future<BreakEvenAnalysis> getBreakEvenAnalysis({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
 
   /// Получить ABC-анализ по измерению
-  Future<AbcAnalysis> getAbcAnalysis(String dimension);
+  Future<AbcAnalysis> getAbcAnalysis(
+    String dimension, {
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
+
+  /// Расшифровка карточки дашборда (`GET /finance/breakdown/{metric}`).
+  Future<MetricBreakdown> getBreakdown(String metric);
 
   /// Получить счета компании
   Future<BankAccountsReport> getBankAccounts();
@@ -43,7 +53,7 @@ abstract class FinanceRepository {
   Future<AiInsightsReport> getAiInsights();
 
   /// Получить план-факт отчет за период
-  Future<PlanFactReport> getPlanFactReport();
+  Future<PlanFactReport> getPlanFactReport({String? period});
 
   Future<ClientAnalysisReport> getClientAnalysis();
 

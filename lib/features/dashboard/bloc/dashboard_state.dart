@@ -29,6 +29,9 @@ class DashboardLoaded extends DashboardState {
   final Map<DashboardSection, String> sectionErrors;
   final String? overviewError;
   final String? actionMessage;
+  final DateTime? reportDateFrom;
+  final DateTime? reportDateTo;
+  final String? planPeriod;
 
   const DashboardLoaded({
     required this.metrics,
@@ -48,6 +51,9 @@ class DashboardLoaded extends DashboardState {
     this.sectionErrors = const {},
     this.overviewError,
     this.actionMessage,
+    this.reportDateFrom,
+    this.reportDateTo,
+    this.planPeriod,
   });
 
   DashboardLoaded copyWith({
@@ -70,6 +76,9 @@ class DashboardLoaded extends DashboardState {
     bool clearOverviewError = false,
     String? actionMessage,
     bool clearActionMessage = false,
+    DateTime? reportDateFrom,
+    DateTime? reportDateTo,
+    String? planPeriod,
   }) {
     return DashboardLoaded(
       metrics: metrics ?? this.metrics,
@@ -93,6 +102,9 @@ class DashboardLoaded extends DashboardState {
       actionMessage: clearActionMessage
           ? null
           : (actionMessage ?? this.actionMessage),
+      reportDateFrom: reportDateFrom ?? this.reportDateFrom,
+      reportDateTo: reportDateTo ?? this.reportDateTo,
+      planPeriod: planPeriod ?? this.planPeriod,
     );
   }
 
@@ -115,6 +127,9 @@ class DashboardLoaded extends DashboardState {
     sectionErrors,
     overviewError,
     actionMessage,
+    reportDateFrom,
+    reportDateTo,
+    planPeriod,
   ];
 }
 

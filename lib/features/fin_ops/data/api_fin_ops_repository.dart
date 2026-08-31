@@ -136,24 +136,59 @@ class ApiFinOpsRepository implements FinOpsRepository {
   }
 
   @override
-  Future<Encashment> createEncashment({
-    required String bankName,
-    required double amount,
-    required String responsiblePerson,
-  }) async {
-    final enc = Encashment(
-      id: 'enc-${DateTime.now().millisecondsSinceEpoch}',
-      bankName: bankName,
-      amount: amount,
-      responsiblePerson: responsiblePerson,
-      date: DateTime.now(),
-    );
+  Future<List<BranchBalance>> getBranchBalances() async {
     try {
-      await _client.dio.post('/finance-ops/encashments', data: enc.toJson());
-    } catch (_) {}
+      final response = await _client.dio.get('/finance-ops/branch-balances');
+      final list = response.data is List ? response.data as List : const [];
+      return list
+          .whereType<Map>()
+          .map((e) => BranchBalance.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
 
-    _mockEncashments.insert(0, enc);
-    return enc;
+  @override
+  Future<List<ResponsibleOption>> getResponsibleOptions() async {
+    try {
+      final response = await _client.dio.get('/finance-ops/responsible-options');
+      final list = response.data is List ? response.data as List : const [];
+      return list
+          .whereType<Map>()
+          .map((e) => ResponsibleOption.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Future<Encashment> createEncashment({
+    required String registerId,
+    required String responsibleEmployeeId,
+    required double amount,
+    String? bankId,
+    String? note,
+  }) async {
+    final response = await _client.dio.post(
+      '/finance-ops/encashments',
+      data: {
+        'register_id': int.tryParse(registerId),
+        'responsible_employee_id': int.tryParse(responsibleEmployeeId),
+        'amount': amount,
+        'bank_id': ?int.tryParse(bankId ?? ''),
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+    if (response.data is Map) {
+      final enc = Encashment.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+      _mockEncashments.insert(0, enc);
+      return enc;
+    }
+    throw Exception('error_save_failed');
   }
 
   @override
@@ -170,10 +205,21 @@ class ApiFinOpsRepository implements FinOpsRepository {
       status: 'pending',
       date: DateTime.now(),
     );
-    try {
-      await _client.dio.post('/finance-ops/store-transfers', data: tr.toJson());
-    } catch (_) {}
-
+    final response = await _client.dio.post(
+      '/finance-ops/store-transfers',
+      data: {
+        'from_branch_id': int.tryParse(fromBranch),
+        'to_branch_id': int.tryParse(toBranch),
+        'amount': amount,
+      },
+    );
+    if (response.data is Map) {
+      final created = StoreTransfer.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+      _mockTransfers.insert(0, created);
+      return created;
+    }
     _mockTransfers.insert(0, tr);
     return tr;
   }
@@ -205,23 +251,30 @@ class ApiFinOpsRepository implements FinOpsRepository {
 
   @override
   Future<FinancialAid> createFinancialAid({
-    required String employeeName,
+    required String employeeId,
     required double amount,
+    bool deductFromSalary = true,
+    String? registerId,
+    String? note,
   }) async {
-    final aid = FinancialAid(
-      id: 'aid-${DateTime.now().millisecondsSinceEpoch}',
-      employeeName: employeeName,
-      amount: amount,
-      repaidAmount: 0.0,
-      status: 'active',
-      date: DateTime.now(),
+    final response = await _client.dio.post(
+      '/finance-ops/financial-aid',
+      data: {
+        'employee_id': int.tryParse(employeeId),
+        'amount': amount,
+        'deduct_from_salary': deductFromSalary,
+        'register_id': ?int.tryParse(registerId ?? ''),
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
     );
-    try {
-      await _client.dio.post('/finance-ops/financial-aid', data: aid.toJson());
-    } catch (_) {}
-
-    _mockAids.insert(0, aid);
-    return aid;
+    if (response.data is Map) {
+      final aid = FinancialAid.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+      _mockAids.insert(0, aid);
+      return aid;
+    }
+    throw Exception('error_save_failed');
   }
 
   @override

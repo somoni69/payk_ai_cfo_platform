@@ -17,6 +17,7 @@ import '../../../features/warehouse/bloc/warehouse_state.dart';
 import '../../../features/warehouse/domain/warehouse_models.dart';
 import '../../../features/warehouse/domain/warehouse_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_barcode_scanner.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../assistant/presentation/ledger_ai_assistant.dart';
@@ -972,20 +973,78 @@ class WarehouseSectionScreen extends StatelessWidget {
 }
 
 Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
+  return _WarehouseProductsTab(state: state);
+}
+
+class _WarehouseProductsTab extends StatefulWidget {
+  const _WarehouseProductsTab({required this.state});
+
+  final WarehouseLoaded state;
+
+  @override
+  State<_WarehouseProductsTab> createState() => _WarehouseProductsTabState();
+}
+
+class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<WarehouseProduct> get _filtered {
+    final q = _search.text.trim().toLowerCase();
+    if (q.isEmpty) return widget.state.products;
+    return widget.state.products.where((p) {
+      return p.name.toLowerCase().contains(q) ||
+          (p.sku?.toLowerCase().contains(q) ?? false) ||
+          (p.barcode?.toLowerCase().contains(q) ?? false);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+  final state = widget.state;
   final colors = context.colors;
   final textStyles = context.textStyles;
   final localeCubit = context.read<LanguageCubit>();
   final oCcy = localizedDecimalFormat(context);
+  final filtered = _filtered;
 
   return RefreshIndicator(
     onRefresh: context.read<WarehouseBloc>().reload,
     child: ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
-      itemCount: state.products.isEmpty ? 2 : state.products.length + 1,
+      itemCount: filtered.isEmpty ? 3 : filtered.length + 2,
       separatorBuilder: (context, index) =>
           SizedBox(height: index == 0 ? 16 : 12),
       itemBuilder: (context, index) {
+        if (index == 1) {
+          return TextField(
+            controller: _search,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              hintText: localeCubit.translate('warehouse_search_hint'),
+              prefixIcon: Icon(
+                TablerIcons.search,
+                size: 18,
+                color: colors.textSecondary,
+              ),
+              suffixIcon: IconButton(
+                tooltip: localeCubit.translate('scan_barcode_title'),
+                onPressed: () async {
+                  final code = await LedgerBarcodeScanner.open(context);
+                  if (code == null || !mounted) return;
+                  setState(() => _search.text = code);
+                },
+                icon: Icon(TablerIcons.camera, color: colors.brand),
+              ),
+            ),
+          );
+        }
         if (index == 0) {
           return Row(
             children: [
@@ -1072,7 +1131,7 @@ Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
           );
         }
 
-        if (state.products.isEmpty) {
+        if (filtered.isEmpty) {
           return Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 64.0),
@@ -1087,7 +1146,7 @@ Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
           );
         }
 
-        final product = state.products[index - 1];
+        final product = filtered[index - 2];
         final auth = context.watch<AuthBloc>().state;
         final canWrite =
             auth is AuthAuthenticated &&
@@ -1264,6 +1323,7 @@ Widget _buildProductsTab(BuildContext context, WarehouseLoaded state) {
       },
     ),
   );
+  }
 }
 
 Widget _buildMovementsTab(BuildContext context, WarehouseLoaded state) {
@@ -2536,6 +2596,31 @@ Future<void> _showEditProductSheet(
               ),
             ),
             const SizedBox(height: 20),
+            if (canManage &&
+                (product.barcode == null || product.barcode!.isEmpty)) ...[
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    context.read<WarehouseBloc>().add(
+                      AssignProductBarcodeRequested(productId: product.id),
+                    );
+                    Navigator.pop(context);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.brand,
+                    side: BorderSide(color: colors.border),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(TablerIcons.barcode, size: 18),
+                  label: Text(language.translate('warehouse_assign_barcode')),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (canManage) ...[
               SizedBox(
                 width: double.infinity,

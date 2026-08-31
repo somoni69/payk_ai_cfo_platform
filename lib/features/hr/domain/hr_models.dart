@@ -12,6 +12,10 @@ class Employee {
   final String? managerName;
   final DateTime createdAt;
   final DateTime? hireDate;
+  final String? departmentId;
+  final String? managerId;
+  final String? branchId;
+  final String? photoUrl;
 
   const Employee({
     required this.id,
@@ -26,6 +30,10 @@ class Employee {
     this.managerName,
     required this.createdAt,
     this.hireDate,
+    this.departmentId,
+    this.managerId,
+    this.branchId,
+    this.photoUrl,
   });
 
   Employee copyWith({
@@ -41,6 +49,10 @@ class Employee {
     String? managerName,
     DateTime? createdAt,
     DateTime? hireDate,
+    String? departmentId,
+    String? managerId,
+    String? branchId,
+    String? photoUrl,
   }) {
     return Employee(
       id: id ?? this.id,
@@ -55,6 +67,10 @@ class Employee {
       managerName: managerName ?? this.managerName,
       createdAt: createdAt ?? this.createdAt,
       hireDate: hireDate ?? this.hireDate,
+      departmentId: departmentId ?? this.departmentId,
+      managerId: managerId ?? this.managerId,
+      branchId: branchId ?? this.branchId,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 }

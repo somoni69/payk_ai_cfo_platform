@@ -24,7 +24,9 @@ import '../../../features/fin_ops/domain/fin_ops_repository.dart';
 import '../../../features/permissions/cubit/permissions_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 import '../../assistant/presentation/ledger_ai_assistant.dart';
+import '../../../presentation/widgets/ledger_barcode_scanner.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import 'cash_transaction_tile.dart';
@@ -32,14 +34,17 @@ import 'sales_profit_card.dart';
 
 part 'cash_tabs.dart';
 part 'cash_sheets.dart';
+part 'cash_pos.dart';
 
-enum CashSection { operations, shifts, summary }
+enum CashSection { operations, shifts, summary, pos, onec }
 
 String _cashSectionTitle(LanguageCubit language, CashSection section) {
   return language.translate(switch (section) {
     CashSection.operations => 'cash_tab_operations',
     CashSection.shifts => 'cash_tab_shifts',
     CashSection.summary => 'cash_tab_summary',
+    CashSection.pos => 'cash_tab_pos',
+    CashSection.onec => 'cash_tab_onec_kkm',
   });
 }
 
@@ -61,9 +66,23 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
   String _selectedType = 'all';
   String _selectedPaymentMethod = 'all';
   String _selectedRegister = 'all';
+  String _selectedCashier = 'all';
+  List<CashierLookup> _cashiers = const [];
   DateTime? _dateFrom;
   DateTime? _dateTo;
   bool _exporting = false;
+
+  SearchFilterChanged _filterEvent({String? query}) {
+    return SearchFilterChanged(
+      query: query ?? _searchController.text,
+      filterType: _selectedType,
+      paymentMethod: _selectedPaymentMethod,
+      registerId: _selectedRegister,
+      cashierId: _selectedCashier,
+      dateFrom: _dateFrom,
+      dateTo: _dateTo,
+    );
+  }
 
   @override
   void dispose() {
@@ -83,11 +102,17 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
 
   CashOperationFilters _exportFilters() {
     final registerId = int.tryParse(_selectedRegister);
+    final cashierId = int.tryParse(_selectedCashier);
     return CashOperationFilters(
       registerId: _selectedRegister == 'all' ? null : registerId,
       type: _selectedType == 'all' ? null : _selectedType,
+      paymentMethod: _selectedPaymentMethod == 'all'
+          ? null
+          : _selectedPaymentMethod,
+      cashierId: _selectedCashier == 'all' ? null : cashierId,
       dateFrom: _dateFrom,
       dateTo: _dateTo,
+      query: _searchController.text,
     );
   }
 
@@ -622,6 +647,17 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
               const SizedBox(height: 10),
             ],
 
+            if (!isViewer) ...[
+              _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.scan,
+                title: language.translate('cash_tab_pos'),
+                subtitle: language.translate('cash_tab_pos_hint'),
+                onTap: () => _openCashSection(context, CashSection.pos),
+              ),
+              const SizedBox(height: 10),
+            ],
+
             // 4. Navigation Grid (3 Section Cards)
             Row(
               children: [
@@ -656,6 +692,14 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
               title: language.translate('cash_tab_summary'),
               subtitle: '$totalRegisters касс',
               onTap: () => _openCashSection(context, CashSection.summary),
+            ),
+            const SizedBox(height: 10),
+            _buildHubSectionCard(
+              context: context,
+              icon: TablerIcons.device_desktop_analytics,
+              title: language.translate('cash_tab_onec_kkm'),
+              subtitle: language.translate('cash_tab_onec_kkm_hint'),
+              onTap: () => _openCashSection(context, CashSection.onec),
             ),
             const SizedBox(height: 10),
 
@@ -931,11 +975,13 @@ class _CashSectionScreenState extends State<CashSectionScreen>
                     ),
                   ),
                 ),
-              IconButton(
-                tooltip: language.translate('cash_download_report'),
-                onPressed: () => _showReportDownloadBottomSheet(context),
-                icon: Icon(TablerIcons.download, color: colors.brand),
-              ),
+              if (widget.section != CashSection.pos &&
+                  widget.section != CashSection.onec)
+                IconButton(
+                  tooltip: language.translate('cash_download_report'),
+                  onPressed: () => _showReportDownloadBottomSheet(context),
+                  icon: Icon(TablerIcons.download, color: colors.brand),
+                ),
               const SizedBox(width: 4),
             ],
             bottom: PreferredSize(
@@ -952,6 +998,8 @@ class _CashSectionScreenState extends State<CashSectionScreen>
             ),
             CashSection.shifts => _buildShiftsTab(context, state, isViewer),
             CashSection.summary => _buildSummaryTab(context, state.summaries),
+            CashSection.pos => CashPosView(state: state, isViewer: isViewer),
+            CashSection.onec => const CashOneCKkmView(),
           },
         );
       },

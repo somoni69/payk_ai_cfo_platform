@@ -54,17 +54,28 @@ class CreateTemplateRequested extends ChecklistsEvent {
   final String name;
   final String? description;
   final String? regulationText;
+  final String? regulationUrl;
+  final String? branchId;
   final List<String> items;
 
   const CreateTemplateRequested({
     required this.name,
     this.description,
     this.regulationText,
+    this.regulationUrl,
+    this.branchId,
     this.items = const [],
   });
 
   @override
-  List<Object?> get props => [name, description, regulationText, items];
+  List<Object?> get props => [
+    name,
+    description,
+    regulationText,
+    regulationUrl,
+    branchId,
+    items,
+  ];
 }
 
 class DeleteTemplateRequested extends ChecklistsEvent {

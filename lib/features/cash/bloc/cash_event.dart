@@ -77,6 +77,7 @@ class SearchFilterChanged extends CashEvent {
   final String filterType; // 'all', 'income', 'expense'
   final String paymentMethod; // 'all' | PaymentMethod.name
   final String registerId; // 'all' | register id
+  final String cashierId; // 'all' | user id
   final DateTime? dateFrom;
   final DateTime? dateTo;
 
@@ -85,6 +86,7 @@ class SearchFilterChanged extends CashEvent {
     required this.filterType,
     this.paymentMethod = 'all',
     this.registerId = 'all',
+    this.cashierId = 'all',
     this.dateFrom,
     this.dateTo,
   });
@@ -95,6 +97,7 @@ class SearchFilterChanged extends CashEvent {
     filterType,
     paymentMethod,
     registerId,
+    cashierId,
     dateFrom,
     dateTo,
   ];

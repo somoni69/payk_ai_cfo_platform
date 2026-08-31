@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -12,6 +17,7 @@ import '../../../features/legal/bloc/legal_bloc.dart';
 import '../../../features/legal/bloc/legal_event.dart';
 import '../../../features/legal/bloc/legal_state.dart';
 import '../../../features/legal/domain/legal_models.dart';
+import '../../../features/legal/domain/legal_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
@@ -1150,7 +1156,15 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                           if (law.sourceUrl != null) ...[
                             const SizedBox(height: 12),
                             InkWell(
-                              onTap: () {},
+                              onTap: () {
+                                final uri = Uri.tryParse(law.sourceUrl!);
+                                if (uri != null) {
+                                  launchUrl(
+                                    uri,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              },
                               child: Row(
                                 children: [
                                   Icon(
@@ -1169,6 +1183,30 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                                     ),
                                   ),
                                 ],
+                              ),
+                            ),
+                          ],
+                          if (_canManageLegal(context)) ...[
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  context.read<LegalBloc>().add(
+                                    DeleteLawRequested(law.id),
+                                  );
+                                },
+                                icon: Icon(
+                                  TablerIcons.trash,
+                                  size: 16,
+                                  color: colors.accentRed,
+                                ),
+                                label: Text(
+                                  localeCubit.translate('legal_delete_law'),
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.accentRed,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -1281,6 +1319,56 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final repo = context.read<LegalRepository>();
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        final bytes = await repo.exportGeneratedContract(
+                          state.generatedContract!.id,
+                        );
+                        if (bytes.isEmpty) {
+                          if (!context.mounted) return;
+                          Clipboard.setData(
+                            ClipboardData(text: state.generatedContract!.body),
+                          );
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                localeCubit.translate('legal_contract_copied'),
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        final dir = await getTemporaryDirectory();
+                        final file = File(
+                          '${dir.path}/contract_${state.generatedContract!.id}.pdf',
+                        );
+                        await file.writeAsBytes(bytes, flush: true);
+                        await SharePlus.instance.share(
+                          ShareParams(files: [XFile(file.path)]),
+                        );
+                      } catch (_) {
+                        if (!context.mounted) return;
+                        Clipboard.setData(
+                          ClipboardData(text: state.generatedContract!.body),
+                        );
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              localeCubit.translate('legal_contract_copied'),
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(TablerIcons.file_type_pdf),
+                    label: Text(localeCubit.translate('legal_export_pdf')),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
                     onPressed: () {
                       Clipboard.setData(
                         ClipboardData(text: state.generatedContract!.body),
@@ -1297,19 +1385,15 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                     label: Text(localeCubit.translate('legal_copy_text')),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      context.read<LegalBloc>().add(
-                        const ClearGeneratedContract(),
-                      );
-                    },
-                    icon: const Icon(TablerIcons.file_text),
-                    label: Text(localeCubit.translate('legal_create_new')),
-                  ),
-                ),
               ],
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                context.read<LegalBloc>().add(const ClearGeneratedContract());
+              },
+              icon: const Icon(TablerIcons.file_text),
+              label: Text(localeCubit.translate('legal_create_new')),
             ),
           ],
         ),
@@ -1356,13 +1440,33 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _canManageLegal(context)
-                            ? () => _showGenerateForm(context, template)
-                            : null,
-                        child: Text(
-                          localeCubit.translate('legal_fill_details'),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _canManageLegal(context)
+                                  ? () => _showGenerateForm(context, template)
+                                  : null,
+                              child: Text(
+                                localeCubit.translate('legal_fill_details'),
+                              ),
+                            ),
+                          ),
+                          if (_canManageLegal(context)) ...[
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: Icon(
+                                TablerIcons.trash,
+                                color: colors.accentRed,
+                              ),
+                              onPressed: () {
+                                context.read<LegalBloc>().add(
+                                  DeleteTemplateRequested(template.id),
+                                );
+                              },
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),

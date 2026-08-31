@@ -49,7 +49,16 @@ class MockFinanceTestRepository implements FinanceRepository {
   }
 
   @override
-  Future<PnlReport> getPnlReport() async {
+  Future<MetricBreakdown> getBreakdown(String metric) async {
+    return MetricBreakdown(
+      metric: metric,
+      value: 0,
+      period: '',
+    );
+  }
+
+  @override
+  Future<PnlReport> getPnlReport({DateTime? dateFrom, DateTime? dateTo}) async {
     if (shouldFail) throw Exception('Pnl fail');
     return const PnlReport(
       income: [PnlRow(category: 'Sales', amount: 2000.0, share: 100.0)],
@@ -61,7 +70,10 @@ class MockFinanceTestRepository implements FinanceRepository {
   }
 
   @override
-  Future<BreakEvenAnalysis> getBreakEvenAnalysis() async {
+  Future<BreakEvenAnalysis> getBreakEvenAnalysis({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
     if (shouldFail) throw Exception('BE fail');
     return const BreakEvenAnalysis(
       revenue: 2000.0,
@@ -74,7 +86,11 @@ class MockFinanceTestRepository implements FinanceRepository {
   }
 
   @override
-  Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
+  Future<AbcAnalysis> getAbcAnalysis(
+    String dimension, {
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
     final started = abcRequestsStarted[dimension];
     if (started != null && !started.isCompleted) started.complete();
     if (shouldFail) throw Exception('Abc fail');
@@ -143,7 +159,7 @@ class MockFinanceTestRepository implements FinanceRepository {
   }
 
   @override
-  Future<PlanFactReport> getPlanFactReport() async {
+  Future<PlanFactReport> getPlanFactReport({String? period}) async {
     if (shouldFail) throw Exception('PlanFact fail');
     return const PlanFactReport(
       period: '2026-07',

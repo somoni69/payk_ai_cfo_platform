@@ -96,6 +96,8 @@ Widget _buildPnlTab(BuildContext context, PnlReport? report, String currency) {
   return ListView(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
     children: [
+      _buildFinancePeriodStrip(context),
+      const SizedBox(height: 12),
       buildPnlList(
         languageCubit.translate('dashboard_pnl_income_by_category'),
         report.income,

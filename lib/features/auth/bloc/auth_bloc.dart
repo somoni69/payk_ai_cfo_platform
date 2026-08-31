@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/secure_storage_provider.dart';
+import '../../network/data/api_network_repository.dart';
 import '../data/api_auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -150,7 +151,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     if (!useBiometrics) {
-      _emitAuthenticated(emit, user);
+      await _emitAuthenticated(emit, user);
       return;
     }
 
@@ -166,7 +167,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         reason: _biometricReason(),
       );
       if (authenticated) {
-        _emitAuthenticated(emit, user);
+        await _emitAuthenticated(emit, user);
         return;
       }
     } catch (_) {
@@ -190,7 +191,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       switch (result) {
         case LoginSuccess(:final user):
-          _emitAuthenticated(emit, user);
+          await _emitAuthenticated(emit, user);
         case LoginTwoFactorRequired(:final challengeId, :final username):
           final challenge = AuthTwoFactorRequired(
             challengeId: challengeId,
@@ -238,7 +239,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       switch (result) {
         case LoginSuccess(:final user):
           _pendingTwoFactor = null;
-          _emitAuthenticated(emit, user);
+          await _emitAuthenticated(emit, user);
         case LoginTwoFactorRequired():
           _pendingTwoFactor = challenge;
           emit(const AuthError(ErrorKeys.twoFactorFailed));
@@ -281,7 +282,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
 
       if (authenticated) {
-        _emitAuthenticated(emit, user);
+        await _emitAuthenticated(emit, user);
       } else {
         emit(const AuthError(ErrorKeys.biometricsFailed));
       }
@@ -298,7 +299,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     final refreshed = await _authRepository.tryRefreshSession();
     if (refreshed != null) {
-      _emitAuthenticated(emit, refreshed);
+      await _emitAuthenticated(emit, refreshed);
       return;
     }
 
@@ -322,16 +323,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         : 'Подтвердите личность для входа в PAYK';
   }
 
-  void _emitAuthenticated(Emitter<AuthState> emit, AuthUser user) {
+  Future<void> _emitAuthenticated(Emitter<AuthState> emit, AuthUser user) async {
     _pendingTwoFactor = null;
+    var storeId = user.storeId;
+    var storeName = user.storeName;
+    if (user.role == UserRole.owner) {
+      try {
+        final repo = ApiNetworkRepository();
+        final acting = await repo.getActingStore();
+        if (storeId == null) {
+          if (acting != null) await repo.clearActingStore();
+        } else if (acting != null && acting.id == storeId) {
+          if (storeName == null || storeName.isEmpty) {
+            storeName = acting.name;
+          }
+        }
+      } catch (_) {}
+    }
     emit(
       AuthAuthenticated(
         id: user.id,
         username: user.username,
         name: user.name,
         role: user.role,
-        storeId: user.storeId,
-        storeName: user.storeName,
+        storeId: storeId,
+        storeName: storeName,
         accessTokenExpiresAt: user.accessTokenExpiresAt,
       ),
     );
@@ -367,6 +383,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _pendingTwoFactor = null;
     emit(AuthLoading());
     await _authRepository.logout();
+    try {
+      await ApiNetworkRepository().clearActingStore();
+    } catch (_) {}
     emit(AuthUnauthenticated());
   }
 }

@@ -17,11 +17,23 @@ abstract class StrategyRepository {
   /// Запустить AI-генерацию анализа
   Future<StrategicAnalysis> generateAnalysis(String type, String period);
 
+  Future<void> deleteAnalysis(String id);
+
   Future<List<MacroIndicator>> getMacroIndicators();
+
+  Future<MacroIndicator> createMacroIndicator({
+    required String name,
+    required double value,
+    String? unit,
+  });
+
+  Future<void> deleteMacroIndicator(String id);
 
   Future<List<StrategyScenario>> getScenarios({String? quarter});
 
   Future<List<StrategyScenario>> generateScenarios(String quarter);
+
+  Future<void> deleteScenario(String id);
 
   Future<DailySummary> getDailySummary();
 

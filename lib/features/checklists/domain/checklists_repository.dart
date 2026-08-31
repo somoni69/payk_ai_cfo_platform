@@ -9,6 +9,8 @@ abstract class ChecklistsRepository {
     required String name,
     String? description,
     String? regulationText,
+    String? regulationUrl,
+    String? branchId,
     List<String> items = const [],
   });
 

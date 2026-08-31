@@ -17,16 +17,34 @@ class AuditLoaded extends AuditState {
   final List<AuditAlert> alerts;
   final bool isRunningDetectors;
   final String? message;
+  final WeeklyAuditReport? weekly;
 
   const AuditLoaded({
     required this.logs,
     required this.alerts,
     this.isRunningDetectors = false,
     this.message,
+    this.weekly,
   });
 
+  AuditLoaded copyWith({
+    List<AuditLog>? logs,
+    List<AuditAlert>? alerts,
+    bool? isRunningDetectors,
+    String? message,
+    WeeklyAuditReport? weekly,
+  }) {
+    return AuditLoaded(
+      logs: logs ?? this.logs,
+      alerts: alerts ?? this.alerts,
+      isRunningDetectors: isRunningDetectors ?? this.isRunningDetectors,
+      message: message ?? this.message,
+      weekly: weekly ?? this.weekly,
+    );
+  }
+
   @override
-  List<Object?> get props => [logs, alerts, isRunningDetectors, message];
+  List<Object?> get props => [logs, alerts, isRunningDetectors, message, weekly];
 }
 
 class AuditError extends AuditState {

@@ -21,6 +21,7 @@ class CashLoaded extends CashState {
   final String filterType;
   final String paymentMethod;
   final String registerId;
+  final String cashierId;
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final String?
@@ -37,6 +38,7 @@ class CashLoaded extends CashState {
     required this.filterType,
     this.paymentMethod = 'all',
     this.registerId = 'all',
+    this.cashierId = 'all',
     this.dateFrom,
     this.dateTo,
     this.errorMessage,
@@ -54,6 +56,7 @@ class CashLoaded extends CashState {
     String? filterType,
     String? paymentMethod,
     String? registerId,
+    String? cashierId,
     DateTime? dateFrom,
     DateTime? dateTo,
     bool clearDateFrom = false,
@@ -72,6 +75,7 @@ class CashLoaded extends CashState {
       filterType: filterType ?? this.filterType,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       registerId: registerId ?? this.registerId,
+      cashierId: cashierId ?? this.cashierId,
       dateFrom: clearDateFrom ? null : (dateFrom ?? this.dateFrom),
       dateTo: clearDateTo ? null : (dateTo ?? this.dateTo),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
@@ -90,6 +94,7 @@ class CashLoaded extends CashState {
     filterType,
     paymentMethod,
     registerId,
+    cashierId,
     dateFrom,
     dateTo,
     errorMessage,

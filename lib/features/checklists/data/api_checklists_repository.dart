@@ -53,6 +53,8 @@ class ApiChecklistsRepository implements ChecklistsRepository {
     required String name,
     String? description,
     String? regulationText,
+    String? regulationUrl,
+    String? branchId,
     List<String> items = const [],
   }) async {
     try {
@@ -62,6 +64,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
           'name': name,
           'description': description,
           'regulation_text': regulationText,
+          if (regulationUrl != null && regulationUrl.isNotEmpty)
+            'regulation_url': regulationUrl,
+          'branch_id': ?int.tryParse(branchId ?? ''),
           'items': [
             for (var i = 0; i < items.length; i++)
               {'text': items[i], 'position': i},

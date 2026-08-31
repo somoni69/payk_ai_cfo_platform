@@ -23,6 +23,10 @@ abstract class MarketingRepository {
 
   Future<SocialPost> publishPost(String id);
 
+  Future<void> deleteCampaign(String id);
+
+  Future<void> deletePost(String id);
+
   Future<List<String>> generateAiIdeas(String prompt);
 
   Future<String> generateAiText(String prompt);

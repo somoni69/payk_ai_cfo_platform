@@ -142,6 +142,18 @@ class MockHrRepository implements HrRepository {
   }
 
   @override
+  Future<Employee> updateEmployee(Employee employee) async {
+    final index = employees.indexWhere((e) => e.id == employee.id);
+    if (index >= 0) employees[index] = employee;
+    return employee;
+  }
+
+  @override
+  Future<void> deleteEmployee(String employeeId) async {
+    employees.removeWhere((e) => e.id == employeeId);
+  }
+
+  @override
   Future<Employee> blockEmployee(String id) async {
     final index = employees.indexWhere((e) => e.id == id);
     final updated = employees[index].copyWith(status: 'inactive');
@@ -190,6 +202,33 @@ class MockHrRepository implements HrRepository {
       ),
     ];
   }
+
+  @override
+  Future<EmployeeDocument> uploadEmployeeDocument({
+    required String employeeId,
+    required String filename,
+    required List<int> bytes,
+  }) async {
+    return EmployeeDocument(
+      id: 'doc-new',
+      employeeId: employeeId,
+      name: filename,
+      url: '',
+      createdAt: DateTime.now(),
+    );
+  }
+
+  @override
+  Future<List<int>> downloadEmployeeDocument({
+    required String employeeId,
+    required String documentId,
+  }) async => const [1, 2, 3];
+
+  @override
+  Future<void> deleteEmployeeDocument({
+    required String employeeId,
+    required String documentId,
+  }) async {}
 
   @override
   Future<List<int>> downloadSalaryCertificatePdf(String employeeId) async {
@@ -316,6 +355,24 @@ class MockHrRepository implements HrRepository {
       startDate: startDate,
       endDate: endDate,
       status: 'active',
+    );
+  }
+
+  @override
+  Future<LaborContract> updateContract({
+    required String id,
+    String? number,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+  }) async {
+    return LaborContract(
+      id: id,
+      employeeId: '1',
+      number: number ?? '',
+      startDate: startDate ?? DateTime.now(),
+      endDate: endDate,
+      status: status ?? 'active',
     );
   }
 

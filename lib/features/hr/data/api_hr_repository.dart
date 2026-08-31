@@ -79,6 +79,10 @@ class ApiHrRepository implements HrRepository {
       hireDate: map['hire_date'] != null
           ? DateTime.tryParse(map['hire_date'].toString())
           : null,
+      departmentId: map['department_id']?.toString(),
+      managerId: map['manager_id']?.toString(),
+      branchId: map['branch_id']?.toString(),
+      photoUrl: map['photo_url']?.toString(),
     );
   }
 
@@ -396,7 +400,15 @@ class ApiHrRepository implements HrRepository {
         'email': employee.email,
         'base_salary': employee.baseSalary,
         'status': employee.status,
-        'hire_date': DateTime.now().toIso8601String().substring(0, 10),
+        'hire_date':
+            (employee.hireDate ?? DateTime.now()).toIso8601String().substring(
+              0,
+              10,
+            ),
+        if (employee.departmentId != null) 'department_id': int.tryParse(employee.departmentId!),
+        if (employee.managerId != null) 'manager_id': int.tryParse(employee.managerId!),
+        if (employee.branchId != null) 'branch_id': int.tryParse(employee.branchId!),
+        if (employee.photoUrl != null) 'photo_url': employee.photoUrl,
       };
 
       final response = await _apiClient.dio.post(
@@ -409,6 +421,42 @@ class ApiHrRepository implements HrRepository {
       return _mapEmployee(map);
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<Employee> updateEmployee(Employee employee) async {
+    try {
+      final payload = <String, dynamic>{
+        'full_name': employee.fullName,
+        'position': employee.position,
+        'phone': employee.phone,
+        'email': employee.email,
+        'base_salary': employee.baseSalary,
+        'status': employee.status,
+        if (employee.hireDate != null)
+          'hire_date': employee.hireDate!.toIso8601String().substring(0, 10),
+      };
+      final response = await _apiClient.dio.patch(
+        '/hr/employees/${_requirePositiveId(employee.id, 'employeeId')}',
+        data: payload,
+      );
+      _employeesCache.invalidate();
+      return _mapEmployee(Map<String, dynamic>.from(response.data as Map));
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteEmployee(String employeeId) async {
+    try {
+      await _apiClient.dio.delete(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}',
+      );
+      _employeesCache.invalidate();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 
@@ -494,6 +542,63 @@ class ApiHrRepository implements HrRepository {
       }).toList();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<EmployeeDocument> uploadEmployeeDocument({
+    required String employeeId,
+    required String filename,
+    required List<int> bytes,
+  }) async {
+    try {
+      final form = FormData.fromMap({
+        'file': MultipartFile.fromBytes(bytes, filename: filename),
+      });
+      final response = await _apiClient.dio.post(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/documents',
+        data: form,
+      );
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return EmployeeDocument(
+        id: (map['id'] ?? '').toString(),
+        employeeId: employeeId,
+        name: map['name']?.toString() ?? filename,
+        url: map['url']?.toString() ?? '',
+        createdAt: _parseDate(map['created_at']) ?? DateTime.now(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<int>> downloadEmployeeDocument({
+    required String employeeId,
+    required String documentId,
+  }) async {
+    try {
+      final response = await _apiClient.dio.get<List<int>>(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/documents/${_requirePositiveId(documentId, 'documentId')}/download',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? <int>[];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteEmployeeDocument({
+    required String employeeId,
+    required String documentId,
+  }) async {
+    try {
+      await _apiClient.dio.delete(
+        '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/documents/${_requirePositiveId(documentId, 'documentId')}',
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 
@@ -799,6 +904,42 @@ class ApiHrRepository implements HrRepository {
         startDate: _parseDate(map['start_date']) ?? startDate,
         endDate: _parseDate(map['end_date']),
         status: map['status']?.toString() ?? 'active',
+        daysLeft: (map['days_left'] as num?)?.toInt(),
+        isExpiring: map['is_expiring'] == true,
+        fileUrl: map['file_url']?.toString(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<LaborContract> updateContract({
+    required String id,
+    String? number,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? status,
+  }) async {
+    try {
+      final response = await _apiClient.dio.patch(
+        '/hr/contracts/${_requirePositiveId(id, 'id')}',
+        data: {
+          'number': ?number,
+          if (startDate != null) 'start_date': _dateOnly(startDate),
+          if (endDate != null) 'end_date': _dateOnly(endDate),
+          'status': ?status,
+        },
+      );
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return LaborContract(
+        id: (map['id'] ?? id).toString(),
+        employeeId: (map['employee_id'] ?? '').toString(),
+        employeeName: map['employee_name']?.toString(),
+        number: map['number']?.toString() ?? number ?? '',
+        startDate: _parseDate(map['start_date']) ?? startDate ?? DateTime.now(),
+        endDate: _parseDate(map['end_date']) ?? endDate,
+        status: map['status']?.toString() ?? status ?? 'active',
         daysLeft: (map['days_left'] as num?)?.toInt(),
         isExpiring: map['is_expiring'] == true,
         fileUrl: map['file_url']?.toString(),

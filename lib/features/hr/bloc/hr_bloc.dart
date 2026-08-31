@@ -19,6 +19,8 @@ class HrBloc extends Bloc<HrEvent, HrState> {
     on<LoadHrData>(_onLoadHrData);
     on<LoadHrSection>(_onLoadHrSection);
     on<CreateEmployeeRequested>(_onCreateEmployeeRequested);
+    on<UpdateEmployeeRequested>(_onUpdateEmployeeRequested);
+    on<DeleteEmployeeRequested>(_onDeleteEmployeeRequested);
     on<BlockEmployeeRequested>(_onBlockEmployeeRequested);
     on<UnblockEmployeeRequested>(_onUnblockEmployeeRequested);
     on<ArchiveEmployeeRequested>(_onArchiveEmployeeRequested);
@@ -286,6 +288,50 @@ class HrBloc extends Bloc<HrEvent, HrState> {
         currentState.copyWith(
           employees: _cachedEmployees,
           successMessage: 'hr_toast_employee_created',
+        ),
+      );
+    } catch (e) {
+      emit(currentState.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateEmployeeRequested(
+    UpdateEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final currentState = state as HrLoaded;
+    try {
+      final updated = await _repository.updateEmployee(event.employee);
+      _cachedEmployees = _cachedEmployees
+          .map((e) => e.id == updated.id ? updated : e)
+          .toList();
+      emit(
+        currentState.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_employee_updated',
+        ),
+      );
+    } catch (e) {
+      emit(currentState.copyWith(errorMessage: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteEmployeeRequested(
+    DeleteEmployeeRequested event,
+    Emitter<HrState> emit,
+  ) async {
+    if (state is! HrLoaded) return;
+    final currentState = state as HrLoaded;
+    try {
+      await _repository.deleteEmployee(event.employeeId);
+      _cachedEmployees = _cachedEmployees
+          .where((e) => e.id != event.employeeId)
+          .toList();
+      emit(
+        currentState.copyWith(
+          employees: _cachedEmployees,
+          successMessage: 'hr_toast_employee_deleted',
         ),
       );
     } catch (e) {

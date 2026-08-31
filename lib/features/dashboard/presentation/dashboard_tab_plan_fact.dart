@@ -27,6 +27,8 @@ Widget _buildPlanFactTab(
   return ListView(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
     children: [
+      _buildPlanMonthStrip(context, report.period),
+      const SizedBox(height: 12),
       LedgerCard(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -34,6 +34,8 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       final transfers = await _repository.getStoreTransfers();
       final aids = await _repository.getFinancialAids();
       final branches = await _branchesRepository.getBranches();
+      final balances = await _repository.getBranchBalances();
+      final responsibles = await _repository.getResponsibleOptions();
       emit(
         FinOpsLoaded(
           bankAccounts: banks,
@@ -41,6 +43,8 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
           storeTransfers: transfers,
           financialAids: aids,
           branches: branches,
+          branchBalances: balances,
+          responsibleOptions: responsibles,
         ),
       );
     } catch (e) {
@@ -54,9 +58,11 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
   ) async {
     try {
       await _repository.createEncashment(
-        bankName: event.bankName,
+        registerId: event.registerId,
+        responsibleEmployeeId: event.responsibleEmployeeId,
         amount: event.amount,
-        responsiblePerson: event.responsiblePerson,
+        bankId: event.bankId,
+        note: event.note,
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
@@ -101,8 +107,10 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
   ) async {
     try {
       await _repository.createFinancialAid(
-        employeeName: event.employeeName,
+        employeeId: event.employeeId,
         amount: event.amount,
+        deductFromSalary: event.deductFromSalary,
+        registerId: event.registerId,
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {

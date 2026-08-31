@@ -92,14 +92,38 @@ class MockCashRepository implements CashRepository {
   ];
 
   @override
-  Future<List<Transaction>> getTransactions() async {
+  Future<List<Transaction>> getTransactions({
+    CashOperationFilters filters = const CashOperationFilters(),
+  }) async {
     await Future.delayed(const Duration(milliseconds: 150));
     return List.from(_transactions);
   }
 
   @override
+  Future<List<CashierLookup>> lookupCashiers() async => const [];
+
+  @override
+  Future<OneCKkmOverview> getOneCKkmShifts({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    bool refresh = true,
+  }) async => const OneCKkmOverview();
+
+  @override
+  Future<void> saveOneCKkmLink({
+    required String scope,
+    required String onecName,
+    int? targetId,
+  }) async {}
+
+  @override
   Future<List<SaleProduct>> getSaleProducts({String? search}) async {
     return const [];
+  }
+
+  @override
+  Future<SaleProduct> getSaleProductByBarcode(String code) async {
+    throw Exception('not found');
   }
 
   @override

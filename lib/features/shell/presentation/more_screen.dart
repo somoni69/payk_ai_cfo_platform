@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/network/expiring_request_cache.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/secure_storage_provider.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../network/domain/network_repository.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_event.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -418,6 +420,12 @@ class _MoreScreenState extends State<MoreScreen> {
             titleKey: 'more_audit',
             route: '/audit',
           ),
+          (
+            capability: AppCapability.backups,
+            icon: TablerIcons.database,
+            titleKey: 'more_backups',
+            route: '/backups',
+          ),
         ],
       ),
     ];
@@ -550,6 +558,11 @@ class _MoreScreenState extends State<MoreScreen> {
     final storeName = authState is AuthAuthenticated
         ? authState.storeName
         : null;
+    final storeId = authState is AuthAuthenticated ? authState.storeId : null;
+    final isOwner =
+        authState is AuthAuthenticated && authState.role == UserRole.owner;
+    final hasActingStore =
+        storeId != null || (storeName != null && storeName.isNotEmpty);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -558,47 +571,88 @@ class _MoreScreenState extends State<MoreScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: colors.border),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: colors.brand.withValues(alpha: 0.1),
-            child: Icon(TablerIcons.user, color: colors.brand, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(profileName, style: textStyles.h2Sans),
-                const SizedBox(height: 2),
-                Text(roleLabel, style: textStyles.captionSans),
-                if (storeName != null && storeName.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        TablerIcons.building_store,
-                        size: 14,
-                        color: colors.brand,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          storeName,
-                          style: textStyles.captionSans.copyWith(
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: colors.brand.withValues(alpha: 0.1),
+                child: Icon(TablerIcons.user, color: colors.brand, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(profileName, style: textStyles.h2Sans),
+                    const SizedBox(height: 2),
+                    Text(roleLabel, style: textStyles.captionSans),
+                    if (isOwner || hasActingStore) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            TablerIcons.building_store,
+                            size: 14,
                             color: colors.brand,
-                            fontWeight: FontWeight.w500,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              hasActingStore
+                                  ? (storeName?.isNotEmpty == true
+                                        ? storeName!
+                                        : '#$storeId')
+                                  : context.translate('network_root_badge'),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.brand,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                ],
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
+          if (isOwner && hasActingStore) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () async {
+                try {
+                  await context.read<NetworkRepository>().leaveStore();
+                } catch (_) {}
+                if (!mounted) return;
+                ExpiringRequestCache.invalidateAll();
+                context.read<AuthBloc>().add(const ActingStoreUpdated());
+                GoRouter.of(context).go('/network');
+              },
+              icon: Icon(
+                TablerIcons.arrow_back_up,
+                size: 16,
+                color: colors.brand,
+              ),
+              label: Text(
+                context.translate('more_leave_store'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.brand,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: colors.border),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

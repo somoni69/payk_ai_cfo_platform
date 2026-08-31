@@ -93,6 +93,12 @@ class MockMarketingTestRepository implements MarketingRepository {
   }
 
   @override
+  Future<void> deleteCampaign(String id) async {}
+
+  @override
+  Future<void> deletePost(String id) async {}
+
+  @override
   Future<SocialPost> publishPost(String id) async {
     if (shouldFail) throw Exception('Publish post failed');
     return SocialPost(

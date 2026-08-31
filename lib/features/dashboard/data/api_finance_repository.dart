@@ -136,6 +136,8 @@ class ApiFinanceRepository implements FinanceRepository {
         expensesDelta: expensesDelta,
         netProfitDelta: netProfitDelta,
         cashForecastDelta: cashForecastDelta,
+        operationsCount: (data['operations_count'] as num?)?.toInt() ?? 0,
+        avgCheck: _toDouble(data['avg_check'] ?? data['avgCheck']),
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
@@ -203,10 +205,50 @@ class ApiFinanceRepository implements FinanceRepository {
     return 0.0;
   }
 
+  Map<String, dynamic> _dateQuery(DateTime? dateFrom, DateTime? dateTo) {
+    return {
+      if (dateFrom != null)
+        'date_from':
+            '${dateFrom.year}-${dateFrom.month.toString().padLeft(2, '0')}-${dateFrom.day.toString().padLeft(2, '0')}',
+      if (dateTo != null)
+        'date_to':
+            '${dateTo.year}-${dateTo.month.toString().padLeft(2, '0')}-${dateTo.day.toString().padLeft(2, '0')}',
+    };
+  }
+
   @override
-  Future<PnlReport> getPnlReport() async {
+  Future<MetricBreakdown> getBreakdown(String metric) async {
     try {
-      final response = await _dio.get('/finance/pnl');
+      final response = await _dio.get('/finance/breakdown/$metric');
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final rows = (data['rows'] as List<dynamic>? ?? []).map((raw) {
+        final map = Map<String, dynamic>.from(raw as Map);
+        return MetricBreakdownRow(
+          label: (map['label'] ?? '').toString(),
+          value: _toDouble(map['value']),
+          share: _toDouble(map['share']),
+        );
+      }).toList();
+      return MetricBreakdown(
+        metric: (data['metric'] ?? metric).toString(),
+        value: _toDouble(data['value']),
+        period: (data['period'] ?? '').toString(),
+        rows: rows,
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<PnlReport> getPnlReport({DateTime? dateFrom, DateTime? dateTo}) async {
+    try {
+      final response = await _dio.get(
+        '/finance/pnl',
+        queryParameters: _dateQuery(dateFrom, dateTo),
+      );
       final data = response.data as Map<String, dynamic>;
 
       final incomeList = (data['income'] as List<dynamic>? ?? []).map((e) {
@@ -240,9 +282,15 @@ class ApiFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<BreakEvenAnalysis> getBreakEvenAnalysis() async {
+  Future<BreakEvenAnalysis> getBreakEvenAnalysis({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
     try {
-      final response = await _dio.get('/finance/break-even');
+      final response = await _dio.get(
+        '/finance/break-even',
+        queryParameters: _dateQuery(dateFrom, dateTo),
+      );
       final data = response.data as Map<String, dynamic>;
 
       return BreakEvenAnalysis(
@@ -259,12 +307,19 @@ class ApiFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<AbcAnalysis> getAbcAnalysis(String dimension) async {
+  Future<AbcAnalysis> getAbcAnalysis(
+    String dimension, {
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
     try {
       final apiDimension = AbcDimensions.toApi(dimension);
       final response = await _dio.get(
         '/finance/abc',
-        queryParameters: {'dimension': apiDimension},
+        queryParameters: {
+          'dimension': apiDimension,
+          ..._dateQuery(dateFrom, dateTo),
+        },
       );
       final data = response.data as Map<String, dynamic>;
 
@@ -405,9 +460,14 @@ class ApiFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<PlanFactReport> getPlanFactReport() async {
+  Future<PlanFactReport> getPlanFactReport({String? period}) async {
     try {
-      final response = await _dio.get('/finance/plan-fact');
+      final response = await _dio.get(
+        '/finance/plan-fact',
+        queryParameters: {
+          if (period != null && period.isNotEmpty) 'period': period,
+        },
+      );
       final data = response.data as Map<String, dynamic>;
 
       final rowsList = (data['rows'] as List<dynamic>? ?? []).map((e) {

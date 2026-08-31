@@ -142,6 +142,12 @@ class ApiStrategyRepository
   }
 
   @override
+  Future<void> deleteAnalysis(String id) async {
+    await _apiClient.dio.delete('/strategy/analyses/$id');
+    _analysisCaches.forEach((_, cache) => cache.invalidate());
+  }
+
+  @override
   Future<List<MacroIndicator>> getMacroIndicators() async {
     try {
       final response = await _apiClient.dio.get('/strategy/macro');
@@ -164,6 +170,33 @@ class ApiStrategyRepository
     } catch (_) {
       throw Exception(ErrorKeys.loadFailed);
     }
+  }
+
+  @override
+  Future<MacroIndicator> createMacroIndicator({
+    required String name,
+    required double value,
+    String? unit,
+  }) async {
+    final response = await _apiClient.dio.post(
+      '/strategy/macro',
+      data: {'name': name, 'value': value, 'unit': ?unit},
+    );
+    final map = Map<String, dynamic>.from(response.data as Map);
+    return MacroIndicator(
+      id: (map['id'] ?? '').toString(),
+      name: map['name']?.toString() ?? name,
+      value: (map['value'] as num?)?.toDouble() ?? value,
+      unit: map['unit']?.toString() ?? unit,
+      indicatorDate:
+          DateTime.tryParse(map['indicator_date']?.toString() ?? '') ??
+          DateTime.now(),
+    );
+  }
+
+  @override
+  Future<void> deleteMacroIndicator(String id) async {
+    await _apiClient.dio.delete('/strategy/macro/$id');
   }
 
   @override
@@ -209,6 +242,11 @@ class ApiStrategyRepository
     } catch (_) {
       throw Exception(ErrorKeys.loadFailed);
     }
+  }
+
+  @override
+  Future<void> deleteScenario(String id) async {
+    await _apiClient.dio.delete('/strategy/scenarios/$id');
   }
 
   @override

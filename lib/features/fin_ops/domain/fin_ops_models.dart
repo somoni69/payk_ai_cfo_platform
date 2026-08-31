@@ -51,25 +51,56 @@ class BankAccount extends Equatable {
   ];
 }
 
+class ResponsibleOption extends Equatable {
+  final String id;
+  final String fullName;
+  final String? position;
+
+  const ResponsibleOption({
+    required this.id,
+    required this.fullName,
+    this.position,
+  });
+
+  String get label =>
+      position == null || position!.isEmpty ? fullName : '$fullName — $position';
+
+  factory ResponsibleOption.fromJson(Map<String, dynamic> json) {
+    return ResponsibleOption(
+      id: (json['id'] ?? '').toString(),
+      fullName: (json['full_name'] ?? json['name'] ?? '').toString(),
+      position: json['position']?.toString(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, fullName, position];
+}
+
 class Encashment extends Equatable {
   final String id;
   final String bankName;
+  final String? registerName;
   final double amount;
   final String responsiblePerson;
   final DateTime date;
+  final String? note;
 
   const Encashment({
     required this.id,
     required this.bankName,
+    this.registerName,
     required this.amount,
     required this.responsiblePerson,
     required this.date,
+    this.note,
   });
 
   factory Encashment.fromJson(Map<String, dynamic> json) {
     return Encashment(
       id: (json['id'] ?? '').toString(),
       bankName: (json['bank_name'] ?? '').toString(),
+      registerName: json['register_name']?.toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       responsiblePerson:
           (json['responsible_name'] ?? json['responsible_person'] ?? '')
@@ -79,6 +110,7 @@ class Encashment extends Equatable {
             (json['occurred_at'] ?? json['date'] ?? '').toString(),
           ) ??
           DateTime.now(),
+      note: json['note']?.toString(),
     );
   }
 
@@ -92,7 +124,15 @@ class Encashment extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, bankName, amount, responsiblePerson, date];
+  List<Object?> get props => [
+    id,
+    bankName,
+    registerName,
+    amount,
+    responsiblePerson,
+    date,
+    note,
+  ];
 }
 
 class StoreTransfer extends Equatable {
@@ -142,6 +182,29 @@ class StoreTransfer extends Equatable {
   List<Object?> get props => [id, fromBranch, toBranch, amount, status, date];
 }
 
+class AidRepayment extends Equatable {
+  final String id;
+  final String period;
+  final double amount;
+
+  const AidRepayment({
+    required this.id,
+    required this.period,
+    required this.amount,
+  });
+
+  factory AidRepayment.fromJson(Map<String, dynamic> json) {
+    return AidRepayment(
+      id: (json['id'] ?? '').toString(),
+      period: (json['salary_period'] ?? json['period'] ?? '').toString(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, period, amount];
+}
+
 class FinancialAid extends Equatable {
   final String id;
   final String employeeName;
@@ -149,6 +212,8 @@ class FinancialAid extends Equatable {
   final double repaidAmount;
   final String status;
   final DateTime date;
+  final bool deductFromSalary;
+  final List<AidRepayment> repayments;
 
   const FinancialAid({
     required this.id,
@@ -157,6 +222,8 @@ class FinancialAid extends Equatable {
     required this.repaidAmount,
     required this.status,
     required this.date,
+    this.deductFromSalary = true,
+    this.repayments = const [],
   });
 
   double get remainingAmount {
@@ -165,21 +232,33 @@ class FinancialAid extends Equatable {
   }
 
   factory FinancialAid.fromJson(Map<String, dynamic> json) {
+    final remaining = (json['remaining_amount'] as num?)?.toDouble();
+    final repaid = (json['repaid_amount'] as num?)?.toDouble() ?? 0.0;
+    final amount = (json['amount'] as num?)?.toDouble() ?? 0.0;
+    final deduct = json['deduct_from_salary'] != false;
+    final rawRepayments = json['repayments'] as List? ?? [];
+    final closed =
+        json['deducted_in_period'] != null ||
+        (remaining != null ? remaining <= 0 : repaid >= amount);
     return FinancialAid(
       id: (json['id'] ?? '').toString(),
       employeeName: (json['employee_name'] ?? '').toString(),
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      repaidAmount: (json['repaid_amount'] as num?)?.toDouble() ?? 0.0,
-      status:
-          (json['status'] ??
-                  (json['deducted_in_period'] != null ? 'repaid' : 'active'))
-              .toString(),
+      amount: amount,
+      repaidAmount: repaid,
+      status: deduct
+          ? (closed ? 'repaid' : 'active')
+          : (json['status'] ?? 'repaid').toString(),
       date:
           DateTime.tryParse(
             (json['issued_at'] ?? json['date'] ?? json['created_at'] ?? '')
                 .toString(),
           ) ??
           DateTime.now(),
+      deductFromSalary: deduct,
+      repayments: rawRepayments
+          .whereType<Map>()
+          .map((e) => AidRepayment.fromJson(Map<String, dynamic>.from(e)))
+          .toList(),
     );
   }
 
@@ -201,5 +280,36 @@ class FinancialAid extends Equatable {
     repaidAmount,
     status,
     date,
+    deductFromSalary,
+    repayments,
   ];
+}
+
+class BranchBalance extends Equatable {
+  final String branchId;
+  final String branchName;
+  final double balance;
+  final double inTransit;
+
+  const BranchBalance({
+    required this.branchId,
+    required this.branchName,
+    this.balance = 0,
+    this.inTransit = 0,
+  });
+
+  factory BranchBalance.fromJson(Map<String, dynamic> json) {
+    return BranchBalance(
+      branchId: (json['branch_id'] ?? json['id'] ?? '').toString(),
+      branchName: (json['branch_name'] ?? json['name'] ?? '').toString(),
+      balance: (json['balance'] as num?)?.toDouble() ?? 0,
+      inTransit:
+          (json['incoming_in_transit'] as num?)?.toDouble() ??
+          (json['in_transit'] as num?)?.toDouble() ??
+          0,
+    );
+  }
+
+  @override
+  List<Object?> get props => [branchId, branchName, balance, inTransit];
 }

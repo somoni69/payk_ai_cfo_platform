@@ -4,6 +4,8 @@
 <dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Данное приложение использует Face ID для безопасного и быстрого входа в систему.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы сканировать штрих-коды товаров.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

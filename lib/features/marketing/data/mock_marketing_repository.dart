@@ -113,6 +113,16 @@ class MockMarketingRepository implements MarketingRepository {
   }
 
   @override
+  Future<void> deleteCampaign(String id) async {
+    _campaigns.removeWhere((c) => c.id == id);
+  }
+
+  @override
+  Future<void> deletePost(String id) async {
+    _posts.removeWhere((p) => p.id == id);
+  }
+
+  @override
   Future<SocialPost> publishPost(String id) async {
     await Future.delayed(const Duration(milliseconds: 200));
     final idx = _posts.indexWhere((p) => p.id == id);

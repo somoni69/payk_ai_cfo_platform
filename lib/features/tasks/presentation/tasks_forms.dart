@@ -644,7 +644,11 @@ extension _TasksFormBuilders on _TasksViewMixin {
                 height: 48,
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    tasksBloc.add(DeletePersonalTaskRequested(task.id));
+                    if (task.isPersonal) {
+                      tasksBloc.add(DeletePersonalTaskRequested(task.id));
+                    } else {
+                      tasksBloc.add(DeleteTaskRequested(task.id));
+                    }
                     Navigator.pop(context);
                   },
                   style: OutlinedButton.styleFrom(

@@ -16,6 +16,10 @@ class StrategyBloc extends Bloc<StrategyEvent, StrategyState> {
     on<LoadMacroIndicators>(_onLoadMacro);
     on<LoadScenarios>(_onLoadScenarios);
     on<GenerateScenariosRequested>(_onGenerateScenarios);
+    on<DeleteAnalysisRequested>(_onDeleteAnalysis);
+    on<DeleteScenarioRequested>(_onDeleteScenario);
+    on<CreateMacroIndicatorRequested>(_onCreateMacro);
+    on<DeleteMacroIndicatorRequested>(_onDeleteMacro);
     on<LoadDailySummary>(_onLoadSummary);
     on<LoadNews>(_onLoadNews);
   }
@@ -213,6 +217,92 @@ class StrategyBloc extends Bloc<StrategyEvent, StrategyState> {
           errorMessage: ErrorKeys.loadFailed,
         ),
       );
+    }
+  }
+
+  Future<void> _onDeleteAnalysis(
+    DeleteAnalysisRequested event,
+    Emitter<StrategyState> emit,
+  ) async {
+    emit(state.copyWith(clearError: true));
+    try {
+      await _repository.deleteAnalysis(event.id);
+      final remaining = state.analyses
+          .where((analysis) => analysis.id != event.id)
+          .toList();
+      emit(
+        state.copyWith(
+          analyses: remaining,
+          latestAnalysis: remaining.firstOrNull,
+          clearLatestAnalysis: remaining.isEmpty,
+        ),
+      );
+    } catch (_) {
+      emit(state.copyWith(errorMessage: ErrorKeys.saveFailed));
+    }
+  }
+
+  Future<void> _onDeleteScenario(
+    DeleteScenarioRequested event,
+    Emitter<StrategyState> emit,
+  ) async {
+    emit(state.copyWith(clearError: true));
+    try {
+      await _repository.deleteScenario(event.id);
+      emit(
+        state.copyWith(
+          scenarios: state.scenarios
+              .where((scenario) => scenario.id != event.id)
+              .toList(),
+        ),
+      );
+    } catch (_) {
+      emit(state.copyWith(errorMessage: ErrorKeys.saveFailed));
+    }
+  }
+
+  Future<void> _onCreateMacro(
+    CreateMacroIndicatorRequested event,
+    Emitter<StrategyState> emit,
+  ) async {
+    emit(state.copyWith(isMacroLoading: true, clearError: true));
+    try {
+      final created = await _repository.createMacroIndicator(
+        name: event.name,
+        value: event.value,
+        unit: event.unit,
+      );
+      emit(
+        state.copyWith(
+          isMacroLoading: false,
+          macroLoaded: true,
+          macro: [created, ...state.macro],
+        ),
+      );
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isMacroLoading: false,
+          errorMessage: ErrorKeys.saveFailed,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDeleteMacro(
+    DeleteMacroIndicatorRequested event,
+    Emitter<StrategyState> emit,
+  ) async {
+    emit(state.copyWith(clearError: true));
+    try {
+      await _repository.deleteMacroIndicator(event.id);
+      emit(
+        state.copyWith(
+          macro: state.macro.where((item) => item.id != event.id).toList(),
+        ),
+      );
+    } catch (_) {
+      emit(state.copyWith(errorMessage: ErrorKeys.saveFailed));
     }
   }
 

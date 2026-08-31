@@ -14,6 +14,9 @@ abstract class TasksRepository {
   /// Обновить полностью задачу
   Future<Task> updateTask(Task task);
 
+  /// Удалить корпоративную задачу (`DELETE /tasks/{id}`).
+  Future<void> deleteTask(String taskId);
+
   /// Получить список всех проектов для задач
   Future<List<TaskProject>> getProjects();
 

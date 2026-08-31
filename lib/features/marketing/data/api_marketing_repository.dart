@@ -174,6 +174,18 @@ class ApiMarketingRepository
   }
 
   @override
+  Future<void> deleteCampaign(String id) async {
+    await _apiClient.dio.delete('/marketing/campaigns/$id');
+    _campaignsCache.invalidate();
+  }
+
+  @override
+  Future<void> deletePost(String id) async {
+    await _apiClient.dio.delete('/marketing/posts/$id');
+    _postsCache.invalidate();
+  }
+
+  @override
   Future<SocialPost> publishPost(String id) async {
     try {
       final response = await _apiClient.dio.post(

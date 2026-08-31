@@ -18,3 +18,13 @@ class LoadAuditData extends AuditEvent {
 class RunAnomalyDetectorsRequested extends AuditEvent {
   const RunAnomalyDetectorsRequested();
 }
+
+class ResolveAlertRequested extends AuditEvent {
+  final String id;
+  final bool isResolved;
+
+  const ResolveAlertRequested(this.id, {this.isResolved = true});
+
+  @override
+  List<Object?> get props => [id, isResolved];
+}

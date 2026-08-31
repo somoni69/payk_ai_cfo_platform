@@ -1058,6 +1058,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     String employeeId = state.employees.first.id;
     final numberCtrl = TextEditingController();
     DateTime startDate = DateTime.now();
+    DateTime? endDate;
 
     try {
       await LedgerBottomSheet.show(
@@ -1128,6 +1129,36 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                   ),
                 ),
               ),
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: endDate ?? startDate.add(const Duration(days: 365)),
+                    firstDate: startDate,
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) {
+                    setSheetState(() => endDate = picked);
+                  }
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: locale.translate('hr_contract_end'),
+                    suffixIcon: const Icon(TablerIcons.calendar, size: 18),
+                  ),
+                  child: Text(
+                    endDate == null
+                        ? '—'
+                        : formatLocalizedDateTime(
+                            context,
+                            endDate!,
+                            style: LocalizedDateTimeStyle.date,
+                          ),
+                    style: textStyles.bodySans,
+                  ),
+                ),
+              ),
             ],
           );
         },
@@ -1144,6 +1175,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                     employeeId: employeeId,
                     number: number,
                     startDate: startDate,
+                    endDate: endDate,
                   ),
                 );
                 Navigator.pop(context);
@@ -1533,6 +1565,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       period: period,
       canManage: canManage,
       onShowDocuments: _showEmployeeDocumentsBottomSheet,
+      onEditEmployee: _showEditEmployeeSheet,
     );
   }
 
@@ -1749,6 +1782,106 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
         },
       ),
     );
+  }
+
+  Future<void> _showEditEmployeeSheet(
+    BuildContext context,
+    Employee emp,
+  ) async {
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final hrBloc = context.read<HrBloc>();
+    final nameController = TextEditingController(text: emp.fullName);
+    final posController = TextEditingController(text: emp.position ?? '');
+    final salaryController = TextEditingController(
+      text: formatLocalizedNumber(context, emp.baseSalary),
+    );
+    final phoneController = TextEditingController(text: emp.phone ?? '');
+    final emailController = TextEditingController(text: emp.email ?? '');
+    try {
+      await LedgerBottomSheet.show(
+        context: context,
+        title: localeCubit.translate('hr_edit_employee'),
+        builder: (context, setSheetState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: localeCubit.translate('hr_employee_full_name'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: posController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: localeCubit.translate('hr_position'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: salaryController,
+                style: textStyles.bodySans,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: localeCubit.translate('hr_salary_tjs'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: localeCubit.translate('hr_phone'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                style: textStyles.bodySans,
+                decoration: InputDecoration(
+                  labelText: localeCubit.translate('hr_email'),
+                ),
+              ),
+            ],
+          );
+        },
+        footerBuilder: (context, setSheetState) {
+          return ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              if (name.isEmpty) return;
+              hrBloc.add(
+                UpdateEmployeeRequested(
+                  emp.copyWith(
+                    fullName: name,
+                    position: posController.text.trim(),
+                    baseSalary:
+                        parseLocalizedNumber(context, salaryController.text) ??
+                        emp.baseSalary,
+                    phone: phoneController.text.trim(),
+                    email: emailController.text.trim(),
+                  ),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(localeCubit.translate('common_save')),
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+      posController.dispose();
+      salaryController.dispose();
+      phoneController.dispose();
+      emailController.dispose();
+    }
   }
 
   Future<void> _showAddEmployeeBottomSheet(BuildContext context) async {
@@ -2220,6 +2353,24 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     final colors = context.colors;
     final locale = context.read<LanguageCubit>();
     final repository = context.read<HrRepository>();
+    final canManage = _canManageHr(context);
+    var docs = <EmployeeDocument>[];
+    var loading = true;
+    var busy = false;
+    var started = false;
+
+    Future<void> reload(void Function(void Function()) setSheetState) async {
+      setSheetState(() => loading = true);
+      try {
+        final list = await repository.getEmployeeDocuments(emp.id);
+        setSheetState(() {
+          docs = list;
+          loading = false;
+        });
+      } catch (_) {
+        setSheetState(() => loading = false);
+      }
+    }
 
     await LedgerBottomSheet.show(
       context: context,
@@ -2228,18 +2379,70 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
         params: {'name': emp.fullName},
       ),
       builder: (context, setSheetState) {
-        return FutureBuilder<List<EmployeeDocument>>(
-          future: repository.getEmployeeDocuments(emp.id),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.all(24.0),
-                child: Center(child: CircularProgressIndicator.adaptive()),
-              );
-            }
-            final docs = snapshot.data ?? [];
-            if (docs.isEmpty) {
-              return Padding(
+        if (!started) {
+          started = true;
+          reload(setSheetState);
+        }
+        if (loading) {
+          return const Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Center(child: CircularProgressIndicator.adaptive()),
+          );
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canManage)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          final result = await FilePicker.platform.pickFiles(
+                            withData: true,
+                          );
+                          if (result == null || result.files.isEmpty) return;
+                          final file = result.files.first;
+                          final bytes = file.bytes;
+                          if (bytes == null || bytes.isEmpty) return;
+                          setSheetState(() => busy = true);
+                          try {
+                            await repository.uploadEmployeeDocument(
+                              employeeId: emp.id,
+                              filename: file.name,
+                              bytes: bytes,
+                            );
+                            await reload(setSheetState);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    locale.translate('hr_document_uploaded'),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    locale.translateMessage(e.toString()),
+                                  ),
+                                ),
+                              );
+                            }
+                          } finally {
+                            setSheetState(() => busy = false);
+                          }
+                        },
+                  icon: const Icon(TablerIcons.upload, size: 16),
+                  label: Text(locale.translate('hr_upload_document')),
+                ),
+              ),
+            if (docs.isEmpty)
+              Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Center(
                   child: Column(
@@ -2259,12 +2462,9 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                     ],
                   ),
                 ),
-              );
-            }
-
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: docs.map((doc) {
+              )
+            else
+              ...docs.map((doc) {
                 return ListTile(
                   dense: true,
                   leading: const Icon(TablerIcons.file_text, size: 20),
@@ -2280,10 +2480,65 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                     ),
                     style: textStyles.captionSans.copyWith(fontSize: 12),
                   ),
+                  onTap: () async {
+                    try {
+                      final bytes = await repository.downloadEmployeeDocument(
+                        employeeId: emp.id,
+                        documentId: doc.id,
+                      );
+                      await _sharePdfBytes(bytes, doc.name);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              locale.translateMessage(e.toString()),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  trailing: canManage
+                      ? IconButton(
+                          icon: Icon(
+                            TablerIcons.trash,
+                            size: 18,
+                            color: colors.accentRed,
+                          ),
+                          onPressed: busy
+                              ? null
+                              : () async {
+                                  setSheetState(() => busy = true);
+                                  try {
+                                    await repository.deleteEmployeeDocument(
+                                      employeeId: emp.id,
+                                      documentId: doc.id,
+                                    );
+                                    await reload(setSheetState);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            locale.translateMessage(
+                                              e.toString(),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    setSheetState(() => busy = false);
+                                  }
+                                },
+                        )
+                      : null,
                 );
-              }).toList(),
-            );
-          },
+              }),
+          ],
         );
       },
     );
@@ -2295,12 +2550,14 @@ class _StaffTabWidget extends StatefulWidget {
   final String? period;
   final bool canManage;
   final void Function(BuildContext, Employee) onShowDocuments;
+  final void Function(BuildContext, Employee) onEditEmployee;
 
   const _StaffTabWidget({
     required this.state,
     this.period,
     required this.canManage,
     required this.onShowDocuments,
+    required this.onEditEmployee,
   });
 
   @override
@@ -2614,6 +2871,12 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
                       case 'docs':
                         widget.onShowDocuments(context, emp);
                         break;
+                      case 'edit':
+                        widget.onEditEmployee(context, emp);
+                        break;
+                      case 'delete':
+                        bloc.add(DeleteEmployeeRequested(emp.id));
+                        break;
                       case 'block':
                         bloc.add(BlockEmployeeRequested(emp.id));
                         break;
@@ -2629,6 +2892,16 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
                     }
                   },
                   itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          const Icon(TablerIcons.edit, size: 16),
+                          const SizedBox(width: 8),
+                          Text(locale.translate('common_edit')),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem(
                       value: 'docs',
                       child: Row(
@@ -2691,6 +2964,23 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
                           ],
                         ),
                       ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            TablerIcons.trash,
+                            size: 16,
+                            color: colors.accentRed,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            locale.translate('common_delete'),
+                            style: TextStyle(color: colors.accentRed),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
             ],

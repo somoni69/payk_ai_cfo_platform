@@ -4,6 +4,8 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
+import '../../../core/localization/locale_number_format.dart';
+import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
@@ -753,6 +755,24 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
+    if (widget.section == StrategySection.macro) {
+      return FloatingActionButton.extended(
+        heroTag: null,
+        onPressed: () => _showCreateMacroSheet(context),
+        backgroundColor: colors.brand,
+        foregroundColor: colors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        icon: const Icon(TablerIcons.plus),
+        label: Text(
+          locale.translate('strategy_add_macro'),
+          style: textStyles.bodySans.copyWith(
+            color: colors.surface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
     if (widget.section == StrategySection.scenarios) {
       return FloatingActionButton.extended(
         heroTag: null,
@@ -774,6 +794,67 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
       );
     }
     return null;
+  }
+
+  void _showCreateMacroSheet(BuildContext context) {
+    final locale = context.read<LanguageCubit>();
+    final nameCtrl = TextEditingController();
+    final valueCtrl = TextEditingController();
+    final unitCtrl = TextEditingController();
+    LedgerBottomSheet.show(
+      context: context,
+      title: locale.translate('strategy_add_macro'),
+      builder: (context, setSheetState) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: nameCtrl,
+            decoration: InputDecoration(
+              labelText: locale.translate('strategy_macro_name'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: valueCtrl,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: locale.translate('strategy_macro_value'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: unitCtrl,
+            decoration: InputDecoration(
+              labelText: locale.translate('strategy_macro_unit'),
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                final value = parseLocalizedNumber(
+                  context,
+                  valueCtrl.text.trim(),
+                );
+                if (nameCtrl.text.trim().isEmpty || value == null) return;
+                context.read<StrategyBloc>().add(
+                  CreateMacroIndicatorRequested(
+                    name: nameCtrl.text.trim(),
+                    value: value,
+                    unit: unitCtrl.text.trim().isEmpty
+                        ? null
+                        : unitCtrl.text.trim(),
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              child: Text(locale.translate('common_create')),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildWhatIfTab(BuildContext context) {
@@ -1213,12 +1294,31 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                   ),
                 )
               else ...[
-                Text(
-                  localeCubit.translate(
-                    'strategy_analysis_period',
-                    params: {'period': analysis.period},
-                  ),
-                  style: textStyles.smallSans,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        localeCubit.translate(
+                          'strategy_analysis_period',
+                          params: {'period': analysis.period},
+                        ),
+                        style: textStyles.smallSans,
+                      ),
+                    ),
+                    if (_canManageStrategy(context))
+                      IconButton(
+                        icon: Icon(
+                          TablerIcons.trash,
+                          size: 18,
+                          color: colors.accentRed,
+                        ),
+                        onPressed: () {
+                          context.read<StrategyBloc>().add(
+                            DeleteAnalysisRequested(analysis.id),
+                          );
+                        },
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 if (analysis.type == 'swot')
@@ -1592,6 +1692,19 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                         color: colors.brand,
                       ),
                     ),
+                    if (_canManageStrategy(context))
+                      IconButton(
+                        icon: Icon(
+                          TablerIcons.trash,
+                          size: 18,
+                          color: colors.accentRed,
+                        ),
+                        onPressed: () {
+                          context.read<StrategyBloc>().add(
+                            DeleteMacroIndicatorRequested(m.id),
+                          );
+                        },
+                      ),
                   ],
                 ),
               );
@@ -1753,6 +1866,22 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                               height: 1.3,
                             ),
                           ),
+                          if (_canManageStrategy(context))
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: IconButton(
+                                icon: Icon(
+                                  TablerIcons.trash,
+                                  size: 18,
+                                  color: colors.accentRed,
+                                ),
+                                onPressed: () {
+                                  context.read<StrategyBloc>().add(
+                                    DeleteScenarioRequested(s.id),
+                                  );
+                                },
+                              ),
+                            ),
                         ],
                       ),
                     );

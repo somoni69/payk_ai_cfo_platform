@@ -76,6 +76,7 @@ class StrategyState extends Equatable {
     bool? isNewsLoading,
     String? errorMessage,
     bool clearError = false,
+    bool clearLatestAnalysis = false,
   }) {
     return StrategyState(
       isWhatIfLoading: isWhatIfLoading ?? this.isWhatIfLoading,
@@ -85,7 +86,9 @@ class StrategyState extends Equatable {
       isAnalysisLoading: isAnalysisLoading ?? this.isAnalysisLoading,
       analyses: analyses ?? this.analyses,
       isGeneratingAnalysis: isGeneratingAnalysis ?? this.isGeneratingAnalysis,
-      latestAnalysis: latestAnalysis ?? this.latestAnalysis,
+      latestAnalysis: clearLatestAnalysis
+          ? latestAnalysis
+          : (latestAnalysis ?? this.latestAnalysis),
       macro: macro ?? this.macro,
       macroLoaded: macroLoaded ?? this.macroLoaded,
       isMacroLoading: isMacroLoading ?? this.isMacroLoading,

@@ -67,6 +67,24 @@ class PublishPostRequested extends MarketingEvent {
   List<Object?> get props => [id];
 }
 
+class DeleteCampaignRequested extends MarketingEvent {
+  final String id;
+
+  const DeleteCampaignRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
+class DeletePostRequested extends MarketingEvent {
+  final String id;
+
+  const DeletePostRequested(this.id);
+
+  @override
+  List<Object?> get props => [id];
+}
+
 class GenerateIdeasRequested extends MarketingEvent {
   final String prompt;
 

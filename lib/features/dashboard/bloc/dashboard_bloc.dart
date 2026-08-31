@@ -30,10 +30,15 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   Future<ExchangeRatesReport>? _ratesRequest;
   int _currencyRevision = 0;
   int _abcRevision = 0;
+  DateTime? _reportDateFrom;
+  DateTime? _reportDateTo;
+  String? _planPeriod;
 
   DashboardBloc(this._repository) : super(DashboardLoading()) {
     on<LoadDashboardData>(_onLoadDashboardData);
     on<LoadDashboardSection>(_onLoadDashboardSection);
+    on<SetFinanceReportPeriod>(_onSetFinanceReportPeriod);
+    on<SetPlanFactPeriod>(_onSetPlanFactPeriod);
     on<ChangeCurrency>(_onChangeCurrency);
     on<ChangeAbcDimension>(_onChangeAbcDimension);
     on<CreatePlanRequested>(_onCreatePlan);
@@ -118,6 +123,29 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     }
   }
 
+  Future<void> _onSetFinanceReportPeriod(
+    SetFinanceReportPeriod event,
+    Emitter<DashboardState> emit,
+  ) async {
+    _reportDateFrom = event.dateFrom;
+    _reportDateTo = event.dateTo;
+    _cachedPnl = null;
+    _cachedBreakEven = null;
+    _cachedAbc = null;
+    await _loadSection(DashboardSection.pnl, emit, forceRefresh: true);
+    await _loadSection(DashboardSection.breakEven, emit, forceRefresh: true);
+    await _loadSection(DashboardSection.abc, emit, forceRefresh: true);
+  }
+
+  Future<void> _onSetPlanFactPeriod(
+    SetPlanFactPeriod event,
+    Emitter<DashboardState> emit,
+  ) async {
+    _planPeriod = event.period;
+    _cachedPlanFact = null;
+    await _loadSection(DashboardSection.planFact, emit, forceRefresh: true);
+  }
+
   Future<void> _onLoadDashboardSection(
     LoadDashboardSection event,
     Emitter<DashboardState> emit,
@@ -172,19 +200,29 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     try {
       switch (section) {
         case DashboardSection.pnl:
-          _cachedPnl = await _repository.getPnlReport();
+          _cachedPnl = await _repository.getPnlReport(
+            dateFrom: _reportDateFrom,
+            dateTo: _reportDateTo,
+          );
           break;
         case DashboardSection.planFact:
-          _cachedPlanFact = await _repository.getPlanFactReport();
+          _cachedPlanFact = await _repository.getPlanFactReport(
+            period: _planPeriod,
+          );
           break;
         case DashboardSection.breakEven:
-          _cachedBreakEven = await _repository.getBreakEvenAnalysis();
+          _cachedBreakEven = await _repository.getBreakEvenAnalysis(
+            dateFrom: _reportDateFrom,
+            dateTo: _reportDateTo,
+          );
           break;
         case DashboardSection.abc:
           final abc = await _repository.getAbcAnalysis(
             AbcDimensions.toApi(
               _cachedAbc?.dimension ?? AbcDimensions.category,
             ),
+            dateFrom: _reportDateFrom,
+            dateTo: _reportDateTo,
           );
           if (abcRevision == _abcRevision) {
             _cachedAbc = abc;
@@ -374,6 +412,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         loadingSections: Set.unmodifiable(_loadingSections),
         sectionErrors: Map.unmodifiable(_sectionErrors),
         overviewError: overviewError,
+        reportDateFrom: _reportDateFrom,
+        reportDateTo: _reportDateTo,
+        planPeriod: _planPeriod,
       ),
     );
   }
@@ -389,7 +430,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         type: event.type,
         plannedAmount: event.plannedAmount,
       );
-      _cachedPlanFact = await _repository.getPlanFactReport();
+      _cachedPlanFact = await _repository.getPlanFactReport(
+        period: _planPeriod,
+      );
       if (state is DashboardLoaded) {
         emit(
           (state as DashboardLoaded).copyWith(
@@ -612,6 +655,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       expensesDelta: base.expensesDelta,
       netProfitDelta: base.netProfitDelta,
       cashForecastDelta: base.cashForecastDelta,
+      operationsCount: base.operationsCount,
+      avgCheck: _convert(base.avgCheck, targetCurrency),
     );
   }
 

@@ -342,6 +342,40 @@ class ApiLegalRepository
   }
 
   @override
+  Future<ContractTemplate> updateTemplate({
+    required String id,
+    String? name,
+    String? body,
+    String? category,
+  }) async {
+    final response = await _apiClient.dio.patch(
+      '/legal/templates/$id',
+      data: {
+        'name': ?name,
+        'body': ?body,
+        'category': ?category,
+      },
+    );
+    _templatesCache.invalidate();
+    return _mapTemplate(Map<String, dynamic>.from(response.data as Map));
+  }
+
+  @override
+  Future<void> deleteTemplate(String id) async {
+    await _apiClient.dio.delete('/legal/templates/$id');
+    _templatesCache.invalidate();
+  }
+
+  @override
+  Future<List<int>> exportGeneratedContract(String contractId) async {
+    final response = await _apiClient.dio.get<List<int>>(
+      '/legal/contracts/$contractId/export',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? <int>[];
+  }
+
+  @override
   void cancelPendingRequests() {
     _contractCancelToken?.cancel('Экран закрыт');
     _lawyerCancelToken?.cancel('Экран закрыт');

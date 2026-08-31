@@ -941,6 +941,9 @@ class AuditSectionScreen extends StatelessWidget {
                             style: textStyles.bodySans.copyWith(
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
+                              decoration: alt.isResolved
+                                  ? TextDecoration.lineThrough
+                                  : null,
                             ),
                           ),
                         ),
@@ -969,6 +972,26 @@ class AuditSectionScreen extends StatelessWidget {
                       language.translateMessage(alt.message),
                       style: textStyles.captionSans.copyWith(
                         color: colors.textSecondary,
+                      ),
+                    ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () {
+                          context.read<AuditBloc>().add(
+                            ResolveAlertRequested(
+                              alt.id,
+                              isResolved: !alt.isResolved,
+                            ),
+                          );
+                        },
+                        child: Text(
+                          language.translate(
+                            alt.isResolved
+                                ? 'audit_reopen'
+                                : 'audit_resolve',
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -1023,6 +1046,15 @@ class AuditSectionScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (state.weekly != null) ...[
+                  Text(
+                    '${state.weekly!.operationsCount} · ${state.weekly!.alertsCount}',
+                    style: textStyles.bodyMono.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
