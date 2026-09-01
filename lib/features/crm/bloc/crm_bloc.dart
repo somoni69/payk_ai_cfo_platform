@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/crm_models.dart';
 import '../domain/crm_repository.dart';
 import 'crm_event.dart';
@@ -105,7 +106,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
       );
     } catch (e) {
       if (generation != _loadGeneration) return;
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: 'crm_error_load');
       if (previous != null) {
         emit(
           previous.copyWith(
@@ -115,10 +116,6 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         );
       } else {
         emit(CrmError(key.startsWith('error_') ? key : 'crm_error_load'));
-      }
-    } finally {
-      if (event.completion?.isCompleted == false) {
-        event.completion!.complete();
       }
     }
   }
@@ -170,7 +167,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           isRefreshing: false,
@@ -235,7 +232,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           isRefreshing: false,
@@ -259,7 +256,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         successMessage: 'crm_success_client_created',
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -293,7 +290,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
             : current.detailClient,
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -317,7 +314,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         clearDetail: current.detailClient?.id == event.id,
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -351,7 +348,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         add(LoadClientDetailRequested(event.clientId));
       }
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -380,7 +377,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         successMessage: 'crm_success_deal_created',
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -409,7 +406,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         successMessage: 'crm_success_deal_updated',
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -432,7 +429,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         successMessage: 'crm_success_deal_deleted',
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -458,7 +455,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         add(LoadClientDetailRequested(event.clientId));
       }
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',
@@ -484,7 +481,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_sms',
@@ -515,7 +512,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           churnAnalyzing: false,
@@ -548,7 +545,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           detailLoading: false,
@@ -601,7 +598,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           loyaltyTxnsLoading: false,
@@ -640,7 +637,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         ),
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           loyaltyTxnsLoadingMore: false,
@@ -665,7 +662,7 @@ class CrmBloc extends Bloc<CrmEvent, CrmState> {
         successMessage: 'crm_success_deal_updated',
       );
     } catch (e) {
-      final key = e.toString().replaceAll('Exception: ', '');
+      final key = userFacingError(e, fallback: ErrorKeys.saveFailed);
       emit(
         current.copyWith(
           errorMessage: key.startsWith('error_') ? key : 'crm_error_save',

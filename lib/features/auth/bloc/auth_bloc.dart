@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_client.dart';
@@ -7,6 +8,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/secure_storage_provider.dart';
 import '../../network/data/api_network_repository.dart';
+import '../../network/domain/network_repository.dart';
 import '../data/api_auth_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -42,7 +44,8 @@ class DeviceBiometricAuthenticator implements BiometricAuthenticator {
 }
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final ApiAuthRepository _authRepository;
+  final AuthRepository _authRepository;
+  final NetworkRepository _networkRepository;
   final BiometricAuthenticator _biometricAuthenticator;
   final FlutterSecureStorage _storage;
 
@@ -55,59 +58,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// during verify (so a failed verify can restore the challenge UI).
   AuthTwoFactorRequired? _pendingTwoFactor;
 
+  Completer<void>? _inFlightAuth;
+
   AuthBloc({
-    ApiAuthRepository? authRepository,
+    AuthRepository? authRepository,
+    NetworkRepository? networkRepository,
     BiometricAuthenticator? biometricAuthenticator,
     FlutterSecureStorage? storage,
   }) : _authRepository = authRepository ?? ApiAuthRepository(),
+       _networkRepository = networkRepository ?? ApiNetworkRepository(),
        _biometricAuthenticator =
            biometricAuthenticator ?? DeviceBiometricAuthenticator(),
        _storage = storage ?? AppSecureStorage.instance,
        super(AuthInitial()) {
-    on<AuthEvent>(
-      _onAuthEvent,
-      transformer: (events, mapper) => events.asyncExpand(mapper),
+    on<CheckAuthStatus>(_onCheckAuthStatus, transformer: restartable());
+    on<LoginSubmitted>(_onLoginSubmitted);
+    on<TwoFactorSubmitted>(_onTwoFactorSubmitted, transformer: droppable());
+    on<TwoFactorCancelled>(_onTwoFactorCancelled);
+    on<BiometricLoginRequested>(
+      _onBiometricLoginRequested,
+      transformer: droppable(),
     );
+    on<SessionSoftExpiryReached>(
+      _onSessionSoftExpiry,
+      transformer: restartable(),
+    );
+    on<ActingStoreUpdated>(_onActingStoreUpdated);
+    on<LogoutRequested>(_onLogoutRequested);
   }
 
   @override
   Future<void> close() {
     _cancelSessionWatchdog();
     return super.close();
-  }
-
-  Future<void> _onAuthEvent(AuthEvent event, Emitter<AuthState> emit) async {
-    if (event is CheckAuthStatus) {
-      await _onCheckAuthStatus(event, emit);
-      return;
-    }
-    if (event is LoginSubmitted) {
-      await _onLoginSubmitted(event, emit);
-      return;
-    }
-    if (event is TwoFactorSubmitted) {
-      await _onTwoFactorSubmitted(event, emit);
-      return;
-    }
-    if (event is TwoFactorCancelled) {
-      _onTwoFactorCancelled(emit);
-      return;
-    }
-    if (event is BiometricLoginRequested) {
-      await _onBiometricLoginRequested(event, emit);
-      return;
-    }
-    if (event is SessionSoftExpiryReached) {
-      await _onSessionSoftExpiry(event, emit);
-      return;
-    }
-    if (event is ActingStoreUpdated) {
-      _onActingStoreUpdated(event, emit);
-      return;
-    }
-    if (event is LogoutRequested) {
-      await _onLogoutRequested(event, emit);
-    }
   }
 
   void _onActingStoreUpdated(
@@ -150,8 +133,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
+    // SEC-04: If biometrics are disabled or not configured, cold start requires
+    // explicit authentication (login credentials) instead of a silent autologin bypass.
     if (!useBiometrics) {
-      await _emitAuthenticated(emit, user);
+      _cancelSessionWatchdog();
+      emit(AuthUnauthenticated());
       return;
     }
 
@@ -181,6 +167,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LoginSubmitted event,
     Emitter<AuthState> emit,
   ) async {
+    final completer = Completer<void>();
+    _inFlightAuth = completer;
     emit(AuthLoading());
     _pendingTwoFactor = null;
     try {
@@ -203,7 +191,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     } catch (e) {
       _cancelSessionWatchdog();
-      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
+      emit(AuthError(userFacingError(e, fallback: ErrorKeys.loginFailed)));
+    } finally {
+      completer.complete();
+      if (_inFlightAuth == completer) {
+        _inFlightAuth = null;
+      }
     }
   }
 
@@ -247,12 +240,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     } catch (e) {
       _pendingTwoFactor = challenge;
-      emit(AuthError(e.toString().replaceAll('Exception: ', '')));
+      emit(AuthError(userFacingError(e, fallback: ErrorKeys.twoFactorFailed)));
       emit(challenge);
     }
   }
 
-  void _onTwoFactorCancelled(Emitter<AuthState> emit) {
+  void _onTwoFactorCancelled(
+    TwoFactorCancelled event,
+    Emitter<AuthState> emit,
+  ) {
     _pendingTwoFactor = null;
     _cancelSessionWatchdog();
     emit(AuthUnauthenticated());
@@ -332,10 +328,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     var storeName = user.storeName;
     if (user.role == UserRole.owner) {
       try {
-        final repo = ApiNetworkRepository();
-        final acting = await repo.getActingStore();
+        final acting = await _networkRepository.getActingStore();
         if (storeId == null) {
-          if (acting != null) await repo.clearActingStore();
+          if (acting != null) await _networkRepository.clearActingStore();
         } else if (acting != null && acting.id == storeId) {
           if (storeName == null || storeName.isEmpty) {
             storeName = acting.name;
@@ -382,12 +377,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     LogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
+    if (_inFlightAuth != null) {
+      await _inFlightAuth!.future;
+    }
     _cancelSessionWatchdog();
     _pendingTwoFactor = null;
     emit(AuthLoading());
     await _authRepository.logout();
     try {
-      await ApiNetworkRepository().clearActingStore();
+      await _networkRepository.clearActingStore();
     } catch (_) {}
     emit(AuthUnauthenticated());
   }

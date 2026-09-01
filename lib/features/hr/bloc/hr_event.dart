@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 import '../domain/hr_models.dart';
 
@@ -14,9 +12,8 @@ abstract class HrEvent extends Equatable {
 class LoadHrData extends HrEvent {
   final String period;
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadHrData(this.period, {this.forceRefresh = false, this.completion});
+  const LoadHrData(this.period, {this.forceRefresh = false});
 
   @override
   List<Object?> get props => [period, forceRefresh];
@@ -28,13 +25,8 @@ enum HrSection { org, attendance, recruitment, nineBox, contracts, movement }
 class LoadHrSection extends HrEvent {
   final HrSection section;
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadHrSection(
-    this.section, {
-    this.forceRefresh = false,
-    this.completion,
-  });
+  const LoadHrSection(this.section, {this.forceRefresh = false});
 
   @override
   List<Object?> get props => [section, forceRefresh];

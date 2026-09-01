@@ -133,11 +133,11 @@ void main() {
     );
 
     expect(bloc.state, isA<AuthInitial>());
-    final authenticated = bloc.stream.firstWhere(
-      (state) => state is AuthAuthenticated,
+    final unauthenticated = bloc.stream.firstWhere(
+      (state) => state is AuthUnauthenticated,
     );
     bloc.add(CheckAuthStatus());
-    await authenticated;
+    await unauthenticated;
 
     expect(biometrics.capabilityCalls, 0);
     expect(biometrics.authenticateCalls, 0);

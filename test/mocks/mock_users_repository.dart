@@ -1,5 +1,5 @@
-import '../domain/user_models.dart';
-import '../domain/users_repository.dart';
+import 'package:payk_ai_cfo_platform/features/users/domain/user_models.dart';
+import 'package:payk_ai_cfo_platform/features/users/domain/users_repository.dart';
 
 class MockUsersRepository implements UsersRepository {
   final List<UserProfile> _users = [
@@ -40,7 +40,6 @@ class MockUsersRepository implements UsersRepository {
 
   @override
   Future<List<UserProfile>> getUsers({String? search}) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     if (search != null && search.isNotEmpty) {
       final term = search.toLowerCase();
       return _users
@@ -65,7 +64,6 @@ class MockUsersRepository implements UsersRepository {
     required bool active,
     required bool twoFactor,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final user = UserProfile(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       fullName: fullName,
@@ -92,7 +90,6 @@ class MockUsersRepository implements UsersRepository {
     bool? active,
     bool? twoFactor,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final idx = _users.indexWhere((u) => u.id == id);
     if (idx != -1) {
       final existing = _users[idx];
@@ -115,13 +112,11 @@ class MockUsersRepository implements UsersRepository {
 
   @override
   Future<void> deleteUser(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     _users.removeWhere((u) => u.id == id);
   }
 
   @override
   Future<PermissionMatrix> getPermissionMatrix() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     const modules = [
       'dashboard',
       'cash',
@@ -168,8 +163,6 @@ class MockUsersRepository implements UsersRepository {
 
   @override
   Future<PermissionMatrix> updatePermissions(List<PermissionCell> cells) async {
-    await Future.delayed(const Duration(milliseconds: 80));
-    // Mock: return full matrix with provided cells applied on top of defaults.
     final base = await getPermissionMatrix();
     final map = base.cellMap;
     for (final c in cells) {

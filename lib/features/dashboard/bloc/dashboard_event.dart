@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 
 abstract class DashboardEvent extends Equatable {
@@ -81,13 +79,8 @@ class RefreshRatesRequested extends DashboardEvent {
 class LoadDashboardData extends DashboardEvent {
   final bool forceRefresh;
   final bool clearCache;
-  final Completer<void>? completion;
 
-  const LoadDashboardData({
-    this.forceRefresh = false,
-    this.clearCache = false,
-    this.completion,
-  });
+  const LoadDashboardData({this.forceRefresh = false, this.clearCache = false});
 
   @override
   List<Object?> get props => [forceRefresh, clearCache];
@@ -133,13 +126,8 @@ class SetPlanFactPeriod extends DashboardEvent {
 class LoadDashboardSection extends DashboardEvent {
   final DashboardSection section;
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadDashboardSection(
-    this.section, {
-    this.forceRefresh = false,
-    this.completion,
-  });
+  const LoadDashboardSection(this.section, {this.forceRefresh = false});
 
   @override
   List<Object?> get props => [section, forceRefresh];
@@ -162,9 +150,8 @@ class SaveOneCLinkRequested extends DashboardEvent {
 
 class RefreshOneCReconcileRequested extends DashboardEvent {
   final String? day;
-  final Completer<void>? completion;
 
-  const RefreshOneCReconcileRequested({this.day, this.completion});
+  const RefreshOneCReconcileRequested({this.day});
 
   @override
   List<Object?> get props => [day];

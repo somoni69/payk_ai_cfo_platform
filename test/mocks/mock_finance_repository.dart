@@ -1,7 +1,7 @@
-import '../domain/finance_model.dart';
-import '../domain/finance_repository.dart';
+import 'package:payk_ai_cfo_platform/features/dashboard/domain/finance_model.dart';
+import 'package:payk_ai_cfo_platform/features/dashboard/domain/finance_repository.dart';
 
-/// Моковая реализация репозитория финансов для локального тестирования.
+/// Mock finance repository for tests.
 class MockFinanceRepository implements FinanceRepository {
   @override
   Future<FinanceOverview> getOverview({bool forceRefresh = false}) async {
@@ -14,9 +14,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<FinanceMetrics> getMetrics() async {
-    // Имитируем небольшую задержку сети
-    await Future.delayed(const Duration(milliseconds: 300));
-
     return const FinanceMetrics(
       cashBalance: 142500.0,
       revenue: 320800.0,
@@ -34,8 +31,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<List<CashFlowPoint>> getCashFlowHistory() async {
-    await Future.delayed(const Duration(milliseconds: 200));
-
     final today = DateTime.now();
     final List<CashFlowPoint> points = [];
 
@@ -112,7 +107,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<PnlReport> getPnlReport({DateTime? dateFrom, DateTime? dateTo}) async {
-    await Future.delayed(const Duration(milliseconds: 150));
     return const PnlReport(
       income: [
         PnlRow(category: 'Розничная выручка', amount: 285000.0, share: 88.8),
@@ -135,7 +129,6 @@ class MockFinanceRepository implements FinanceRepository {
     DateTime? dateFrom,
     DateTime? dateTo,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return const BreakEvenAnalysis(
       revenue: 320800.0,
       fixedCosts: 83400.0,
@@ -152,7 +145,6 @@ class MockFinanceRepository implements FinanceRepository {
     DateTime? dateFrom,
     DateTime? dateTo,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 150));
     if (AbcDimensions.toApi(dimension) == AbcDimensions.counterparty) {
       return const AbcAnalysis(
         dimension: AbcDimensions.counterparty,
@@ -228,7 +220,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<BankAccountsReport> getBankAccounts() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return const BankAccountsReport(
       accounts: [
         BankAccountInfo(
@@ -248,13 +239,12 @@ class MockFinanceRepository implements FinanceRepository {
           balance: 4000.0,
         ),
       ],
-      totalTjs: 139000.0, // 95000 + 4000 * 11.0
+      totalTjs: 139000.0,
     );
   }
 
   @override
   Future<ExchangeRatesReport> getExchangeRates() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return ExchangeRatesReport(
       rates: [
         RateRow(code: 'USD', rate: 11.0, rateDate: DateTime.now()),
@@ -277,7 +267,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<AiInsightsReport> getAiInsights() async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return const AiInsightsReport(
       forecast: CashGapForecast(
         atRisk: false,
@@ -295,7 +284,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<PlanFactReport> getPlanFactReport({String? period}) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return const PlanFactReport(
       period: '2026-07',
       rows: [
@@ -355,7 +343,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<ClientAnalysisReport> getClientAnalysis() async {
-    await Future.delayed(const Duration(milliseconds: 80));
     return ClientAnalysisReport(
       frequent: [
         ClientAnalysisRow(
@@ -443,7 +430,6 @@ class MockFinanceRepository implements FinanceRepository {
     String? day,
     bool forceRefresh = false,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 150));
     return const OneCReconcileReport(
       date: '2026-08-25',
       totalOnec: 125400.0,
@@ -476,7 +462,6 @@ class MockFinanceRepository implements FinanceRepository {
 
   @override
   Future<List<OneCTarget>> getOneCTargets({bool forceRefresh = false}) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return const [
       OneCTarget(
         kind: 'register',
@@ -494,7 +479,5 @@ class MockFinanceRepository implements FinanceRepository {
   }
 
   @override
-  Future<void> saveOneCLink(OneCLinkInput input) async {
-    await Future.delayed(const Duration(milliseconds: 100));
-  }
+  Future<void> saveOneCLink(OneCLinkInput input) async {}
 }

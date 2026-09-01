@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 import '../domain/crm_models.dart';
 
@@ -12,9 +10,8 @@ abstract class CrmEvent extends Equatable {
 
 class LoadCrmData extends CrmEvent {
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadCrmData({this.forceRefresh = false, this.completion});
+  const LoadCrmData({this.forceRefresh = false});
 
   @override
   List<Object?> get props => [forceRefresh];

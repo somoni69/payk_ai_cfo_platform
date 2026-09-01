@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/models/ui_feedback.dart';
 import '../domain/warehouse_models.dart';
 
 abstract class WarehouseState extends Equatable {
@@ -21,6 +22,7 @@ class WarehouseLoaded extends WarehouseState {
   final String? analysisError;
   final bool isPdfDownloading;
   final List<int>? pdfBytes;
+  final UiFeedback? feedback;
   final String? errorMessage;
   final String? successMessage;
 
@@ -35,6 +37,7 @@ class WarehouseLoaded extends WarehouseState {
     this.analysisError,
     this.isPdfDownloading = false,
     this.pdfBytes,
+    this.feedback,
     this.errorMessage,
     this.successMessage,
   });
@@ -50,6 +53,8 @@ class WarehouseLoaded extends WarehouseState {
     String? analysisError,
     bool? isPdfDownloading,
     List<int>? pdfBytes,
+    UiFeedback? feedback,
+    bool clearFeedback = false,
     String? errorMessage,
     String? successMessage,
     bool clearError = false,
@@ -73,6 +78,7 @@ class WarehouseLoaded extends WarehouseState {
           : (analysisError ?? this.analysisError),
       isPdfDownloading: isPdfDownloading ?? this.isPdfDownloading,
       pdfBytes: clearPdf ? null : (pdfBytes ?? this.pdfBytes),
+      feedback: clearFeedback ? null : (feedback ?? this.feedback),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       successMessage: clearSuccess
           ? null
@@ -92,6 +98,7 @@ class WarehouseLoaded extends WarehouseState {
     analysisError,
     isPdfDownloading,
     pdfBytes,
+    feedback,
     errorMessage,
     successMessage,
   ];

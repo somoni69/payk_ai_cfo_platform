@@ -57,10 +57,38 @@ void main() {
       expect(project, contains(r'$DEVELOPMENT_TEAM'));
     });
 
-    test('CI compiles the release variant explicitly', () {
+    test(
+      'Android production release enables R8 minification and proguard rules',
+      () {
+        final gradle = _read('android/app/build.gradle.kts');
+        final proguard = _read('android/app/proguard-rules.pro');
+
+        expect(gradle, contains('isMinifyEnabled = true'));
+        expect(gradle, contains('isShrinkResources = true'));
+        expect(gradle, contains('proguard-rules.pro'));
+        expect(proguard, contains('-keep class io.flutter.app.**'));
+        expect(proguard, contains('-keep class androidx.biometric.**'));
+        expect(proguard, contains('-keep class androidx.security.crypto.**'));
+      },
+    );
+
+    test('Android MainActivity allows screenshots (no FLAG_SECURE constraint)', () {
+      final mainActivity = _read(
+        'android/app/src/main/kotlin/com/example/payk_ai_cfo_platform/MainActivity.kt',
+      );
+
+      expect(mainActivity, isNot(contains('FLAG_SECURE')));
+    });
+
+    test('CI compiles the release variant explicitly with obfuscation', () {
       final workflow = _read('.github/workflows/flutter_quality.yml');
 
       expect(workflow, contains('flutter build apk --release --no-pub'));
+      expect(workflow, contains('--obfuscate'));
+      expect(
+        workflow,
+        contains('--split-debug-info=build/app/outputs/symbols'),
+      );
       expect(
         workflow,
         contains('ORG_GRADLE_PROJECT_allowUnsafeRelease: "true"'),

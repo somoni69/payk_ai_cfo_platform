@@ -48,3 +48,20 @@ app.*.map.json
 android/.gradle/
 android/build/
 android/app/build/
+
+# Android signing & keystores (SEC-01)
+key.properties
+android/key.properties
+*.jks
+*.keystore
+android/app/*.jks
+android/app/*.keystore
+
+# Agents & AI temp logs
+.agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md
+
+

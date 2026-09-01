@@ -126,6 +126,9 @@ class _StrategyViewState extends State<StrategyView> {
         ),
       ),
       body: BlocListener<StrategyBloc, StrategyState>(
+        listenWhen: (previous, current) =>
+            current.errorMessage != null &&
+            previous.errorMessage != current.errorMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +140,13 @@ class _StrategyViewState extends State<StrategyView> {
           }
         },
         child: BlocBuilder<StrategyBloc, StrategyState>(
+          buildWhen: (previous, current) =>
+              previous.summaryLoaded != current.summaryLoaded ||
+              previous.scenariosLoaded != current.scenariosLoaded ||
+              previous.isSummaryLoading != current.isSummaryLoading ||
+              previous.isScenariosLoading != current.isScenariosLoading ||
+              previous.dailySummary != current.dailySummary ||
+              previous.scenarios != current.scenarios,
           builder: (context, state) {
             if (!state.summaryLoaded &&
                 !state.scenariosLoaded &&
@@ -863,6 +873,9 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isWhatIfLoading != current.isWhatIfLoading ||
+          previous.whatIfAnswer != current.whatIfAnswer,
       builder: (context, state) {
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -989,6 +1002,9 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isMarketingLoading != current.isMarketingLoading ||
+          previous.marketingIdeas != current.marketingIdeas,
       builder: (context, state) {
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -1138,6 +1154,9 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isAnalysisLoading != current.isAnalysisLoading ||
+          previous.latestAnalysis != current.latestAnalysis,
       builder: (context, state) {
         final analysis = state.latestAnalysis;
 
@@ -1626,6 +1645,10 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final locale = context.watch<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isMacroLoading != current.isMacroLoading ||
+          previous.macroLoaded != current.macroLoaded ||
+          previous.macro != current.macro,
       builder: (context, state) {
         if (state.isMacroLoading && !state.macroLoaded) {
           return const StrategyOverviewShimmer();
@@ -1721,6 +1744,10 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final locale = context.watch<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isNewsLoading != current.isNewsLoading ||
+          previous.newsLoaded != current.newsLoaded ||
+          previous.news != current.news,
       builder: (context, state) {
         if (state.isNewsLoading && !state.newsLoaded) {
           return const StrategyOverviewShimmer();
@@ -1802,6 +1829,10 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final locale = context.watch<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isScenariosLoading != current.isScenariosLoading ||
+          previous.scenariosLoaded != current.scenariosLoaded ||
+          previous.scenarios != current.scenarios,
       builder: (context, state) {
         if (state.isScenariosLoading && !state.scenariosLoaded) {
           return const StrategyOverviewShimmer();
@@ -1898,6 +1929,10 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final locale = context.watch<LanguageCubit>();
 
     return BlocBuilder<StrategyBloc, StrategyState>(
+      buildWhen: (previous, current) =>
+          previous.isSummaryLoading != current.isSummaryLoading ||
+          previous.summaryLoaded != current.summaryLoaded ||
+          previous.dailySummary != current.dailySummary,
       builder: (context, state) {
         if (state.isSummaryLoading && !state.summaryLoaded) {
           return const StrategyOverviewShimmer();

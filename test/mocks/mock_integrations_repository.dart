@@ -1,5 +1,5 @@
-import '../domain/integrations_models.dart';
-import '../domain/integrations_repository.dart';
+import 'package:payk_ai_cfo_platform/features/integrations/domain/integrations_models.dart';
+import 'package:payk_ai_cfo_platform/features/integrations/domain/integrations_repository.dart';
 
 class MockIntegrationsRepository implements IntegrationsRepository {
   final List<IntegrationInfo> _statusList = [
@@ -50,19 +50,16 @@ class MockIntegrationsRepository implements IntegrationsRepository {
   Future<List<IntegrationInfo>> getIntegrationsStatus({
     bool forceRefresh = false,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return _statusList;
   }
 
   @override
   Future<List<SyncLog>> getSyncLogs({bool forceRefresh = false}) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return _logs;
   }
 
   @override
   Future<SyncResult> triggerSync(String system) async {
-    await Future.delayed(const Duration(milliseconds: 800));
     if (system == 'wildberries') {
       return const SyncResult(
         system: 'wildberries',
@@ -84,8 +81,8 @@ class MockIntegrationsRepository implements IntegrationsRepository {
     );
     _logs.insert(0, newLog);
 
-    return SyncResult(
-      system: system,
+    return const SyncResult(
+      system: '1c',
       success: true,
       records: 4,
       message: 'Синхронизация завершена успешно.',
@@ -94,13 +91,11 @@ class MockIntegrationsRepository implements IntegrationsRepository {
 
   @override
   Future<SmsTestResult> testSms(String phone) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     return SmsTestResult(ok: true, phone: phone);
   }
 
   @override
   Future<AiProbeResult> testAi() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     return const AiProbeResult(
       ok: true,
       model: 'claude-3-5-sonnet',
@@ -110,7 +105,6 @@ class MockIntegrationsRepository implements IntegrationsRepository {
 
   @override
   Future<TelegramLinkInfo> getTelegramLink() async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return const TelegramLinkInfo(
       url: 'https://t.me/payk_bot?start=mock_token_123',
       appUrl: 'tg://resolve?domain=payk_bot&start=mock_token_123',

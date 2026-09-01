@@ -43,7 +43,16 @@ class MockCashTestRepository implements CashRepository {
     if (shouldFail) throw Exception('Get tx error');
     final gate = transactionGate;
     if (gate != null) return gate.future;
-    return List.from(transactions);
+    var list = List<Transaction>.from(transactions);
+    if (filters.type != null && filters.type != 'all') {
+      final isIncome = filters.type == 'income';
+      list = list.where((t) => t.isIncome == isIncome).toList();
+    }
+    if (filters.query != null && filters.query!.isNotEmpty) {
+      final q = filters.query!.toLowerCase();
+      list = list.where((t) => t.title.toLowerCase().contains(q)).toList();
+    }
+    return list;
   }
 
   @override
@@ -283,7 +292,7 @@ void main() {
         sub.cancel();
 
         expect(emitted, isNotEmpty);
-        final loaded = emitted.first as CashLoaded;
+        final loaded = emitted.last as CashLoaded;
         expect(loaded.transactions.length, 2);
         expect(loaded.transactions.first.title, 'Продажа сэндвича');
       },
@@ -359,27 +368,190 @@ void main() {
       () async {
         final gate = Completer<List<Transaction>>();
         repository.transactionGate = gate;
-        final first = Completer<void>();
-        final second = Completer<void>();
+
+        final future = bloc.stream.firstWhere((s) => s is CashLoaded);
 
         bloc
-          ..add(LoadCashData(completion: first))
-          ..add(LoadCashData(completion: second));
+          ..add(const LoadCashData())
+          ..add(const LoadCashData());
 
         await Future<void>.delayed(const Duration(milliseconds: 20));
         expect(repository.transactionReads, 1);
         expect(repository.summaryReads, 1);
         expect(repository.shiftReads, 1);
         expect(repository.registerReads, 1);
-        expect(first.isCompleted, false);
-        expect(second.isCompleted, false);
 
         gate.complete(List<Transaction>.from(repository.transactions));
-        await Future.wait<void>([first.future, second.future]);
+        await future;
 
         expect(bloc.state, isA<CashLoaded>());
-        expect(first.isCompleted, true);
-        expect(second.isCompleted, true);
+      },
+    );
+
+    test(
+      'OpenShiftRequested opens shift and updates active shift in state',
+      () async {
+        repository.activeShift = null;
+        bloc.add(LoadCashData());
+        await bloc.stream.firstWhere((s) => s is CashLoaded);
+
+        bloc.add(const OpenShiftRequested(500.0));
+
+        final state =
+            await bloc.stream.firstWhere(
+                  (s) =>
+                      s is CashLoaded &&
+                      s.activeShift != null &&
+                      s.activeShift!.isOpen,
+                )
+                as CashLoaded;
+
+        expect(state.activeShift?.startingBalance, 500.0);
+        expect(state.activeShift?.isOpen, isTrue);
+        expect(repository.activeShift?.startingBalance, 500.0);
+      },
+    );
+
+    test('CloseShiftRequested closes shift and clears active shift', () async {
+      bloc.add(LoadCashData());
+      await bloc.stream.firstWhere((s) => s is CashLoaded);
+
+      bloc.add(
+        const CloseShiftRequested(
+          1200.0,
+          note: 'Смена завершена без расхождений',
+        ),
+      );
+
+      final state =
+          await bloc.stream.firstWhere(
+                (s) =>
+                    s is CashLoaded &&
+                    (s.activeShift == null || !s.activeShift!.isOpen),
+              )
+              as CashLoaded;
+
+      expect(state.activeShift, isNull);
+      expect(repository.activeShift, isNull);
+    });
+
+    test(
+      'UpdateTransactionRequested modifies transaction in state and repository',
+      () async {
+        bloc.add(LoadCashData());
+        await bloc.stream.firstWhere((s) => s is CashLoaded);
+
+        final updatedTx = Transaction(
+          id: '1',
+          title: 'Кофе латте XL (обновлено)',
+          category: 'Напитки',
+          amount: 25.0,
+          isIncome: true,
+          paymentMethod: PaymentMethod.cash,
+          dateTime: DateTime(2026, 7, 18),
+          cashierName: 'Кассир',
+        );
+
+        bloc.add(UpdateTransactionRequested(updatedTx));
+
+        final state =
+            await bloc.stream.firstWhere(
+                  (s) =>
+                      s is CashLoaded &&
+                      s.transactions.any(
+                        (t) => t.id == '1' && t.amount == 25.0,
+                      ),
+                )
+                as CashLoaded;
+
+        expect(
+          state.transactions.firstWhere((t) => t.id == '1').title,
+          'Кофе латте XL (обновлено)',
+        );
+        expect(
+          repository.transactions.firstWhere((t) => t.id == '1').amount,
+          25.0,
+        );
+      },
+    );
+
+    test(
+      'DeleteTransactionRequested removes transaction from state and repository',
+      () async {
+        bloc.add(LoadCashData());
+        await bloc.stream.firstWhere((s) => s is CashLoaded);
+
+        expect((bloc.state as CashLoaded).transactions.length, 1);
+
+        bloc.add(const DeleteTransactionRequested('1'));
+
+        final state =
+            await bloc.stream.firstWhere(
+                  (s) => s is CashLoaded && s.transactions.isEmpty,
+                )
+                as CashLoaded;
+
+        expect(state.transactions, isEmpty);
+        expect(repository.transactions, isEmpty);
+      },
+    );
+
+    test(
+      'SearchFilterChanged filters transactions by type and query',
+      () async {
+        repository.transactions = [
+          Transaction(
+            id: '10',
+            title: 'Оплата аренды',
+            category: 'Аренда',
+            amount: 500.0,
+            isIncome: false,
+            paymentMethod: PaymentMethod.card,
+            dateTime: DateTime(2026, 7, 18),
+            cashierName: 'Бухгалтер',
+          ),
+          Transaction(
+            id: '11',
+            title: 'Продажа десерта',
+            category: 'Еда',
+            amount: 35.0,
+            isIncome: true,
+            paymentMethod: PaymentMethod.cash,
+            dateTime: DateTime(2026, 7, 18),
+            cashierName: 'Кассир',
+          ),
+        ];
+
+        bloc.add(LoadCashData());
+        await bloc.stream.firstWhere((s) => s is CashLoaded);
+
+        // Filter only income
+        bloc.add(const SearchFilterChanged(query: '', filterType: 'income'));
+
+        final incomeState =
+            await bloc.stream.firstWhere(
+                  (s) =>
+                      s is CashLoaded &&
+                      s.transactions.length == 1 &&
+                      s.transactions.first.isIncome,
+                )
+                as CashLoaded;
+
+        expect(incomeState.transactions.first.title, 'Продажа десерта');
+
+        // Filter by search query
+        bloc.add(const SearchFilterChanged(query: 'аренды', filterType: 'all'));
+
+        final searchState =
+            await bloc.stream.firstWhere(
+                  (s) =>
+                      s is CashLoaded &&
+                      s.transactions.length == 1 &&
+                      s.transactions.first.id == '10',
+                )
+                as CashLoaded;
+
+        expect(searchState.transactions.first.title, 'Оплата аренды');
       },
     );
   });

@@ -6,6 +6,10 @@
 	<string>Данное приложение использует Face ID для безопасного и быстрого входа в систему.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Камера нужна, чтобы сканировать штрих-коды товаров.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Доступ к галерее необходим для прикрепления финансовых чеков и накладных.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Разрешение требуется для сохранения экспортированных финансовых отчетов в фотопленку.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

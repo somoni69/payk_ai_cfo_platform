@@ -37,26 +37,9 @@ part 'dashboard_tab_ai.dart';
 part 'dashboard_tab_onec.dart';
 part 'dashboard_chart.dart';
 
-/// Входная точка экрана аналитики с внедрением DashboardBloc.
-class DashboardScreen extends StatefulWidget {
+/// Входная точка экрана аналитики с безопасным внедрением DashboardBloc.
+class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
-
-  @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
-}
-
-class _DashboardScreenState extends State<DashboardScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final bloc = context.read<DashboardBloc>();
-      if (bloc.state is! DashboardLoaded) {
-        bloc.add(LoadDashboardData());
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return BlocProvider<DashboardBloc>(
         create: (context) =>
             DashboardBloc(context.read<FinanceRepository>())
-              ..add(LoadDashboardData()),
+              ..add(const LoadDashboardData()),
         child: const DashboardView(),
       );
     }
@@ -182,11 +165,12 @@ class DashboardReportScreen extends StatelessWidget {
   const DashboardReportScreen({super.key, required this.section});
 
   Future<void> _refreshReport(BuildContext context) {
-    final completion = Completer<void>();
-    context.read<DashboardBloc>().add(
-      LoadDashboardSection(section, forceRefresh: true, completion: completion),
-    );
-    return completion.future;
+    final bloc = context.read<DashboardBloc>();
+    bloc.add(LoadDashboardSection(section, forceRefresh: true));
+    return bloc.stream.firstWhere((state) {
+      if (state is! DashboardLoaded) return false;
+      return !state.loadingSections.contains(section);
+    });
   }
 
   @override
@@ -278,11 +262,9 @@ class DashboardReportScreen extends StatelessWidget {
 }
 
 Future<void> _refreshDashboard(BuildContext context) {
-  final completion = Completer<void>();
-  context.read<DashboardBloc>().add(
-    LoadDashboardData(forceRefresh: true, completion: completion),
-  );
-  return completion.future;
+  final bloc = context.read<DashboardBloc>();
+  bloc.add(const LoadDashboardData(forceRefresh: true));
+  return bloc.stream.firstWhere((state) => state is! DashboardLoading);
 }
 
 class DashboardView extends StatefulWidget {
@@ -293,6 +275,18 @@ class DashboardView extends StatefulWidget {
 }
 
 class _DashboardViewState extends State<DashboardView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final bloc = context.read<DashboardBloc>();
+      if (bloc.state is! DashboardLoaded) {
+        bloc.add(const LoadDashboardData());
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;

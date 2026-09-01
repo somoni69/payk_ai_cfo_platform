@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 
 abstract class LegalEvent extends Equatable {
@@ -11,9 +9,8 @@ abstract class LegalEvent extends Equatable {
 
 class LoadLegalData extends LegalEvent {
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadLegalData({this.forceRefresh = false, this.completion});
+  const LoadLegalData({this.forceRefresh = false});
 
   @override
   List<Object?> get props => [forceRefresh];

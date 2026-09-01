@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../domain/notification_model.dart';
@@ -50,7 +51,7 @@ class _InboxScreenState extends State<InboxScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = userFacingError(e);
       });
     }
   }
@@ -70,11 +71,7 @@ class _InboxScreenState extends State<InboxScreen> {
       setState(() => _markingAll = false);
       final language = context.read<LanguageCubit>();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            language.resolveMessage(e.toString().replaceAll('Exception: ', '')),
-          ),
-        ),
+        SnackBar(content: Text(language.resolveMessage(userFacingError(e)))),
       );
     }
   }

@@ -2,13 +2,16 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../../../core/error/app_failure.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../network/domain/network_models.dart';
+import '../domain/auth_repository.dart';
 import '../domain/auth_user.dart';
 import '../domain/user_role.dart';
 
 export '../../network/domain/network_models.dart';
+export '../domain/auth_repository.dart';
 export '../domain/auth_user.dart';
 export '../domain/user_role.dart';
 
@@ -60,13 +63,14 @@ final class LoginTwoFactorRequired extends LoginResult {
 /// 10 attempts/min per IP+login, 40/min per IP → HTTP 429.
 /// Blocked account → HTTP 403. `/auth/refresh` is not rate-limited; still
 /// soft-expire only (~2 min before access `exp`), do not poll.
-class ApiAuthRepository {
+class ApiAuthRepository implements AuthRepository {
   final ApiClient _apiClient;
 
   ApiAuthRepository({ApiClient? apiClient})
     : _apiClient = apiClient ?? ApiClient();
 
   /// Fetches the public list of active stores for login screen.
+  @override
   Future<List<LoginStore>> fetchLoginStores() async {
     try {
       final response = await _apiClient.dio.get<dynamic>('/auth/stores');
@@ -83,6 +87,7 @@ class ApiAuthRepository {
   /// Login with username/password and optional storeId.
   ///
   /// May return [LoginTwoFactorRequired] when SMS 2FA is enabled for the user.
+  @override
   Future<LoginResult> login(
     String username,
     String password, {
@@ -103,13 +108,18 @@ class ApiAuthRepository {
 
       return await _parseLoginBody(response.data, fallbackUsername: username);
     } on DioException catch (error) {
-      throw Exception(_loginErrorKey(error));
-    } catch (_) {
-      throw Exception(ErrorKeys.loginFailed);
+      throw AuthFailure(
+        translationKey: _loginErrorKey(error),
+        debugMessage: error.message,
+      );
+    } catch (e) {
+      if (e is AppFailure) rethrow;
+      throw const AuthFailure(translationKey: ErrorKeys.loginFailed);
     }
   }
 
   /// Completes an SMS 2FA challenge started by [login].
+  @override
   Future<LoginResult> verifyTwoFactor({
     required String challengeId,
     required String code,
@@ -130,17 +140,17 @@ class ApiAuthRepository {
       );
       if (result is LoginTwoFactorRequired) {
         // Nested 2FA is not expected from verify-2fa.
-        throw Exception(ErrorKeys.loginFailed);
+        throw const AuthFailure(translationKey: ErrorKeys.loginFailed);
       }
       return result;
     } on DioException catch (error) {
-      throw Exception(_twoFactorErrorKey(error));
+      throw AuthFailure(
+        translationKey: _twoFactorErrorKey(error),
+        debugMessage: error.message,
+      );
     } catch (error) {
-      if (error is Exception) {
-        final message = error.toString().replaceAll('Exception: ', '');
-        if (message.startsWith('error_')) rethrow;
-      }
-      throw Exception(ErrorKeys.twoFactorFailed);
+      if (error is AppFailure) rethrow;
+      throw const AuthFailure(translationKey: ErrorKeys.twoFactorFailed);
     }
   }
 
@@ -151,6 +161,7 @@ class ApiAuthRepository {
   ///
   /// On 401 (invalid/expired refresh or blocked user) both tokens are cleared
   /// and `null` is returned so the caller can force re-login.
+  @override
   Future<AuthUser?> tryRefreshSession() async {
     final refreshToken = await _apiClient.getRefreshToken();
     if (refreshToken == null || refreshToken.isEmpty) return null;
@@ -186,6 +197,7 @@ class ApiAuthRepository {
   }
 
   /// Restores a session on cold start from secure storage.
+  @override
   Future<AuthUser?> tryAutoLogin() async {
     final token = await _apiClient.getAccessToken();
     if (token != null && token.isNotEmpty) {
@@ -207,12 +219,14 @@ class ApiAuthRepository {
   }
 
   /// Client-only logout: wipe both tokens (no server revoke endpoint).
+  @override
   Future<void> logout() async {
     await _apiClient.clearAccessToken();
     await _apiClient.clearRefreshToken();
   }
 
   /// Full profile from the API (`UserRead`). Prefer JWT claims for role/name.
+  @override
   Future<AuthUser> fetchCurrentUser() async {
     try {
       final response = await _apiClient.dio.get<dynamic>('/auth/me');

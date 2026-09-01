@@ -1304,7 +1304,10 @@ Future<void> _promptAddChecklistEntry(
   }
 }
 
-void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
+Future<void> _showTemplateModal(
+  BuildContext context, {
+  ChecklistTemplate? template,
+}) async {
   final checklistsBloc = context.read<ChecklistsBloc>();
   final colors = context.colors;
   final locale = context.read<LanguageCubit>();
@@ -1319,163 +1322,170 @@ void _showTemplateModal(BuildContext context, {ChecklistTemplate? template}) {
   Branch? selectedBranch;
   var branchesLoaded = false;
 
-  LedgerBottomSheet.show(
-    context: context,
-    title: template == null
-        ? locale.translate('checklists_new_template')
-        : template.name,
-    builder: (context, setSheetState) {
-      if (!branchesLoaded) {
-        branchesLoaded = true;
-        context.read<BranchesRepository>().getBranches().then((list) {
-          setSheetState(() {
-            branches = list;
-            if (template?.branchId != null) {
-              selectedBranch = list
-                  .where((b) => b.id == template!.branchId)
-                  .firstOrNull;
-            }
+  try {
+    await LedgerBottomSheet.show(
+      context: context,
+      title: template == null
+          ? locale.translate('checklists_new_template')
+          : template.name,
+      builder: (context, setSheetState) {
+        if (!branchesLoaded) {
+          branchesLoaded = true;
+          context.read<BranchesRepository>().getBranches().then((list) {
+            setSheetState(() {
+              branches = list;
+              if (template?.branchId != null) {
+                selectedBranch = list
+                    .where((b) => b.id == template!.branchId)
+                    .firstOrNull;
+              }
+            });
           });
-        });
-      }
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: titleCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('checklists_template_title'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (branches.isNotEmpty) ...[
-            ExpansibleWidget<Branch?>.selection(
-              borderRadius: 8,
-              title: Text(
-                selectedBranch?.name ??
-                    locale.translate('checklists_all_branches'),
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: titleCtrl,
+              decoration: InputDecoration(
+                labelText: locale.translate('checklists_template_title'),
               ),
-              items: [null, ...branches],
-              selectedValue: selectedBranch,
-              itemLabelBuilder: (b) =>
-                  b?.name ?? locale.translate('checklists_all_branches'),
-              onSelected: (b) => setSheetState(() => selectedBranch = b),
             ),
             const SizedBox(height: 12),
-          ],
-          TextField(
-            controller: regCtrl,
-            maxLines: 2,
-            decoration: InputDecoration(
-              labelText: locale.translate('checklists_regulation'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: urlCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('checklists_regulation_url'),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: itemCtrl,
-                  decoration: InputDecoration(
-                    labelText: locale.translate('checklists_item_label'),
-                  ),
+            if (branches.isNotEmpty) ...[
+              ExpansibleWidget<Branch?>.selection(
+                borderRadius: 8,
+                title: Text(
+                  selectedBranch?.name ??
+                      locale.translate('checklists_all_branches'),
                 ),
+                items: [null, ...branches],
+                selectedValue: selectedBranch,
+                itemLabelBuilder: (b) =>
+                    b?.name ?? locale.translate('checklists_all_branches'),
+                onSelected: (b) => setSheetState(() => selectedBranch = b),
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Icon(TablerIcons.plus, color: colors.brand),
-                onPressed: () {
-                  if (itemCtrl.text.trim().isNotEmpty) {
-                    setSheetState(() {
-                      items.add(itemCtrl.text.trim());
-                      itemCtrl.clear();
-                    });
-                  }
-                },
-              ),
+              const SizedBox(height: 12),
             ],
-          ),
-          const SizedBox(height: 12),
-          if (items.isNotEmpty)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: items
-                  .map(
-                    (it) => Chip(
-                      label: Text(it),
-                      onDeleted: () {
-                        setSheetState(() {
-                          items.remove(it);
-                        });
-                      },
-                    ),
-                  )
-                  .toList(),
-            ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                if (titleCtrl.text.trim().isEmpty) return;
-                checklistsBloc.add(
-                  CreateTemplateRequested(
-                    name: titleCtrl.text.trim(),
-                    regulationText: regCtrl.text.trim().isEmpty
-                        ? null
-                        : regCtrl.text.trim(),
-                    regulationUrl: urlCtrl.text.trim().isEmpty
-                        ? null
-                        : urlCtrl.text.trim(),
-                    branchId: selectedBranch?.id,
-                    items: items,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              child: Text(
-                locale.translate(
-                  template == null ? 'common_create' : 'common_save',
-                ),
+            TextField(
+              controller: regCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                labelText: locale.translate('checklists_regulation'),
               ),
             ),
-          ),
-          if (template != null) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlCtrl,
+              decoration: InputDecoration(
+                labelText: locale.translate('checklists_regulation_url'),
+              ),
+            ),
             const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: itemCtrl,
+                    decoration: InputDecoration(
+                      labelText: locale.translate('checklists_item_label'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: Icon(TablerIcons.plus, color: colors.brand),
+                  onPressed: () {
+                    if (itemCtrl.text.trim().isNotEmpty) {
+                      setSheetState(() {
+                        items.add(itemCtrl.text.trim());
+                        itemCtrl.clear();
+                      });
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (items.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: items
+                    .map(
+                      (it) => Chip(
+                        label: Text(it),
+                        onDeleted: () {
+                          setSheetState(() {
+                            items.remove(it);
+                          });
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: OutlinedButton.icon(
+              child: ElevatedButton(
                 onPressed: () {
-                  checklistsBloc.add(DeleteTemplateRequested(template.id));
+                  if (titleCtrl.text.trim().isEmpty) return;
+                  checklistsBloc.add(
+                    CreateTemplateRequested(
+                      name: titleCtrl.text.trim(),
+                      regulationText: regCtrl.text.trim().isEmpty
+                          ? null
+                          : regCtrl.text.trim(),
+                      regulationUrl: urlCtrl.text.trim().isEmpty
+                          ? null
+                          : urlCtrl.text.trim(),
+                      branchId: selectedBranch?.id,
+                      items: items,
+                    ),
+                  );
                   Navigator.pop(context);
                 },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.accentRed,
-                  side: BorderSide(
-                    color: colors.accentRed.withValues(alpha: 0.5),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                child: Text(
+                  locale.translate(
+                    template == null ? 'common_create' : 'common_save',
                   ),
                 ),
-                icon: const Icon(TablerIcons.trash, size: 18),
-                label: Text(locale.translate('common_delete')),
               ),
             ),
+            if (template != null) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    checklistsBloc.add(DeleteTemplateRequested(template.id));
+                    Navigator.pop(context);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: colors.accentRed,
+                    side: BorderSide(
+                      color: colors.accentRed.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(TablerIcons.trash, size: 18),
+                  label: Text(locale.translate('common_delete')),
+                ),
+              ),
+            ],
           ],
-        ],
-      );
-    },
-  );
+        );
+      },
+    );
+  } finally {
+    titleCtrl.dispose();
+    regCtrl.dispose();
+    urlCtrl.dispose();
+    itemCtrl.dispose();
+  }
 }

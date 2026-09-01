@@ -1,7 +1,6 @@
-import '../domain/task_model.dart';
-import '../domain/tasks_repository.dart';
+import 'package:payk_ai_cfo_platform/features/tasks/domain/task_model.dart';
+import 'package:payk_ai_cfo_platform/features/tasks/domain/tasks_repository.dart';
 
-/// Моковый репозиторий задач для локального тестирования.
 class MockTasksRepository implements TasksRepository {
   static final List<TaskProject> _projects = [
     const TaskProject(
@@ -79,13 +78,11 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<List<Task>> getTasks() async {
-    await Future.delayed(const Duration(milliseconds: 150));
     return List.from(_tasks);
   }
 
   @override
   Future<Task> updateTaskStatus(String taskId, TaskStatus status) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     final index = _tasks.indexWhere((t) => t.id == taskId);
     if (index == -1) {
       throw Exception('Задача не найдена');
@@ -98,7 +95,6 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<Task> createTask(Task task) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     String? pName;
     if (task.projectId != null) {
       try {
@@ -127,7 +123,6 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<Task> updateTask(Task task) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     final index = _tasks.indexWhere((t) => t.id == task.id);
     if (index == -1) {
       throw Exception('Задача не найдена');
@@ -147,19 +142,16 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<void> deleteTask(String taskId) async {
-    await Future.delayed(const Duration(milliseconds: 40));
     _tasks.removeWhere((t) => t.id == taskId);
   }
 
   @override
   Future<List<TaskProject>> getProjects() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return List.from(_projects);
   }
 
   @override
   Future<TaskProject> createProject(String name, {String? description}) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     final p = TaskProject(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
@@ -175,7 +167,6 @@ class MockTasksRepository implements TasksRepository {
     required String name,
     String? description,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     final index = _projects.indexWhere((p) => p.id == projectId);
     if (index != -1) {
       final updated = TaskProject(
@@ -191,13 +182,11 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<void> deleteProject(String projectId) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     _projects.removeWhere((p) => p.id == projectId);
   }
 
   @override
   Future<List<TaskAssignee>> getAssignees() async {
-    await Future.delayed(const Duration(milliseconds: 80));
     return const [
       TaskAssignee(id: '1', fullName: 'Шерзод Азимов'),
       TaskAssignee(id: '2', fullName: 'Дильноза Саидова'),
@@ -244,7 +233,6 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<List<Task>> getMyTasks() async {
-    await Future.delayed(const Duration(milliseconds: 80));
     return _tasks
         .where((t) => t.isPersonal || t.assigneeId == '1')
         .toList(growable: false);
@@ -252,7 +240,6 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<List<Task>> getAssignedToMe() async {
-    await Future.delayed(const Duration(milliseconds: 80));
     return _tasks
         .where((t) => !t.isPersonal && t.assigneeId == '1')
         .toList(growable: false);
@@ -260,7 +247,6 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<Task> createPersonalTask(PersonalTaskInput input) async {
-    await Future.delayed(const Duration(milliseconds: 80));
     final task = Task(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: input.title,
@@ -283,7 +269,6 @@ class MockTasksRepository implements TasksRepository {
     String taskId,
     PersonalTaskInput input,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 80));
     final index = _tasks.indexWhere((t) => t.id == taskId);
     if (index < 0) throw StateError('not found');
     final updated = _tasks[index].copyWith(
@@ -300,7 +285,6 @@ class MockTasksRepository implements TasksRepository {
 
   @override
   Future<void> deletePersonalTask(String taskId) async {
-    await Future.delayed(const Duration(milliseconds: 40));
     _tasks.removeWhere((t) => t.id == taskId);
   }
 

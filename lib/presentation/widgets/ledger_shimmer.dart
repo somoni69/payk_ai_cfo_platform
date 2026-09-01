@@ -38,25 +38,27 @@ class _LedgerShimmerState extends State<LedgerShimmer>
     final baseColor = colors.border.withValues(alpha: 0.35);
     final highlightColor = colors.surface.withValues(alpha: 0.95);
 
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return ShaderMask(
-          blendMode: BlendMode.srcATop,
-          shaderCallback: (bounds) {
-            final double value = _controller.value;
-            return LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [baseColor, highlightColor, baseColor],
-              stops: const [0.0, 0.5, 1.0],
-              transform: _SlidingGradientTransform(slidePercent: value),
-            ).createShader(bounds);
-          },
-          child: child,
-        );
-      },
-      child: widget.child,
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          return ShaderMask(
+            blendMode: BlendMode.srcATop,
+            shaderCallback: (bounds) {
+              final double value = _controller.value;
+              return LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [baseColor, highlightColor, baseColor],
+                stops: const [0.0, 0.5, 1.0],
+                transform: _SlidingGradientTransform(slidePercent: value),
+              ).createShader(bounds);
+            },
+            child: child,
+          );
+        },
+        child: widget.child,
+      ),
     );
   }
 }

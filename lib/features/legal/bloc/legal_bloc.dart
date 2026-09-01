@@ -76,9 +76,6 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
       }
     } finally {
       if (identical(_dataRequest, request)) _dataRequest = null;
-      if (event.completion?.isCompleted == false) {
-        event.completion!.complete();
-      }
     }
   }
 

@@ -79,7 +79,9 @@ class ShellScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<DashboardBloc>(
-          create: (context) => DashboardBloc(context.read<FinanceRepository>()),
+          create: (context) =>
+              DashboardBloc(context.read<FinanceRepository>())
+                ..add(const LoadDashboardData()),
         ),
         BlocProvider<CashBloc>(
           create: (context) => CashBloc(context.read<CashRepository>()),

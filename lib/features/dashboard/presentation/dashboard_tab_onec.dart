@@ -29,11 +29,9 @@ Widget _buildOneCTab(
 
   return RefreshIndicator(
     onRefresh: () {
-      final completer = Completer<void>();
-      context.read<DashboardBloc>().add(
-        RefreshOneCReconcileRequested(completion: completer),
-      );
-      return completer.future;
+      final bloc = context.read<DashboardBloc>();
+      bloc.add(const RefreshOneCReconcileRequested());
+      return bloc.stream.firstWhere((state) => state is DashboardLoaded);
     },
     child: ListView(
       physics: const AlwaysScrollableScrollPhysics(),

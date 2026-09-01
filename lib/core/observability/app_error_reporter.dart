@@ -58,20 +58,48 @@ final class AppErrorReporter {
     }
   }
 
-  /// Strips JWT-like blobs and Authorization headers from free-form text.
+  /// Strips JWT-like blobs, Authorization headers, OTP codes, PINs, tokens,
+  /// passwords, and payment card numbers from free-form text.
   static String _sanitize(String raw) {
     var text = raw;
+    // Authorization & Bearer tokens
     text = text.replaceAll(
       RegExp(r'Bearer\s+[A-Za-z0-9\-._~+/]+=*', caseSensitive: false),
       'Bearer <redacted>',
     );
+    // JWT tokens (3-part base64url)
     text = text.replaceAll(
       RegExp(r'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'),
       '<jwt-redacted>',
     );
+    // Passwords and client secrets
+    text = text.replaceAllMapped(
+      RegExp(
+        r'("?(?:password|pass|client_secret|token_secret)"?\s*[:=]\s*)"?[^",}\s]+"?',
+        caseSensitive: false,
+      ),
+      (m) => '${m[1]}"<redacted_pwd>"',
+    );
+    // 2FA / OTP codes & PINs
+    text = text.replaceAllMapped(
+      RegExp(
+        r'("?(?:code|otp|sms_code|pin|two_factor_code)"?\s*[:=]\s*)"?\d{4,8}"?',
+        caseSensitive: false,
+      ),
+      (m) => '${m[1]}"<redacted_code>"',
+    );
+    // Refresh & Access Tokens, API keys in JSON or query params
+    text = text.replaceAllMapped(
+      RegExp(
+        r'("?(?:refresh_token|access_token|apiKey|api_key|secret)"?\s*[:=]\s*)"[^"]+"',
+        caseSensitive: false,
+      ),
+      (m) => '${m[1]}"<redacted_token>"',
+    );
+    // Payment card PANs (13-19 digits with optional spaces/hyphens)
     text = text.replaceAll(
-      RegExp(r'password["\s:=]+[^\s,"}]+', caseSensitive: false),
-      'password=<redacted>',
+      RegExp(r'\b(?:\d[ -]*?){13,19}\b'),
+      '<card-redacted>',
     );
     return text;
   }

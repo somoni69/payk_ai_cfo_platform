@@ -126,6 +126,11 @@ class _MarketingViewState extends State<MarketingView> {
           }
         },
         child: BlocBuilder<MarketingBloc, MarketingState>(
+          buildWhen: (previous, current) =>
+              previous.isCampaignsLoading != current.isCampaignsLoading ||
+              previous.isPostsLoading != current.isPostsLoading ||
+              previous.campaigns != current.campaigns ||
+              previous.posts != current.posts,
           builder: (context, state) {
             if ((state.isCampaignsLoading || state.isPostsLoading) &&
                 state.campaigns.isEmpty &&
@@ -945,6 +950,10 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<MarketingBloc, MarketingState>(
+      buildWhen: (previous, current) =>
+          previous.isGenerating != current.isGenerating ||
+          previous.generatedIdeas != current.generatedIdeas ||
+          previous.generatedText != current.generatedText,
       builder: (context, state) {
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -1197,6 +1206,9 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
     final localeCubit = context.read<LanguageCubit>();
 
     return BlocBuilder<MarketingBloc, MarketingState>(
+      buildWhen: (previous, current) =>
+          previous.isCampaignsLoading != current.isCampaignsLoading ||
+          previous.campaigns != current.campaigns,
       builder: (context, state) {
         if (state.isCampaignsLoading && state.campaigns.isEmpty) {
           return const MarketingCampaignsShimmer();
@@ -1361,6 +1373,9 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
     final canManage = _canManageMarketing(context);
 
     return BlocBuilder<MarketingBloc, MarketingState>(
+      buildWhen: (previous, current) =>
+          previous.isPostsLoading != current.isPostsLoading ||
+          previous.posts != current.posts,
       builder: (context, state) {
         if (state.isPostsLoading && state.posts.isEmpty) {
           return const MarketingPostsShimmer();

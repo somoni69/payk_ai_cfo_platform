@@ -56,6 +56,10 @@ NumberFormat localizedNumberFormat(
   );
 }
 
+final _numberFormatCache = <String, NumberFormat>{};
+final _whitespaceRegex = RegExp(r'[\s\u00A0\u202F]');
+final _validNumberRegex = RegExp(r'^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$');
+
 @visibleForTesting
 NumberFormat localizedNumberFormatForLocale(
   Locale locale, {
@@ -66,11 +70,16 @@ NumberFormat localizedNumberFormatForLocale(
   assert(minimumFractionDigits >= 0);
   assert(maximumFractionDigits >= minimumFractionDigits);
 
-  final format = NumberFormat.decimalPattern(resolveNumberFormatLocale(locale))
-    ..minimumFractionDigits = minimumFractionDigits
-    ..maximumFractionDigits = maximumFractionDigits;
-  if (!useGrouping) format.turnOffGrouping();
-  return format;
+  final resolvedLocale = resolveNumberFormatLocale(locale);
+  final cacheKey =
+      '$resolvedLocale-$minimumFractionDigits-$maximumFractionDigits-$useGrouping';
+  return _numberFormatCache.putIfAbsent(cacheKey, () {
+    final format = NumberFormat.decimalPattern(resolvedLocale)
+      ..minimumFractionDigits = minimumFractionDigits
+      ..maximumFractionDigits = maximumFractionDigits;
+    if (!useGrouping) format.turnOffGrouping();
+    return format;
+  });
 }
 
 /// Formats a value without discarding meaningful fractional digits.
@@ -117,14 +126,12 @@ double? parseLocalizedNumber(BuildContext context, String input) {
 
 @visibleForTesting
 double? parseLocalizedNumberForLocale(String input, Locale locale) {
-  final symbols = NumberFormat.decimalPattern(
-    resolveNumberFormatLocale(locale),
-  ).symbols;
+  final symbols = localizedNumberFormatForLocale(locale).symbols;
   var normalized = input
       .trim()
       .replaceAll('\u2212', '-')
       .replaceAll(symbols.GROUP_SEP, '')
-      .replaceAll(RegExp(r'[\s\u00A0\u202F]'), '');
+      .replaceAll(_whitespaceRegex, '');
 
   if (normalized.isEmpty) return null;
 
@@ -158,7 +165,7 @@ double? parseLocalizedNumberForLocale(String input, Locale locale) {
     normalized = buffer.toString();
   }
 
-  if (!RegExp(r'^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$').hasMatch(normalized)) {
+  if (!_validNumberRegex.hasMatch(normalized)) {
     return null;
   }
 

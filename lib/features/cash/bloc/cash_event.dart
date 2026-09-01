@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 import '../domain/transaction_model.dart';
 
@@ -11,9 +9,7 @@ abstract class CashEvent extends Equatable {
 }
 
 class LoadCashData extends CashEvent {
-  final Completer<void>? completion;
-
-  const LoadCashData({this.completion});
+  const LoadCashData();
 
   @override
   List<Object?> get props => const [];
@@ -22,11 +18,7 @@ class LoadCashData extends CashEvent {
 class AddTransactionRequested extends CashEvent {
   final Transaction transaction;
 
-  /// Completes with `null` on success, or a user-facing error key/message.
-  /// The new-operation sheet stays open until this finishes when items are set.
-  final Completer<String?>? result;
-
-  const AddTransactionRequested(this.transaction, {this.result});
+  const AddTransactionRequested(this.transaction);
 
   @override
   List<Object?> get props => [transaction];
@@ -55,9 +47,8 @@ class CloseShiftRequested extends CashEvent {
 
 class UpdateTransactionRequested extends CashEvent {
   final Transaction transaction;
-  final Completer<String?>? result;
 
-  const UpdateTransactionRequested(this.transaction, {this.result});
+  const UpdateTransactionRequested(this.transaction);
 
   @override
   List<Object?> get props => [transaction];

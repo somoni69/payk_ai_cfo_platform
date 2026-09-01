@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/models/ui_feedback.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/warehouse_models.dart';
 import '../domain/warehouse_repository.dart';
@@ -10,18 +9,6 @@ import 'warehouse_state.dart';
 
 class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
   final WarehouseRepository _repository;
-
-  List<WarehouseProduct> _cachedProducts = [];
-  List<WarehouseMovement> _cachedMovements = [];
-  List<WarehouseBatch> _cachedBatches = [];
-  bool _batchesExpiringOnly = false;
-  WarehouseStockAnalysis? _cachedAnalysis;
-  Future<List<Object>>? _loadRequest;
-  Completer<void>? _reloadCompleter;
-  WarehouseSummaryData _cachedSummary = const WarehouseSummaryData(
-    productsCount: 0,
-    totalStockValue: 0.0,
-  );
 
   WarehouseBloc(this._repository) : super(WarehouseLoading()) {
     on<LoadWarehouseData>(_onLoadWarehouseData);
@@ -42,142 +29,127 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     on<DownloadBarcodeLabelsPdfRequested>(_onDownloadBarcodeLabelsPdfRequested);
   }
 
-  Future<void> reload() {
-    final active = _reloadCompleter;
-    if (active != null) return active.future;
-
-    final completer = Completer<void>();
-    _reloadCompleter = completer;
-    add(LoadWarehouseData());
-    return completer.future;
-  }
-
   Future<void> _onLoadWarehouseData(
     LoadWarehouseData event,
     Emitter<WarehouseState> emit,
   ) async {
-    final previous = state is WarehouseLoaded ? state as WarehouseLoaded : null;
-    if (previous != null) {
-      _emitLoaded(emit);
-    } else {
-      emit(WarehouseLoading());
-    }
+    final currentLoaded = state is WarehouseLoaded
+        ? state as WarehouseLoaded
+        : null;
 
-    var request = _loadRequest;
-    if (request == null) {
-      request = Future.wait<Object>([
+    emit(WarehouseLoading());
+
+    try {
+      final expiringOnly = currentLoaded?.batchesExpiringOnly ?? false;
+      final results = await Future.wait<Object>([
         _repository.getProducts(),
         _repository.getMovements(),
         _repository.getSummary(),
-        _repository.getBatches(expiringOnly: _batchesExpiringOnly),
+        _repository.getBatches(expiringOnly: expiringOnly),
       ]);
-      _loadRequest = request;
-    }
 
-    try {
-      final results = await request;
-      if (emit.isDone) return;
-      _cachedProducts = (results[0] as List).cast<WarehouseProduct>();
-      _cachedMovements = (results[1] as List).cast<WarehouseMovement>();
-      _cachedSummary = results[2] as WarehouseSummaryData;
-      _cachedBatches = (results[3] as List).cast<WarehouseBatch>();
-      _emitLoaded(emit);
-    } catch (error) {
-      if (emit.isDone) return;
-      final message = userFacingError(
-        error,
-        fallback: 'Не удалось обновить склад. Проверьте соединение.',
+      final products = (results[0] as List).cast<WarehouseProduct>();
+      final movements = (results[1] as List).cast<WarehouseMovement>();
+      final summary = results[2] as WarehouseSummaryData;
+      final batches = (results[3] as List).cast<WarehouseBatch>();
+
+      emit(
+        WarehouseLoaded(
+          products: products,
+          movements: movements,
+          summary: summary,
+          batches: batches,
+          batchesExpiringOnly: expiringOnly,
+          stockAnalysis: currentLoaded?.stockAnalysis,
+        ),
       );
-      if (previous != null) {
-        _emitLoaded(emit, errorMessage: message);
+    } catch (e) {
+      final message = userFacingError(e, fallback: ErrorKeys.loadFailed);
+      if (currentLoaded != null) {
+        emit(currentLoaded.copyWith(errorMessage: message));
       } else {
         emit(WarehouseError(message));
-      }
-    } finally {
-      if (identical(_loadRequest, request)) _loadRequest = null;
-      final completer = _reloadCompleter;
-      _reloadCompleter = null;
-      if (completer != null && !completer.isCompleted) {
-        completer.complete();
       }
     }
   }
 
-  void _onCreateProductRequested(
+  Future<void> _onCreateProductRequested(
     CreateProductRequested event,
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
-    final currentState = state as WarehouseLoaded;
-
+    final current = state as WarehouseLoaded;
     try {
-      final created = await _repository.createProduct(event.product);
-      _cachedProducts = List<WarehouseProduct>.from(_cachedProducts)
-        ..add(created);
-
-      // Пересчитываем суммарные показатели
-      _cachedSummary = WarehouseSummaryData(
-        productsCount: _cachedProducts.length,
-        totalStockValue:
-            _cachedSummary.totalStockValue + (created.price * created.stockQty),
-      );
-
-      _emitLoaded(
-        emit,
-        successMessage: 'Товар "${created.name}" успешно добавлен.',
+      final newProduct = await _repository.createProduct(event.product);
+      final products = [...current.products, newProduct];
+      WarehouseSummaryData summary;
+      try {
+        summary = await _repository.getSummary();
+        if (summary.productsCount < products.length) {
+          summary = summary.copyWith(
+            productsCount: products.length,
+            totalStockValue: products.fold<double>(
+              0.0,
+              (sum, p) => sum + (p.stockQty * p.price),
+            ),
+          );
+        }
+      } catch (_) {
+        summary = current.summary.copyWith(
+          productsCount: products.length,
+          totalStockValue: products.fold<double>(
+            0.0,
+            (sum, p) => sum + (p.stockQty * p.price),
+          ),
+        );
+      }
+      emit(
+        current.copyWith(
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_product_created',
+          feedback: const LocalizedFeedback('warehouse_product_created'),
+          clearError: true,
+        ),
       );
     } catch (e) {
       emit(
-        currentState.copyWith(
-          errorMessage:
-              'Не удалось добавить товар. Проверьте данные и соединение.',
+        current.copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
   }
 
-  void _onCreateMovementRequested(
+  Future<void> _onCreateMovementRequested(
     CreateMovementRequested event,
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
-    final currentState = state as WarehouseLoaded;
+    final current = state as WarehouseLoaded;
 
-    // Ищем оригинальный товар для проведения транзакции
-    final index = _cachedProducts.indexWhere((p) => p.id == event.productId);
-    if (index == -1) {
-      emit(currentState.copyWith(errorMessage: 'Товар не найден.'));
-      return;
-    }
-    final originalProduct = _cachedProducts[index];
-
-    // Оптимистично пересчитываем количество товара в локальной памяти
-    final change = event.direction == 'income' ? event.qty : -event.qty;
-    final double targetQty = originalProduct.stockQty + change;
-
-    if (targetQty < 0 && event.direction == 'expense') {
-      emit(
-        currentState.copyWith(
-          errorMessage: 'Ошибка: недостаточно товара на складе для списания.',
-        ),
-      );
-      return;
-    }
-
-    final optimisticProducts = _cachedProducts.map((p) {
-      return p.id == event.productId ? p.copyWith(stockQty: targetQty) : p;
+    // Оптимистичное обновление локальных остатков
+    final delta = event.direction == 'income' ? event.qty : -event.qty;
+    final optimisticProducts = current.products.map((p) {
+      if (p.id == event.productId) {
+        return p.copyWith(
+          stockQty: (p.stockQty + delta).clamp(0.0, double.infinity),
+        );
+      }
+      return p;
     }).toList();
-
     emit(
-      currentState.copyWith(
+      current.copyWith(
         products: optimisticProducts,
-        clearSuccess: true,
         clearError: true,
+        clearFeedback: true,
       ),
     );
 
     try {
-      final createdMovement = await _repository.createMovement(
+      final newMovement = await _repository.createMovement(
         event.productId,
         event.direction,
         event.qty,
@@ -185,28 +157,36 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
         event.note,
       );
 
-      // Обновляем список движений
-      _cachedMovements = List<WarehouseMovement>.from(_cachedMovements)
-        ..insert(0, createdMovement);
-
-      // Синхронизируем каталог и показатели параллельно.
-      final synchronized = await Future.wait([
+      final results = await Future.wait<Object>([
         _repository.getProducts(),
         _repository.getSummary(),
+        _repository.getBatches(expiringOnly: current.batchesExpiringOnly),
       ]);
-      _cachedProducts = synchronized[0] as List<WarehouseProduct>;
-      _cachedSummary = synchronized[1] as WarehouseSummaryData;
 
-      _emitLoaded(
-        emit,
-        successMessage: 'Движение по товару успешно зафиксировано.',
+      final products = (results[0] as List).cast<WarehouseProduct>();
+      final summary = results[1] as WarehouseSummaryData;
+      final batches = (results[2] as List).cast<WarehouseBatch>();
+      final movements = [newMovement, ...current.movements];
+
+      emit(
+        current.copyWith(
+          movements: movements,
+          products: products,
+          summary: summary,
+          batches: batches,
+          successMessage: 'warehouse_movement_created',
+          feedback: const LocalizedFeedback('warehouse_movement_created'),
+          clearError: true,
+        ),
       );
     } catch (e) {
-      // Локальный кэш всё ещё содержит подтверждённое состояние до оптимистичного изменения.
+      // Откат к исходным товарам при ошибке
       emit(
-        currentState.copyWith(
-          products: _cachedProducts,
-          errorMessage: 'Не удалось провести операцию. Повторите попытку.',
+        current.copyWith(
+          products: current.products,
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -217,17 +197,30 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       final updated = await _repository.updateProduct(event.product);
-      _cachedProducts = _cachedProducts
-          .map((p) => p.id == updated.id ? updated : p)
-          .toList();
-      _cachedSummary = await _repository.getSummary();
-      _emitLoaded(emit, successMessage: 'warehouse_toast_product_updated');
+      final products = [
+        for (final p in current.products) p.id == updated.id ? updated : p,
+      ];
+      final summary = await _repository.getSummary();
+      emit(
+        current.copyWith(
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_product_updated',
+          feedback: const LocalizedFeedback('warehouse_product_updated'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
-      if (state is WarehouseLoaded) {
-        emit((state as WarehouseLoaded).copyWith(errorMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
+        ),
+      );
     }
   }
 
@@ -236,15 +229,30 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       await _repository.deleteProduct(event.id);
-      _cachedProducts = _cachedProducts.where((p) => p.id != event.id).toList();
-      _cachedSummary = await _repository.getSummary();
-      _emitLoaded(emit, successMessage: 'warehouse_toast_product_deleted');
+      final products = current.products
+          .where((p) => p.id != event.id)
+          .toList(growable: false);
+      final summary = await _repository.getSummary();
+      emit(
+        current.copyWith(
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_product_deleted',
+          feedback: const LocalizedFeedback('warehouse_product_deleted'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
-      if (state is WarehouseLoaded) {
-        emit((state as WarehouseLoaded).copyWith(errorMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
+        ),
+      );
     }
   }
 
@@ -253,17 +261,28 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       await _repository.zeroOutProduct(event.id);
-      _cachedProducts = _cachedProducts
-          .map((p) => p.id == event.id ? p.copyWith(stockQty: 0) : p)
-          .toList();
-      _cachedSummary = await _repository.getSummary();
-      _emitLoaded(emit, successMessage: 'warehouse_toast_product_zeroed');
+      final products = await _repository.getProducts();
+      final summary = await _repository.getSummary();
+      emit(
+        current.copyWith(
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_stock_zeroed',
+          feedback: const LocalizedFeedback('warehouse_stock_zeroed'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
-      if (state is WarehouseLoaded) {
-        emit((state as WarehouseLoaded).copyWith(errorMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
+        ),
+      );
     }
   }
 
@@ -272,15 +291,20 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
-    _batchesExpiringOnly = event.expiringOnly;
+    final current = state as WarehouseLoaded;
     try {
-      _cachedBatches = await _repository.getBatches(
-        expiringOnly: _batchesExpiringOnly,
+      final batches = await _repository.getBatches(
+        expiringOnly: event.expiringOnly,
       );
-      _emitLoaded(emit);
+      emit(
+        current.copyWith(
+          batches: batches,
+          batchesExpiringOnly: event.expiringOnly,
+        ),
+      );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
         ),
       );
@@ -292,27 +316,34 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
-      await _repository.createBatch(
+      final batch = await _repository.createBatch(
         productId: event.productId,
         qty: event.qty,
         expiryDate: event.expiryDate,
         code: event.code,
         note: event.note,
       );
-      final refreshed = await Future.wait([
-        _repository.getBatches(expiringOnly: _batchesExpiringOnly),
-        _repository.getProducts(),
-        _repository.getSummary(),
-      ]);
-      _cachedBatches = refreshed[0] as List<WarehouseBatch>;
-      _cachedProducts = refreshed[1] as List<WarehouseProduct>;
-      _cachedSummary = refreshed[2] as WarehouseSummaryData;
-      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_created');
+      final batches = [batch, ...current.batches];
+      final products = await _repository.getProducts();
+      final summary = await _repository.getSummary();
+      emit(
+        current.copyWith(
+          batches: batches,
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_batch_created',
+          feedback: const LocalizedFeedback('warehouse_batch_created'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -323,8 +354,9 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
-      await _repository.updateBatch(
+      final updated = await _repository.updateBatch(
         id: event.id,
         qty: event.qty,
         expiryDate: event.expiryDate,
@@ -332,14 +364,27 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
         code: event.code,
         note: event.note,
       );
-      _cachedBatches = await _repository.getBatches(
-        expiringOnly: _batchesExpiringOnly,
+      final batches = [
+        for (final b in current.batches) b.id == updated.id ? updated : b,
+      ];
+      final products = await _repository.getProducts();
+      final summary = await _repository.getSummary();
+      emit(
+        current.copyWith(
+          batches: batches,
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_batch_saved',
+          feedback: const LocalizedFeedback('warehouse_batch_saved'),
+          clearError: true,
+        ),
       );
-      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_updated');
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -350,22 +395,30 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       await _repository.deleteBatch(event.id);
-      _cachedBatches = _cachedBatches
+      final batches = current.batches
           .where((b) => b.id != event.id)
           .toList(growable: false);
-      final synced = await Future.wait([
-        _repository.getProducts(),
-        _repository.getSummary(),
-      ]);
-      _cachedProducts = synced[0] as List<WarehouseProduct>;
-      _cachedSummary = synced[1] as WarehouseSummaryData;
-      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_deleted');
+      final products = await _repository.getProducts();
+      final summary = await _repository.getSummary();
+      emit(
+        current.copyWith(
+          batches: batches,
+          products: products,
+          summary: summary,
+          successMessage: 'warehouse_batch_deleted',
+          feedback: const LocalizedFeedback('warehouse_batch_deleted'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -376,19 +429,26 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       await _repository.applyBatchDiscount(event.batchId, event.percent);
-      final synced = await Future.wait([
-        _repository.getProducts(),
-        _repository.getBatches(expiringOnly: _batchesExpiringOnly),
-      ]);
-      _cachedProducts = synced[0] as List<WarehouseProduct>;
-      _cachedBatches = synced[1] as List<WarehouseBatch>;
-      _emitLoaded(emit, successMessage: 'warehouse_toast_batch_discount');
+      final batches = await _repository.getBatches(
+        expiringOnly: current.batchesExpiringOnly,
+      );
+      emit(
+        current.copyWith(
+          batches: batches,
+          successMessage: 'warehouse_discount_applied',
+          feedback: const LocalizedFeedback('warehouse_discount_applied'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -399,22 +459,30 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       final created = await _repository.runExpiryCheck();
-      _cachedBatches = await _repository.getBatches(
-        expiringOnly: _batchesExpiringOnly,
+      final batches = await _repository.getBatches(
+        expiringOnly: current.batchesExpiringOnly,
       );
-      // Encode count for UI toast: key|count
-      _emitLoaded(
-        emit,
-        successMessage: created > 0
-            ? 'warehouse_expiry_check_created|$created'
-            : 'warehouse_expiry_check_none',
+      final feedback = created > 0
+          ? WarehouseActionFeedback(action: 'expiry_check', count: created)
+          : const LocalizedFeedback('warehouse_expiry_check_none');
+
+      emit(
+        current.copyWith(
+          batches: batches,
+          feedback: feedback,
+          successMessage: feedback.translationKey,
+          clearError: true,
+        ),
       );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -434,17 +502,20 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
       ),
     );
     try {
-      _cachedAnalysis = await _repository.getStockAnalysis();
-      if (emit.isDone) return;
-      _emitLoaded(emit, isAnalysisLoading: false);
-    } catch (e) {
-      if (emit.isDone) return;
+      final analysis = await _repository.getStockAnalysis();
       emit(
-        (state is WarehouseLoaded ? state as WarehouseLoaded : current)
-            .copyWith(
-              isAnalysisLoading: false,
-              analysisError: userFacingError(e, fallback: ErrorKeys.loadFailed),
-            ),
+        current.copyWith(
+          stockAnalysis: analysis,
+          isAnalysisLoading: false,
+          clearAnalysisError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        current.copyWith(
+          isAnalysisLoading: false,
+          analysisError: userFacingError(e, fallback: ErrorKeys.loadFailed),
+        ),
       );
     }
   }
@@ -454,18 +525,26 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       final updated = await _repository.assignBarcode(event.productId);
-      final idx = _cachedProducts.indexWhere((p) => p.id == event.productId);
-      if (idx != -1) {
-        _cachedProducts = List<WarehouseProduct>.from(_cachedProducts)
-          ..[idx] = updated;
-      }
-      _emitLoaded(emit, successMessage: 'warehouse_barcode_assigned');
+      final products = [
+        for (final p in current.products) p.id == updated.id ? updated : p,
+      ];
+      emit(
+        current.copyWith(
+          products: products,
+          successMessage: 'warehouse_barcode_assigned',
+          feedback: const LocalizedFeedback('warehouse_barcode_assigned'),
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -476,14 +555,28 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
     Emitter<WarehouseState> emit,
   ) async {
     if (state is! WarehouseLoaded) return;
+    final current = state as WarehouseLoaded;
     try {
       final count = await _repository.assignMissingBarcodes();
-      _cachedProducts = await _repository.getProducts();
-      _emitLoaded(emit, successMessage: 'warehouse_barcodes_generated|$count');
+      final products = await _repository.getProducts();
+      final feedback = WarehouseActionFeedback(
+        action: 'barcodes_generated',
+        count: count,
+      );
+      emit(
+        current.copyWith(
+          products: products,
+          feedback: feedback,
+          successMessage: feedback.translationKey,
+          clearError: true,
+        ),
+      );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           errorMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+          clearSuccess: true,
+          clearFeedback: true,
         ),
       );
     }
@@ -503,42 +596,19 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
         copies: event.copies,
       );
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           isPdfDownloading: false,
           pdfBytes: bytes,
+          feedback: const LocalizedFeedback('warehouse_pdf_ready'),
         ),
       );
     } catch (e) {
       emit(
-        (state as WarehouseLoaded).copyWith(
+        current.copyWith(
           isPdfDownloading: false,
           errorMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
         ),
       );
     }
-  }
-
-  void _emitLoaded(
-    Emitter<WarehouseState> emit, {
-    String? errorMessage,
-    String? successMessage,
-    bool? isAnalysisLoading,
-  }) {
-    final previous = state is WarehouseLoaded ? state as WarehouseLoaded : null;
-    emit(
-      WarehouseLoaded(
-        products: _cachedProducts,
-        movements: _cachedMovements,
-        batches: _cachedBatches,
-        batchesExpiringOnly: _batchesExpiringOnly,
-        summary: _cachedSummary,
-        stockAnalysis: _cachedAnalysis,
-        isAnalysisLoading:
-            isAnalysisLoading ?? previous?.isAnalysisLoading ?? false,
-        analysisError: previous?.analysisError,
-        errorMessage: errorMessage,
-        successMessage: successMessage,
-      ),
-    );
   }
 }

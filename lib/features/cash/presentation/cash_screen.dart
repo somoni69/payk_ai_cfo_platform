@@ -10,6 +10,8 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/network/user_facing_error.dart';
+import '../../../core/models/ui_feedback.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -91,9 +93,9 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> _refreshCash(BuildContext context) {
-    final completion = Completer<void>();
-    context.read<CashBloc>().add(LoadCashData(completion: completion));
-    return completion.future;
+    final bloc = context.read<CashBloc>();
+    bloc.add(const LoadCashData());
+    return bloc.stream.firstWhere((state) => state is! CashLoading);
   }
 
   void _rebuild([VoidCallback? fn]) {
@@ -357,28 +359,50 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
         !authState.role.canManage(AppCapability.cash);
 
     return BlocConsumer<CashBloc, CashState>(
+      listenWhen: (previous, current) =>
+          current is CashLoaded &&
+          current.feedback != null &&
+          (previous is! CashLoaded || previous.feedback != current.feedback),
+      buildWhen: (previous, current) {
+        if (previous.runtimeType != current.runtimeType) return true;
+        if (previous is CashLoaded && current is CashLoaded) {
+          return previous.activeShift != current.activeShift ||
+              previous.transactions != current.transactions ||
+              previous.filteredTransactions != current.filteredTransactions ||
+              previous.registers != current.registers ||
+              previous.dateFrom != current.dateFrom ||
+              previous.dateTo != current.dateTo ||
+              previous.registerId != current.registerId ||
+              previous.filterType != current.filterType ||
+              previous.paymentMethod != current.paymentMethod ||
+              previous.query != current.query;
+        }
+        return true;
+      },
       listener: (context, state) {
-        if (state is CashLoaded && state.errorMessage != null) {
-          final raw = state.errorMessage!;
-          final isError =
-              raw.startsWith('cash_err_') ||
-              raw.startsWith('error_') ||
-              raw.startsWith('cash_shift_closed_diff');
-          final isSuccess =
-              raw.startsWith('cash_shift_closed_') &&
-              !raw.startsWith('cash_shift_closed_diff');
+        if (state is CashLoaded && state.feedback != null) {
+          final fb = state.feedback!;
           String text;
-          if (raw.startsWith('cash_shift_closed_diff::')) {
-            final parts = raw.split('::');
+          bool isError = false;
+          if (fb is ShiftClosedFeedback) {
+            isError = fb.diff != 0;
             text = language.translate(
               'cash_shift_closed_diff',
               params: {
-                'diff': parts.length > 1 ? parts[1] : '',
-                'expected': parts.length > 2 ? parts[2] : '',
+                'diff': fb.diffFormatted,
+                'expected': fb.expectedFormatted,
               },
             );
+          } else if (fb is LocalizedFeedback) {
+            isError =
+                fb.translationKey.startsWith('cash_err_') ||
+                fb.translationKey.startsWith('error_');
+            text = language.translate(fb.translationKey, params: fb.params);
           } else {
-            text = language.translateMessage(raw);
+            isError =
+                fb.translationKey.startsWith('cash_err_') ||
+                fb.translationKey.startsWith('error_');
+            text = language.translateMessage(fb.translationKey);
           }
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -388,8 +412,9 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
               ),
               backgroundColor: isError
                   ? colors.accentRed
-                  : (isSuccess ? colors.accentGreen : colors.textPrimary),
-              duration: const Duration(seconds: 4),
+                  : (fb.translationKey.startsWith('cash_shift_closed_')
+                        ? colors.accentGreen
+                        : colors.accentAmber),
             ),
           );
         }
@@ -871,6 +896,28 @@ class _CashSectionScreenState extends State<CashSectionScreen>
         !authState.role.canManage(AppCapability.cash);
 
     return BlocBuilder<CashBloc, CashState>(
+      buildWhen: (previous, current) {
+        if (previous.runtimeType != current.runtimeType) return true;
+        if (previous is CashLoaded && current is CashLoaded) {
+          return switch (widget.section) {
+            CashSection.operations =>
+              previous.filteredTransactions != current.filteredTransactions ||
+                  previous.dateFrom != current.dateFrom ||
+                  previous.dateTo != current.dateTo ||
+                  previous.filterType != current.filterType ||
+                  previous.paymentMethod != current.paymentMethod ||
+                  previous.query != current.query,
+            CashSection.shifts =>
+              previous.activeShift != current.activeShift ||
+                  previous.shifts != current.shifts ||
+                  previous.registers != current.registers,
+            CashSection.summary => previous.summaries != current.summaries,
+            CashSection.pos => previous.registers != current.registers,
+            CashSection.onec => previous.transactions != current.transactions,
+          };
+        }
+        return true;
+      },
       builder: (context, state) {
         if (state is! CashLoaded) {
           return Scaffold(

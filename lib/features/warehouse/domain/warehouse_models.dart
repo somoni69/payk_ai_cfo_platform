@@ -81,6 +81,13 @@ class WarehouseSummaryData {
     required this.productsCount,
     required this.totalStockValue,
   });
+
+  WarehouseSummaryData copyWith({int? productsCount, double? totalStockValue}) {
+    return WarehouseSummaryData(
+      productsCount: productsCount ?? this.productsCount,
+      totalStockValue: totalStockValue ?? this.totalStockValue,
+    );
+  }
 }
 
 /// Партия завоза со сроком годности (`/warehouse/batches`).

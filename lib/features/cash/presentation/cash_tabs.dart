@@ -915,7 +915,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = e.toString().replaceAll('Exception: ', '');
+        _error = userFacingError(e);
       });
     }
   }
@@ -928,6 +928,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
       lastDate: DateTime.now().add(const Duration(days: 1)),
     );
     if (picked == null) return;
+    if (!mounted) return;
     setState(() {
       if (from) {
         _dateFrom = picked;

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+import '../cubit/assistant_cubit.dart';
 import '../domain/assistant_models.dart';
 import '../domain/assistant_repository.dart';
 
@@ -24,6 +25,8 @@ class LedgerAiAssistantHost extends StatelessWidget {
       } catch (_) {}
     }
 
+    final repo = context.read<AssistantRepository>();
+
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -34,9 +37,12 @@ class LedgerAiAssistantHost extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         child: SizedBox(
           height: MediaQuery.of(ctx).size.height * 0.88,
-          child: _AssistantPanel(
-            initialModule: module,
-            onClose: () => Navigator.of(ctx).pop(),
+          child: BlocProvider<AssistantCubit>(
+            create: (_) => AssistantCubit(repo),
+            child: _AssistantPanel(
+              initialModule: module,
+              onClose: () => Navigator.of(ctx).pop(),
+            ),
           ),
         ),
       ),
@@ -104,11 +110,6 @@ class _AssistantPanel extends StatefulWidget {
 class _AssistantPanelState extends State<_AssistantPanel> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
-  List<AssistantMessage> _messages = const [];
-  bool _loadingHistory = true;
-  bool _sending = false;
-  String? _error;
-  String? _pendingQuestion;
   late String _module;
   late String _moduleLabelKey;
 
@@ -152,27 +153,8 @@ class _AssistantPanelState extends State<_AssistantPanel> {
 
   Future<void> _syncModuleAndLoad() async {
     if (!mounted) return;
-    setState(() {
-      _loadingHistory = true;
-      _error = null;
-      _pendingQuestion = null;
-    });
-    try {
-      final repo = context.read<AssistantRepository>();
-      final history = await repo.getHistory(_module);
-      if (!mounted) return;
-      setState(() {
-        _messages = history;
-        _loadingHistory = false;
-      });
-      _scrollToEnd();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loadingHistory = false;
-        _error = e.toString().replaceAll('Exception: ', '');
-      });
-    }
+    context.read<AssistantCubit>().loadHistory(_module);
+    _scrollToEnd();
   }
 
   void _scrollToEnd() {
@@ -188,52 +170,13 @@ class _AssistantPanelState extends State<_AssistantPanel> {
 
   Future<void> _send([String? preset]) async {
     final question = (preset ?? _controller.text).trim();
-    if (question.isEmpty || _sending) return;
-    final language = context.read<LanguageCubit>();
-    setState(() {
-      _sending = true;
-      _error = null;
-      _pendingQuestion = question;
-      _controller.clear();
-    });
+    if (question.isEmpty) return;
+    _controller.clear();
+    context.read<AssistantCubit>().sendMessage(
+      question: question,
+      module: _module,
+    );
     _scrollToEnd();
-    try {
-      final answer = await context.read<AssistantRepository>().ask(
-        question: question,
-        module: _module,
-      );
-      if (!mounted) return;
-      final now = DateTime.now();
-      setState(() {
-        _messages = [
-          ..._messages,
-          AssistantMessage(
-            id: -now.millisecondsSinceEpoch,
-            role: 'user',
-            text: question,
-            createdAt: now,
-          ),
-          AssistantMessage(
-            id: -now.millisecondsSinceEpoch - 1,
-            role: 'assistant',
-            text: answer,
-            createdAt: now,
-          ),
-        ];
-        _pendingQuestion = null;
-        _sending = false;
-      });
-      _scrollToEnd();
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _sending = false;
-        _pendingQuestion = null;
-        _error = language.resolveMessage(
-          e.toString().replaceAll('Exception: ', ''),
-        );
-      });
-    }
   }
 
   Future<void> _clear() async {
@@ -258,21 +201,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
       ),
     );
     if (confirmed != true || !mounted) return;
-    try {
-      await context.read<AssistantRepository>().clearHistory(_module);
-      if (!mounted) return;
-      setState(() {
-        _messages = const [];
-        _error = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = language.resolveMessage(
-          e.toString().replaceAll('Exception: ', ''),
-        );
-      });
-    }
+    context.read<AssistantCubit>().clearHistory(_module);
   }
 
   @override
@@ -296,207 +225,213 @@ class _AssistantPanelState extends State<_AssistantPanel> {
         bottom: true,
         child: Padding(
           padding: EdgeInsets.only(bottom: keyboardInset),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
-                child: Row(
-                  children: [
-                    Icon(
-                      TablerIcons.message_circle,
-                      size: 20,
-                      color: colors.brand,
+          child: BlocBuilder<AssistantCubit, AssistantState>(
+            builder: (context, state) {
+              final messages = state.historyFor(_module);
+              final loadingHistory = state.isLoading;
+              final sending = state.isSendingMessage;
+              final error = state.error;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            language.translate('assistant_title'),
-                            style: textStyles.h2Sans,
-                          ),
-                          Text(
-                            section,
-                            style: textStyles.captionSans.copyWith(
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: colors.border)),
                     ),
-                    IconButton(
-                      tooltip: language.translate('assistant_clear'),
-                      onPressed: _sending ? null : _clear,
-                      icon: Icon(
-                        TablerIcons.trash,
-                        size: 20,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: widget.onClose,
-                      icon: Icon(
-                        TablerIcons.x,
-                        size: 20,
-                        color: colors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Divider(height: 1, color: colors.border),
-              Expanded(
-                child: _loadingHistory
-                    ? const LedgerShimmer(
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          TablerIcons.sparkles,
+                          color: colors.brand,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ShimmerBox(
-                                width: 220,
-                                height: 44,
-                                borderRadius: 12,
+                              Text(
+                                language.translate('assistant_title'),
+                                style: textStyles.h2Sans,
                               ),
-                              SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: ShimmerBox(
-                                  width: 180,
-                                  height: 36,
-                                  borderRadius: 12,
-                                ),
-                              ),
-                              SizedBox(height: 10),
-                              ShimmerBox(
-                                width: 260,
-                                height: 56,
-                                borderRadius: 12,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : ListView(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(12),
-                        children: [
-                          if (_messages.isEmpty && _pendingQuestion == null)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Text(
-                                language.translate('assistant_empty'),
+                              Text(
+                                '${language.translate('assistant_context')}: $section',
                                 style: textStyles.captionSans.copyWith(
                                   color: colors.textSecondary,
                                 ),
                               ),
-                            ),
-                          for (final m in _messages) _bubble(context, m),
-                          if (_pendingQuestion != null) ...[
-                            _localBubble(
-                              context,
-                              text: _pendingQuestion!,
-                              isUser: true,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                language.translate('assistant_thinking'),
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.accentAmber,
-                                ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: language.translate('assistant_clear_title'),
+                          icon: Icon(
+                            TablerIcons.trash,
+                            size: 18,
+                            color: colors.textSecondary,
+                          ),
+                          onPressed: messages.isEmpty ? null : _clear,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            TablerIcons.x,
+                            size: 20,
+                            color: colors.textSecondary,
+                          ),
+                          onPressed: widget.onClose,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: loadingHistory
+                        ? const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: LedgerShimmer(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ShimmerBox(
+                                    width: 220,
+                                    height: 44,
+                                    borderRadius: 12,
+                                  ),
+                                  SizedBox(height: 10),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: ShimmerBox(
+                                      width: 180,
+                                      height: 36,
+                                      borderRadius: 12,
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                  ShimmerBox(
+                                    width: 260,
+                                    height: 56,
+                                    borderRadius: 12,
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                          if (_error != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                _error!,
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.accentRed,
+                          )
+                        : ListView(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(12),
+                            children: [
+                              if (messages.isEmpty && !sending)
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Text(
+                                    language.translate('assistant_empty'),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.textSecondary,
+                                    ),
+                                  ),
                                 ),
+                              for (final m in messages) _bubble(context, m),
+                              if (sending)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    language.translate('assistant_thinking'),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.accentAmber,
+                                    ),
+                                  ),
+                                ),
+                              if (error != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    language.resolveMessage(error),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.accentRed,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                  ),
+                  if (!loadingHistory && messages.isEmpty && !sending)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final n in const [1, 2, 3])
+                            ActionChip(
+                              label: Text(
+                                _presetQuestion(language, _module, n),
+                                style: textStyles.smallSans,
                               ),
+                              backgroundColor: colors.surfaceNested,
+                              side: BorderSide(color: colors.border),
+                              onPressed: sending
+                                  ? null
+                                  : () => _send(
+                                      _presetQuestion(language, _module, n),
+                                    ),
                             ),
                         ],
                       ),
-              ),
-              if (!_loadingHistory && _messages.isEmpty && !_sending)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final n in const [1, 2, 3])
-                        ActionChip(
-                          label: Text(
-                            _presetQuestion(language, _module, n),
-                            style: textStyles.smallSans,
-                          ),
-                          backgroundColor: colors.surfaceNested,
-                          side: BorderSide(color: colors.border),
-                          onPressed: _sending
-                              ? null
-                              : () => _send(
-                                  _presetQuestion(language, _module, n),
-                                ),
-                        ),
-                    ],
-                  ),
-                ),
-              Divider(height: 1, color: colors.border),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        enabled: !_sending,
-                        minLines: 1,
-                        maxLines: 3,
-                        style: textStyles.bodySans,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _send(),
-                        decoration: InputDecoration(
-                          hintText: language.translate('assistant_placeholder'),
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: colors.border),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: colors.border),
-                          ),
-                        ),
-                      ),
                     ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      onPressed: _sending ? null : () => _send(),
-                      icon: _sending
-                          ? SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: colors.brand,
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    decoration: BoxDecoration(
+                      border: Border(top: BorderSide(color: colors.border)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            enabled: !sending,
+                            decoration: InputDecoration(
+                              hintText: language.translate(
+                                'assistant_input_hint',
                               ),
-                            )
-                          : Icon(TablerIcons.send, color: colors.brand),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                borderSide: BorderSide(color: colors.border),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
+                              isDense: true,
+                            ),
+                            onSubmitted: (_) => _send(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: sending ? null : () => _send(),
+                          icon: sending
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(TablerIcons.send, size: 18),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -504,38 +439,28 @@ class _AssistantPanelState extends State<_AssistantPanel> {
   }
 
   Widget _bubble(BuildContext context, AssistantMessage message) {
-    return _localBubble(context, text: message.text, isUser: message.isUser);
-  }
-
-  Widget _localBubble(
-    BuildContext context, {
-    required String text,
-    required bool isUser,
-  }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final isUser = message.isUser;
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+          maxWidth: MediaQuery.sizeOf(context).width * 0.8,
         ),
         decoration: BoxDecoration(
-          color: isUser
-              ? colors.brand.withValues(alpha: 0.08)
-              : colors.surfaceNested,
+          color: isUser ? colors.brand : colors.surfaceNested,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isUser
-                ? colors.brand.withValues(alpha: 0.35)
-                : colors.border,
-          ),
+          border: isUser ? null : Border.all(color: colors.border),
         ),
         child: Text(
-          text,
-          style: textStyles.captionSans.copyWith(color: colors.textPrimary),
+          message.text,
+          style: textStyles.bodySans.copyWith(
+            color: isUser ? Colors.white : colors.textPrimary,
+          ),
         ),
       ),
     );

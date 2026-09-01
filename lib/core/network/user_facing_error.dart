@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import '../error/app_failure.dart';
+import '../error/result.dart';
 
 /// Stable localization keys for infrastructure and feature failures.
 ///
@@ -39,60 +41,155 @@ abstract final class ErrorKeys {
   static const biometricsError = 'error_biometrics_error';
 }
 
-/// Converts infrastructure failures into localization keys safe for UI.
-String userFacingError(Object error, {String fallback = ErrorKeys.generic}) {
+/// Maps any caught error or exception into a typed [AppFailure].
+AppFailure mapExceptionToFailure(
+  Object error, {
+  String fallback = ErrorKeys.generic,
+  StackTrace? stackTrace,
+}) {
+  if (error is AppFailure) {
+    return error;
+  }
+
   if (error is TimeoutException) {
-    return ErrorKeys.timeout;
+    return TimeoutFailure(debugMessage: error.message, stackTrace: stackTrace);
   }
 
-  if (error is! DioException) return fallback;
-
-  switch (error.type) {
-    case DioExceptionType.connectionTimeout:
-    case DioExceptionType.sendTimeout:
-    case DioExceptionType.receiveTimeout:
-    case DioExceptionType.transformTimeout:
-      return ErrorKeys.timeout;
-    case DioExceptionType.connectionError:
-      return ErrorKeys.offline;
-    case DioExceptionType.cancel:
-      return ErrorKeys.cancelled;
-    case DioExceptionType.badCertificate:
-      return ErrorKeys.badCertificate;
-    case DioExceptionType.badResponse:
-      final statusCode = error.response?.statusCode;
-      if (statusCode == 401) {
-        return ErrorKeys.sessionExpired;
-      }
-      if (statusCode == 403) {
-        return ErrorKeys.forbidden;
-      }
-      if (statusCode == 409) {
-        return ErrorKeys.conflict;
-      }
-      if (statusCode == 422) {
-        return ErrorKeys.validation;
-      }
-      if (statusCode == 429) {
-        return ErrorKeys.rateLimited;
-      }
-      if (statusCode != null && statusCode >= 500) {
-        return ErrorKeys.server;
-      }
-      return fallback;
-    case DioExceptionType.unknown:
-      return fallback;
+  if (error is DioException) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
+        return TimeoutFailure(
+          debugMessage: error.message,
+          stackTrace: stackTrace ?? error.stackTrace,
+        );
+      case DioExceptionType.connectionError:
+        return NetworkFailure(
+          debugMessage: error.message,
+          stackTrace: stackTrace ?? error.stackTrace,
+        );
+      case DioExceptionType.cancel:
+        return GenericFailure(
+          translationKey: ErrorKeys.cancelled,
+          debugMessage: error.message,
+          stackTrace: stackTrace ?? error.stackTrace,
+        );
+      case DioExceptionType.badCertificate:
+        return GenericFailure(
+          translationKey: ErrorKeys.badCertificate,
+          debugMessage: error.message,
+          stackTrace: stackTrace ?? error.stackTrace,
+        );
+      case DioExceptionType.badResponse:
+        final statusCode = error.response?.statusCode;
+        if (statusCode == 401) {
+          return AuthFailure(
+            translationKey: ErrorKeys.sessionExpired,
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        if (statusCode == 403) {
+          return AuthFailure(
+            translationKey: ErrorKeys.forbidden,
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        if (statusCode == 404) {
+          return NotFoundFailure(
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        if (statusCode == 409) {
+          return ServerFailure(
+            translationKey: ErrorKeys.conflict,
+            statusCode: 409,
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        if (statusCode == 422) {
+          return ValidationFailure(
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        if (statusCode == 429) {
+          return ServerFailure(
+            translationKey: ErrorKeys.rateLimited,
+            statusCode: 429,
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        if (statusCode != null && statusCode >= 500) {
+          return ServerFailure(
+            statusCode: statusCode,
+            debugMessage: error.message,
+            stackTrace: stackTrace ?? error.stackTrace,
+          );
+        }
+        return ServerFailure(
+          translationKey: fallback,
+          statusCode: statusCode,
+          debugMessage: error.message,
+          stackTrace: stackTrace ?? error.stackTrace,
+        );
+      case DioExceptionType.unknown:
+        return GenericFailure(
+          translationKey: fallback,
+          debugMessage: error.message,
+          stackTrace: stackTrace ?? error.stackTrace,
+        );
+    }
   }
+
+  return GenericFailure(
+    translationKey: fallback,
+    debugMessage: error.toString(),
+    stackTrace: stackTrace,
+  );
 }
 
-/// Wraps a repository call so Dio/transport failures become stable error keys.
+/// Converts infrastructure failures into localization keys safe for UI.
+String userFacingError(Object error, {String fallback = ErrorKeys.generic}) {
+  if (error is AppFailure) {
+    return error.translationKey;
+  }
+  return mapExceptionToFailure(error, fallback: fallback).translationKey;
+}
+
+/// Wraps a repository call so failures become typed [AppFailure] instances.
 Future<T> mapRepositoryError<T>(
   Future<T> Function() action, {
   String fallback = ErrorKeys.loadFailed,
 }) async {
   try {
     return await action();
-  } catch (error) {
-    throw Exception(userFacingError(error, fallback: fallback));
+  } catch (error, stackTrace) {
+    throw mapExceptionToFailure(
+      error,
+      fallback: fallback,
+      stackTrace: stackTrace,
+    );
+  }
+}
+
+/// Executes an async action safely returning a monadic [Result<T>].
+Future<Result<T>> runCatchingAsync<T>(
+  Future<T> Function() action, {
+  String fallback = ErrorKeys.loadFailed,
+}) async {
+  try {
+    final data = await action();
+    return Result.success(data);
+  } catch (error, stackTrace) {
+    return Result.failure(
+      mapExceptionToFailure(error, fallback: fallback, stackTrace: stackTrace),
+    );
   }
 }

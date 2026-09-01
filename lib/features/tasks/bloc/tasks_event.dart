@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 import '../domain/task_model.dart';
 
@@ -12,9 +10,8 @@ abstract class TasksEvent extends Equatable {
 
 class LoadTasks extends TasksEvent {
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadTasks({this.forceRefresh = false, this.completion});
+  const LoadTasks({this.forceRefresh = false});
 
   @override
   List<Object?> get props => [forceRefresh];
@@ -22,9 +19,8 @@ class LoadTasks extends TasksEvent {
 
 class LoadTaskAnalytics extends TasksEvent {
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadTaskAnalytics({this.forceRefresh = false, this.completion});
+  const LoadTaskAnalytics({this.forceRefresh = false});
 
   @override
   List<Object?> get props => [forceRefresh];
@@ -60,9 +56,8 @@ class UpdateTaskRequested extends TasksEvent {
 
 class LoadMyTasks extends TasksEvent {
   final bool forceRefresh;
-  final Completer<void>? completion;
 
-  const LoadMyTasks({this.forceRefresh = false, this.completion});
+  const LoadMyTasks({this.forceRefresh = false});
 
   @override
   List<Object?> get props => [forceRefresh];

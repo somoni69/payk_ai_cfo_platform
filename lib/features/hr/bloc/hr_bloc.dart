@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/hr_models.dart';
 import '../domain/hr_repository.dart';
 import 'hr_event.dart';
@@ -132,7 +133,6 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       if (identical(_loadRequests[event.period], request)) {
         _loadRequests.remove(event.period);
       }
-      if (event.completion?.isCompleted == false) event.completion!.complete();
     }
   }
 
@@ -152,7 +152,6 @@ class HrBloc extends Bloc<HrEvent, HrState> {
       HrSection.movement => current.movementLoaded,
     };
     if (alreadyLoaded && !event.forceRefresh) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
       return;
     }
 
@@ -264,12 +263,10 @@ class HrBloc extends Bloc<HrEvent, HrState> {
         emit(
           (state as HrLoaded).copyWith(
             sectionLoading: false,
-            errorMessage: e.toString(),
+            errorMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
           ),
         );
       }
-    } finally {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
     }
   }
 

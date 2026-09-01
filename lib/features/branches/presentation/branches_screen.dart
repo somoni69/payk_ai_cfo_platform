@@ -33,127 +33,13 @@ class BranchesView extends StatelessWidget {
 
   void _showBranchModal(BuildContext context, {Branch? editing}) {
     final branchesBloc = context.read<BranchesBloc>();
-    final colors = context.colors;
-    final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
-    final nameCtrl = TextEditingController(text: editing?.name ?? '');
-    final codeCtrl = TextEditingController(text: editing?.code ?? '');
-    final addressCtrl = TextEditingController(text: editing?.address ?? '');
-    final phoneCtrl = TextEditingController(text: editing?.phone ?? '');
-    bool isActive = editing?.isActive ?? true;
 
     LedgerBottomSheet.show(
       context: context,
       title: editing == null ? locale.translate('branches_new') : editing.name,
-      builder: (context, setSheetState) => Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: nameCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('branches_name'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: codeCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('branches_code'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: addressCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('branches_address'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: phoneCtrl,
-            decoration: InputDecoration(
-              labelText: locale.translate('branches_phone'),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                locale.translate('branches_status'),
-                style: textStyles.bodySans,
-              ),
-              Switch(
-                value: isActive,
-                activeThumbColor: colors.brand,
-                onChanged: (val) => setSheetState(() => isActive = val),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                if (nameCtrl.text.trim().isEmpty) return;
-                if (editing == null) {
-                  branchesBloc.add(
-                    CreateBranchRequested(
-                      name: nameCtrl.text.trim(),
-                      code: codeCtrl.text.trim().isNotEmpty
-                          ? codeCtrl.text.trim()
-                          : null,
-                      address: addressCtrl.text.trim(),
-                      phone: phoneCtrl.text.trim(),
-                    ),
-                  );
-                } else {
-                  branchesBloc.add(
-                    UpdateBranchRequested(
-                      id: editing.id,
-                      name: nameCtrl.text.trim(),
-                      code: codeCtrl.text.trim().isNotEmpty
-                          ? codeCtrl.text.trim()
-                          : null,
-                      address: addressCtrl.text.trim(),
-                      phone: phoneCtrl.text.trim(),
-                      isActive: isActive,
-                    ),
-                  );
-                }
-                Navigator.pop(context);
-              },
-              child: Text(locale.translate('common_save')),
-            ),
-          ),
-          if (editing != null) ...[
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  branchesBloc.add(DeleteBranchRequested(editing.id));
-                  Navigator.pop(context);
-                },
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.accentRed,
-                  side: BorderSide(
-                    color: colors.accentRed.withValues(alpha: 0.5),
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                icon: const Icon(TablerIcons.trash, size: 18),
-                label: Text(locale.translate('common_delete')),
-              ),
-            ),
-          ],
-        ],
-      ),
+      builder: (context, setSheetState) =>
+          _BranchFormSheet(editing: editing, branchesBloc: branchesBloc),
     );
   }
 
@@ -447,6 +333,161 @@ class BranchesView extends StatelessWidget {
           return const SizedBox();
         },
       ),
+    );
+  }
+}
+
+class _BranchFormSheet extends StatefulWidget {
+  final Branch? editing;
+  final BranchesBloc branchesBloc;
+
+  const _BranchFormSheet({this.editing, required this.branchesBloc});
+
+  @override
+  State<_BranchFormSheet> createState() => _BranchFormSheetState();
+}
+
+class _BranchFormSheetState extends State<_BranchFormSheet> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _codeCtrl;
+  late final TextEditingController _addressCtrl;
+  late final TextEditingController _phoneCtrl;
+  late bool _isActive;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: widget.editing?.name ?? '');
+    _codeCtrl = TextEditingController(text: widget.editing?.code ?? '');
+    _addressCtrl = TextEditingController(text: widget.editing?.address ?? '');
+    _phoneCtrl = TextEditingController(text: widget.editing?.phone ?? '');
+    _isActive = widget.editing?.isActive ?? true;
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _codeCtrl.dispose();
+    _addressCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
+    final editing = widget.editing;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _nameCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('branches_name'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _codeCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('branches_code'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _addressCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('branches_address'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _phoneCtrl,
+          decoration: InputDecoration(
+            labelText: locale.translate('branches_phone'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              locale.translate('branches_status'),
+              style: textStyles.bodySans,
+            ),
+            Switch(
+              value: _isActive,
+              activeThumbColor: colors.brand,
+              onChanged: (val) => setState(() => _isActive = val),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton(
+            onPressed: () {
+              if (_nameCtrl.text.trim().isEmpty) return;
+              if (editing == null) {
+                widget.branchesBloc.add(
+                  CreateBranchRequested(
+                    name: _nameCtrl.text.trim(),
+                    code: _codeCtrl.text.trim().isNotEmpty
+                        ? _codeCtrl.text.trim()
+                        : null,
+                    address: _addressCtrl.text.trim(),
+                    phone: _phoneCtrl.text.trim(),
+                  ),
+                );
+              } else {
+                widget.branchesBloc.add(
+                  UpdateBranchRequested(
+                    id: editing.id,
+                    name: _nameCtrl.text.trim(),
+                    code: _codeCtrl.text.trim().isNotEmpty
+                        ? _codeCtrl.text.trim()
+                        : null,
+                    address: _addressCtrl.text.trim(),
+                    phone: _phoneCtrl.text.trim(),
+                    isActive: _isActive,
+                  ),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_save')),
+          ),
+        ),
+        if (editing != null) ...[
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                widget.branchesBloc.add(DeleteBranchRequested(editing.id));
+                Navigator.pop(context);
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.accentRed,
+                side: BorderSide(
+                  color: colors.accentRed.withValues(alpha: 0.5),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(TablerIcons.trash, size: 18),
+              label: Text(locale.translate('common_delete')),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

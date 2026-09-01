@@ -188,13 +188,18 @@ class _CashPosViewState extends State<CashPosView> {
       ],
       bankId: _method == PaymentMethod.cash ? null : _bankId,
     );
-    final done = Completer<String?>();
-    cashBloc.add(AddTransactionRequested(tx, result: done));
-    final error = await done.future;
+    cashBloc.add(AddTransactionRequested(tx));
+    final nextState = await cashBloc.stream.firstWhere(
+      (s) => s is CashLoaded && !s.isSubmitting,
+    );
     if (!mounted) return;
     setState(() => _submitting = false);
-    if (error != null) {
-      setState(() => _error = language.translateMessage(error));
+    if (nextState is CashLoaded &&
+        nextState.errorMessage != null &&
+        !nextState.errorMessage!.startsWith('cash_tx_saved')) {
+      setState(
+        () => _error = language.translateMessage(nextState.errorMessage!),
+      );
       return;
     }
     setState(() {

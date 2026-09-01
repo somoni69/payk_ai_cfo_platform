@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/network/user_facing_error.dart';
 import '../domain/task_model.dart';
 import '../domain/tasks_repository.dart';
 import 'tasks_event.dart';
@@ -6,20 +8,6 @@ import 'tasks_state.dart';
 
 class TasksBloc extends Bloc<TasksEvent, TasksState> {
   final TasksRepository _repository;
-
-  final Set<String> _pendingStatusTaskIds = {};
-  static const Duration _referenceDataTtl = Duration(minutes: 30);
-  List<TaskProject>? _cachedProjects;
-  List<TaskAssignee>? _cachedAssignees;
-  DateTime? _referenceDataCachedAt;
-  Future<List<Object>>? _referenceDataRequest;
-  Future<List<Object>>? _tasksRequest;
-  Future<List<Object>>? _analyticsRequest;
-  int _tasksGeneration = 0;
-
-  bool get _hasFreshReferenceData =>
-      _referenceDataCachedAt != null &&
-      DateTime.now().difference(_referenceDataCachedAt!) < _referenceDataTtl;
 
   TasksBloc(this._repository) : super(TasksLoading()) {
     on<LoadTasks>(_onLoadTasks);
@@ -42,59 +30,60 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
   }
 
   Future<void> _onLoadTasks(LoadTasks event, Emitter<TasksState> emit) async {
-    final generation = ++_tasksGeneration;
-    final previous = state is TasksLoaded ? state as TasksLoaded : null;
-    if (previous != null) {
-      emit(previous.copyWith(isRefreshing: true, clearLoadError: true));
+    final current = state is TasksLoaded ? state as TasksLoaded : null;
+    if (current != null) {
+      emit(current.copyWith(isRefreshing: true, clearLoadError: true));
     } else {
       emit(TasksLoading());
     }
 
-    var request = _tasksRequest;
-    if (request == null) {
-      request = Future.wait<Object>([
-        _repository.getTasks(),
-        _loadReferenceData(forceRefresh: event.forceRefresh),
-      ]);
-      _tasksRequest = request;
-    }
-
     try {
-      final results = await request;
-      if (generation != _tasksGeneration || emit.isDone) return;
-      final latest = state is TasksLoaded ? state as TasksLoaded : previous;
-      final referenceData = results[1] as List<Object>;
+      final Future<List<Task>> tasksFuture = _repository.getTasks();
+      final Future<List<TaskProject>> projectsFuture = current != null
+          ? Future.value(current.projects)
+          : _repository.getProjects();
+      final Future<List<TaskAssignee>> assigneesFuture = current != null
+          ? Future.value(current.assignees)
+          : _repository.getAssignees();
+
+      final results = await Future.wait<Object>([
+        tasksFuture,
+        projectsFuture,
+        assigneesFuture,
+      ]);
+
+      final tasks = (results[0] as List).cast<Task>();
+      final projects = (results[1] as List).cast<TaskProject>();
+      final assignees = (results[2] as List).cast<TaskAssignee>();
+
       emit(
         TasksLoaded(
-          tasks: (results[0] as List).cast<Task>(),
-          projects: (referenceData[0] as List).cast<TaskProject>(),
-          assignees: (referenceData[1] as List).cast<TaskAssignee>(),
-          overloaded: latest?.overloaded ?? const [],
-          criticalPath: latest?.criticalPath ?? const [],
-          myTasks: latest?.myTasks ?? const [],
-          assignedToMe: latest?.assignedToMe ?? const [],
-          myTasksLoaded: latest?.myTasksLoaded ?? false,
-          isMyTasksLoading: latest?.isMyTasksLoading ?? false,
-          pendingStatusTaskIds: latest?.pendingStatusTaskIds ?? const {},
-          lastStatusUpdateResult: latest?.lastStatusUpdateResult,
-          isAnalyticsLoading: latest?.isAnalyticsLoading ?? false,
-          analyticsLoaded: latest?.analyticsLoaded ?? false,
-          analyticsError: latest?.analyticsError,
+          tasks: tasks,
+          projects: projects,
+          assignees: assignees,
+          overloaded: current?.overloaded ?? const [],
+          criticalPath: current?.criticalPath ?? const [],
+          myTasks: current?.myTasks ?? const [],
+          assignedToMe: current?.assignedToMe ?? const [],
+          myTasksLoaded: current?.myTasksLoaded ?? false,
+          isMyTasksLoading: current?.isMyTasksLoading ?? false,
+          pendingStatusTaskIds: current?.pendingStatusTaskIds ?? const {},
+          lastStatusUpdateResult: current?.lastStatusUpdateResult,
+          isAnalyticsLoading: current?.isAnalyticsLoading ?? false,
+          analyticsLoaded: current?.analyticsLoaded ?? false,
+          analyticsError: current?.analyticsError,
         ),
       );
-    } catch (_) {
-      if (generation != _tasksGeneration || emit.isDone) return;
-      final latest = state is TasksLoaded ? state as TasksLoaded : previous;
-      const message =
-          'Не удалось загрузить список задач. Проверьте соединение.';
-      if (latest != null) {
-        emit(latest.copyWith(isRefreshing: false, loadError: message));
+    } catch (e) {
+      final message = userFacingError(
+        e,
+        fallback: 'Не удалось загрузить список задач. Проверьте соединение.',
+      );
+      if (current != null) {
+        emit(current.copyWith(isRefreshing: false, loadError: message));
       } else {
-        emit(const TasksError(message));
+        emit(TasksError(message));
       }
-    } finally {
-      if (identical(_tasksRequest, request)) _tasksRequest = null;
-      if (event.completion?.isCompleted == false) event.completion!.complete();
     }
   }
 
@@ -102,236 +91,133 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     LoadTaskAnalytics event,
     Emitter<TasksState> emit,
   ) async {
-    if (state is! TasksLoaded) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
+    if (state is! TasksLoaded) return;
     final current = state as TasksLoaded;
-    if (current.analyticsLoaded && !event.forceRefresh) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
     emit(current.copyWith(isAnalyticsLoading: true, clearAnalyticsError: true));
 
-    var request = _analyticsRequest;
-    if (request == null) {
-      request = Future.wait<Object>([
+    try {
+      final results = await Future.wait<Object>([
         _repository.getOverloadedAssignees(),
         _repository.getCriticalPath(),
       ]);
-      _analyticsRequest = request;
-    }
 
-    try {
-      final results = await request;
-      if (state is TasksLoaded) {
-        emit(
-          (state as TasksLoaded).copyWith(
-            overloaded: (results[0] as List).cast<TaskOverload>(),
-            criticalPath: (results[1] as List).cast<TaskCriticalPath>(),
-            isAnalyticsLoading: false,
-            analyticsLoaded: true,
-            clearAnalyticsError: true,
-          ),
-        );
-      }
-    } catch (error) {
-      if (state is TasksLoaded) {
-        emit(
-          (state as TasksLoaded).copyWith(
-            isAnalyticsLoading: false,
-            analyticsError:
-                'Не удалось загрузить аналитику задач. Повторите попытку.',
-          ),
-        );
-      }
-    } finally {
-      if (identical(_analyticsRequest, request)) _analyticsRequest = null;
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-    }
-  }
-
-  Future<List<Object>> _loadReferenceData({bool forceRefresh = false}) async {
-    final cachedProjects = _cachedProjects;
-    final cachedAssignees = _cachedAssignees;
-    if (!forceRefresh &&
-        _hasFreshReferenceData &&
-        cachedProjects != null &&
-        cachedAssignees != null) {
-      return <Object>[cachedProjects, cachedAssignees];
-    }
-
-    final inFlightRequest = _referenceDataRequest;
-    if (inFlightRequest != null) return inFlightRequest;
-
-    final request =
-        Future.wait<dynamic>([
-              _repository.getProjects(),
-              _repository.getAssignees(),
-            ])
-            .then<List<Object>>((results) {
-              final projects = (results[0] as List).cast<TaskProject>();
-              final assignees = (results[1] as List).cast<TaskAssignee>();
-              _cachedProjects = projects;
-              _cachedAssignees = assignees;
-              _referenceDataCachedAt = DateTime.now();
-              return <Object>[projects, assignees];
-            })
-            .catchError((Object error) {
-              if (cachedProjects != null && cachedAssignees != null) {
-                return <Object>[cachedProjects, cachedAssignees];
-              }
-              throw error;
-            });
-    _referenceDataRequest = request;
-
-    try {
-      return await request;
-    } finally {
-      if (identical(_referenceDataRequest, request)) {
-        _referenceDataRequest = null;
-      }
-    }
-  }
-
-  void _onUpdateTaskStatusRequested(
-    UpdateTaskStatusRequested event,
-    Emitter<TasksState> emit,
-  ) async {
-    if (state is! TasksLoaded) return;
-    if (_pendingStatusTaskIds.contains(event.taskId)) return;
-
-    final currentState = state as TasksLoaded;
-    final currentTasks = currentState.tasks;
-
-    final index = currentTasks.indexWhere((t) => t.id == event.taskId);
-    if (index == -1) return;
-    final originalTask = currentTasks[index];
-
-    _pendingStatusTaskIds.add(event.taskId);
-
-    // Оптимистично меняем статус локально для моментального отклика UI
-    final optimisticTasks = currentTasks.map((t) {
-      return t.id == event.taskId ? t.copyWith(status: event.status) : t;
-    }).toList();
-
-    emit(
-      currentState.copyWith(
-        tasks: optimisticTasks,
-        pendingStatusTaskIds: Set.from(_pendingStatusTaskIds),
-        clearLastResult: true,
-      ),
-    );
-
-    try {
-      final updatedTask = await _repository.updateTaskStatus(
-        event.taskId,
-        event.status,
-      );
-
-      // Обновляем финальными данными с сервера
-      if (state is TasksLoaded) {
-        final latestState = state as TasksLoaded;
-        final finalTasks = latestState.tasks.map((t) {
-          return t.id == event.taskId ? updatedTask : t;
-        }).toList();
-        emit(
-          latestState.copyWith(
-            tasks: finalTasks,
-            lastStatusUpdateResult: TaskStatusUpdateResult(
-              operationId: DateTime.now().microsecondsSinceEpoch.toString(),
-              taskId: event.taskId,
-              previousStatus: originalTask.status,
-              newStatus: event.status,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      // При ошибке возвращаем исходное состояние конкретной задачи
-      if (state is TasksLoaded) {
-        final latestState = state as TasksLoaded;
-        final revertedTasks = latestState.tasks.map((t) {
-          return t.id == event.taskId ? originalTask : t;
-        }).toList();
-        emit(latestState.copyWith(tasks: revertedTasks, clearLastResult: true));
-      }
-    } finally {
-      _pendingStatusTaskIds.remove(event.taskId);
-      if (state is TasksLoaded) {
-        final latestState = state as TasksLoaded;
-        emit(
-          latestState.copyWith(
-            pendingStatusTaskIds: Set.from(_pendingStatusTaskIds),
-          ),
-        );
-      }
-    }
-  }
-
-  void _onCreateTaskRequested(
-    CreateTaskRequested event,
-    Emitter<TasksState> emit,
-  ) async {
-    if (state is! TasksLoaded) return;
-
-    try {
-      final created = await _repository.createTask(event.task);
-      if (emit.isDone || state is! TasksLoaded) return;
-
-      final latestState = state as TasksLoaded;
-      final updatedList = List<Task>.from(latestState.tasks)
-        ..removeWhere((task) => task.id == created.id)
-        ..add(created);
-      emit(latestState.copyWith(tasks: updatedList, clearLoadError: true));
-    } catch (e) {
-      if (emit.isDone || state is! TasksLoaded) return;
       emit(
-        (state as TasksLoaded).copyWith(
-          loadError:
-              'Не удалось создать задачу. Проверьте данные и соединение.',
+        current.copyWith(
+          overloaded: (results[0] as List).cast<TaskOverload>(),
+          criticalPath: (results[1] as List).cast<TaskCriticalPath>(),
+          isAnalyticsLoading: false,
+          analyticsLoaded: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        current.copyWith(
+          isAnalyticsLoading: false,
+          analyticsError: userFacingError(e, fallback: ErrorKeys.loadFailed),
         ),
       );
     }
   }
 
-  void _onUpdateTaskRequested(
+  Future<void> _onUpdateTaskStatusRequested(
+    UpdateTaskStatusRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
+
+    final targetIndex = current.tasks.indexWhere((t) => t.id == event.taskId);
+    if (targetIndex == -1) return;
+    final previousStatus = current.tasks[targetIndex].status;
+
+    final pending = Set<String>.from(current.pendingStatusTaskIds)
+      ..add(event.taskId);
+    final optimisticTasks = List<Task>.from(current.tasks)
+      ..[targetIndex] = current.tasks[targetIndex].copyWith(
+        status: event.status,
+      );
+
+    emit(
+      current.copyWith(tasks: optimisticTasks, pendingStatusTaskIds: pending),
+    );
+
+    try {
+      final updated = await _repository.updateTaskStatus(
+        event.taskId,
+        event.status,
+      );
+      final finalTasks = List<Task>.from(current.tasks)
+        ..[targetIndex] = updated;
+      final finalPending = Set<String>.from(pending)..remove(event.taskId);
+
+      emit(
+        current.copyWith(
+          tasks: finalTasks,
+          pendingStatusTaskIds: finalPending,
+          lastStatusUpdateResult: TaskStatusUpdateResult(
+            operationId: DateTime.now().millisecondsSinceEpoch.toString(),
+            taskId: event.taskId,
+            previousStatus: previousStatus,
+            newStatus: event.status,
+          ),
+        ),
+      );
+    } catch (e) {
+      final rollbackPending = Set<String>.from(pending)..remove(event.taskId);
+      emit(
+        current.copyWith(
+          tasks: current.tasks,
+          pendingStatusTaskIds: rollbackPending,
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateTaskRequested(
+    CreateTaskRequested event,
+    Emitter<TasksState> emit,
+  ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
+    try {
+      final created = await _repository.createTask(event.task);
+      final latest = state is TasksLoaded ? state as TasksLoaded : current;
+      final existingIndex = latest.tasks.indexWhere((t) => t.id == created.id);
+      final updatedTasks = existingIndex >= 0
+          ? (List<Task>.from(latest.tasks)..[existingIndex] = created)
+          : [created, ...latest.tasks];
+      emit(
+        latest.copyWith(tasks: updatedTasks, actionMessage: 'tasks_created'),
+      );
+    } catch (e) {
+      final latest = state is TasksLoaded ? state as TasksLoaded : current;
+      emit(
+        latest.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onUpdateTaskRequested(
     UpdateTaskRequested event,
     Emitter<TasksState> emit,
   ) async {
     if (state is! TasksLoaded) return;
-    final currentState = state as TasksLoaded;
-    final currentTasks = currentState.tasks;
-
-    final index = currentTasks.indexWhere((t) => t.id == event.task.id);
-    if (index == -1) return;
-    final originalTask = currentTasks[index];
-
-    final optimisticTasks = currentTasks.map((t) {
-      return t.id == event.task.id ? event.task : t;
-    }).toList();
-
-    emit(currentState.copyWith(tasks: optimisticTasks));
-
+    final current = state as TasksLoaded;
     try {
-      final updatedTask = await _repository.updateTask(event.task);
-      if (state is TasksLoaded) {
-        final latestState = state as TasksLoaded;
-        final finalTasks = latestState.tasks.map((t) {
-          return t.id == event.task.id ? updatedTask : t;
-        }).toList();
-        emit(latestState.copyWith(tasks: finalTasks));
-      }
+      final updated = await _repository.updateTask(event.task);
+      final tasks = [
+        for (final t in current.tasks) t.id == updated.id ? updated : t,
+      ];
+      emit(current.copyWith(tasks: tasks, actionMessage: 'tasks_saved'));
     } catch (e) {
-      if (state is TasksLoaded) {
-        final latestState = state as TasksLoaded;
-        final revertedTasks = latestState.tasks.map((t) {
-          return t.id == event.task.id ? originalTask : t;
-        }).toList();
-        emit(latestState.copyWith(tasks: revertedTasks));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -340,24 +226,19 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       await _repository.deleteTask(event.taskId);
-      if (state is! TasksLoaded) return;
-      final latest = state as TasksLoaded;
+      final tasks = current.tasks
+          .where((t) => t.id != event.taskId)
+          .toList(growable: false);
+      emit(current.copyWith(tasks: tasks, actionMessage: 'tasks_deleted'));
+    } catch (e) {
       emit(
-        latest.copyWith(
-          tasks: latest.tasks.where((t) => t.id != event.taskId).toList(),
-          myTasks: latest.myTasks.where((t) => t.id != event.taskId).toList(),
-          assignedToMe: latest.assignedToMe
-              .where((t) => t.id != event.taskId)
-              .toList(),
-          actionMessage: 'tasks_my_toast_deleted',
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
         ),
       );
-    } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
     }
   }
 
@@ -365,48 +246,31 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     LoadMyTasks event,
     Emitter<TasksState> emit,
   ) async {
-    if (state is! TasksLoaded) {
-      // Ensure base board is loaded first so we have a shell state.
-      await _onLoadTasks(const LoadTasks(), emit);
-    }
-    if (state is! TasksLoaded) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
+    if (state is! TasksLoaded) return;
     final current = state as TasksLoaded;
-    if (current.myTasksLoaded && !event.forceRefresh) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
-    emit(current.copyWith(isMyTasksLoading: true, clearActionMessage: true));
+    emit(current.copyWith(isMyTasksLoading: true));
 
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<Object>([
         _repository.getMyTasks(),
         _repository.getAssignedToMe(),
       ]);
-      if (state is! TasksLoaded) return;
+
       emit(
-        (state as TasksLoaded).copyWith(
-          myTasks: results[0],
-          assignedToMe: results[1],
+        current.copyWith(
+          myTasks: (results[0] as List).cast<Task>(),
+          assignedToMe: (results[1] as List).cast<Task>(),
           myTasksLoaded: true,
           isMyTasksLoading: false,
         ),
       );
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit(
-          (state as TasksLoaded).copyWith(
-            isMyTasksLoading: false,
-            actionMessage: e.toString(),
-          ),
-        );
-      }
-    } finally {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
+      emit(
+        current.copyWith(
+          isMyTasksLoading: false,
+          actionMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
+        ),
+      );
     }
   }
 
@@ -415,23 +279,21 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final created = await _repository.createPersonalTask(event.input);
-      if (state is! TasksLoaded) return;
-      final latest = state as TasksLoaded;
       emit(
-        latest.copyWith(
-          myTasks: [
-            created,
-            ...latest.myTasks.where((t) => t.id != created.id),
-          ],
-          actionMessage: 'tasks_my_toast_created',
+        current.copyWith(
+          myTasks: [created, ...current.myTasks],
+          actionMessage: 'tasks_created',
         ),
       );
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -440,25 +302,22 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final updated = await _repository.updatePersonalTask(
         event.taskId,
         event.input,
       );
-      if (state is! TasksLoaded) return;
-      final latest = state as TasksLoaded;
+      final myTasks = [
+        for (final t in current.myTasks) t.id == updated.id ? updated : t,
+      ];
+      emit(current.copyWith(myTasks: myTasks, actionMessage: 'tasks_saved'));
+    } catch (e) {
       emit(
-        latest.copyWith(
-          myTasks: latest.myTasks
-              .map((t) => t.id == event.taskId ? updated : t)
-              .toList(),
-          actionMessage: 'tasks_my_toast_updated',
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
         ),
       );
-    } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
     }
   }
 
@@ -467,61 +326,37 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     Emitter<TasksState> emit,
   ) async {
     if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       await _repository.deletePersonalTask(event.taskId);
-      if (state is! TasksLoaded) return;
-      final latest = state as TasksLoaded;
+      final myTasks = current.myTasks
+          .where((t) => t.id != event.taskId)
+          .toList(growable: false);
+      emit(current.copyWith(myTasks: myTasks, actionMessage: 'tasks_deleted'));
+    } catch (e) {
       emit(
-        latest.copyWith(
-          myTasks: latest.myTasks.where((t) => t.id != event.taskId).toList(),
-          actionMessage: 'tasks_my_toast_deleted',
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
         ),
       );
-    } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
     }
-  }
-
-  List<Task> _upsertInList(List<Task> list, Task task) {
-    final exists = list.any((t) => t.id == task.id);
-    if (!exists) return [...list, task];
-    return list.map((t) => t.id == task.id ? task : t).toList();
-  }
-
-  Future<void> _applyAcceptanceResult(
-    Emitter<TasksState> emit,
-    Task updated, {
-    String? messageKey,
-  }) async {
-    if (state is! TasksLoaded) return;
-    final latest = state as TasksLoaded;
-    emit(
-      latest.copyWith(
-        assignedToMe: _upsertInList(latest.assignedToMe, updated),
-        myTasks: _upsertInList(latest.myTasks, updated),
-        tasks: _upsertInList(latest.tasks, updated),
-        actionMessage: messageKey,
-      ),
-    );
   }
 
   Future<void> _onAcknowledgeTask(
     AcknowledgeTaskRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final updated = await _repository.acknowledgeTask(event.taskId);
-      await _applyAcceptanceResult(
-        emit,
-        updated,
-        messageKey: 'tasks_review_toast_acknowledged',
-      );
+      emit(_updateSingleTask(current, updated));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -529,17 +364,17 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     SubmitTaskRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final updated = await _repository.submitTask(event.taskId);
-      await _applyAcceptanceResult(
-        emit,
-        updated,
-        messageKey: 'tasks_review_toast_submitted',
-      );
+      emit(_updateSingleTask(current, updated));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -547,17 +382,17 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     AcceptTaskRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final updated = await _repository.acceptTask(event.taskId);
-      await _applyAcceptanceResult(
-        emit,
-        updated,
-        messageKey: 'tasks_review_toast_accepted',
-      );
+      emit(_updateSingleTask(current, updated));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -565,20 +400,20 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     RejectTaskRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final updated = await _repository.rejectTask(
         event.taskId,
         reason: event.reason,
       );
-      await _applyAcceptanceResult(
-        emit,
-        updated,
-        messageKey: 'tasks_review_toast_rejected',
-      );
+      emit(_updateSingleTask(current, updated));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -586,26 +421,20 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     CreateProjectRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final project = await _repository.createProject(
         event.name,
         description: event.description,
       );
-      _cachedProjects = null;
-      _referenceDataRequest = null;
-      if (state is TasksLoaded) {
-        final current = state as TasksLoaded;
-        emit(
-          current.copyWith(
-            projects: [...current.projects, project],
-            actionMessage: 'Проект создан',
-          ),
-        );
-      }
+      emit(current.copyWith(projects: [...current.projects, project]));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -613,30 +442,24 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     UpdateProjectRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       final updated = await _repository.updateProject(
         event.projectId,
         name: event.name,
         description: event.description,
       );
-      _cachedProjects = null;
-      _referenceDataRequest = null;
-      if (state is TasksLoaded) {
-        final current = state as TasksLoaded;
-        final updatedProjects = current.projects
-            .map((p) => p.id == updated.id ? updated : p)
-            .toList();
-        emit(
-          current.copyWith(
-            projects: updatedProjects,
-            actionMessage: 'Проект обновлен',
-          ),
-        );
-      }
+      final projects = [
+        for (final p in current.projects) p.id == updated.id ? updated : p,
+      ];
+      emit(current.copyWith(projects: projects));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -644,23 +467,38 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
     DeleteProjectRequested event,
     Emitter<TasksState> emit,
   ) async {
+    if (state is! TasksLoaded) return;
+    final current = state as TasksLoaded;
     try {
       await _repository.deleteProject(event.projectId);
-      _cachedProjects = null;
-      _referenceDataRequest = null;
-      if (state is TasksLoaded) {
-        final current = state as TasksLoaded;
-        final remaining = current.projects
-            .where((p) => p.id != event.projectId)
-            .toList();
-        emit(
-          current.copyWith(projects: remaining, actionMessage: 'Проект удален'),
-        );
-      }
+      final projects = current.projects
+          .where((p) => p.id != event.projectId)
+          .toList(growable: false);
+      emit(current.copyWith(projects: projects));
     } catch (e) {
-      if (state is TasksLoaded) {
-        emit((state as TasksLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
+  }
+
+  TasksLoaded _updateSingleTask(TasksLoaded state, Task updated) {
+    final tasks = [
+      for (final t in state.tasks) t.id == updated.id ? updated : t,
+    ];
+    final myTasks = [
+      for (final t in state.myTasks) t.id == updated.id ? updated : t,
+    ];
+    final assignedToMe = [
+      for (final t in state.assignedToMe) t.id == updated.id ? updated : t,
+    ];
+
+    return state.copyWith(
+      tasks: tasks,
+      myTasks: myTasks,
+      assignedToMe: assignedToMe,
+    );
   }
 }

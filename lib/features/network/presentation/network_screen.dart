@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/network/expiring_request_cache.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
@@ -118,17 +119,16 @@ class _NetworkViewState extends State<_NetworkView> {
             slivers: [
               CupertinoSliverRefreshControl(
                 onRefresh: () async {
-                  final done = Completer<void>();
-                  context.read<NetworkBloc>().add(
+                  final bloc = context.read<NetworkBloc>();
+                  bloc.add(
                     LoadNetworkData(
                       period: state is NetworkLoaded
                           ? state.period
                           : NetworkPeriod.month,
                       forceRefresh: true,
-                      completion: done,
                     ),
                   );
-                  await done.future;
+                  await bloc.stream.firstWhere((s) => s is! NetworkLoading);
                 },
               ),
               SliverPadding(
@@ -238,11 +238,11 @@ class _NetworkViewState extends State<_NetworkView> {
           ),
           OutlinedButton(
             onPressed: () async {
-              final done = Completer<void>();
-              context.read<NetworkBloc>().add(
-                LeaveStoreRequested(completion: done),
+              final bloc = context.read<NetworkBloc>();
+              bloc.add(const LeaveStoreRequested());
+              await bloc.stream.firstWhere(
+                (s) => s is NetworkLoaded && !s.isSubmitting,
               );
-              await done.future;
               if (!context.mounted) return;
               ExpiringRequestCache.invalidateAll();
               context.read<AuthBloc>().add(const ActingStoreUpdated());
@@ -488,22 +488,26 @@ class _NetworkViewState extends State<_NetworkView> {
       if (_enteringStoreId != null) return;
       setState(() => _enteringStoreId = store.id);
       try {
-        final done = Completer<ActingStore>();
-        context.read<NetworkBloc>().add(
-          EnterStoreRequested(storeId: store.id, completion: done),
+        final bloc = context.read<NetworkBloc>();
+        bloc.add(EnterStoreRequested(storeId: store.id));
+        final nextState = await bloc.stream.firstWhere(
+          (s) => s is NetworkLoaded && !s.isSubmitting,
         );
-        final acting = await done.future;
         if (!context.mounted) return;
-        ExpiringRequestCache.invalidateAll();
-        context.read<AuthBloc>().add(
-          ActingStoreUpdated(storeId: acting.id, storeName: acting.name),
-        );
-        context.go('/dashboard');
+        if (nextState is NetworkLoaded &&
+            nextState.actingStore?.id == store.id) {
+          final acting = nextState.actingStore!;
+          ExpiringRequestCache.invalidateAll();
+          context.read<AuthBloc>().add(
+            ActingStoreUpdated(storeId: acting.id, storeName: acting.name),
+          );
+          context.go('/dashboard');
+        }
       } catch (e) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
+            content: Text(userFacingError(e)),
             backgroundColor: colors.accentRed,
           ),
         );
@@ -1139,7 +1143,6 @@ class _NetworkViewState extends State<_NetworkView> {
                       );
                       return;
                     }
-                    final done = Completer<bool>();
                     bloc.add(
                       CreateStoreRequested(
                         input: StoreCreateInput(
@@ -1157,11 +1160,9 @@ class _NetworkViewState extends State<_NetworkView> {
                               ? dirPassCtrl.text.trim()
                               : null,
                         ),
-                        completion: done,
                       ),
                     );
-                    final ok = await done.future;
-                    if (ok && sheetContext.mounted) {
+                    if (sheetContext.mounted) {
                       Navigator.of(sheetContext).pop();
                     }
                   },
@@ -1225,7 +1226,6 @@ class _NetworkViewState extends State<_NetworkView> {
               ElevatedButton(
                 onPressed: () async {
                   if (nameCtrl.text.trim().isEmpty) return;
-                  final done = Completer<bool>();
                   bloc.add(
                     UpdateStoreRequested(
                       storeId: store.id,
@@ -1234,11 +1234,9 @@ class _NetworkViewState extends State<_NetworkView> {
                           ? locCtrl.text.trim()
                           : null,
                       isActive: isActive,
-                      completion: done,
                     ),
                   );
-                  final ok = await done.future;
-                  if (ok && sheetContext.mounted) {
+                  if (sheetContext.mounted) {
                     Navigator.of(sheetContext).pop();
                   }
                 },
@@ -1309,7 +1307,6 @@ class _NetworkViewState extends State<_NetworkView> {
                     );
                     return;
                   }
-                  final done = Completer<bool>();
                   bloc.add(
                     ResetDirectorPasswordRequested(
                       storeId: store.id,
@@ -1317,11 +1314,9 @@ class _NetworkViewState extends State<_NetworkView> {
                           ? null
                           : userCtrl.text.trim(),
                       password: passCtrl.text.trim(),
-                      completion: done,
                     ),
                   );
-                  final ok = await done.future;
-                  if (ok && sheetContext.mounted) {
+                  if (sheetContext.mounted) {
                     Navigator.of(sheetContext).pop();
                   }
                 },

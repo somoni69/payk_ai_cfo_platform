@@ -1,7 +1,6 @@
-import '../domain/notification_model.dart';
-import '../domain/notifications_repository.dart';
+import 'package:payk_ai_cfo_platform/features/notifications/domain/notification_model.dart';
+import 'package:payk_ai_cfo_platform/features/notifications/domain/notifications_repository.dart';
 
-/// Моковый репозиторий уведомлений и критического аудита.
 class MockNotificationsRepository implements NotificationsRepository {
   @override
   Future<List<AppNotification>> refreshNotifications() => getNotifications();
@@ -74,7 +73,6 @@ class MockNotificationsRepository implements NotificationsRepository {
 
   @override
   Future<List<AppNotification>> getNotifications() async {
-    await Future.delayed(const Duration(milliseconds: 150));
     return List.from(_notifications);
   }
 
@@ -96,7 +94,6 @@ class MockNotificationsRepository implements NotificationsRepository {
 
   @override
   Future<void> markAsRead(String id) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     final index = _notifications.indexWhere((n) => n.id == id);
     if (index != -1) {
       _notifications[index] = _notifications[index].copyWith(isRead: true);

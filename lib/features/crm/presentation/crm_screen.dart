@@ -69,11 +69,9 @@ class CrmView extends StatefulWidget {
 
 class _CrmViewState extends State<CrmView> {
   Future<void> _refresh(BuildContext context) {
-    final done = Completer<void>();
-    context.read<CrmBloc>().add(
-      LoadCrmData(forceRefresh: true, completion: done),
-    );
-    return done.future;
+    final bloc = context.read<CrmBloc>();
+    bloc.add(const LoadCrmData(forceRefresh: true));
+    return bloc.stream.firstWhere((state) => state is! CrmLoading);
   }
 
   UserRole? _role(BuildContext context) {
@@ -124,6 +122,19 @@ class _CrmViewState extends State<CrmView> {
           context.read<CrmBloc>().add(const ClearCrmFeedback());
         },
         child: BlocBuilder<CrmBloc, CrmState>(
+          buildWhen: (previous, current) {
+            if (previous.runtimeType != current.runtimeType) return true;
+            if (previous is CrmLoaded && current is CrmLoaded) {
+              return previous.clients != current.clients ||
+                  previous.deals != current.deals ||
+                  previous.stats != current.stats ||
+                  previous.loyaltySummary != current.loyaltySummary ||
+                  previous.reactivation != current.reactivation ||
+                  previous.churn != current.churn ||
+                  previous.birthdays != current.birthdays;
+            }
+            return true;
+          },
           builder: (context, state) {
             if (state is CrmLoading) {
               return const _CrmSkeleton();
@@ -688,11 +699,9 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
   }
 
   Future<void> _refresh(BuildContext context) {
-    final done = Completer<void>();
-    context.read<CrmBloc>().add(
-      LoadCrmData(forceRefresh: true, completion: done),
-    );
-    return done.future;
+    final bloc = context.read<CrmBloc>();
+    bloc.add(const LoadCrmData(forceRefresh: true));
+    return bloc.stream.firstWhere((state) => state is! CrmLoading);
   }
 
   @override
@@ -706,6 +715,26 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
     final canDelete = role?.canDelete(AppCapability.crm) ?? false;
 
     return BlocBuilder<CrmBloc, CrmState>(
+      buildWhen: (previous, current) {
+        if (previous.runtimeType != current.runtimeType) return true;
+        if (previous is CrmLoaded && current is CrmLoaded) {
+          return switch (widget.section) {
+            CrmSection.clients =>
+              previous.clients != current.clients ||
+                  previous.clientFilters != current.clientFilters ||
+                  previous.clientsPage != current.clientsPage,
+            CrmSection.funnel => previous.deals != current.deals,
+            CrmSection.loyalty =>
+              previous.loyaltySummary != current.loyaltySummary ||
+                  previous.loyaltyTxns != current.loyaltyTxns,
+            CrmSection.reactivation =>
+              previous.reactivation != current.reactivation,
+            CrmSection.churn => previous.churn != current.churn,
+            CrmSection.birthdays => previous.birthdays != current.birthdays,
+          };
+        }
+        return true;
+      },
       builder: (context, state) {
         final loadedState = state is CrmLoaded ? state : null;
 
@@ -979,377 +1008,385 @@ class _ClientsTab extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(0, 12, 0, 88),
-        children: [
-          _StatsBar(stats: state.stats),
-          const SizedBox(height: 14),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: searchCtrl,
-              style: textStyles.bodySans,
-              onChanged: onSearch,
-              decoration: InputDecoration(
-                hintText: language.translate('crm_search_placeholder'),
-                prefixIcon: const Icon(TablerIcons.search, size: 20),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                filled: true,
-                fillColor: colors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: colors.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: colors.border),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: colors.brand, width: 1.5),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: options.length,
-              separatorBuilder: (context, index) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final opt = options[index];
-                final isSelected = opt.value == selectedValue;
-                return GestureDetector(
-                  onTap: () {
-                    context.read<CrmBloc>().add(
-                      ClientFiltersChanged(
-                        level: opt.value.isEmpty ? null : opt.value,
-                      ),
-                    );
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected ? colors.brand : colors.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected ? colors.brand : colors.border,
-                      ),
-                    ),
-                    child: Text(
-                      opt.label,
-                      style: textStyles.captionSans.copyWith(
-                        color: isSelected ? colors.surface : colors.textPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (state.clients.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 48,
-                      horizontal: 16,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: BoxDecoration(
-                              color: colors.surfaceNested,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: colors.border),
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              TablerIcons.users,
-                              size: 28,
-                              color: colors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            language.translate('crm_no_clients'),
-                            style: textStyles.h2Sans.copyWith(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: colors.textPrimary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            language.translate('crm_clients_empty_desc'),
-                            style: textStyles.captionSans.copyWith(
-                              fontSize: 13,
-                              color: colors.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                const SizedBox(height: 12),
+                _StatsBar(stats: state.stats),
+                const SizedBox(height: 14),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    controller: searchCtrl,
+                    style: textStyles.bodySans,
+                    onChanged: onSearch,
+                    decoration: InputDecoration(
+                      hintText: language.translate('crm_search_placeholder'),
+                      prefixIcon: const Icon(TablerIcons.search, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      filled: true,
+                      fillColor: colors.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.border),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: colors.brand, width: 1.5),
                       ),
                     ),
-                  )
-                else
-                  ...state.clients.map((client) {
-                    final lc = crmLoyaltyColors(colors, client.loyaltyLevel);
-                    final initial = client.fullName.isNotEmpty
-                        ? client.fullName[0].toUpperCase()
-                        : '?';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Material(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => showCrmClientDetail(context, client),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: colors.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    // User avatar
-                                    Container(
-                                      width: 40,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: colors.surfaceNested,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        initial,
-                                        style: textStyles.bodySans.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: colors.brand,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            client.fullName,
-                                            style: textStyles.bodySans.copyWith(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          if (client.phone != null ||
-                                              client.email != null) ...[
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              client.phone ?? client.email!,
-                                              style: textStyles.captionSans
-                                                  .copyWith(
-                                                    color: colors.textSecondary,
-                                                    fontSize: 13,
-                                                  ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: lc.bg,
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            crmLoyaltyLabel(
-                                              language,
-                                              client.loyaltyLevel,
-                                            ),
-                                            style: textStyles.captionSans
-                                                .copyWith(
-                                                  color: lc.fg,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 11.5,
-                                                ),
-                                          ),
-                                        ),
-                                        if (client.churnRisk) ...[
-                                          const SizedBox(height: 4),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 3,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: colors.accentRed
-                                                  .withValues(alpha: 0.12),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              language.translate(
-                                                'crm_churn_risk',
-                                              ),
-                                              style: textStyles.captionSans
-                                                  .copyWith(
-                                                    color: colors.accentRed,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 11.5,
-                                                  ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: colors.surfaceNested,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          'LTV ${oCcy.format(client.totalSpent)} TJS',
-                                          style: textStyles.captionSans
-                                              .copyWith(
-                                                color: colors.accentGreen,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 12.5,
-                                              ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
-                                          style: textStyles.captionSans
-                                              .copyWith(
-                                                color: colors.textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 12.5,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          client.roi == null
-                                              ? 'ROI —'
-                                              : 'ROI ${oCcy.format(client.roi!)}×',
-                                          style: textStyles.captionSans
-                                              .copyWith(
-                                                color: colors.textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 12.5,
-                                              ),
-                                          textAlign: TextAlign.end,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${language.translate('crm_last_purchase')}: ${client.lastPurchaseAt == null ? '—' : formatLocalizedDateTime(context, client.lastPurchaseAt!, style: LocalizedDateTimeStyle.date)}',
-                                  style: textStyles.captionSans.copyWith(
-                                    color: colors.textTooltip,
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                if (pages > 1) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      TextButton(
-                        onPressed: state.clientsPage <= 1
-                            ? null
-                            : () => context.read<CrmBloc>().add(
-                                ClientFiltersChanged(
-                                  page: state.clientsPage - 1,
-                                ),
-                              ),
-                        child: Text(language.translate('crm_prev_page')),
-                      ),
-                      Text(
-                        '${state.clientsPage} / $pages',
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: state.clientsPage >= pages
-                            ? null
-                            : () => context.read<CrmBloc>().add(
-                                ClientFiltersChanged(
-                                  page: state.clientsPage + 1,
-                                ),
-                              ),
-                        child: Text(language.translate('crm_next_page')),
-                      ),
-                    ],
                   ),
-                ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: options.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final opt = options[index];
+                      final isSelected = opt.value == selectedValue;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          final newLevel = opt.value == selectedValue
+                              ? null
+                              : opt.value;
+                          context.read<CrmBloc>().add(
+                            ClientFiltersChanged(level: newLevel, page: 1),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected ? colors.brand : colors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? colors.brand : colors.border,
+                            ),
+                          ),
+                          child: Text(
+                            opt.label,
+                            style: textStyles.captionSans.copyWith(
+                              color: isSelected
+                                  ? colors.surface
+                                  : colors.textPrimary,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
+          if (state.clients.isEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 48,
+                  horizontal: 16,
+                ),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: colors.surfaceNested,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: colors.border),
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          TablerIcons.users,
+                          size: 28,
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        language.translate('crm_no_clients'),
+                        style: textStyles.h2Sans.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: colors.textPrimary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        language.translate('crm_clients_empty_desc'),
+                        style: textStyles.captionSans.copyWith(
+                          fontSize: 13,
+                          color: colors.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList.separated(
+                itemCount: state.clients.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final client = state.clients[index];
+                  final lc = crmLoyaltyColors(colors, client.loyaltyLevel);
+                  final initial = client.fullName.isNotEmpty
+                      ? client.fullName[0].toUpperCase()
+                      : '?';
+                  return Material(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => showCrmClientDetail(context, client),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                // User avatar
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: colors.surfaceNested,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    initial,
+                                    style: textStyles.bodySans.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: colors.brand,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        client.fullName,
+                                        style: textStyles.bodySans.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (client.phone != null ||
+                                          client.email != null) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          client.phone ?? client.email!,
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.textSecondary,
+                                                fontSize: 13,
+                                              ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: lc.bg,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        crmLoyaltyLabel(
+                                          language,
+                                          client.loyaltyLevel,
+                                        ),
+                                        style: textStyles.captionSans.copyWith(
+                                          color: lc.fg,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11.5,
+                                        ),
+                                      ),
+                                    ),
+                                    if (client.churnRisk) ...[
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: colors.accentRed.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          language.translate('crm_churn_risk'),
+                                          style: textStyles.captionSans
+                                              .copyWith(
+                                                color: colors.accentRed,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 11.5,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colors.surfaceNested,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'LTV ${oCcy.format(client.totalSpent)} TJS',
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.accentGreen,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      '${language.translate('crm_bonus_points')}: ${oCcy.format(client.bonusPoints)}',
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 12.5,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      client.roi == null
+                                          ? 'ROI —'
+                                          : 'ROI ${oCcy.format(client.roi!)}×',
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 12.5,
+                                      ),
+                                      textAlign: TextAlign.end,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${language.translate('crm_last_purchase')}: ${client.lastPurchaseAt == null ? '—' : formatLocalizedDateTime(context, client.lastPurchaseAt!, style: LocalizedDateTimeStyle.date)}',
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textTooltip,
+                                fontWeight: FontWeight.w400,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          if (pages > 1)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: state.clientsPage <= 1
+                          ? null
+                          : () => context.read<CrmBloc>().add(
+                              ClientFiltersChanged(page: state.clientsPage - 1),
+                            ),
+                      child: Text(language.translate('crm_prev_page')),
+                    ),
+                    Text(
+                      '${state.clientsPage} / $pages',
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: state.clientsPage >= pages
+                          ? null
+                          : () => context.read<CrmBloc>().add(
+                              ClientFiltersChanged(page: state.clientsPage + 1),
+                            ),
+                      child: Text(language.translate('crm_next_page')),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 88)),
         ],
       ),
     );

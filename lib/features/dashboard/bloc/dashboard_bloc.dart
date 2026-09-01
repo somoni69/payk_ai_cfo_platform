@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/user_facing_error.dart';
@@ -9,38 +10,13 @@ import 'dashboard_state.dart';
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final FinanceRepository _repository;
 
-  FinanceMetrics? _cachedBaseMetrics;
-  List<CashFlowPoint>? _cachedBaseHistory;
-  PnlReport? _cachedPnl;
-  BreakEvenAnalysis? _cachedBreakEven;
-  AbcAnalysis? _cachedAbc;
-  BankAccountsReport? _cachedBankAccounts;
-  ExchangeRatesReport? _cachedRates;
-  AiInsightsReport? _cachedAiInsights;
-  PlanFactReport? _cachedPlanFact;
-  ClientAnalysisReport? _cachedClients;
-  OneCReconcileReport? _cachedOnec;
-  List<OneCTarget>? _cachedOnecTargets;
-  String _currentCurrency = 'TJS';
-
-  final Set<DashboardSection> _loadingSections = {};
-  final Map<DashboardSection, String> _sectionErrors = {};
-  final Map<DashboardSection, Future<void>> _sectionRequests = {};
-  Future<FinanceOverview>? _overviewRequest;
-  Future<ExchangeRatesReport>? _ratesRequest;
-  int _currencyRevision = 0;
-  int _abcRevision = 0;
-  DateTime? _reportDateFrom;
-  DateTime? _reportDateTo;
-  String? _planPeriod;
-
   DashboardBloc(this._repository) : super(DashboardLoading()) {
     on<LoadDashboardData>(_onLoadDashboardData);
     on<LoadDashboardSection>(_onLoadDashboardSection);
     on<SetFinanceReportPeriod>(_onSetFinanceReportPeriod);
     on<SetPlanFactPeriod>(_onSetPlanFactPeriod);
-    on<ChangeCurrency>(_onChangeCurrency);
-    on<ChangeAbcDimension>(_onChangeAbcDimension);
+    on<ChangeCurrency>(_onChangeCurrency, transformer: restartable());
+    on<ChangeAbcDimension>(_onChangeAbcDimension, transformer: restartable());
     on<CreatePlanRequested>(_onCreatePlan);
     on<CreateAccountRequested>(_onCreateAccount);
     on<DeleteAccountRequested>(_onDeleteAccount);
@@ -54,72 +30,156 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     LoadDashboardData event,
     Emitter<DashboardState> emit,
   ) async {
-    if (event.clearCache) {
-      _cachedBaseMetrics = null;
-      _cachedBaseHistory = null;
-      _cachedPnl = null;
-      _cachedBreakEven = null;
-      _cachedAbc = null;
-      _cachedBankAccounts = null;
-      _cachedRates = null;
-      _cachedAiInsights = null;
-      _cachedPlanFact = null;
-      _cachedClients = null;
-      _cachedOnec = null;
-      _cachedOnecTargets = null;
-      _overviewRequest = null;
-      _sectionRequests.clear();
-      _loadingSections.clear();
-      _sectionErrors.clear();
-    } else if (event.forceRefresh) {
-      _cachedPnl = null;
-      _cachedBreakEven = null;
-      _cachedAbc = null;
-      _cachedBankAccounts = null;
-      _cachedRates = null;
-      _cachedAiInsights = null;
-      _cachedPlanFact = null;
-      _cachedClients = null;
-      _cachedOnec = null;
-      _cachedOnecTargets = null;
-      _overviewRequest = null;
-      _sectionRequests.clear();
-    }
+    final currentLoaded = state is DashboardLoaded
+        ? state as DashboardLoaded
+        : null;
 
-    final hasCachedOverview =
-        _cachedBaseMetrics != null && _cachedBaseHistory != null;
-    if (hasCachedOverview) {
-      _emitCurrentState(emit);
-    } else {
+    if (event.clearCache || currentLoaded == null) {
       emit(DashboardLoading());
     }
 
-    var request = _overviewRequest;
-    if (request == null) {
-      request = _repository.getOverview(
+    try {
+      final overview = await _repository.getOverview(
         forceRefresh: event.forceRefresh || event.clearCache,
       );
-      _overviewRequest = request;
+
+      final currency = currentLoaded?.currency ?? 'TJS';
+      final convertedMetrics = _convertMetricsWithFactor(overview.metrics, 1.0);
+      final convertedHistory = _convertHistoryWithFactor(overview.history, 1.0);
+
+      if (currentLoaded != null && !event.clearCache) {
+        emit(
+          currentLoaded.copyWith(
+            metrics: convertedMetrics,
+            history: convertedHistory,
+            currency: currency,
+            clearOverviewError: true,
+          ),
+        );
+      } else {
+        emit(
+          DashboardLoaded(
+            metrics: convertedMetrics,
+            history: convertedHistory,
+            currency: currency,
+          ),
+        );
+      }
+    } catch (e) {
+      final msg = userFacingError(e, fallback: ErrorKeys.loadFailed);
+      if (currentLoaded != null && !event.clearCache) {
+        emit(currentLoaded.copyWith(overviewError: msg));
+      } else {
+        emit(DashboardError(msg));
+      }
     }
+  }
+
+  Future<void> _onLoadDashboardSection(
+    LoadDashboardSection event,
+    Emitter<DashboardState> emit,
+  ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
+
+    final updatedLoading = Set<DashboardSection>.from(current.loadingSections)
+      ..add(event.section);
+    final updatedErrors = Map<DashboardSection, String>.from(
+      current.sectionErrors,
+    )..remove(event.section);
+
+    emit(
+      current.copyWith(
+        loadingSections: updatedLoading,
+        sectionErrors: updatedErrors,
+      ),
+    );
 
     try {
-      final overview = await request;
-      if (emit.isDone) return;
-      _cachedBaseMetrics = overview.metrics;
-      _cachedBaseHistory = overview.history;
-      _emitCurrentState(emit);
-    } catch (_) {
-      if (emit.isDone) return;
-      if (_cachedBaseMetrics != null && _cachedBaseHistory != null) {
-        _emitCurrentState(emit, overviewError: ErrorKeys.loadFailed);
-      } else {
-        emit(const DashboardError(ErrorKeys.loadFailed));
+      DashboardLoaded next = current.copyWith(
+        loadingSections: updatedLoading,
+        sectionErrors: updatedErrors,
+      );
+
+      switch (event.section) {
+        case DashboardSection.pnl:
+          final pnl = await _repository.getPnlReport(
+            dateFrom: current.reportDateFrom,
+            dateTo: current.reportDateTo,
+          );
+          next = next.copyWith(pnl: pnl);
+          break;
+        case DashboardSection.planFact:
+          final planFact = await _repository.getPlanFactReport(
+            period: current.planPeriod,
+          );
+          next = next.copyWith(planFact: planFact);
+          break;
+        case DashboardSection.breakEven:
+          final breakEven = await _repository.getBreakEvenAnalysis(
+            dateFrom: current.reportDateFrom,
+            dateTo: current.reportDateTo,
+          );
+          next = next.copyWith(breakEven: breakEven);
+          break;
+        case DashboardSection.abc:
+          final abc = await _repository.getAbcAnalysis(
+            AbcDimensions.toApi(
+              current.abc?.dimension ?? AbcDimensions.category,
+            ),
+            dateFrom: current.reportDateFrom,
+            dateTo: current.reportDateTo,
+          );
+          next = next.copyWith(abc: abc);
+          break;
+        case DashboardSection.accountsRates:
+          final values = await Future.wait<Object>([
+            _repository.getBankAccounts(),
+            _repository.getExchangeRates(),
+          ]);
+          next = next.copyWith(
+            bankAccounts: values[0] as BankAccountsReport,
+            rates: values[1] as ExchangeRatesReport,
+          );
+          break;
+        case DashboardSection.clients:
+          final clients = await _repository.getClientAnalysis();
+          next = next.copyWith(clients: clients);
+          break;
+        case DashboardSection.aiInsights:
+          final ai = await _repository.getAiInsights();
+          next = next.copyWith(aiInsights: ai);
+          break;
+        case DashboardSection.onec:
+          final values = await Future.wait<Object>([
+            _repository.getOneCReconcile(forceRefresh: event.forceRefresh),
+            _repository.getOneCTargets(forceRefresh: event.forceRefresh),
+          ]);
+          next = next.copyWith(
+            onec: values[0] as OneCReconcileReport,
+            onecTargets: values[1] as List<OneCTarget>,
+          );
+          break;
       }
-    } finally {
-      if (identical(_overviewRequest, request)) {
-        _overviewRequest = null;
-      }
-      if (event.completion?.isCompleted == false) event.completion!.complete();
+
+      final finishLoading = Set<DashboardSection>.from(next.loadingSections)
+        ..remove(event.section);
+      emit(next.copyWith(loadingSections: finishLoading));
+    } catch (e) {
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
+      final finishLoading = Set<DashboardSection>.from(latest.loadingSections)
+        ..remove(event.section);
+      final finishErrors = Map<DashboardSection, String>.from(
+        latest.sectionErrors,
+      )..[event.section] = userFacingError(e, fallback: ErrorKeys.loadFailed);
+
+      emit(
+        latest.copyWith(
+          loadingSections: finishLoading,
+          sectionErrors: finishErrors,
+        ),
+      );
     }
   }
 
@@ -127,302 +187,184 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     SetFinanceReportPeriod event,
     Emitter<DashboardState> emit,
   ) async {
-    _reportDateFrom = event.dateFrom;
-    _reportDateTo = event.dateTo;
-    _cachedPnl = null;
-    _cachedBreakEven = null;
-    _cachedAbc = null;
-    await _loadSection(DashboardSection.pnl, emit, forceRefresh: true);
-    await _loadSection(DashboardSection.breakEven, emit, forceRefresh: true);
-    await _loadSection(DashboardSection.abc, emit, forceRefresh: true);
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
+    emit(
+      current.copyWith(
+        reportDateFrom: event.dateFrom,
+        reportDateTo: event.dateTo,
+      ),
+    );
   }
 
   Future<void> _onSetPlanFactPeriod(
     SetPlanFactPeriod event,
     Emitter<DashboardState> emit,
   ) async {
-    _planPeriod = event.period;
-    _cachedPlanFact = null;
-    await _loadSection(DashboardSection.planFact, emit, forceRefresh: true);
-  }
-
-  Future<void> _onLoadDashboardSection(
-    LoadDashboardSection event,
-    Emitter<DashboardState> emit,
-  ) async {
-    if (_cachedBaseMetrics == null || _cachedBaseHistory == null) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
-    if (!event.forceRefresh && _hasSectionData(event.section)) {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
-    final currentRequest = _sectionRequests[event.section];
-    if (currentRequest != null) {
-      await currentRequest;
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-      return;
-    }
-
-    late final Future<void> request;
-    request =
-        _loadSection(
-          event.section,
-          emit,
-          forceRefresh: event.forceRefresh,
-        ).whenComplete(() {
-          if (identical(_sectionRequests[event.section], request)) {
-            _sectionRequests.remove(event.section);
-          }
-        });
-    _sectionRequests[event.section] = request;
-
-    try {
-      await request;
-    } finally {
-      if (event.completion?.isCompleted == false) event.completion!.complete();
-    }
-  }
-
-  Future<void> _loadSection(
-    DashboardSection section,
-    Emitter<DashboardState> emit, {
-    bool forceRefresh = false,
-  }) async {
-    final abcRevision = section == DashboardSection.abc ? ++_abcRevision : null;
-    _loadingSections.add(section);
-    _sectionErrors.remove(section);
-    _emitCurrentState(emit);
-
-    try {
-      switch (section) {
-        case DashboardSection.pnl:
-          _cachedPnl = await _repository.getPnlReport(
-            dateFrom: _reportDateFrom,
-            dateTo: _reportDateTo,
-          );
-          break;
-        case DashboardSection.planFact:
-          _cachedPlanFact = await _repository.getPlanFactReport(
-            period: _planPeriod,
-          );
-          break;
-        case DashboardSection.breakEven:
-          _cachedBreakEven = await _repository.getBreakEvenAnalysis(
-            dateFrom: _reportDateFrom,
-            dateTo: _reportDateTo,
-          );
-          break;
-        case DashboardSection.abc:
-          final abc = await _repository.getAbcAnalysis(
-            AbcDimensions.toApi(
-              _cachedAbc?.dimension ?? AbcDimensions.category,
-            ),
-            dateFrom: _reportDateFrom,
-            dateTo: _reportDateTo,
-          );
-          if (abcRevision == _abcRevision) {
-            _cachedAbc = abc;
-          }
-          break;
-        case DashboardSection.accountsRates:
-          final values = await Future.wait<Object>([
-            _repository.getBankAccounts(),
-            _loadRates(forceRefresh: forceRefresh),
-          ]);
-          _cachedBankAccounts = values[0] as BankAccountsReport;
-          _cachedRates = values[1] as ExchangeRatesReport;
-          break;
-        case DashboardSection.clients:
-          _cachedClients = await _repository.getClientAnalysis();
-          break;
-        case DashboardSection.aiInsights:
-          _cachedAiInsights = await _repository.getAiInsights();
-          break;
-        case DashboardSection.onec:
-          final values = await Future.wait<Object>([
-            _repository.getOneCReconcile(forceRefresh: forceRefresh),
-            _repository.getOneCTargets(forceRefresh: forceRefresh),
-          ]);
-          _cachedOnec = values[0] as OneCReconcileReport;
-          _cachedOnecTargets = values[1] as List<OneCTarget>;
-          break;
-      }
-      if (abcRevision == null || abcRevision == _abcRevision) {
-        _sectionErrors.remove(section);
-      }
-    } catch (error) {
-      if (abcRevision == null || abcRevision == _abcRevision) {
-        _sectionErrors[section] = ErrorKeys.loadFailed;
-      }
-    } finally {
-      if (abcRevision == null || abcRevision == _abcRevision) {
-        _loadingSections.remove(section);
-        _emitCurrentState(emit);
-      }
-    }
-  }
-
-  Future<ExchangeRatesReport> _loadRates({bool forceRefresh = false}) async {
-    final cached = _cachedRates;
-    if (cached != null && !forceRefresh) return cached;
-
-    var request = _ratesRequest;
-    if (request == null) {
-      request = _repository.getExchangeRates();
-      _ratesRequest = request;
-    }
-
-    try {
-      final rates = await request;
-      _cachedRates = rates;
-      return rates;
-    } finally {
-      if (identical(_ratesRequest, request)) {
-        _ratesRequest = null;
-      }
-    }
-  }
-
-  bool _hasSectionData(DashboardSection section) {
-    return switch (section) {
-      DashboardSection.pnl => _cachedPnl != null,
-      DashboardSection.planFact => _cachedPlanFact != null,
-      DashboardSection.breakEven => _cachedBreakEven != null,
-      DashboardSection.abc => _cachedAbc != null,
-      DashboardSection.accountsRates =>
-        _cachedBankAccounts != null && _cachedRates != null,
-      DashboardSection.clients => _cachedClients != null,
-      DashboardSection.aiInsights => _cachedAiInsights != null,
-      DashboardSection.onec =>
-        _cachedOnec != null && _cachedOnecTargets != null,
-    };
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
+    emit(current.copyWith(planPeriod: event.period));
   }
 
   Future<void> _onChangeCurrency(
     ChangeCurrency event,
     Emitter<DashboardState> emit,
   ) async {
-    final currency = event.currency.toUpperCase();
-    final revision = ++_currencyRevision;
-    if (_cachedBaseMetrics == null ||
-        _cachedBaseHistory == null ||
-        currency == _currentCurrency) {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
+    if (current.currency == event.currency) return;
+
+    if (event.currency == 'TJS') {
+      emit(current.copyWith(currency: 'TJS', clearOverviewError: true));
+      add(const LoadDashboardData());
       return;
     }
 
-    if (currency == 'TJS') {
-      _currentCurrency = currency;
-      _sectionErrors.remove(DashboardSection.accountsRates);
-      _emitCurrentState(emit);
-      return;
-    }
-
-    try {
-      final rates = await _loadRates();
-      if (revision != _currencyRevision || emit.isDone) return;
-      final hasRate = rates.rates.any(
-        (row) => row.code.toUpperCase() == currency && row.rate > 0,
-      );
-      if (!hasRate) {
-        const message = ErrorKeys.loadFailed;
-        _sectionErrors[DashboardSection.accountsRates] = message;
-        _emitCurrentState(emit, overviewError: message);
+    ExchangeRatesReport? rates = current.rates;
+    if (rates == null) {
+      try {
+        rates = await _repository.getExchangeRates();
+      } catch (e) {
+        emit(current.copyWith(overviewError: 'error_load_failed'));
         return;
       }
-
-      _currentCurrency = currency;
-      _sectionErrors.remove(DashboardSection.accountsRates);
-      _emitCurrentState(emit);
-    } catch (_) {
-      if (revision != _currencyRevision || emit.isDone) return;
-      const message = ErrorKeys.loadFailed;
-      _sectionErrors[DashboardSection.accountsRates] = message;
-      _emitCurrentState(emit, overviewError: message);
     }
+
+    final rateRow = rates.rates.firstWhere(
+      (r) => r.code == event.currency,
+      orElse: () => RateRow(code: '', rate: 0, rateDate: DateTime(2000)),
+    );
+
+    if (rateRow.rate <= 0) {
+      emit(current.copyWith(overviewError: 'error_load_failed'));
+      return;
+    }
+
+    final factor = 1.0 / rateRow.rate;
+    final latest = state is DashboardLoaded
+        ? state as DashboardLoaded
+        : current;
+    if (latest.currency == event.currency) return;
+
+    final convertedMetrics = _convertMetricsWithFactor(latest.metrics, factor);
+    final convertedHistory = _convertHistoryWithFactor(latest.history, factor);
+    final convertedPnl = latest.pnl != null
+        ? PnlReport(
+            income: latest.pnl!.income
+                .map(
+                  (r) => PnlRow(
+                    category: r.category,
+                    amount: r.amount * factor,
+                    share: r.share,
+                  ),
+                )
+                .toList(),
+            expense: latest.pnl!.expense
+                .map(
+                  (r) => PnlRow(
+                    category: r.category,
+                    amount: r.amount * factor,
+                    share: r.share,
+                  ),
+                )
+                .toList(),
+            totalIncome: latest.pnl!.totalIncome * factor,
+            totalExpense: latest.pnl!.totalExpense * factor,
+            profit: latest.pnl!.profit * factor,
+          )
+        : null;
+    final convertedBreakEven = latest.breakEven != null
+        ? BreakEvenAnalysis(
+            revenue: latest.breakEven!.revenue * factor,
+            fixedCosts: latest.breakEven!.fixedCosts * factor,
+            variableCosts: latest.breakEven!.variableCosts * factor,
+            variableRatio: latest.breakEven!.variableRatio,
+            breakEvenRevenue: latest.breakEven!.breakEvenRevenue * factor,
+            marginOfSafety: latest.breakEven!.marginOfSafety,
+          )
+        : null;
+    final convertedAbc = latest.abc != null
+        ? AbcAnalysis(
+            dimension: latest.abc!.dimension,
+            rows: latest.abc!.rows
+                .map(
+                  (r) => AbcRow(
+                    name: r.name,
+                    turnover: r.turnover * factor,
+                    share: r.share,
+                    cumulative: r.cumulative,
+                    abcClass: r.abcClass,
+                  ),
+                )
+                .toList(),
+            total: latest.abc!.total * factor,
+          )
+        : null;
+    final convertedPlanFact = latest.planFact != null
+        ? PlanFactReport(
+            period: latest.planFact!.period,
+            rows: latest.planFact!.rows
+                .map(
+                  (r) => PlanFactRow(
+                    category: r.category,
+                    type: r.type,
+                    planned: r.planned * factor,
+                    fact: r.fact * factor,
+                    deviation: r.deviation * factor,
+                    completion: r.completion,
+                  ),
+                )
+                .toList(),
+            totalPlanned: latest.planFact!.totalPlanned * factor,
+            totalFact: latest.planFact!.totalFact * factor,
+          )
+        : null;
+
+    emit(
+      latest.copyWith(
+        currency: event.currency,
+        rates: rates,
+        metrics: convertedMetrics,
+        history: convertedHistory,
+        pnl: convertedPnl,
+        breakEven: convertedBreakEven,
+        abc: convertedAbc,
+        planFact: convertedPlanFact,
+        clearOverviewError: true,
+      ),
+    );
   }
 
   Future<void> _onChangeAbcDimension(
     ChangeAbcDimension event,
     Emitter<DashboardState> emit,
   ) async {
-    if (_cachedBaseMetrics == null || _cachedBaseHistory == null) return;
-
-    final dimension = AbcDimensions.toApi(event.dimension);
-    final previous = _cachedAbc;
-    final revision = ++_abcRevision;
-    _loadingSections.add(DashboardSection.abc);
-    _sectionErrors.remove(DashboardSection.abc);
-    if (previous != null) {
-      _cachedAbc = AbcAnalysis(
-        dimension: dimension,
-        rows: previous.rows,
-        total: previous.total,
-      );
-    }
-    _emitCurrentState(emit);
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
-      final abc = await _repository.getAbcAnalysis(dimension);
-      if (revision != _abcRevision || emit.isDone) return;
-      _cachedAbc = AbcAnalysis(
-        dimension: dimension,
-        rows: abc.rows,
-        total: abc.total,
+      final abc = await _repository.getAbcAnalysis(
+        AbcDimensions.toApi(event.dimension),
+        dateFrom: current.reportDateFrom,
+        dateTo: current.reportDateTo,
       );
-    } catch (error) {
-      if (revision == _abcRevision && !emit.isDone) {
-        _cachedAbc = previous;
-        _sectionErrors[DashboardSection.abc] = ErrorKeys.loadFailed;
-      }
-    } finally {
-      if (revision == _abcRevision) {
-        _loadingSections.remove(DashboardSection.abc);
-        _emitCurrentState(emit);
-      }
+      emit(current.copyWith(abc: abc));
+    } catch (e) {
+      final updatedErrors =
+          Map<DashboardSection, String>.from(current.sectionErrors)
+            ..[DashboardSection.abc] = userFacingError(
+              e,
+              fallback: ErrorKeys.loadFailed,
+            );
+      emit(current.copyWith(sectionErrors: updatedErrors));
     }
-  }
-
-  void _emitCurrentState(
-    Emitter<DashboardState> emit, {
-    String? overviewError,
-  }) {
-    final baseMetrics = _cachedBaseMetrics;
-    final baseHistory = _cachedBaseHistory;
-    if (emit.isDone || baseMetrics == null || baseHistory == null) return;
-
-    final currency = _currentCurrency;
-    emit(
-      DashboardLoaded(
-        metrics: _convertMetrics(baseMetrics, currency),
-        history: _convertHistory(baseHistory, currency),
-        currency: currency,
-        pnl: _convertPnl(_cachedPnl, currency),
-        breakEven: _convertBreakEven(_cachedBreakEven, currency),
-        abc: _convertAbc(_cachedAbc, currency),
-        bankAccounts: _cachedBankAccounts,
-        rates: _cachedRates,
-        aiInsights: _cachedAiInsights,
-        planFact: _convertPlanFact(_cachedPlanFact, currency),
-        clients: _cachedClients,
-        onec: _cachedOnec,
-        onecTargets: _cachedOnecTargets,
-        loadingSections: Set.unmodifiable(_loadingSections),
-        sectionErrors: Map.unmodifiable(_sectionErrors),
-        overviewError: overviewError,
-        reportDateFrom: _reportDateFrom,
-        reportDateTo: _reportDateTo,
-        planPeriod: _planPeriod,
-      ),
-    );
   }
 
   Future<void> _onCreatePlan(
     CreatePlanRequested event,
     Emitter<DashboardState> emit,
   ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
       await _repository.createPlan(
         period: event.period,
@@ -430,23 +372,21 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         type: event.type,
         plannedAmount: event.plannedAmount,
       );
-      _cachedPlanFact = await _repository.getPlanFactReport(
-        period: _planPeriod,
+      final refreshed = await _repository.getPlanFactReport(
+        period: current.planPeriod ?? event.period,
       );
-      if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(
-            planFact: _convertPlanFact(_cachedPlanFact, _currentCurrency),
-            actionMessage: 'dashboard_toast_plan_created',
-          ),
-        );
-      } else {
-        _emitCurrentState(emit);
-      }
+      emit(
+        current.copyWith(
+          planFact: refreshed,
+          actionMessage: 'dashboard_plan_created',
+        ),
+      );
     } catch (e) {
-      if (state is DashboardLoaded) {
-        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -454,6 +394,8 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     CreateAccountRequested event,
     Emitter<DashboardState> emit,
   ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
       await _repository.createAccount(
         name: event.name,
@@ -462,21 +404,19 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         currency: event.currency,
         balance: event.balance,
       );
-      _cachedBankAccounts = await _repository.getBankAccounts();
-      if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(
-            bankAccounts: _cachedBankAccounts,
-            actionMessage: 'dashboard_toast_account_created',
-          ),
-        );
-      } else {
-        _emitCurrentState(emit);
-      }
+      final refreshed = await _repository.getBankAccounts();
+      emit(
+        current.copyWith(
+          bankAccounts: refreshed,
+          actionMessage: 'dashboard_account_created',
+        ),
+      );
     } catch (e) {
-      if (state is DashboardLoaded) {
-        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -484,23 +424,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     DeleteAccountRequested event,
     Emitter<DashboardState> emit,
   ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
       await _repository.deleteAccount(event.id);
-      _cachedBankAccounts = await _repository.getBankAccounts();
-      if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(
-            bankAccounts: _cachedBankAccounts,
-            actionMessage: 'dashboard_toast_account_deleted',
-          ),
-        );
-      } else {
-        _emitCurrentState(emit);
-      }
+      final refreshed = await _repository.getBankAccounts();
+      emit(
+        current.copyWith(
+          bankAccounts: refreshed,
+          actionMessage: 'dashboard_account_deleted',
+        ),
+      );
     } catch (e) {
-      if (state is DashboardLoaded) {
-        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -508,23 +448,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     ZeroOutAccountRequested event,
     Emitter<DashboardState> emit,
   ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
       await _repository.zeroOutAccount(event.id);
-      _cachedBankAccounts = await _repository.getBankAccounts();
-      if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(
-            bankAccounts: _cachedBankAccounts,
-            actionMessage: 'dashboard_toast_account_zeroed',
-          ),
-        );
-      } else {
-        _emitCurrentState(emit);
-      }
+      final refreshed = await _repository.getBankAccounts();
+      emit(
+        current.copyWith(
+          bankAccounts: refreshed,
+          actionMessage: 'dashboard_account_zeroed',
+        ),
+      );
     } catch (e) {
-      if (state is DashboardLoaded) {
-        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -532,154 +472,27 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     RefreshRatesRequested event,
     Emitter<DashboardState> emit,
   ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
       await _repository.refreshRates();
-      _cachedRates = await _repository.getExchangeRates();
-      if (state is DashboardLoaded) {
-        emit(
-          (state as DashboardLoaded).copyWith(
-            rates: _cachedRates,
-            actionMessage: 'dashboard_toast_rates_refreshed',
-          ),
-        );
-      } else {
-        _emitCurrentState(emit);
-      }
+      final rates = await _repository.getExchangeRates();
+      emit(current.copyWith(rates: rates));
     } catch (e) {
-      if (state is DashboardLoaded) {
-        emit((state as DashboardLoaded).copyWith(actionMessage: e.toString()));
-      }
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
+        ),
+      );
     }
-  }
-
-  double _convert(double amount, String targetCurrency) {
-    if (targetCurrency == 'TJS') return amount;
-    final rates = _cachedRates?.rates ?? const <RateRow>[];
-    for (final row in rates) {
-      if (row.code.toUpperCase() == targetCurrency && row.rate > 0) {
-        return amount / row.rate;
-      }
-    }
-    return amount;
-  }
-
-  PnlReport? _convertPnl(PnlReport? base, String targetCurrency) {
-    if (base == null || targetCurrency == 'TJS') return base;
-    PnlRow convertRow(PnlRow row) => PnlRow(
-      category: row.category,
-      amount: _convert(row.amount, targetCurrency),
-      share: row.share,
-    );
-
-    return PnlReport(
-      income: base.income.map(convertRow).toList(growable: false),
-      expense: base.expense.map(convertRow).toList(growable: false),
-      totalIncome: _convert(base.totalIncome, targetCurrency),
-      totalExpense: _convert(base.totalExpense, targetCurrency),
-      profit: _convert(base.profit, targetCurrency),
-    );
-  }
-
-  BreakEvenAnalysis? _convertBreakEven(
-    BreakEvenAnalysis? base,
-    String targetCurrency,
-  ) {
-    if (base == null || targetCurrency == 'TJS') return base;
-    return BreakEvenAnalysis(
-      revenue: _convert(base.revenue, targetCurrency),
-      fixedCosts: _convert(base.fixedCosts, targetCurrency),
-      variableCosts: _convert(base.variableCosts, targetCurrency),
-      variableRatio: base.variableRatio,
-      breakEvenRevenue: _convert(base.breakEvenRevenue, targetCurrency),
-      marginOfSafety: base.marginOfSafety,
-    );
-  }
-
-  AbcAnalysis? _convertAbc(AbcAnalysis? base, String targetCurrency) {
-    if (base == null || targetCurrency == 'TJS') return base;
-    return AbcAnalysis(
-      dimension: base.dimension,
-      rows: base.rows
-          .map(
-            (row) => AbcRow(
-              name: row.name,
-              turnover: _convert(row.turnover, targetCurrency),
-              share: row.share,
-              cumulative: row.cumulative,
-              abcClass: row.abcClass,
-            ),
-          )
-          .toList(growable: false),
-      total: _convert(base.total, targetCurrency),
-    );
-  }
-
-  PlanFactReport? _convertPlanFact(
-    PlanFactReport? base,
-    String targetCurrency,
-  ) {
-    if (base == null || targetCurrency == 'TJS') return base;
-    return PlanFactReport(
-      period: base.period,
-      rows: base.rows
-          .map(
-            (row) => PlanFactRow(
-              category: row.category,
-              type: row.type,
-              planned: _convert(row.planned, targetCurrency),
-              fact: _convert(row.fact, targetCurrency),
-              deviation: _convert(row.deviation, targetCurrency),
-              completion: row.completion,
-            ),
-          )
-          .toList(growable: false),
-      totalPlanned: _convert(base.totalPlanned, targetCurrency),
-      totalFact: _convert(base.totalFact, targetCurrency),
-    );
-  }
-
-  FinanceMetrics _convertMetrics(FinanceMetrics base, String targetCurrency) {
-    return FinanceMetrics(
-      cashBalance: _convert(base.cashBalance, targetCurrency),
-      revenue: _convert(base.revenue, targetCurrency),
-      expenses: _convert(base.expenses, targetCurrency),
-      netProfit: _convert(base.netProfit, targetCurrency),
-      breakEvenPoint: base.breakEvenPoint == null
-          ? null
-          : _convert(base.breakEvenPoint!, targetCurrency),
-      cashForecast: base.cashForecast == null
-          ? null
-          : _convert(base.cashForecast!, targetCurrency),
-      cashBalanceDelta: base.cashBalanceDelta,
-      revenueDelta: base.revenueDelta,
-      expensesDelta: base.expensesDelta,
-      netProfitDelta: base.netProfitDelta,
-      cashForecastDelta: base.cashForecastDelta,
-      operationsCount: base.operationsCount,
-      avgCheck: _convert(base.avgCheck, targetCurrency),
-    );
-  }
-
-  List<CashFlowPoint> _convertHistory(
-    List<CashFlowPoint> base,
-    String targetCurrency,
-  ) {
-    return base
-        .map(
-          (point) => CashFlowPoint(
-            date: point.date,
-            amount: _convert(point.amount, targetCurrency),
-            income: _convert(point.income, targetCurrency),
-            expense: _convert(point.expense, targetCurrency),
-          ),
-        )
-        .toList(growable: false);
   }
 
   Future<void> _onSaveOneCLink(
     SaveOneCLinkRequested event,
     Emitter<DashboardState> emit,
   ) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
       await _repository.saveOneCLink(
         OneCLinkInput(
@@ -688,11 +501,23 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           targetId: event.targetId,
         ),
       );
-      _cachedOnec = await _repository.getOneCReconcile(forceRefresh: true);
-      _emitCurrentState(emit);
-    } catch (_) {
-      _sectionErrors[DashboardSection.onec] = ErrorKeys.saveFailed;
-      _emitCurrentState(emit);
+      final refreshed = await Future.wait([
+        _repository.getOneCReconcile(forceRefresh: true),
+        _repository.getOneCTargets(forceRefresh: true),
+      ]);
+      emit(
+        current.copyWith(
+          onec: refreshed[0] as OneCReconcileReport,
+          onecTargets: refreshed[1] as List<OneCTarget>,
+          actionMessage: 'dashboard_onec_link_saved',
+        ),
+      );
+    } catch (e) {
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
     }
   }
 
@@ -700,22 +525,66 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     RefreshOneCReconcileRequested event,
     Emitter<DashboardState> emit,
   ) async {
-    _loadingSections.add(DashboardSection.onec);
-    _sectionErrors.remove(DashboardSection.onec);
-    _emitCurrentState(emit);
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
     try {
-      final values = await Future.wait<Object>([
-        _repository.getOneCReconcile(day: event.day, forceRefresh: true),
+      final refreshed = await Future.wait([
+        _repository.getOneCReconcile(forceRefresh: true, day: event.day),
         _repository.getOneCTargets(forceRefresh: true),
       ]);
-      _cachedOnec = values[0] as OneCReconcileReport;
-      _cachedOnecTargets = values[1] as List<OneCTarget>;
-    } catch (_) {
-      _sectionErrors[DashboardSection.onec] = ErrorKeys.loadFailed;
-    } finally {
-      _loadingSections.remove(DashboardSection.onec);
-      _emitCurrentState(emit);
-      if (event.completion?.isCompleted == false) event.completion!.complete();
+      emit(
+        current.copyWith(
+          onec: refreshed[0] as OneCReconcileReport,
+          onecTargets: refreshed[1] as List<OneCTarget>,
+        ),
+      );
+    } catch (e) {
+      emit(
+        current.copyWith(
+          actionMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
+        ),
+      );
     }
+  }
+
+  FinanceMetrics _convertMetricsWithFactor(
+    FinanceMetrics metrics,
+    double factor,
+  ) {
+    return FinanceMetrics(
+      revenue: metrics.revenue * factor,
+      expenses: metrics.expenses * factor,
+      netProfit: metrics.netProfit * factor,
+      cashBalance: metrics.cashBalance * factor,
+      breakEvenPoint: metrics.breakEvenPoint != null
+          ? metrics.breakEvenPoint! * factor
+          : null,
+      cashForecast: metrics.cashForecast != null
+          ? metrics.cashForecast! * factor
+          : null,
+      cashBalanceDelta: metrics.cashBalanceDelta,
+      revenueDelta: metrics.revenueDelta,
+      expensesDelta: metrics.expensesDelta,
+      netProfitDelta: metrics.netProfitDelta,
+      cashForecastDelta: metrics.cashForecastDelta,
+      operationsCount: metrics.operationsCount,
+      avgCheck: metrics.avgCheck * factor,
+    );
+  }
+
+  List<CashFlowPoint> _convertHistoryWithFactor(
+    List<CashFlowPoint> history,
+    double factor,
+  ) {
+    return history
+        .map(
+          (point) => CashFlowPoint(
+            date: point.date,
+            amount: point.amount * factor,
+            income: point.income * factor,
+            expense: point.expense * factor,
+          ),
+        )
+        .toList();
   }
 }

@@ -153,11 +153,9 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
   }
 
   Future<void> _refreshHr(BuildContext context) {
-    final completion = Completer<void>();
-    context.read<HrBloc>().add(
-      LoadHrData(_selectedPeriod, forceRefresh: true, completion: completion),
-    );
-    return completion.future;
+    final bloc = context.read<HrBloc>();
+    bloc.add(LoadHrData(_selectedPeriod, forceRefresh: true));
+    return bloc.stream.firstWhere((s) => s is! HrLoading);
   }
 
   String _formatPeriod(String period, LanguageCubit language) {
@@ -242,6 +240,12 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
         ),
       ),
       body: BlocListener<HrBloc, HrState>(
+        listenWhen: (previous, current) =>
+            current is HrLoaded &&
+            (current.errorMessage != null || current.successMessage != null) &&
+            (previous is! HrLoaded ||
+                previous.errorMessage != current.errorMessage ||
+                previous.successMessage != current.successMessage),
         listener: (context, state) {
           if (state is HrLoaded) {
             if (state.errorMessage != null) {
@@ -278,6 +282,17 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
             ),
             Expanded(
               child: BlocBuilder<HrBloc, HrState>(
+                buildWhen: (previous, current) {
+                  if (previous.runtimeType != current.runtimeType) return true;
+                  if (previous is HrLoaded && current is HrLoaded) {
+                    return previous.employees != current.employees ||
+                        previous.salaryRecords != current.salaryRecords ||
+                        previous.kpiRecords != current.kpiRecords ||
+                        previous.kpiAlerts != current.kpiAlerts ||
+                        previous.period != current.period;
+                  }
+                  return true;
+                },
                 builder: (context, state) {
                   if (state is HrLoading) {
                     return const HrOverviewShimmer();
@@ -1140,6 +1155,29 @@ class _HrSectionScreenState extends State<HrSectionScreen>
       ),
       floatingActionButton: canWrite ? _buildSectionFab(context, locale) : null,
       body: BlocBuilder<HrBloc, HrState>(
+        buildWhen: (previous, current) {
+          if (previous.runtimeType != current.runtimeType) return true;
+          if (previous is HrLoaded && current is HrLoaded) {
+            return switch (widget.section) {
+              HrNavSection.staff => previous.employees != current.employees,
+              HrNavSection.org => previous.orgChart != current.orgChart,
+              HrNavSection.attendance =>
+                previous.attendance != current.attendance,
+              HrNavSection.kpi =>
+                previous.kpiRecords != current.kpiRecords ||
+                    previous.kpiAlerts != current.kpiAlerts,
+              HrNavSection.salary =>
+                previous.salaryRecords != current.salaryRecords,
+              HrNavSection.recruitment =>
+                previous.candidates != current.candidates,
+              HrNavSection.nineBox =>
+                previous.evaluations != current.evaluations,
+              HrNavSection.contracts => previous.contracts != current.contracts,
+              HrNavSection.movement => previous.movement != current.movement,
+            };
+          }
+          return true;
+        },
         builder: (context, state) {
           if (state is HrLoading) {
             return const HrOverviewShimmer();

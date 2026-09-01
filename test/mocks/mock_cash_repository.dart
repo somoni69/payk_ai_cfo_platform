@@ -1,9 +1,9 @@
 import 'dart:typed_data';
 
-import '../domain/transaction_model.dart';
-import '../domain/cash_repository.dart';
+import 'package:payk_ai_cfo_platform/features/cash/domain/cash_repository.dart';
+import 'package:payk_ai_cfo_platform/features/cash/domain/transaction_model.dart';
 
-/// Внутриигровая/моковая база данных кассовых смен и операций.
+/// Mock in-memory repository for cash domain tests.
 class MockCashRepository implements CashRepository {
   @override
   Future<CashShift> openShiftForRegister(
@@ -18,7 +18,6 @@ class MockCashRepository implements CashRepository {
     String? note,
   }) => closeShift(endingBalance, note: note);
 
-  // Статический массив для сохранения данных во время сессии приложения
   static final List<Transaction> _transactions = [
     Transaction(
       id: '1',
@@ -95,7 +94,6 @@ class MockCashRepository implements CashRepository {
   Future<List<Transaction>> getTransactions({
     CashOperationFilters filters = const CashOperationFilters(),
   }) async {
-    await Future.delayed(const Duration(milliseconds: 150));
     return List.from(_transactions);
   }
 
@@ -153,7 +151,6 @@ class MockCashRepository implements CashRepository {
 
   @override
   Future<Transaction> addTransaction(Transaction transaction) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final newTx = Transaction(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: transaction.title,
@@ -170,13 +167,11 @@ class MockCashRepository implements CashRepository {
 
   @override
   Future<CashShift?> getActiveShift() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return _activeShift;
   }
 
   @override
   Future<CashShift> openShift(double startingBalance) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     _activeShift = CashShift(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       openedAt: DateTime.now(),
@@ -191,7 +186,6 @@ class MockCashRepository implements CashRepository {
 
   @override
   Future<CashShift> closeShift(double endingBalance, {String? note}) async {
-    await Future.delayed(const Duration(milliseconds: 250));
     if (_activeShift == null) {
       throw Exception('Нет активной смены для закрытия');
     }
@@ -217,7 +211,6 @@ class MockCashRepository implements CashRepository {
 
   @override
   Future<List<CashSummary>> getSummary() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return [
       const CashSummary(
         registerId: '1',
@@ -248,7 +241,6 @@ class MockCashRepository implements CashRepository {
 
   @override
   Future<List<CashShift>> getShifts() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     final List<CashShift> all = [];
     if (_activeShift != null) {
       all.add(_activeShift!);
@@ -259,7 +251,6 @@ class MockCashRepository implements CashRepository {
 
   @override
   Future<List<CashRegister>> getRegisters() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return const [
       CashRegister(id: '1', name: 'Главная касса'),
       CashRegister(id: '2', name: 'Касса №2'),
@@ -272,7 +263,6 @@ class MockCashRepository implements CashRepository {
     required String format,
     CashOperationFilters filters = const CashOperationFilters(),
   }) async {
-    await Future.delayed(const Duration(milliseconds: 50));
     return Uint8List.fromList('mock-export'.codeUnits);
   }
 
@@ -282,7 +272,6 @@ class MockCashRepository implements CashRepository {
     required String filename,
     required Uint8List bytes,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 50));
     return 0;
   }
 }

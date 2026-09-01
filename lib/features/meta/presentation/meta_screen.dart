@@ -8,6 +8,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -15,170 +16,67 @@ import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../crm/domain/crm_models.dart';
 import '../../crm/domain/crm_repository.dart';
+import '../cubit/meta_cubit.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
 
 /// Meta chats (Facebook / Instagram / WhatsApp) — Grounded Enterprise design.
-class MetaScreen extends StatefulWidget {
+class MetaScreen extends StatelessWidget {
   const MetaScreen({super.key});
 
   @override
-  State<MetaScreen> createState() => _MetaScreenState();
+  Widget build(BuildContext context) {
+    try {
+      context.read<MetaCubit>();
+      return const _MetaScreenView();
+    } catch (_) {
+      return BlocProvider<MetaCubit>(
+        create: (ctx) => MetaCubit(ctx.read<MetaRepository>())
+          ..load()
+          ..startPolling(),
+        child: const _MetaScreenView(),
+      );
+    }
+  }
 }
 
-class _MetaScreenState extends State<MetaScreen> {
-  static const _metaChannels = ['', 'facebook', 'instagram', 'whatsapp'];
-  static const _pollEvery = Duration(seconds: 15);
-
-  MetaStatus? _status;
-  List<MetaThread> _threads = const [];
-  bool _loading = true;
-  String? _error;
-  String _channel = '';
-  MetaThread? _selected;
-  List<MetaMessage> _messages = const [];
-  bool _loadingMessages = false;
-  bool _sending = false;
-  final _replyController = TextEditingController();
-  Timer? _pollTimer;
+class _MetaScreenView extends StatefulWidget {
+  const _MetaScreenView();
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-    _pollTimer = Timer.periodic(_pollEvery, (_) {
-      if (!mounted || _loading) return;
-      _load(silent: true);
-    });
-  }
+  State<_MetaScreenView> createState() => _MetaScreenViewState();
+}
+
+class _MetaScreenViewState extends State<_MetaScreenView> {
+  static const _metaChannels = ['', 'facebook', 'instagram', 'whatsapp'];
+  final _replyController = TextEditingController();
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
     _replyController.dispose();
     super.dispose();
   }
 
-  Future<void> _load({bool silent = false}) async {
-    if (!silent) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    }
-    try {
-      final repo = context.read<MetaRepository>();
-      final results = await Future.wait<Object>([
-        repo.getStatus(),
-        repo.getThreads(channel: _channel.isEmpty ? null : _channel),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _status = results[0] as MetaStatus;
-        _threads = results[1] as List<MetaThread>;
-        _loading = false;
-        _error = null;
-      });
-      final selected = _selected;
-      if (silent && selected != null) {
-        try {
-          final messages = await context.read<MetaRepository>().getMessages(
-            selected.id,
-          );
-          if (!mounted) return;
-          setState(() => _messages = messages);
-        } catch (_) {}
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = e.toString().replaceAll('Exception: ', '');
-      });
-    }
-  }
-
-  Future<void> _openThread(MetaThread thread) async {
-    setState(() {
-      _selected = thread;
-      _loadingMessages = true;
-      _messages = const [];
-    });
-    try {
-      final messages = await context.read<MetaRepository>().getMessages(
-        thread.id,
-      );
-      if (!mounted) return;
-      setState(() {
-        _messages = messages;
-        _loadingMessages = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _loadingMessages = false;
-        _error = e.toString().replaceAll('Exception: ', '');
-      });
-    }
-  }
-
   Future<void> _send() async {
-    final thread = _selected;
     final text = _replyController.text.trim();
-    if (thread == null || text.isEmpty || _sending) return;
-    setState(() => _sending = true);
-    try {
-      final msg = await context.read<MetaRepository>().reply(thread.id, text);
-      if (!mounted) return;
-      setState(() {
-        _messages = [..._messages, msg];
-        _replyController.clear();
-        _sending = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _sending = false);
-      final language = context.read<LanguageCubit>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            language.resolveMessage(e.toString().replaceAll('Exception: ', '')),
-          ),
-        ),
-      );
-    }
+    if (text.isEmpty) return;
+    final cubit = context.read<MetaCubit>();
+    _replyController.clear();
+    await cubit.sendMessage(text);
   }
 
   Future<void> _suggest() async {
-    final thread = _selected;
-    if (thread == null || _sending) return;
-    setState(() => _sending = true);
-    try {
-      final suggestion = await context.read<MetaRepository>().suggestReply(
-        thread.id,
-      );
-      if (!mounted) return;
-      setState(() {
-        _replyController.text = suggestion;
-        _sending = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _sending = false);
-      final language = context.read<LanguageCubit>();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            language.resolveMessage(e.toString().replaceAll('Exception: ', '')),
-          ),
-        ),
-      );
+    final cubit = context.read<MetaCubit>();
+    final suggestion = await cubit.suggestReply();
+    if (suggestion != null && mounted) {
+      _replyController.text = suggestion;
     }
   }
 
-  Future<void> _showLinkClientSheet(BuildContext context) async {
-    final thread = _selected;
-    if (thread == null) return;
+  Future<void> _showLinkClientSheet(
+    BuildContext context,
+    MetaThread thread,
+  ) async {
     final language = context.read<LanguageCubit>();
     final crmRepo = context.read<CrmRepository>();
     final colors = context.colors;
@@ -215,13 +113,7 @@ class _MetaScreenState extends State<MetaScreen> {
             setSheetState(() => saving = true);
             try {
               final clientIdInt = int.tryParse(chosen!.id) ?? 0;
-              final updated = await context.read<MetaRepository>().linkClient(
-                thread.id,
-                clientIdInt,
-              );
-              if (mounted) {
-                setState(() => _selected = updated);
-              }
+              await context.read<MetaCubit>().linkClient(clientIdInt);
               if (ctx.mounted) Navigator.pop(ctx);
             } catch (e) {
               setSheetState(() => saving = false);
@@ -230,7 +122,7 @@ class _MetaScreenState extends State<MetaScreen> {
                   SnackBar(
                     content: Text(
                       language.resolveMessage(
-                        e.toString().replaceAll('Exception: ', ''),
+                        userFacingError(e, fallback: ErrorKeys.saveFailed),
                       ),
                     ),
                   ),
@@ -314,58 +206,6 @@ class _MetaScreenState extends State<MetaScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final language = context.watch<LanguageCubit>();
-
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        leading: _selected != null
-            ? IconButton(
-                icon: const Icon(TablerIcons.arrow_left),
-                onPressed: () => setState(() {
-                  _selected = null;
-                  _messages = const [];
-                }),
-              )
-            : null,
-        title: Text(
-          _selected == null
-              ? language.translate('meta_title')
-              : _selected!.displayName,
-          style: textStyles.h2Sans.copyWith(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-        actions: [
-          if (_selected != null) ...[
-            IconButton(
-              tooltip: language.translate('meta_link_client'),
-              onPressed: () => _showLinkClientSheet(context),
-              icon: const Icon(TablerIcons.link, size: 20),
-            ),
-            const SizedBox(width: 4),
-          ],
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: colors.border),
-        ),
-      ),
-      body: _selected == null
-          ? _buildThreadList(context, language, colors, textStyles)
-          : _buildChat(context, language, colors, textStyles),
-    );
-  }
-
   String get _webhookUrl {
     final base = ApiClient.configuredBaseUrl.replaceAll(RegExp(r'/+$'), '');
     return '$base/meta/webhook';
@@ -380,14 +220,81 @@ class _MetaScreenState extends State<MetaScreen> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+
+    return BlocConsumer<MetaCubit, MetaState>(
+      listener: (context, state) {
+        if (state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(language.resolveMessage(state.error!)),
+              backgroundColor: colors.accentRed,
+            ),
+          );
+        }
+      },
+      builder: (context, state) {
+        final selected = state.selectedThread;
+
+        return Scaffold(
+          backgroundColor: colors.background,
+          appBar: AppBar(
+            backgroundColor: colors.surface,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: selected != null
+                ? IconButton(
+                    icon: const Icon(TablerIcons.arrow_left),
+                    onPressed: () =>
+                        context.read<MetaCubit>().selectThread(null),
+                  )
+                : null,
+            title: Text(
+              selected == null
+                  ? language.translate('meta_title')
+                  : selected.displayName,
+              style: textStyles.h2Sans.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: colors.textPrimary,
+              ),
+            ),
+            actions: [
+              if (selected != null) ...[
+                IconButton(
+                  tooltip: language.translate('meta_link_client'),
+                  onPressed: () => _showLinkClientSheet(context, selected),
+                  icon: const Icon(TablerIcons.link, size: 20),
+                ),
+                const SizedBox(width: 4),
+              ],
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Container(height: 1, color: colors.border),
+            ),
+          ),
+          body: selected == null
+              ? _buildThreadList(context, state, language, colors, textStyles)
+              : _buildChat(context, state, language, colors, textStyles),
+        );
+      },
+    );
+  }
+
   Widget _buildWebhookCard(
+    MetaStatus? status,
     LanguageCubit language,
     LedgerColors colors,
     LedgerTextStyles textStyles,
   ) {
-    final connected = _status?.connected == true;
+    final connected = status?.connected == true;
     final tone = connected ? colors.accentGreen : colors.accentAmber;
-    final channels = _status?.channels ?? const <String>[];
+    final channels = status?.channels ?? const <String>[];
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -449,8 +356,8 @@ class _MetaScreenState extends State<MetaScreen> {
           if (!connected) ...[
             const SizedBox(height: 8),
             Text(
-              _status?.note?.isNotEmpty == true
-                  ? _status!.note!
+              status?.note?.isNotEmpty == true
+                  ? status!.note!
                   : language.translate('meta_not_connected'),
               style: textStyles.captionSans.copyWith(color: tone),
             ),
@@ -495,14 +402,15 @@ class _MetaScreenState extends State<MetaScreen> {
 
   Widget _buildThreadList(
     BuildContext context,
+    MetaState state,
     LanguageCubit language,
     LedgerColors colors,
     LedgerTextStyles textStyles,
   ) {
-    if (_loading) {
+    if (state.isLoading && state.threads.isEmpty) {
       return const MetaOverviewShimmer();
     }
-    if (_error != null && _threads.isEmpty) {
+    if (state.error != null && state.threads.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -510,13 +418,13 @@ class _MetaScreenState extends State<MetaScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                language.resolveMessage(_error!),
+                language.resolveMessage(state.error!),
                 textAlign: TextAlign.center,
                 style: textStyles.bodySans,
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: _load,
+                onPressed: () => context.read<MetaCubit>().load(),
                 child: Text(language.translate('common_retry')),
               ),
             ],
@@ -526,10 +434,11 @@ class _MetaScreenState extends State<MetaScreen> {
     }
 
     const headerCount = 2;
-    final itemCount = headerCount + (_threads.isEmpty ? 1 : _threads.length);
+    final threads = state.threads;
+    final itemCount = headerCount + (threads.isEmpty ? 1 : threads.length);
 
     return RefreshIndicator(
-      onRefresh: _load,
+      onRefresh: () => context.read<MetaCubit>().load(silent: true),
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
@@ -539,7 +448,12 @@ class _MetaScreenState extends State<MetaScreen> {
           if (cursor == 0) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: _buildWebhookCard(language, colors, textStyles),
+              child: _buildWebhookCard(
+                state.status,
+                language,
+                colors,
+                textStyles,
+              ),
             );
           }
           cursor -= 1;
@@ -553,7 +467,7 @@ class _MetaScreenState extends State<MetaScreen> {
                   itemCount: _metaChannels.length,
                   itemBuilder: (context, chipIndex) {
                     final ch = _metaChannels[chipIndex];
-                    final isSel = _channel == ch;
+                    final isSel = state.selectedChannel == ch;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
@@ -574,8 +488,7 @@ class _MetaScreenState extends State<MetaScreen> {
                         ),
                         onSelected: (val) {
                           if (!val) return;
-                          setState(() => _channel = ch);
-                          _load(silent: true);
+                          context.read<MetaCubit>().setChannel(ch);
                         },
                       ),
                     );
@@ -584,7 +497,7 @@ class _MetaScreenState extends State<MetaScreen> {
               ),
             );
           }
-          if (_threads.isEmpty) {
+          if (threads.isEmpty) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 48),
               child: Center(
@@ -597,11 +510,11 @@ class _MetaScreenState extends State<MetaScreen> {
               ),
             );
           }
-          final t = _threads[cursor - 1];
+          final t = threads[cursor - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: InkWell(
-              onTap: () => _openThread(t),
+              onTap: () => context.read<MetaCubit>().selectThread(t),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.all(14),
@@ -692,14 +605,18 @@ class _MetaScreenState extends State<MetaScreen> {
 
   Widget _buildChat(
     BuildContext context,
+    MetaState state,
     LanguageCubit language,
     LedgerColors colors,
     LedgerTextStyles textStyles,
   ) {
+    final messages = state.messages;
+    final sending = state.isSending;
+
     return Column(
       children: [
         Expanded(
-          child: _loadingMessages
+          child: state.isLoadingMessages
               ? const LedgerShimmer(
                   child: Padding(
                     padding: EdgeInsets.all(16),
@@ -724,9 +641,9 @@ class _MetaScreenState extends State<MetaScreen> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
+                  itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final m = _messages[index];
+                    final m = messages[index];
                     return Align(
                       alignment: m.outgoing
                           ? Alignment.centerRight
@@ -788,13 +705,13 @@ class _MetaScreenState extends State<MetaScreen> {
             children: [
               IconButton(
                 tooltip: language.translate('meta_suggest'),
-                onPressed: _sending ? null : _suggest,
+                onPressed: sending ? null : _suggest,
                 icon: Icon(TablerIcons.pencil, color: colors.brand),
               ),
               Expanded(
                 child: TextField(
                   controller: _replyController,
-                  enabled: !_sending,
+                  enabled: !sending,
                   minLines: 1,
                   maxLines: 4,
                   decoration: InputDecoration(
@@ -807,8 +724,8 @@ class _MetaScreenState extends State<MetaScreen> {
                 ),
               ),
               IconButton(
-                onPressed: _sending ? null : _send,
-                icon: _sending
+                onPressed: sending ? null : _send,
+                icon: sending
                     ? SizedBox(
                         width: 20,
                         height: 20,

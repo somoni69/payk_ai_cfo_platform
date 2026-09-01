@@ -28,17 +28,23 @@ class CashOperationFilters {
 
   Map<String, dynamic> toQuery() {
     final q = <String, dynamic>{'page': page, 'size': size};
-    if (registerId != null) q['register_id'] = registerId;
-    if (type != null && type!.isNotEmpty && type != 'all') q['type'] = type;
-    if (paymentMethod != null &&
-        paymentMethod!.isNotEmpty &&
-        paymentMethod != 'all') {
-      q['payment_method'] = paymentMethod;
+    if (registerId case final rId?) q['register_id'] = rId;
+    if (type case final t? when t.isNotEmpty && t != 'all') q['type'] = t;
+    if (paymentMethod case final pm? when pm.isNotEmpty && pm != 'all') {
+      q['payment_method'] = pm;
     }
-    if (cashierId != null) q['cashier_id'] = cashierId;
-    if (dateFrom != null) q['date_from'] = dateFrom!.toUtc().toIso8601String();
-    if (dateTo != null) q['date_to'] = dateTo!.toUtc().toIso8601String();
-    if (query != null && query!.trim().isNotEmpty) q['q'] = query!.trim();
+    if (cashierId case final cId?) {
+      q['cashier_id'] = cId;
+    }
+    if (dateFrom case final from?) {
+      q['date_from'] = from.toUtc().toIso8601String();
+    }
+    if (dateTo case final to?) {
+      q['date_to'] = to.toUtc().toIso8601String();
+    }
+    if (query?.trim() case final qText? when qText.isNotEmpty) {
+      q['q'] = qText;
+    }
     return q;
   }
 }
@@ -105,23 +111,85 @@ class OneCKkmReconcileRow {
   });
 }
 
+class OneCKkmShiftSummary {
+  final int id;
+  final String number;
+  final String registerName;
+  final String cashierName;
+  final String? departmentName;
+  final String? paykRegisterName;
+  final DateTime? openedAt;
+  final String? closedAt;
+  final double total;
+  final double cashTotal;
+  final double cashlessTotal;
+  final double startingBalance;
+  final double endingBalance;
+  final double cashRevenue;
+  final double nonCashRevenue;
+  final double discrepancy;
+  final String syncStatus;
+  final String? onecDocNumber;
+  final String? failureReason;
+  final List<OneCKkmPayment> payments;
+
+  const OneCKkmShiftSummary({
+    this.id = 0,
+    this.number = '',
+    required this.registerName,
+    required this.cashierName,
+    this.departmentName,
+    this.paykRegisterName,
+    this.openedAt,
+    this.closedAt,
+    this.total = 0,
+    this.cashTotal = 0,
+    this.cashlessTotal = 0,
+    this.startingBalance = 0,
+    this.endingBalance = 0,
+    this.cashRevenue = 0,
+    this.nonCashRevenue = 0,
+    this.discrepancy = 0,
+    this.syncStatus = 'synced',
+    this.onecDocNumber,
+    this.failureReason,
+    this.payments = const [],
+  });
+}
+
+typedef OneCKkmShift = OneCKkmShiftSummary;
+
 class OneCKkmOverview {
+  final bool enabled;
+  final String connectionStatus;
+  final String? lastSuccessfulSync;
+  final int unsyncedShiftsCount;
+  final int autoSyncIntervalMinutes;
   final String source;
   final String? error;
   final String? syncedAt;
-  final List<OneCKkmShift> shifts;
+  final List<OneCKkmShiftSummary> shifts;
   final Map<String, dynamic> totals;
   final Map<String, dynamic> mapping;
   final Map<String, dynamic> targets;
+  final List<OneCKkmMappingRow> registerMappings;
+  final List<OneCKkmMappingRow> cashierMappings;
   final List<OneCKkmMappingRow> mappingRegisters;
   final List<OneCKkmMappingRow> mappingDepartments;
   final List<OneCKkmMappingRow> mappingCards;
+  final List<OneCKkmTargetOption> available1CRegisters;
+  final List<OneCKkmTargetOption> available1CCashiers;
   final List<OneCKkmTargetOption> targetRegisters;
   final List<OneCKkmTargetOption> targetBranches;
   final List<OneCKkmTargetOption> targetBanks;
   final List<OneCKkmReconcileRow> reconcile;
 
   const OneCKkmOverview({
+    this.enabled = false,
+    this.connectionStatus = 'offline',
+    this.lastSuccessfulSync,
+    this.unsyncedShiftsCount = 0,
+    this.autoSyncIntervalMinutes = 15,
     this.source = 'live',
     this.error,
     this.syncedAt,
@@ -129,9 +197,13 @@ class OneCKkmOverview {
     this.totals = const {},
     this.mapping = const {},
     this.targets = const {},
+    this.registerMappings = const [],
+    this.cashierMappings = const [],
     this.mappingRegisters = const [],
     this.mappingDepartments = const [],
     this.mappingCards = const [],
+    this.available1CRegisters = const [],
+    this.available1CCashiers = const [],
     this.targetRegisters = const [],
     this.targetBranches = const [],
     this.targetBanks = const [],
@@ -139,63 +211,24 @@ class OneCKkmOverview {
   });
 }
 
-class OneCKkmShift {
-  final String number;
-  final String registerName;
-  final String cashierName;
-  final String? departmentName;
-  final String? closedAt;
-  final double total;
-  final double cashTotal;
-  final double cashlessTotal;
-  final List<OneCKkmPayment> payments;
-  final String? paykRegisterName;
-
-  const OneCKkmShift({
-    required this.number,
-    required this.registerName,
-    required this.cashierName,
-    this.departmentName,
-    this.closedAt,
-    this.total = 0,
-    this.cashTotal = 0,
-    this.cashlessTotal = 0,
-    this.payments = const [],
-    this.paykRegisterName,
-  });
-}
-
-/// Интерфейс репозитория кассовых операций и смен.
-abstract class CashRepository {
-  /// Получить список кассовых транзакций
+/// Abstract contract for cash management operations (CASH-*).
+abstract interface class CashRepository {
+  /// Список транзакций (доходов и расходов)
   Future<List<Transaction>> getTransactions({
     CashOperationFilters filters = const CashOperationFilters(),
   });
 
-  Future<List<CashierLookup>> lookupCashiers();
-
-  Future<OneCKkmOverview> getOneCKkmShifts({
-    DateTime? dateFrom,
-    DateTime? dateTo,
-    bool refresh = true,
-  });
-
-  Future<void> saveOneCKkmLink({
-    required String scope,
-    required String onecName,
-    int? targetId,
-  });
+  /// Получить операцию по идентификатору
+  Future<Transaction> getOperation(String id);
 
   /// Добавить новую транзакцию
   Future<Transaction> addTransaction(Transaction transaction);
 
-  Future<Transaction> getOperation(String id) =>
-      getTransactions().then((list) => list.firstWhere((t) => t.id == id));
+  /// Обновить существующую транзакцию
+  Future<Transaction> updateTransaction(Transaction transaction);
 
-  Future<Transaction> updateTransaction(Transaction transaction) =>
-      addTransaction(transaction);
-
-  Future<void> deleteTransaction(String id) async {}
+  /// Удалить транзакцию по идентификатору
+  Future<void> deleteTransaction(String id);
 
   /// Каталог товаров для продажи без штрих-кода (`GET /cash/sale-products`).
   /// Кассиру доступен без права на модуль «Склад».
@@ -217,14 +250,14 @@ abstract class CashRepository {
   Future<CashShift> openShiftForRegister(
     double startingBalance, {
     String? registerId,
-  }) => openShift(startingBalance);
+  });
 
   /// Closes a known active shift without reloading the shifts collection.
   Future<CashShift> closeShiftById(
     double endingBalance, {
     String? shiftId,
     String? note,
-  }) => closeShift(endingBalance, note: note);
+  });
 
   /// Закрыть текущую смену с подсчетом разницы (CASH-06)
   Future<CashShift> closeShift(double endingBalance, {String? note});
@@ -238,16 +271,32 @@ abstract class CashRepository {
   /// Получить список всех касс (кассовых аппаратов)
   Future<List<CashRegister>> getRegisters();
 
-  /// Export operations (`GET /cash/export`) — fmt: xlsx | csv | pdf.
+  /// Export operations as raw file bytes (xlsx | csv | pdf).
   Future<Uint8List> exportOperations({
     required String format,
     CashOperationFilters filters = const CashOperationFilters(),
   });
 
-  /// Import operations file (`POST /cash/import`).
+  /// Import bank/cash statement file (`POST /cash/import`).
   Future<int> importOperations({
     required int registerId,
     required String filename,
     required Uint8List bytes,
+  });
+
+  /// Cashier lookup for filter dropdown (`GET /cash/cashiers`).
+  Future<List<CashierLookup>> lookupCashiers();
+
+  /// 1C:KKM Integration Overview
+  Future<OneCKkmOverview> getOneCKkmShifts({
+    DateTime? dateFrom,
+    DateTime? dateTo,
+    bool refresh = true,
+  });
+
+  Future<void> saveOneCKkmLink({
+    required String scope,
+    required String onecName,
+    int? targetId,
   });
 }

@@ -80,6 +80,20 @@ class _AuditViewState extends State<AuditView> {
         ),
       ),
       body: BlocConsumer<AuditBloc, AuditState>(
+        listenWhen: (previous, current) =>
+            current is AuditLoaded &&
+            current.message != null &&
+            (previous is! AuditLoaded || previous.message != current.message),
+        buildWhen: (previous, current) {
+          if (previous.runtimeType != current.runtimeType) return true;
+          if (previous is AuditLoaded && current is AuditLoaded) {
+            return previous.logs != current.logs ||
+                previous.alerts != current.alerts ||
+                previous.weekly != current.weekly ||
+                previous.isRunningDetectors != current.isRunningDetectors;
+          }
+          return true;
+        },
         listener: (context, state) {
           if (state is AuditLoaded && state.message != null) {
             ScaffoldMessenger.of(
@@ -717,6 +731,17 @@ class AuditSectionScreen extends StatelessWidget {
             )
           : null,
       body: BlocBuilder<AuditBloc, AuditState>(
+        buildWhen: (previous, current) {
+          if (previous.runtimeType != current.runtimeType) return true;
+          if (previous is AuditLoaded && current is AuditLoaded) {
+            return switch (section) {
+              AuditSection.logs => previous.logs != current.logs,
+              AuditSection.alerts => previous.alerts != current.alerts,
+              AuditSection.report => previous.weekly != current.weekly,
+            };
+          }
+          return true;
+        },
         builder: (context, state) {
           if (state is AuditLoading) {
             return const Padding(

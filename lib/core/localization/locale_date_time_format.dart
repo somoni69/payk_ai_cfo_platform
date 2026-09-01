@@ -52,6 +52,8 @@ String formatLocalizedDateTime(
   );
 }
 
+final _dateFormatCache = <String, DateFormat>{};
+
 String formatLocalizedDateTimeForLocale(
   DateTime value,
   Locale locale, {
@@ -59,8 +61,11 @@ String formatLocalizedDateTimeForLocale(
   bool convertToLocal = true,
 }) {
   final dateTime = convertToLocal ? value.toLocal() : value;
-  return DateFormat(
-    style.pattern,
-    resolveDateTimeFormatLocale(locale),
-  ).format(dateTime);
+  final resolvedLocale = resolveDateTimeFormatLocale(locale);
+  final cacheKey = '${style.pattern}-$resolvedLocale';
+  final formatter = _dateFormatCache.putIfAbsent(
+    cacheKey,
+    () => DateFormat(style.pattern, resolvedLocale),
+  );
+  return formatter.format(dateTime);
 }

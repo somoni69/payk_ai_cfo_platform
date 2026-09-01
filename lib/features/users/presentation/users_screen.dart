@@ -1614,8 +1614,8 @@ Future<void> _showUserDialog(BuildContext context, {UserProfile? user}) async {
             TextField(
               controller: fullNameCtrl,
               style: textStyles.bodySans,
-              decoration: const InputDecoration(
-                hintText: 'Иванов Иван Иванович',
+              decoration: InputDecoration(
+                hintText: language.translate('users_name_placeholder'),
               ),
             ),
             const SizedBox(height: 14),
@@ -1632,7 +1632,9 @@ Future<void> _showUserDialog(BuildContext context, {UserProfile? user}) async {
               TextField(
                 controller: usernameCtrl,
                 style: textStyles.bodySans,
-                decoration: const InputDecoration(hintText: 'ivanov'),
+                decoration: InputDecoration(
+                  hintText: language.translate('users_login_placeholder'),
+                ),
               ),
               const SizedBox(height: 14),
             ],

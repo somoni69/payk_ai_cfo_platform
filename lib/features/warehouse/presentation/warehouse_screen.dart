@@ -8,6 +8,7 @@ import '../../../core/localization/locale_number_format.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/models/ui_feedback.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
@@ -79,6 +80,12 @@ void _openWarehouseSection(BuildContext context, WarehouseSection section) {
       ),
     ),
   );
+}
+
+Future<void> _refreshWarehouse(BuildContext context) {
+  final bloc = context.read<WarehouseBloc>();
+  bloc.add(const LoadWarehouseData());
+  return bloc.stream.firstWhere((state) => state is! WarehouseLoading);
 }
 
 class WarehouseView extends StatefulWidget {
@@ -157,6 +164,34 @@ class _WarehouseViewState extends State<WarehouseView> {
                     localeCubit.translateMessage(state.errorMessage!),
                   ),
                   backgroundColor: colors.accentRed,
+                ),
+              );
+            } else if (state.feedback != null) {
+              final fb = state.feedback!;
+              final text = switch (fb) {
+                WarehouseActionFeedback(:final translationKey, :final count) =>
+                  localeCubit.translate(
+                    translationKey,
+                    params: {'count': '$count'},
+                  ),
+                LocalizedFeedback(:final translationKey, :final params) =>
+                  localeCubit.translate(translationKey, params: params),
+                ShiftClosedFeedback(
+                  :final diffFormatted,
+                  :final expectedFormatted,
+                ) =>
+                  localeCubit.translate(
+                    'cash_shift_closed_diff',
+                    params: {
+                      'diff': diffFormatted,
+                      'expected': expectedFormatted,
+                    },
+                  ),
+              };
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(text),
+                  backgroundColor: colors.accentGreen,
                 ),
               );
             } else if (state.successMessage != null) {
@@ -249,7 +284,7 @@ class _WarehouseViewState extends State<WarehouseView> {
     final recentMovements = state.movements.take(5).toList();
 
     return RefreshIndicator(
-      onRefresh: context.read<WarehouseBloc>().reload,
+      onRefresh: () => _refreshWarehouse(context),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -1014,7 +1049,7 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
     final filtered = _filtered;
 
     return RefreshIndicator(
-      onRefresh: context.read<WarehouseBloc>().reload,
+      onRefresh: () => _refreshWarehouse(context),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -1342,7 +1377,7 @@ Widget _buildMovementsTab(BuildContext context, WarehouseLoaded state) {
   final oCcy = localizedDecimalFormat(context);
 
   return RefreshIndicator(
-    onRefresh: context.read<WarehouseBloc>().reload,
+    onRefresh: () => _refreshWarehouse(context),
     child: ListView.separated(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16 + kLiquidNavClearance),
@@ -1381,10 +1416,9 @@ Widget _buildBatchesTab(
 
   return RefreshIndicator(
     onRefresh: () async {
-      context.read<WarehouseBloc>().add(
-        LoadBatchesRequested(expiringOnly: state.batchesExpiringOnly),
-      );
-      await context.read<WarehouseBloc>().reload();
+      final bloc = context.read<WarehouseBloc>();
+      bloc.add(LoadBatchesRequested(expiringOnly: state.batchesExpiringOnly));
+      await bloc.stream.firstWhere((s) => s is! WarehouseLoading);
     },
     child: ListView(
       physics: const AlwaysScrollableScrollPhysics(),

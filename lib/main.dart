@@ -7,6 +7,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:payk_ai_cfo_platform/core/security/secure_storage_provider.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_error_reporter.dart';
+import 'package:payk_ai_cfo_platform/core/observability/app_bloc_observer.dart';
 import 'package:payk_ai_cfo_platform/core/di/app_repositories.dart';
 import 'package:payk_ai_cfo_platform/core/localization/language_cubit.dart';
 import 'package:payk_ai_cfo_platform/core/localization/tajik_cupertino_localizations.dart';
@@ -17,6 +18,8 @@ import 'package:payk_ai_cfo_platform/core/theme/app_theme.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_event.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_state.dart';
+import 'package:payk_ai_cfo_platform/features/auth/data/api_auth_repository.dart';
+import 'package:payk_ai_cfo_platform/features/network/data/api_network_repository.dart';
 import 'package:payk_ai_cfo_platform/core/network/api_client.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/cubit/permissions_cubit.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/data/api_permissions_repository.dart';
@@ -29,6 +32,7 @@ void main() {
       // Debug: console + ring buffer. Release: ring buffer only.
       // Replace with Crashlytics/company telemetry via installSink when ready.
       AppErrorReporter.installDefaultSinks();
+      Bloc.observer = AppBlocObserver();
 
       FlutterError.onError = (details) {
         FlutterError.presentError(details);
@@ -73,7 +77,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    _authBloc = AuthBloc();
+    _authBloc = AuthBloc(
+      authRepository: ApiAuthRepository(),
+      networkRepository: ApiNetworkRepository(),
+    );
     _permissionsCubit = PermissionsCubit(ApiPermissionsRepository());
     _routerRefresh = GoRouterRefreshStream.merge([
       _authBloc.stream,

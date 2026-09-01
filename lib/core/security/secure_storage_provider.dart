@@ -5,6 +5,8 @@ class AppSecureStorage {
   const AppSecureStorage._();
 
   static const AndroidOptions _androidOptions = AndroidOptions(
+    // ignore: deprecated_member_use
+    encryptedSharedPreferences: true,
     resetOnError: true,
   );
 

@@ -137,14 +137,32 @@ class _MoreScreenState extends State<MoreScreen> {
       }
     } else {
       try {
-        await _storage.write(key: 'use_biometrics', value: 'false');
-        if (!mounted) return;
-        setState(() => _biometricEnabled = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.translate('more_biometric_disabled'))),
+        final authenticated = await _biometricService.authenticate(
+          localizedReason: biometricReason,
+          languageCode: langCode,
         );
+
+        if (authenticated) {
+          await _storage.write(key: 'use_biometrics', value: 'false');
+          if (!mounted) return;
+          setState(() => _biometricEnabled = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.translate('more_biometric_disabled')),
+            ),
+          );
+        } else {
+          if (!mounted) return;
+          setState(() => _biometricEnabled = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(context.translate('more_biometric_cancelled')),
+            ),
+          );
+        }
       } catch (_) {
         if (!mounted) return;
+        setState(() => _biometricEnabled = true);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.translate('more_biometric_error'))),
         );

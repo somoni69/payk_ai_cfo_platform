@@ -9,7 +9,9 @@ abstract class WarehouseEvent extends Equatable {
 }
 
 /// Загрузка всех данных склада
-class LoadWarehouseData extends WarehouseEvent {}
+class LoadWarehouseData extends WarehouseEvent {
+  const LoadWarehouseData();
+}
 
 /// Запрос на создание нового товара
 class CreateProductRequested extends WarehouseEvent {

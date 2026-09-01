@@ -289,26 +289,30 @@ void main() {
       bloc.add(LoadWarehouseData());
     });
 
-    test('reload waits for the actual network load and shares it', () async {
-      bloc.add(LoadWarehouseData());
-      await bloc.stream.firstWhere((state) => state is WarehouseLoaded);
+    test(
+      'LoadWarehouseData waits for network load and completes state',
+      () async {
+        bloc.add(LoadWarehouseData());
+        await bloc.stream.firstWhere((state) => state is WarehouseLoaded);
 
-      final gate = Completer<void>();
-      repository.loadGate = gate;
-      var completed = false;
+        final gate = Completer<void>();
+        repository.loadGate = gate;
+        var completed = false;
 
-      final first = bloc.reload();
-      final second = bloc.reload();
-      expect(identical(first, second), true);
-      first.then((_) => completed = true);
+        final future = bloc.stream.firstWhere(
+          (state) => state is WarehouseLoaded,
+        );
+        future.then((_) => completed = true);
+        bloc.add(LoadWarehouseData());
 
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(completed, false);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(completed, false);
 
-      gate.complete();
-      await Future.wait([first, second]);
-      expect(completed, true);
-    });
+        gate.complete();
+        await future;
+        expect(completed, true);
+      },
+    );
 
     test(
       'movement synchronization starts products and summary reads together',

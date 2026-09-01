@@ -1,5 +1,5 @@
-import '../domain/legal_models.dart';
-import '../domain/legal_repository.dart';
+import 'package:payk_ai_cfo_platform/features/legal/domain/legal_models.dart';
+import 'package:payk_ai_cfo_platform/features/legal/domain/legal_repository.dart';
 
 class MockLegalRepository implements LegalRepository {
   final List<LegalDeadline> _mockDeadlines = [
@@ -105,7 +105,6 @@ class MockLegalRepository implements LegalRepository {
   Future<List<ContractTemplate>> getTemplates({
     bool forceRefresh = false,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return List.from(_mockTemplates);
   }
 
@@ -114,7 +113,6 @@ class MockLegalRepository implements LegalRepository {
     String templateId,
     Map<String, String> data,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final title = templateId == '1'
         ? 'Договор купли-продажи'
         : 'Трудовой договор';
@@ -140,13 +138,11 @@ class MockLegalRepository implements LegalRepository {
 
   @override
   Future<List<Law>> getLaws({bool forceRefresh = false}) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return List.from(_mockLaws);
   }
 
   @override
   Future<List<LegalDeadline>> getDeadlines({bool forceRefresh = false}) async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return List.from(_mockDeadlines);
   }
 
@@ -155,7 +151,6 @@ class MockLegalRepository implements LegalRepository {
     String deadlineId,
     bool isDone,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 50));
     final index = _mockDeadlines.indexWhere((d) => d.id == deadlineId);
     if (index != -1) {
       final updated = _mockDeadlines[index].copyWith(isDone: isDone);
@@ -167,7 +162,6 @@ class MockLegalRepository implements LegalRepository {
 
   @override
   Future<String> askAiLawyer(String question) async {
-    await Future.delayed(const Duration(milliseconds: 400));
     final q = question.toLowerCase();
     if (q.contains('налог') || q.contains('упрощен')) {
       return 'Согласно Налоговому кодексу РТ (Статья 289), субъекты упрощенной системы декларируют '
@@ -189,7 +183,6 @@ class MockLegalRepository implements LegalRepository {
     required String body,
     String? category,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 80));
     final law = Law(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       title: title,
@@ -203,7 +196,6 @@ class MockLegalRepository implements LegalRepository {
 
   @override
   Future<void> deleteLaw(String id) async {
-    await Future.delayed(const Duration(milliseconds: 50));
     _mockLaws.removeWhere((law) => law.id == id);
   }
 
@@ -215,7 +207,6 @@ class MockLegalRepository implements LegalRepository {
     String? amount,
     String? note,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 80));
     final daysLeft = dueDate.difference(DateTime.now()).inDays;
     final deadline = LegalDeadline(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -237,7 +228,6 @@ class MockLegalRepository implements LegalRepository {
     required String body,
     String? category,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 80));
     final template = ContractTemplate(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,

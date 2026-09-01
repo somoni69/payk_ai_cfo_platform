@@ -173,11 +173,11 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       state.orgLoaded,
       RefreshIndicator(
         onRefresh: () async {
-          final done = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrSection(HrSection.org, forceRefresh: true, completion: done),
+          final bloc = context.read<HrBloc>();
+          bloc.add(const LoadHrSection(HrSection.org, forceRefresh: true));
+          await bloc.stream.firstWhere(
+            (s) => s is HrLoaded && !s.sectionLoading,
           );
-          await done.future;
         },
         child: state.orgChart.isEmpty
             ? _buildEmptyState(
@@ -186,12 +186,18 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 colors: colors,
                 textStyles: textStyles,
               )
-            : ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  for (final root in state.orgChart)
-                    ..._flattenOrg(root, 0, colors, textStyles, locale),
-                ],
+            : Builder(
+                builder: (context) {
+                  final items = [
+                    for (final root in state.orgChart)
+                      ..._flattenOrg(root, 0, colors, textStyles, locale),
+                  ];
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) => items[index],
+                  );
+                },
               ),
       ),
     );
@@ -294,15 +300,13 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       state.attendanceLoaded,
       RefreshIndicator(
         onRefresh: () async {
-          final done = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrSection(
-              HrSection.attendance,
-              forceRefresh: true,
-              completion: done,
-            ),
+          final bloc = context.read<HrBloc>();
+          bloc.add(
+            const LoadHrSection(HrSection.attendance, forceRefresh: true),
           );
-          await done.future;
+          await bloc.stream.firstWhere(
+            (s) => s is HrLoaded && !s.sectionLoading,
+          );
         },
         child: state.attendance.isEmpty
             ? _buildEmptyState(
@@ -521,15 +525,13 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       state.candidatesLoaded,
       RefreshIndicator(
         onRefresh: () async {
-          final done = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrSection(
-              HrSection.recruitment,
-              forceRefresh: true,
-              completion: done,
-            ),
+          final bloc = context.read<HrBloc>();
+          bloc.add(
+            const LoadHrSection(HrSection.recruitment, forceRefresh: true),
           );
-          await done.future;
+          await bloc.stream.firstWhere(
+            (s) => s is HrLoaded && !s.sectionLoading,
+          );
         },
         child: state.candidates.isEmpty
             ? _buildEmptyState(
@@ -740,15 +742,11 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       state.evaluationsLoaded,
       RefreshIndicator(
         onRefresh: () async {
-          final done = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrSection(
-              HrSection.nineBox,
-              forceRefresh: true,
-              completion: done,
-            ),
+          final bloc = context.read<HrBloc>();
+          bloc.add(const LoadHrSection(HrSection.nineBox, forceRefresh: true));
+          await bloc.stream.firstWhere(
+            (s) => s is HrLoaded && !s.sectionLoading,
           );
-          await done.future;
         },
         child: state.evaluations.isEmpty
             ? _buildEmptyState(
@@ -932,122 +930,115 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
   Widget _buildContractsTab(BuildContext context, HrLoaded state) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    final locale = context.watch<LanguageCubit>();
+    final locale = context.read<LanguageCubit>();
     final canWrite = _canManageHr(context);
+    final contracts = state.contracts;
 
-    return _sectionLoader(
-      state,
-      state.contractsLoaded,
-      RefreshIndicator(
-        onRefresh: () async {
-          final done = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrSection(
-              HrSection.contracts,
-              forceRefresh: true,
-              completion: done,
-            ),
-          );
-          await done.future;
-        },
-        child: state.contracts.isEmpty
-            ? _buildEmptyState(
-                icon: TablerIcons.file_certificate,
-                title: locale.translate('hr_contracts_empty'),
-                colors: colors,
-                textStyles: textStyles,
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-                itemCount: state.contracts.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final c = state.contracts[index];
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                c.employeeName ?? '#${c.employeeId}',
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14.5,
-                                ),
+    return RefreshIndicator(
+      onRefresh: () async {
+        final bloc = context.read<HrBloc>();
+        bloc.add(LoadHrData(state.period, forceRefresh: true));
+        await bloc.stream.firstWhere((s) => s is! HrLoading);
+      },
+      child: contracts.isEmpty
+          ? _buildEmptyState(
+              icon: TablerIcons.file_text,
+              title: locale.translate('hr_contracts_empty'),
+              subtitle: locale.translate('hr_contracts_empty_sub'),
+              colors: colors,
+              textStyles: textStyles,
+            )
+          : ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+              itemCount: contracts.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final c = contracts[index];
+                return Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              c.employeeName ?? '#${c.employeeId}',
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14.5,
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '№ ${c.number}',
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
-                                  fontSize: 13,
-                                ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '№ ${c.number}',
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                                fontSize: 13,
                               ),
-                              Text(
-                                formatLocalizedDateTime(
-                                  context,
-                                  c.startDate,
-                                  style: LocalizedDateTimeStyle.date,
-                                ),
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textTooltip,
-                                  fontSize: 12,
-                                ),
+                            ),
+                            Text(
+                              formatLocalizedDateTime(
+                                context,
+                                c.startDate,
+                                style: LocalizedDateTimeStyle.date,
                               ),
-                            ],
-                          ),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textTooltip,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: c.isExpiring
+                              ? colors.accentAmber.withValues(alpha: 0.12)
+                              : colors.surfaceNested,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          c.isExpiring
+                              ? locale.translate('hr_contract_expiring')
+                              : locale.translate(
+                                  'hr_contract_status_${c.status}',
+                                ),
+                          style: textStyles.captionSans.copyWith(
                             color: c.isExpiring
-                                ? colors.accentAmber.withValues(alpha: 0.12)
-                                : colors.surfaceNested,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            c.isExpiring
-                                ? locale.translate('hr_contract_expiring')
-                                : locale.translate(
-                                    'hr_contract_status_${c.status}',
-                                  ),
-                            style: textStyles.captionSans.copyWith(
-                              color: c.isExpiring
-                                  ? colors.accentAmber
-                                  : colors.textSecondary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11.5,
-                            ),
+                                ? colors.accentAmber
+                                : colors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
                           ),
                         ),
-                        if (canWrite)
-                          IconButton(
-                            onPressed: () => context.read<HrBloc>().add(
-                              DeleteContractRequested(c.id),
-                            ),
-                            icon: Icon(
-                              TablerIcons.trash,
-                              size: 18,
-                              color: colors.accentRed,
-                            ),
+                      ),
+                      if (canWrite)
+                        IconButton(
+                          onPressed: () => context.read<HrBloc>().add(
+                            DeleteContractRequested(c.id),
                           ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-      ),
+                          icon: Icon(
+                            TablerIcons.trash,
+                            size: 18,
+                            color: colors.accentRed,
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 
@@ -1223,15 +1214,11 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       state.movementLoaded,
       RefreshIndicator(
         onRefresh: () async {
-          final done = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrSection(
-              HrSection.movement,
-              forceRefresh: true,
-              completion: done,
-            ),
+          final bloc = context.read<HrBloc>();
+          bloc.add(const LoadHrSection(HrSection.movement, forceRefresh: true));
+          await bloc.stream.firstWhere(
+            (s) => s is HrLoaded && !s.sectionLoading,
           );
-          await done.future;
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -1594,15 +1581,9 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     if (state.salaryRecords.isEmpty) {
       return RefreshIndicator(
         onRefresh: () async {
-          final completion = Completer<void>();
-          context.read<HrBloc>().add(
-            LoadHrData(
-              period ?? state.period,
-              forceRefresh: true,
-              completion: completion,
-            ),
-          );
-          await completion.future;
+          final bloc = context.read<HrBloc>();
+          bloc.add(LoadHrData(period ?? state.period, forceRefresh: true));
+          await bloc.stream.firstWhere((s) => s is! HrLoading);
         },
         child: _buildEmptyState(
           icon: TablerIcons.cash,
@@ -1615,15 +1596,9 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        final completion = Completer<void>();
-        context.read<HrBloc>().add(
-          LoadHrData(
-            period ?? state.period,
-            forceRefresh: true,
-            completion: completion,
-          ),
-        );
-        await completion.future;
+        final bloc = context.read<HrBloc>();
+        bloc.add(LoadHrData(period ?? state.period, forceRefresh: true));
+        await bloc.stream.firstWhere((s) => s is! HrLoading);
       },
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
@@ -2681,15 +2656,14 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              final completion = Completer<void>();
-              context.read<HrBloc>().add(
+              final bloc = context.read<HrBloc>();
+              bloc.add(
                 LoadHrData(
                   widget.period ?? widget.state.period,
                   forceRefresh: true,
-                  completion: completion,
                 ),
               );
-              await completion.future;
+              await bloc.stream.firstWhere((s) => s is! HrLoading);
             },
             child: filtered.isEmpty
                 ? ListView(
@@ -3150,15 +3124,14 @@ class _KpiTabWidgetState extends State<_KpiTabWidget> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              final completion = Completer<void>();
-              context.read<HrBloc>().add(
+              final bloc = context.read<HrBloc>();
+              bloc.add(
                 LoadHrData(
                   widget.period ?? widget.state.period,
                   forceRefresh: true,
-                  completion: completion,
                 ),
               );
-              await completion.future;
+              await bloc.stream.firstWhere((s) => s is! HrLoading);
             },
             child: _selectedTab == 0
                 ? _buildAllKpisList(context, colors, textStyles, locale, oCcy)

@@ -1,6 +1,6 @@
-import '../domain/marketing_ai_models.dart';
-import '../domain/marketing_models.dart';
-import '../domain/marketing_repository.dart';
+import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_ai_models.dart';
+import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_models.dart';
+import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_repository.dart';
 
 class MockMarketingRepository implements MarketingRepository {
   final List<MarketingCampaign> _campaigns = [
@@ -57,7 +57,6 @@ class MockMarketingRepository implements MarketingRepository {
   Future<List<MarketingCampaign>> getCampaigns({
     bool forceRefresh = false,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return _campaigns;
   }
 
@@ -71,7 +70,6 @@ class MockMarketingRepository implements MarketingRepository {
     required int conversions,
     required double revenue,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final newCamp = MarketingCampaign(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
@@ -91,7 +89,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<List<SocialPost>> getPosts({bool forceRefresh = false}) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return _posts;
   }
 
@@ -100,7 +97,6 @@ class MockMarketingRepository implements MarketingRepository {
     required String text,
     required String channel,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final post = SocialPost(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       text: text,
@@ -124,7 +120,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<SocialPost> publishPost(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     final idx = _posts.indexWhere((p) => p.id == id);
     if (idx != -1) {
       final updated = SocialPost(
@@ -144,7 +139,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<List<String>> generateAiIdeas(String prompt) async {
-    await Future.delayed(const Duration(milliseconds: 500));
     return [
       'Запустить таргет с акцентом на быструю доставку в Худжанде.',
       'Опубликовать видео-отзыв крупного застройщика о прочности бетона.',
@@ -154,7 +148,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<String> generateAiText(String prompt) async {
-    await Future.delayed(const Duration(milliseconds: 500));
     return '🔥 Спецпредложение от PAYK! Только в этом месяце при заказе от 50 кубов бетона — бесплатная лабораторная проверка прочности на сжатие. Заказывайте прямо сейчас! 📞 +992 93 123 4567';
   }
 
@@ -169,20 +162,17 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return _brandGuide;
   }
 
   @override
   Future<BrandGuide> updateBrandGuide(BrandGuide brandGuide) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     _brandGuide = brandGuide;
     return _brandGuide;
   }
 
   @override
   Future<List<MarketingIdea>> getAiIdeas({String lang = 'ru'}) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return [
       const MarketingIdea(
         source: 'season',
@@ -214,7 +204,6 @@ class MockMarketingRepository implements MarketingRepository {
     String? briefText,
     String? ideaSource,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return MarketingCampaignAi(
       id: 'ai-camp-1',
       name: name,
@@ -262,7 +251,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<List<MarketingConcept>> generateAiConcepts(String campaignId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return [
       MarketingConcept(
         id: 'concept-1',
@@ -303,7 +291,6 @@ class MockMarketingRepository implements MarketingRepository {
     required List<String> baseIds,
     required String note,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return MarketingConcept(
       id: 'concept-rev-1',
       campaignId: campaignId,
@@ -323,7 +310,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<MarketingConcept> approveAiConcept(String conceptId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return MarketingConcept(
       id: conceptId,
       campaignId: 'ai-camp-1',
@@ -338,7 +324,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<MarketingMediaAsset> generateAiScript(String conceptId) async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return MarketingMediaAsset(
       id: 'media-1',
       conceptId: conceptId,
@@ -358,7 +343,6 @@ class MockMarketingRepository implements MarketingRepository {
 
   @override
   Future<MarketingVideoQuota> getVideoQuota() async {
-    await Future.delayed(const Duration(milliseconds: 100));
     return const MarketingVideoQuota(
       month: '2026-08',
       videoUsed: 2,
@@ -373,7 +357,6 @@ class MockMarketingRepository implements MarketingRepository {
     required String kind,
     bool confirm = true,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     return MarketingMediaAsset(
       id: mediaId,
       conceptId: 'concept-1',
@@ -391,12 +374,11 @@ class MockMarketingRepository implements MarketingRepository {
     required String mediaId,
     required String reason,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 100));
+    return;
   }
 
   @override
   Future<List<MarketingPublicationStats>> getPublicationStats() async {
-    await Future.delayed(const Duration(milliseconds: 200));
     return [
       const MarketingPublicationStats(
         publicationId: '101',

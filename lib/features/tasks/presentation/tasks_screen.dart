@@ -92,11 +92,11 @@ mixin _TasksViewMixin<T extends StatefulWidget> on State<T> {
 
   Future<void> _refreshTasks(BuildContext context) async {
     final bloc = context.read<TasksBloc>();
-    final boardDone = Completer<void>();
-    bloc.add(LoadTasks(forceRefresh: true, completion: boardDone));
-    final mineDone = Completer<void>();
-    bloc.add(LoadMyTasks(forceRefresh: true, completion: mineDone));
-    await Future.wait([boardDone.future, mineDone.future]);
+    bloc.add(const LoadTasks(forceRefresh: true));
+    bloc.add(const LoadMyTasks(forceRefresh: true));
+    await bloc.stream.firstWhere(
+      (state) => state is TasksLoaded && !state.isRefreshing,
+    );
   }
 
   void _rebuild([VoidCallback? fn]) {

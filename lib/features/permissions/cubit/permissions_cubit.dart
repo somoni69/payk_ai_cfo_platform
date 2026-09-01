@@ -2,38 +2,14 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/network/user_facing_error.dart';
 import '../../auth/domain/app_access.dart';
 import '../../auth/domain/user_role.dart';
 import '../domain/my_permissions.dart';
 import '../domain/permissions_repository.dart';
+import 'permissions_state.dart';
 
-/// Holds effective rights from `GET /permissions/me`.
-///
-/// While [data] is null (loading/error), callers fall back to static
-/// [UserRoleAccess] so navigation still works offline-ish.
-class PermissionsState {
-  final MyPermissions? data;
-  final bool loading;
-  final String? error;
-
-  const PermissionsState({this.data, this.loading = false, this.error});
-
-  static const initial = PermissionsState();
-
-  PermissionsState copyWith({
-    MyPermissions? data,
-    bool? loading,
-    String? error,
-    bool clearData = false,
-    bool clearError = false,
-  }) {
-    return PermissionsState(
-      data: clearData ? null : (data ?? this.data),
-      loading: loading ?? this.loading,
-      error: clearError ? null : (error ?? this.error),
-    );
-  }
-}
+export 'permissions_state.dart';
 
 class PermissionsCubit extends Cubit<PermissionsState> {
   final PermissionsRepository _repository;
@@ -56,7 +32,7 @@ class PermissionsCubit extends Cubit<PermissionsState> {
       emit(
         state.copyWith(
           loading: false,
-          error: e.toString().replaceAll('Exception: ', ''),
+          error: userFacingError(e, fallback: ErrorKeys.loadFailed),
         ),
       );
     }

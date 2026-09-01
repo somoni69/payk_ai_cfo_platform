@@ -5,17 +5,29 @@ import '../../core/theme/theme_extensions.dart';
 class PaykLogo extends StatelessWidget {
   final double height;
   final Color? color;
+  final int? cacheHeight;
+  final int? cacheWidth;
 
-  const PaykLogo({super.key, this.height = 26.0, this.color});
+  const PaykLogo({
+    super.key,
+    this.height = 26.0,
+    this.color,
+    this.cacheHeight,
+    this.cacheWidth,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final dpr = MediaQuery.maybeDevicePixelRatioOf(context) ?? 2.0;
+    final calculatedCacheHeight = cacheHeight ?? (height * dpr).round();
 
     return Image.asset(
       'assets/images/payk_logo_transparent.png',
       height: height,
+      cacheHeight: calculatedCacheHeight,
+      cacheWidth: cacheWidth,
       fit: BoxFit.contain,
       color: color,
       errorBuilder: (context, error, stackTrace) {

@@ -481,9 +481,11 @@ void main() {
       await overview;
 
       repository.shouldFail = true;
-      final completion = Completer<void>();
-      bloc.add(LoadDashboardData(forceRefresh: true, completion: completion));
-      await completion.future;
+      final failedRefresh = bloc.stream.firstWhere(
+        (state) => state is DashboardLoaded && state.overviewError != null,
+      );
+      bloc.add(const LoadDashboardData(forceRefresh: true));
+      await failedRefresh;
 
       final state = bloc.state as DashboardLoaded;
       expect(state.metrics.cashBalance, 1000);

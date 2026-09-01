@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:equatable/equatable.dart';
 import '../domain/network_models.dart';
 
@@ -14,12 +13,10 @@ abstract class NetworkEvent extends Equatable {
 class LoadNetworkData extends NetworkEvent {
   final NetworkPeriod period;
   final bool forceRefresh;
-  final Completer<void>? completion;
 
   const LoadNetworkData({
     this.period = NetworkPeriod.month,
     this.forceRefresh = false,
-    this.completion,
   });
 
   @override
@@ -28,9 +25,8 @@ class LoadNetworkData extends NetworkEvent {
 
 class CreateStoreRequested extends NetworkEvent {
   final StoreCreateInput input;
-  final Completer<bool>? completion;
 
-  const CreateStoreRequested({required this.input, this.completion});
+  const CreateStoreRequested({required this.input});
 
   @override
   List<Object?> get props => [input];
@@ -38,18 +34,15 @@ class CreateStoreRequested extends NetworkEvent {
 
 class EnterStoreRequested extends NetworkEvent {
   final int storeId;
-  final Completer<ActingStore>? completion;
 
-  const EnterStoreRequested({required this.storeId, this.completion});
+  const EnterStoreRequested({required this.storeId});
 
   @override
   List<Object?> get props => [storeId];
 }
 
 class LeaveStoreRequested extends NetworkEvent {
-  final Completer<void>? completion;
-
-  const LeaveStoreRequested({this.completion});
+  const LeaveStoreRequested();
 }
 
 class UpdateStoreRequested extends NetworkEvent {
@@ -57,14 +50,12 @@ class UpdateStoreRequested extends NetworkEvent {
   final String? name;
   final String? location;
   final bool? isActive;
-  final Completer<bool>? completion;
 
   const UpdateStoreRequested({
     required this.storeId,
     this.name,
     this.location,
     this.isActive,
-    this.completion,
   });
 
   @override
@@ -73,9 +64,8 @@ class UpdateStoreRequested extends NetworkEvent {
 
 class DeleteStoreRequested extends NetworkEvent {
   final int storeId;
-  final Completer<bool>? completion;
 
-  const DeleteStoreRequested({required this.storeId, this.completion});
+  const DeleteStoreRequested({required this.storeId});
 
   @override
   List<Object?> get props => [storeId];
@@ -85,13 +75,11 @@ class ResetDirectorPasswordRequested extends NetworkEvent {
   final int storeId;
   final String? username;
   final String password;
-  final Completer<bool>? completion;
 
   const ResetDirectorPasswordRequested({
     required this.storeId,
     this.username,
     required this.password,
-    this.completion,
   });
 
   @override

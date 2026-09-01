@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/network/bloc/network_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/network/bloc/network_event.dart';
@@ -239,9 +237,9 @@ void main() {
     });
 
     test('LoadNetworkData loads stores and summary correctly', () async {
-      final done = Completer<void>();
-      bloc.add(LoadNetworkData(completion: done));
-      await done.future;
+      final stateFuture = bloc.stream.firstWhere((s) => s is NetworkLoaded);
+      bloc.add(const LoadNetworkData());
+      await stateFuture;
 
       expect(bloc.state, isA<NetworkLoaded>());
       final loaded = bloc.state as NetworkLoaded;
@@ -251,26 +249,26 @@ void main() {
     });
 
     test('CreateStoreRequested adds a new store to the network', () async {
-      final loadDone = Completer<void>();
-      bloc.add(LoadNetworkData(completion: loadDone));
-      await loadDone.future;
+      final loadFuture = bloc.stream.firstWhere((s) => s is NetworkLoaded);
+      bloc.add(const LoadNetworkData());
+      await loadFuture;
 
-      final createDone = Completer<bool>();
+      final createFuture = bloc.stream.firstWhere(
+        (s) => s is NetworkLoaded && s.actionMessage == 'network_store_created',
+      );
       bloc.add(
-        CreateStoreRequested(
-          input: const StoreCreateInput(
+        const CreateStoreRequested(
+          input: StoreCreateInput(
             name: 'New Store 3',
             location: 'Location 3',
             directorUsername: 'dir3',
             directorPassword: 'password123',
             directorFullName: 'Director Three',
           ),
-          completion: createDone,
         ),
       );
-      final success = await createDone.future;
+      await createFuture;
 
-      expect(success, isTrue);
       expect(bloc.state, isA<NetworkLoaded>());
       final loaded = bloc.state as NetworkLoaded;
       expect(loaded.stores.length, 3);
@@ -281,23 +279,26 @@ void main() {
     test(
       'EnterStoreRequested and LeaveStoreRequested update acting store',
       () async {
-        final loadDone = Completer<void>();
-        bloc.add(LoadNetworkData(completion: loadDone));
-        await loadDone.future;
+        final loadFuture = bloc.stream.firstWhere((s) => s is NetworkLoaded);
+        bloc.add(const LoadNetworkData());
+        await loadFuture;
 
-        final enterDone = Completer<ActingStore>();
-        bloc.add(EnterStoreRequested(storeId: 1, completion: enterDone));
-        final acting = await enterDone.future;
+        final enterFuture = bloc.stream.firstWhere(
+          (s) => s is NetworkLoaded && s.actionMessage == 'network_entered',
+        );
+        bloc.add(const EnterStoreRequested(storeId: 1));
+        await enterFuture;
 
-        expect(acting.id, 1);
-        expect(acting.name, 'Store 1');
         var loaded = bloc.state as NetworkLoaded;
         expect(loaded.actingStore?.id, 1);
+        expect(loaded.actingStore?.name, 'Store 1');
         expect(loaded.actionMessage, 'network_entered');
 
-        final leaveDone = Completer<void>();
-        bloc.add(LeaveStoreRequested(completion: leaveDone));
-        await leaveDone.future;
+        final leaveFuture = bloc.stream.firstWhere(
+          (s) => s is NetworkLoaded && s.actionMessage == 'network_left',
+        );
+        bloc.add(const LeaveStoreRequested());
+        await leaveFuture;
 
         loaded = bloc.state as NetworkLoaded;
         expect(loaded.actingStore, isNull);
@@ -308,43 +309,48 @@ void main() {
     test(
       'UpdateStoreRequested, DeleteStoreRequested, ResetDirectorPasswordRequested work',
       () async {
-        final loadDone = Completer<void>();
-        bloc.add(LoadNetworkData(completion: loadDone));
-        await loadDone.future;
+        final loadFuture = bloc.stream.firstWhere((s) => s is NetworkLoaded);
+        bloc.add(const LoadNetworkData());
+        await loadFuture;
 
-        final updateDone = Completer<bool>();
+        final updateFuture = bloc.stream.firstWhere(
+          (s) =>
+              s is NetworkLoaded && s.actionMessage == 'network_store_updated',
+        );
         bloc.add(
-          UpdateStoreRequested(
+          const UpdateStoreRequested(
             storeId: 1,
             name: 'Store 1 Renamed',
             location: 'New Location',
             isActive: false,
-            completion: updateDone,
           ),
         );
-        final updateSuccess = await updateDone.future;
-        expect(updateSuccess, isTrue);
+        await updateFuture;
         var loaded = bloc.state as NetworkLoaded;
         expect(
           loaded.stores.firstWhere((s) => s.id == 1).name,
           'Store 1 Renamed',
         );
 
-        final pwdDone = Completer<bool>();
+        final pwdFuture = bloc.stream.firstWhere(
+          (s) =>
+              s is NetworkLoaded &&
+              s.actionMessage == 'network_director_password_reset',
+        );
         bloc.add(
-          ResetDirectorPasswordRequested(
+          const ResetDirectorPasswordRequested(
             storeId: 1,
             password: 'new_password123',
-            completion: pwdDone,
           ),
         );
-        final pwdSuccess = await pwdDone.future;
-        expect(pwdSuccess, isTrue);
+        await pwdFuture;
 
-        final deleteDone = Completer<bool>();
-        bloc.add(DeleteStoreRequested(storeId: 1, completion: deleteDone));
-        final deleteSuccess = await deleteDone.future;
-        expect(deleteSuccess, isTrue);
+        final deleteFuture = bloc.stream.firstWhere(
+          (s) =>
+              s is NetworkLoaded && s.actionMessage == 'network_store_deleted',
+        );
+        bloc.add(const DeleteStoreRequested(storeId: 1));
+        await deleteFuture;
         loaded = bloc.state as NetworkLoaded;
         expect(loaded.stores.any((s) => s.id == 1), isFalse);
       },

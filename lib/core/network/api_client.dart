@@ -1,9 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../security/secure_storage_provider.dart';
 import 'expiring_request_cache.dart';
 import 'safe_retry_interceptor.dart';
+import 'ssl_pinning.dart';
 
 /// Сетевой клиент на базе Dio с поддержкой безопасного хранения JWT (SYS-08).
 ///
@@ -71,6 +74,9 @@ class ApiClient {
         },
       ),
     );
+
+    // SEC-03: Настройка SSL/TLS Certificate & Public Key Pinning
+    configureSslPinning(dio, allowInsecure: allowInsecureApi);
 
     // Интерцептор для подстановки JWT-токена в заголовки
     dio.interceptors.add(
@@ -159,31 +165,42 @@ class ApiClient {
     return _accessToken;
   }
 
-  static final RegExp _publicMediaExt = RegExp(
-    r'\.(jpe?g|png|webp|gif|svg)$',
-    caseSensitive: false,
-  );
-
-  /// Resolves full media URL. Documents (non-images) append `?token=`
-  /// to maintain store isolation (commit 8ac36a7).
+  /// Resolves full media URL without leaking JWT tokens in query parameters (SEC-02).
+  /// Automatically upgrades insecure HTTP URLs to HTTPS in production (SEC-09).
   String mediaUrl(String? value) {
     if (value == null || value.trim().isEmpty) return '';
     final trimmed = value.trim();
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      if (trimmed.startsWith('http://') && !allowInsecureApi) {
+        return 'https://${trimmed.substring(7)}';
+      }
       return trimmed;
     }
     final baseUrl = dio.options.baseUrl;
     final normalized = trimmed.replaceFirst(RegExp(r'^/+'), '');
-    final fullUrl = '$baseUrl/$normalized';
-    if (_publicMediaExt.hasMatch(trimmed)) {
-      return fullUrl;
-    }
-    final token = _accessToken;
-    if (token != null && token.isNotEmpty) {
-      return '$fullUrl?token=${Uri.encodeComponent(token)}';
-    }
-    return fullUrl;
+    return '$baseUrl/$normalized';
   }
+
+  /// Downloads protected binary media over authorized HTTP stream (SEC-02).
+  Future<Uint8List> downloadProtectedMedia(String path) async {
+    final response = await dio.get<List<int>>(
+      path,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final data = response.data;
+    if (data == null) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        error: 'Protected media response body was empty',
+        response: response,
+      );
+    }
+    return Uint8List.fromList(data);
+  }
+
+  /// Alias for [downloadProtectedMedia] (SEC-02).
+  Future<Uint8List> getProtectedMediaBytes(String path) =>
+      downloadProtectedMedia(path);
 
   Future<void> clearAccessToken() async {
     if (_accessToken != null) ExpiringRequestCache.invalidateAll();
@@ -226,7 +243,7 @@ class ApiClient {
     }
   }
 
-  /// On 401: try one shared refresh, retry the request once, else logout.
+  /// On 401: try one shared refresh, retry the request once, else logout (SEC-05).
   Future<bool> _tryRefreshAndRetry(
     DioException error,
     ErrorInterceptorHandler handler,
@@ -235,8 +252,21 @@ class ApiClient {
     final failedAuthorization = requestOptions.headers['Authorization'];
     final currentToken = _accessToken;
 
-    // Ignore late 401s from an old session and unauthenticated calls.
-    if (currentToken == null || failedAuthorization != 'Bearer $currentToken') {
+    // Ignore unauthenticated calls
+    if (failedAuthorization == null) {
+      return false;
+    }
+
+    // If another concurrent request already refreshed the access token,
+    // immediately retry this request using the fresh token without an extra refresh call.
+    if (currentToken != null &&
+        currentToken.isNotEmpty &&
+        failedAuthorization != 'Bearer $currentToken') {
+      return _retryWithToken(requestOptions, currentToken, handler);
+    }
+
+    // Session has no valid token
+    if (currentToken == null || currentToken.isEmpty) {
       return false;
     }
 
@@ -246,15 +276,23 @@ class ApiClient {
       return false;
     }
 
-    try {
-      final newToken = _accessToken;
-      if (newToken == null || newToken.isEmpty) {
-        await _handleUnauthorized(requestOptions);
-        return false;
-      }
+    final newToken = _accessToken;
+    if (newToken == null || newToken.isEmpty) {
+      await _handleUnauthorized(requestOptions);
+      return false;
+    }
 
+    return _retryWithToken(requestOptions, newToken, handler);
+  }
+
+  Future<bool> _retryWithToken(
+    RequestOptions requestOptions,
+    String token,
+    ErrorInterceptorHandler handler,
+  ) async {
+    try {
       final headers = Map<String, dynamic>.from(requestOptions.headers);
-      headers['Authorization'] = 'Bearer $newToken';
+      headers['Authorization'] = 'Bearer $token';
 
       final response = await dio.fetch<dynamic>(
         requestOptions.copyWith(

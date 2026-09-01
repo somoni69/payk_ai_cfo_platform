@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../../core/models/ui_feedback.dart';
 import '../domain/transaction_model.dart';
 
 abstract class CashState extends Equatable {
@@ -24,8 +25,9 @@ class CashLoaded extends CashState {
   final String cashierId;
   final DateTime? dateFrom;
   final DateTime? dateTo;
-  final String?
-  errorMessage; // Для показа временных ошибок на UI (например, при валидации сумм)
+  final bool isSubmitting;
+  final UiFeedback? feedback;
+  final String? errorMessage;
 
   const CashLoaded({
     required this.transactions,
@@ -41,6 +43,8 @@ class CashLoaded extends CashState {
     this.cashierId = 'all',
     this.dateFrom,
     this.dateTo,
+    this.isSubmitting = false,
+    this.feedback,
     this.errorMessage,
   });
 
@@ -61,6 +65,9 @@ class CashLoaded extends CashState {
     DateTime? dateTo,
     bool clearDateFrom = false,
     bool clearDateTo = false,
+    bool? isSubmitting,
+    UiFeedback? feedback,
+    bool clearFeedback = false,
     String? errorMessage,
     bool clearError = false,
   }) {
@@ -78,6 +85,8 @@ class CashLoaded extends CashState {
       cashierId: cashierId ?? this.cashierId,
       dateFrom: clearDateFrom ? null : (dateFrom ?? this.dateFrom),
       dateTo: clearDateTo ? null : (dateTo ?? this.dateTo),
+      isSubmitting: isSubmitting ?? this.isSubmitting,
+      feedback: clearFeedback ? null : (feedback ?? this.feedback),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
   }
@@ -97,6 +106,8 @@ class CashLoaded extends CashState {
     cashierId,
     dateFrom,
     dateTo,
+    isSubmitting,
+    feedback,
     errorMessage,
   ];
 }

@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
 import 'network_event.dart';
@@ -44,16 +44,13 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
       _summaryCache.clear();
     }
 
-    // Оптимизация переключения периода: если данные сети уже в памяти, переключаем мгновенно (0 ms)
     if (previous != null && !event.forceRefresh) {
       final cachedSummary = _summaryCache[event.period];
       if (cachedSummary != null) {
         emit(previous.copyWith(period: event.period, summary: cachedSummary));
-        event.completion?.complete();
         return;
       }
 
-      // Мгновенно обновляем выбранный таб в UI без ожидания сети
       emit(previous.copyWith(period: event.period));
 
       try {
@@ -70,14 +67,13 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
         if (current.period == event.period) {
           emit(current.copyWith(summary: summary));
         }
-        event.completion?.complete();
       } catch (e) {
         emit(
           previous.copyWith(
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.loadFailed),
           ),
         );
-        event.completion?.complete();
       }
       return;
     }
@@ -108,18 +104,13 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           actingStore: acting,
         ),
       );
-      event.completion?.complete();
     } catch (e) {
+      final msg = userFacingError(e, fallback: ErrorKeys.loadFailed);
       if (previous != null) {
-        emit(
-          previous.copyWith(
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
-          ),
-        );
+        emit(previous.copyWith(actionMessage: () => msg));
       } else {
-        emit(NetworkError(e.toString().replaceAll('Exception: ', '')));
+        emit(NetworkError(msg));
       }
-      event.completion?.complete();
     }
   }
 
@@ -144,18 +135,15 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           ),
         );
       }
-      event.completion?.complete(true);
     } catch (e) {
       if (current != null) {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.saveFailed),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(false);
       }
     }
   }
@@ -189,20 +177,15 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           ),
         );
       }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(true);
-      }
     } catch (e) {
       if (current != null) {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.saveFailed),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(false);
       }
     }
   }
@@ -234,28 +217,23 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           current.copyWith(
             stores: updatedStores,
             isSubmitting: false,
-            actionMessage: () => result.message.isNotEmpty
-                ? result.message
-                : (result.deleted
-                      ? 'network_store_deleted'
+            actionMessage: () => result.deleted
+                ? 'network_store_deleted'
+                : (result.message.isNotEmpty
+                      ? result.message
                       : 'network_store_deactivated'),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(true);
       }
     } catch (e) {
       if (current != null) {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.saveFailed),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(false);
       }
     }
   }
@@ -280,24 +258,19 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => 'network_director_password_reset_success',
+            actionMessage: () => 'network_director_password_reset',
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(true);
       }
     } catch (e) {
       if (current != null) {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.saveFailed),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete(false);
       }
     }
   }
@@ -322,18 +295,15 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           ),
         );
       }
-      event.completion?.complete(acting);
     } catch (e) {
       if (current != null) {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.saveFailed),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.completeError(e);
       }
     }
   }
@@ -358,18 +328,15 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
           ),
         );
       }
-      event.completion?.complete();
     } catch (e) {
       if (current != null) {
         emit(
           current.copyWith(
             isSubmitting: false,
-            actionMessage: () => e.toString().replaceAll('Exception: ', ''),
+            actionMessage: () =>
+                userFacingError(e, fallback: ErrorKeys.saveFailed),
           ),
         );
-      }
-      if (event.completion != null && !event.completion!.isCompleted) {
-        event.completion!.complete();
       }
     }
   }

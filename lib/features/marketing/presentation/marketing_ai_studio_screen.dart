@@ -757,12 +757,16 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                   const Spacer(),
                   IconButton(
                     icon: const Icon(TablerIcons.copy, size: 16),
-                    tooltip: 'Скопировать',
+                    tooltip: locale.translate('more'),
                     onPressed: () {
                       if (media.script != null) {
                         Clipboard.setData(ClipboardData(text: media.script!));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Сценарий скопирован')),
+                          SnackBar(
+                            content: Text(
+                              locale.translate('marketing_script_copied'),
+                            ),
+                          ),
                         );
                       }
                     },
@@ -784,7 +788,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 Container(height: 1, color: colors.border),
                 const SizedBox(height: 10),
                 Text(
-                  'Текст публикации:',
+                  locale.translate('marketing_post_text_label'),
                   style: textStyles.captionSans.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colors.textSecondary,
@@ -817,7 +821,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Генерация медиаконтента',
+                locale.translate('marketing_media_gen_title'),
                 style: textStyles.bodySans.copyWith(
                   fontWeight: FontWeight.w600,
                   fontSize: 14,
@@ -849,7 +853,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                       ),
                       icon: const Icon(TablerIcons.photo, size: 16),
                       label: Text(
-                        'Фото (Imagen)',
+                        locale.translate('marketing_imagen_photo'),
                         style: textStyles.bodySans.copyWith(
                           fontWeight: FontWeight.w600,
                           fontSize: 12.5,
@@ -873,7 +877,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                       ),
                       icon: const Icon(TablerIcons.video, size: 16),
                       label: Text(
-                        'Видео 9:16 (Veo)',
+                        locale.translate('marketing_veo_video'),
                         style: textStyles.bodySans.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -905,7 +909,10 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Медиафайл готов (версия ${media.version})',
+                          locale.translate(
+                            'marketing_media_ready',
+                            params: {'version': media.version.toString()},
+                          ),
                           style: textStyles.bodySans.copyWith(
                             fontWeight: FontWeight.w600,
                             fontSize: 13,
@@ -925,7 +932,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: const Text('Отклонить'),
+                        child: Text(locale.translate('marketing_reject')),
                       ),
                     ],
                   ),
@@ -993,7 +1000,10 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Публикация #${stat.publicationId}',
+                    locale.translate(
+                      'marketing_publication_id',
+                      params: {'id': stat.publicationId},
+                    ),
                     style: textStyles.bodySans.copyWith(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
@@ -1030,17 +1040,17 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 children: [
                   _statItem(
                     context,
-                    'Выручка',
+                    locale.translate('revenue'),
                     '${oCcy.format(stat.revenue)} TJS',
                   ),
                   _statItem(
                     context,
-                    'Бюджет',
+                    locale.translate('marketing_budget'),
                     '${oCcy.format(stat.spend)} TJS',
                   ),
                   _statItem(
                     context,
-                    'Лиды / Покупки',
+                    locale.translate('marketing_leads_purchases'),
                     '${stat.intents} / ${stat.purchases}',
                   ),
                 ],
@@ -1098,7 +1108,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
           TextField(
             controller: nameCtrl,
             decoration: InputDecoration(
-              labelText: 'Название кампании',
+              labelText: locale.translate('marketing_campaign_name'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1109,7 +1119,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             controller: daysCtrl,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Срок кампании (дней)',
+              labelText: locale.translate('marketing_campaign_duration'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1120,7 +1130,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             controller: notesCtrl,
             maxLines: 2,
             decoration: InputDecoration(
-              labelText: 'Пожелания к брифу',
+              labelText: locale.translate('marketing_campaign_brief_notes'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1150,7 +1160,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 ),
               ),
               child: Text(
-                'Создать кампанию и перейти к концептам',
+                locale.translate('marketing_create_campaign_cta'),
                 style: textStyles.bodySans.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -1171,16 +1181,20 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
     final noteCtrl = TextEditingController();
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
 
     LedgerBottomSheet.show(
       context: context,
-      title: 'Правка концепции',
+      title: locale.translate('marketing_concept_revise_title'),
       builder: (context, setSheetState) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Укажите, что изменить в концепте «${concept.title}»:',
+            locale.translate(
+              'marketing_concept_revise_prompt',
+              params: {'title': concept.title},
+            ),
             style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 10),
@@ -1188,7 +1202,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             controller: noteCtrl,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Например: добавить акцент на бесплатную доставку...',
+              hintText: locale.translate('marketing_concept_revise_hint'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1218,7 +1232,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 ),
               ),
               child: Text(
-                'Сгенерировать обновленный вариант',
+                locale.translate('marketing_concept_regenerate'),
                 style: textStyles.bodySans.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
@@ -1234,22 +1248,23 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
   void _confirmVeoVideoGeneration(BuildContext context, String mediaId) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(
-          'Генерация видео Google Veo',
+          locale.translate('marketing_veo_dialog_title'),
           style: textStyles.h2Sans.copyWith(fontSize: 16),
         ),
         content: Text(
-          'Генерация видео спишет 1 единицу из ежемесячной квоты. Запустить генерацию?',
+          locale.translate('marketing_veo_dialog_desc'),
           style: textStyles.bodySans.copyWith(fontSize: 13.5),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Отмена'),
+            child: Text(locale.translate('cancel')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1266,7 +1281,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
               backgroundColor: colors.brand,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Подтвердить'),
+            child: Text(locale.translate('save_to_ledger')),
           ),
         ],
       ),
@@ -1277,16 +1292,17 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
     final reasonCtrl = TextEditingController();
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final locale = context.read<LanguageCubit>();
 
     LedgerBottomSheet.show(
       context: context,
-      title: 'Отклонение медиафайла',
+      title: locale.translate('marketing_reject_modal_title'),
       builder: (context, setSheetState) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Укажите причину для самообучения маркетингового ИИ:',
+            locale.translate('marketing_reject_modal_subtitle'),
             style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 10),
@@ -1294,7 +1310,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             controller: reasonCtrl,
             maxLines: 2,
             decoration: InputDecoration(
-              hintText: 'Например: неверный тон, неестественные движения...',
+              hintText: locale.translate('marketing_reject_modal_hint'),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1323,7 +1339,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 ),
               ),
               child: Text(
-                'Зафиксировать и отклонить',
+                locale.translate('marketing_reject_confirm'),
                 style: textStyles.bodySans.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
