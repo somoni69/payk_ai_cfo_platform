@@ -315,82 +315,37 @@ class _UsersViewState extends State<UsersView> {
           ),
           const SizedBox(height: 12),
 
-          // 3. Quick Action Buttons Row
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showUserDialog(context),
-                    icon: const Icon(TablerIcons.user_plus, size: 17),
-                    label: Text(
-                      language.translate('users_action_new'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.brand,
-                      foregroundColor: colors.surface,
-                      elevation: 0,
-                      minimumSize: const Size.fromHeight(44),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
+          // 3. Quick Action Button
+          SizedBox(
+            height: 44,
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _showUserDialog(context),
+              icon: const Icon(TablerIcons.user_plus, size: 17),
+              label: Text(
+                language.translate('users_action_new'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.surface,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.brand,
+                foregroundColor: colors.surface,
+                elevation: 0,
+                minimumSize: const Size.fromHeight(44),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openUsersSection(
-                      context,
-                      UsersSection.permissionsMatrix,
-                    ),
-                    icon: Icon(
-                      TablerIcons.shield_lock,
-                      size: 17,
-                      color: colors.textPrimary,
-                    ),
-                    label: Text(
-                      language.translate('users_action_matrix'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.textPrimary,
-                      backgroundColor: colors.surface,
-                      side: BorderSide(color: colors.border),
-                      minimumSize: const Size.fromHeight(44),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 12),
 

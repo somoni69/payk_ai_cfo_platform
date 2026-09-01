@@ -260,162 +260,43 @@ class _ChecklistsViewState extends State<ChecklistsView> {
           ),
           const SizedBox(height: 12),
 
-          // 2. Actionable Attention Card
-          InkWell(
-            onTap: () => _openChecklistSection(
-              context,
-              pendingRuns > 0
-                  ? ChecklistSection.runs
-                  : ChecklistSection.templates,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: pendingRuns > 0
-                      ? colors.brand.withValues(alpha: 0.4)
-                      : colors.accentGreen.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: pendingRuns > 0
-                          ? colors.brand.withValues(alpha: 0.08)
-                          : colors.accentGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      pendingRuns > 0
-                          ? TablerIcons.clipboard_list
-                          : TablerIcons.circle_check,
-                      color: pendingRuns > 0
-                          ? colors.brand
-                          : colors.accentGreen,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          locale.translate('checklists_attention_title'),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.5,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          pendingRuns > 0
-                              ? locale.translate(
-                                  'checklists_attention_active',
-                                  params: {'count': '$pendingRuns'},
-                                )
-                              : locale.translate('checklists_attention_ok'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    TablerIcons.chevron_right,
-                    size: 18,
-                    color: colors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
 
-          // 3. Quick Action Buttons Row (if canManage)
+
+          // 3. Quick Action Button (if canManage)
           if (canManage) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _openChecklistSection(context, ChecklistSection.runs),
-                      icon: const Icon(TablerIcons.list_check, size: 17),
-                      label: Text(
-                        locale.translate('checklists_action_open'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.surface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.surface,
-                        elevation: 0,
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
+            SizedBox(
+              height: 44,
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showTemplateModal(context),
+                icon: const Icon(
+                  TablerIcons.plus,
+                  size: 17,
+                ),
+                label: Text(
+                  locale.translate('checklists_action_template'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  minimumSize: const Size.fromHeight(44),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showTemplateModal(context),
-                      icon: Icon(
-                        TablerIcons.plus,
-                        size: 17,
-                        color: colors.textPrimary,
-                      ),
-                      label: Text(
-                        locale.translate('checklists_action_template'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.textPrimary,
-                        backgroundColor: colors.surface,
-                        side: BorderSide(color: colors.border),
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 12),
           ],

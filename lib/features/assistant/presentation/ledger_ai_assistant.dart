@@ -371,7 +371,9 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                             ActionChip(
                               label: Text(
                                 _presetQuestion(language, _module, n),
-                                style: textStyles.smallSans,
+                                style: textStyles.smallSans.copyWith(
+                                  color: colors.textPrimary,
+                                ),
                               ),
                               backgroundColor: colors.surfaceNested,
                               side: BorderSide(color: colors.border),
@@ -415,13 +417,17 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                         const SizedBox(width: 8),
                         IconButton.filled(
                           onPressed: sending ? null : () => _send(),
+                          style: IconButton.styleFrom(
+                            backgroundColor: colors.brand,
+                            foregroundColor: colors.surface,
+                          ),
                           icon: sending
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: Colors.white,
+                                    color: colors.surface,
                                   ),
                                 )
                               : const Icon(TablerIcons.send, size: 18),

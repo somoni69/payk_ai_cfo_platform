@@ -1895,6 +1895,7 @@ const Map<String, String> kTajikCatalog = {
   'scan_barcode_camera_denied':
       'Дастрасӣ ба камера нест. Онро дар танзимоти телефон иҷозат диҳед.',
   'backups_create': 'Сохтани нусха',
+  'backups_hint': 'Нусхаҳои эҳтиётии пойгоҳи додаҳо барои барқарорсозӣ дар сурати хатогиҳо.',
   'backups_empty': 'Нусхаҳои эҳтиётӣ ҳанӯз нест',
   'backups_created': 'Нусха сохта шуд {file}',
 };

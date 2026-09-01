@@ -221,6 +221,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                   style: textStyles.smallSans.copyWith(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
+                                    color: colors.surface,
                                   ),
                                 ),
                                 style: ElevatedButton.styleFrom(
@@ -275,6 +276,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                   ),
                                   style: textStyles.captionSans.copyWith(
                                     fontWeight: FontWeight.w600,
+                                    color: colors.brand,
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
@@ -297,6 +299,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                   ),
                                   style: textStyles.captionSans.copyWith(
                                     fontWeight: FontWeight.w600,
+                                    color: colors.brand,
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
@@ -320,6 +323,7 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                   ),
                                   style: textStyles.captionSans.copyWith(
                                     fontWeight: FontWeight.w600,
+                                    color: colors.brand,
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(

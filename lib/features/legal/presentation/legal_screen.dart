@@ -297,164 +297,41 @@ class _LegalScreenState extends State<LegalScreen> {
           ),
           const SizedBox(height: 12),
 
-          // 2. Actionable Attention Card
-          InkWell(
-            onTap: () => _openLegalSection(
-              context,
-              urgentDeadlines.isNotEmpty
-                  ? LegalSection.deadlines
-                  : LegalSection.aiLawyer,
-            ),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: urgentDeadlines.isNotEmpty
-                      ? colors.accentAmber.withValues(alpha: 0.5)
-                      : colors.accentGreen.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: urgentDeadlines.isNotEmpty
-                          ? colors.accentAmber.withValues(alpha: 0.1)
-                          : colors.accentGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      urgentDeadlines.isNotEmpty
-                          ? TablerIcons.alert_triangle
-                          : TablerIcons.circle_check,
-                      color: urgentDeadlines.isNotEmpty
-                          ? colors.accentAmber
-                          : colors.accentGreen,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          locale.translate('legal_attention_title'),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14.5,
-                            color: colors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          urgentDeadlines.isNotEmpty
-                              ? locale.translate(
-                                  'legal_attention_pending',
-                                  params: {
-                                    'count': '${urgentDeadlines.length}',
-                                  },
-                                )
-                              : locale.translate('legal_attention_ok'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    TablerIcons.chevron_right,
-                    size: 18,
-                    color: colors.textSecondary,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // 3. Quick Action Buttons Row (if canManage)
+          // 3. Quick Action Button (if canManage)
           if (canManage) ...[
-            Row(
-              children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      onPressed: () =>
-                          _openLegalSection(context, LegalSection.aiLawyer),
-                      icon: const Icon(TablerIcons.robot, size: 17),
-                      label: Text(
-                        locale.translate('legal_action_chat'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.surface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.surface,
-                        elevation: 0,
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
+            SizedBox(
+              height: 44,
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showCreateLawSheet(context),
+                icon: const Icon(
+                  TablerIcons.plus,
+                  size: 17,
+                ),
+                label: Text(
+                  locale.translate('legal_action_law'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.surface,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors.brand,
+                  foregroundColor: colors.surface,
+                  elevation: 0,
+                  minimumSize: const Size.fromHeight(44),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showCreateLawSheet(context),
-                      icon: Icon(
-                        TablerIcons.plus,
-                        size: 17,
-                        color: colors.textPrimary,
-                      ),
-                      label: Text(
-                        locale.translate('legal_action_law'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.textPrimary,
-                        backgroundColor: colors.surface,
-                        side: BorderSide(color: colors.border),
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 12),
           ],

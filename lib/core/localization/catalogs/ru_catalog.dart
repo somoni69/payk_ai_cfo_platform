@@ -1289,7 +1289,7 @@ const Map<String, String> kRussianCatalog = {
   'legal_deadline_summary': 'Срок сдачи: {date} ({days} дн. осталось)',
   'marketing_title': 'AI-Маркетинг и Соцсети',
   'marketing_tab_ai_writer': 'ИИ-Копирайтер',
-  'marketing_tab_campaigns': 'Кампании',
+  'marketing_tab_campaigns': 'Компании',
   'marketing_tab_posts': 'Посты',
   'marketing_tab_brand_guide': 'Бренд-гайд',
   'marketing_hero_budget': 'Маркетинговый бюджет и охват',
@@ -1882,6 +1882,7 @@ const Map<String, String> kRussianCatalog = {
   'scan_barcode_camera_denied':
       'Нет доступа к камере. Разрешите её в настройках телефона.',
   'backups_create': 'Создать копию',
+  'backups_hint': 'Резервные копии базы данных для восстановления в случае сбоев или ошибок.',
   'backups_empty': 'Резервных копий пока нет',
   'backups_created': 'Создана копия {file}',
 };
