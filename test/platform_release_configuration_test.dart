@@ -72,13 +72,16 @@ void main() {
       },
     );
 
-    test('Android MainActivity allows screenshots (no FLAG_SECURE constraint)', () {
-      final mainActivity = _read(
-        'android/app/src/main/kotlin/com/example/payk_ai_cfo_platform/MainActivity.kt',
-      );
+    test(
+      'Android MainActivity allows screenshots (no FLAG_SECURE constraint)',
+      () {
+        final mainActivity = _read(
+          'android/app/src/main/kotlin/com/example/payk_ai_cfo_platform/MainActivity.kt',
+        );
 
-      expect(mainActivity, isNot(contains('FLAG_SECURE')));
-    });
+        expect(mainActivity, isNot(contains('FLAG_SECURE')));
+      },
+    );
 
     test('CI compiles the release variant explicitly with obfuscation', () {
       final workflow = _read('.github/workflows/flutter_quality.yml');

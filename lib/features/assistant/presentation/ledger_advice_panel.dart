@@ -58,7 +58,8 @@ class _LedgerAdvicePanelViewState extends State<_LedgerAdvicePanelView> {
         path = GoRouterState.of(context).uri.path;
       } catch (_) {}
     }
-    final next = widget.module ??
+    final next =
+        widget.module ??
         (path != null ? assistantModuleForPath(path) : kAssistantGeneralModule);
     if (!_started || next != _module) {
       _started = true;
