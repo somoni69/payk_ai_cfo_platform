@@ -280,7 +280,6 @@ class _StrategyViewState extends State<StrategyView> {
 
           const SizedBox(height: 12),
 
-
           // 4. Main 2x2 Navigation Grid
           Row(
             children: [

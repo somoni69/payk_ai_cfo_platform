@@ -304,10 +304,7 @@ class _LegalScreenState extends State<LegalScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => _showCreateLawSheet(context),
-                icon: const Icon(
-                  TablerIcons.plus,
-                  size: 17,
-                ),
+                icon: const Icon(TablerIcons.plus, size: 17),
                 label: Text(
                   locale.translate('legal_action_law'),
                   style: textStyles.captionSans.copyWith(

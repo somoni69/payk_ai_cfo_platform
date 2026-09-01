@@ -260,8 +260,6 @@ class _ChecklistsViewState extends State<ChecklistsView> {
           ),
           const SizedBox(height: 12),
 
-
-
           // 3. Quick Action Button (if canManage)
           if (canManage) ...[
             SizedBox(
@@ -269,10 +267,7 @@ class _ChecklistsViewState extends State<ChecklistsView> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () => _showTemplateModal(context),
-                icon: const Icon(
-                  TablerIcons.plus,
-                  size: 17,
-                ),
+                icon: const Icon(TablerIcons.plus, size: 17),
                 label: Text(
                   locale.translate('checklists_action_template'),
                   style: textStyles.captionSans.copyWith(
