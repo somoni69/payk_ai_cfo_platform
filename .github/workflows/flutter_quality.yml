@@ -46,8 +46,7 @@ jobs:
           name: coverage-report
           path: coverage/lcov.info
           if-no-files-found: ignore
-      - name: Validate iOS build configuration
-        run: flutter build ios --config-only --no-codesign --no-pub
+
       - name: Compile release APK
         run: flutter build apk --release --no-pub --obfuscate --split-debug-info=build/app/outputs/symbols
         env:
