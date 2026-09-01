@@ -183,9 +183,6 @@ class _LegalScreenState extends State<LegalScreen> {
     final locale = context.watch<LanguageCubit>();
 
     final pendingDeadlines = state.deadlines.where((d) => !d.isDone).length;
-    final urgentDeadlines = state.deadlines
-        .where((d) => !d.isDone && d.daysLeft != null && d.daysLeft! <= 7)
-        .toList();
 
     return RefreshIndicator(
       onRefresh: () async {

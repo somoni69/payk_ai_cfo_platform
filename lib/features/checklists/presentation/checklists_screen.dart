@@ -124,7 +124,6 @@ class _ChecklistsViewState extends State<ChecklistsView> {
     final completedRuns = state.todayRuns
         .where((r) => r.progressPercentage >= 1.0)
         .length;
-    final pendingRuns = totalRuns - completedRuns;
 
     int totalItems = 0;
     int totalDone = 0;

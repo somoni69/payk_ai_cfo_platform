@@ -165,7 +165,6 @@ class _StrategyViewState extends State<StrategyView> {
     final textStyles = context.textStyles;
     final locale = context.watch<LanguageCubit>();
 
-    final hasScenarios = state.scenarios.isNotEmpty;
     final summaryText = state.dailySummary?.summary;
 
     return RefreshIndicator(

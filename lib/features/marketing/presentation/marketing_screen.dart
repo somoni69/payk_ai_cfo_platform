@@ -161,9 +161,6 @@ class _MarketingViewState extends State<MarketingView> {
     final activeCampaigns = state.campaigns
         .where((c) => c.endedAt == null || c.endedAt!.isAfter(DateTime.now()))
         .length;
-    final activeBudget = state.campaigns
-        .where((c) => c.endedAt == null || c.endedAt!.isAfter(DateTime.now()))
-        .fold<double>(0.0, (s, c) => s + c.budget);
 
     return RefreshIndicator(
       onRefresh: () async {
