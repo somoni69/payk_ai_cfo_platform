@@ -69,6 +69,10 @@ void main() {
         expect(proguard, contains('-keep class io.flutter.app.**'));
         expect(proguard, contains('-keep class androidx.biometric.**'));
         expect(proguard, contains('-keep class androidx.security.crypto.**'));
+        expect(
+          proguard,
+          contains('-dontwarn com.google.android.play.core.splitinstall.**'),
+        );
       },
     );
 

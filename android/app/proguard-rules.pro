@@ -6,6 +6,13 @@
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 
+# Flutter engine references Play Core deferred-component APIs. This app does
+# not ship Play Feature Delivery, so those classes are absent; R8 must not
+# fail the release minify on the unused references.
+-dontwarn com.google.android.play.core.splitcompat.**
+-dontwarn com.google.android.play.core.splitinstall.**
+-dontwarn com.google.android.play.core.tasks.**
+
 # Local Auth / Biometrics
 -keep class androidx.biometric.** { *; }
 -dontwarn androidx.biometric.**
