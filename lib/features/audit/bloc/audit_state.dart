@@ -18,6 +18,7 @@ class AuditLoaded extends AuditState {
   final bool isRunningDetectors;
   final String? message;
   final WeeklyAuditReport? weekly;
+  final int weeksAgo;
 
   const AuditLoaded({
     required this.logs,
@@ -25,6 +26,7 @@ class AuditLoaded extends AuditState {
     this.isRunningDetectors = false,
     this.message,
     this.weekly,
+    this.weeksAgo = 0,
   });
 
   AuditLoaded copyWith({
@@ -33,6 +35,7 @@ class AuditLoaded extends AuditState {
     bool? isRunningDetectors,
     String? message,
     WeeklyAuditReport? weekly,
+    int? weeksAgo,
   }) {
     return AuditLoaded(
       logs: logs ?? this.logs,
@@ -40,6 +43,7 @@ class AuditLoaded extends AuditState {
       isRunningDetectors: isRunningDetectors ?? this.isRunningDetectors,
       message: message ?? this.message,
       weekly: weekly ?? this.weekly,
+      weeksAgo: weeksAgo ?? this.weeksAgo,
     );
   }
 
@@ -50,6 +54,7 @@ class AuditLoaded extends AuditState {
     isRunningDetectors,
     message,
     weekly,
+    weeksAgo,
   ];
 }
 

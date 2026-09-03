@@ -299,4 +299,117 @@ abstract interface class CashRepository {
     required String onecName,
     int? targetId,
   });
+
+  /// Задан ли код разрешения на кассе. Сам код сервер не отдаёт.
+  Future<bool> getPosPinStatus();
+
+  /// Задать или сменить код. Только владелец и директор.
+  Future<void> savePosPin(String pin);
+
+  /// Проверка кода перед правкой чека. Пишет действие в историю, если код принят.
+  Future<PosPinCheck> verifyPosPin(String pin, {PosEditAction? action});
+
+  /// История правок чека. Сервер отдаёт только владельцу и директору.
+  Future<PosEditsPage> getPosEdits({int page = 1, int size = 50});
+}
+
+class PosCartLine {
+  final String name;
+  final String? barcode;
+  final double qty;
+  final double price;
+
+  const PosCartLine({
+    required this.name,
+    this.barcode,
+    this.qty = 0,
+    this.price = 0,
+  });
+}
+
+class PosEditAction {
+  final String kind;
+  final int? registerId;
+  final String? productName;
+  final String? productBarcode;
+  final double? price;
+  final double? qtyBefore;
+  final double? qtyAfter;
+  final List<PosCartLine> cart;
+
+  const PosEditAction({
+    required this.kind,
+    this.registerId,
+    this.productName,
+    this.productBarcode,
+    this.price,
+    this.qtyBefore,
+    this.qtyAfter,
+    this.cart = const [],
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'kind': kind,
+      'register_id': ?registerId,
+      'product_name': ?productName,
+      'product_barcode': ?productBarcode,
+      'price': ?price,
+      'qty_before': ?qtyBefore,
+      'qty_after': ?qtyAfter,
+      'cart': [
+        for (final line in cart)
+          {
+            'name': line.name,
+            'barcode': line.barcode,
+            'qty': line.qty,
+            'price': line.price,
+          },
+      ],
+    };
+  }
+}
+
+class PosPinCheck {
+  final bool ok;
+  final int retryAfter;
+
+  const PosPinCheck({required this.ok, this.retryAfter = 0});
+}
+
+class PosEditRecord {
+  final String id;
+  final DateTime createdAt;
+  final String? userName;
+  final String kind;
+  final String? registerName;
+  final String? productName;
+  final String? productBarcode;
+  final double? qtyBefore;
+  final double? qtyAfter;
+  final double? qtyRemoved;
+  final double? amountRemoved;
+  final List<PosCartLine> cart;
+
+  const PosEditRecord({
+    required this.id,
+    required this.createdAt,
+    this.userName,
+    required this.kind,
+    this.registerName,
+    this.productName,
+    this.productBarcode,
+    this.qtyBefore,
+    this.qtyAfter,
+    this.qtyRemoved,
+    this.amountRemoved,
+    this.cart = const [],
+  });
+}
+
+class PosEditsPage {
+  final List<PosEditRecord> items;
+  final int total;
+
+  const PosEditsPage({this.items = const [], this.total = 0});
 }

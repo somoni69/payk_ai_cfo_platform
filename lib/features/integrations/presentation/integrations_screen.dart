@@ -665,11 +665,9 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                     ),
                     const SizedBox(height: 16),
                     if (state.isTestingAi)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: CircularProgressIndicator(),
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: LedgerShimmer(child: LedgerTextBlockShimmer()),
                       )
                     else if (state.aiResult != null) ...[
                       Container(

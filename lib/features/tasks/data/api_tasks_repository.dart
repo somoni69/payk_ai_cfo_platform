@@ -86,13 +86,13 @@ class ApiTasksRepository implements TasksRepository {
   @override
   Future<Task> updateTaskStatus(String taskId, TaskStatus status) async {
     try {
-      final response = await _apiClient.dio.patch(
-        '/tasks/$taskId',
-        data: {'status': _statusToName(status)},
+      final response = await _apiClient.dio.post(
+        '/tasks/$taskId/move',
+        data: {'status': _statusToName(status), 'position': 0},
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 

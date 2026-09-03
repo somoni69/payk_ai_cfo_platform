@@ -15,7 +15,7 @@ extension _TasksAnalysisBuilders on _TasksViewMixin {
 
     if (!isLoaded) {
       if (isLoading || error == null) {
-        return const TasksOverviewShimmer();
+        return const TasksAnalyticsShimmer();
       }
       return RefreshIndicator(
         onRefresh: () => _refreshTasks(context),

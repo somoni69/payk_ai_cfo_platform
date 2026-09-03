@@ -10,7 +10,7 @@ Widget _buildBreakEvenTab(
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const DashboardSectionShimmer();
+    return const DashboardSectionShimmer(kind: DashboardShimmerKind.breakEven);
   }
 
   final safetyPercent = report.marginOfSafety;

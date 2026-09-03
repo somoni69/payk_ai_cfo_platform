@@ -999,7 +999,13 @@ class WarehouseSectionScreen extends StatelessWidget {
                       loadedState,
                     ),
                   }
-                : const WarehouseOverviewShimmer(),
+                : switch (section) {
+                    WarehouseSection.products =>
+                      const WarehouseProductsShimmer(),
+                    WarehouseSection.analysis =>
+                      const WarehouseAnalysisShimmer(),
+                    _ => const LedgerListShimmer(itemCount: 6),
+                  },
           ),
         );
       },
@@ -1703,12 +1709,7 @@ Widget _buildAnalysisTab(BuildContext context, WarehouseLoaded state) {
       ),
       if (state.isAnalysisLoading) ...[
         const SizedBox(height: 16),
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: CircularProgressIndicator(),
-          ),
-        ),
+        const LedgerShimmer(child: LedgerTextBlockShimmer()),
       ],
       if (state.analysisError != null) ...[
         const SizedBox(height: 12),

@@ -18,6 +18,7 @@ import '../../../features/cash/domain/cash_repository.dart';
 import '../../../features/cash/domain/transaction_model.dart';
 import '../../../features/hr/domain/hr_models.dart';
 import '../../../features/hr/domain/hr_repository.dart';
+import '../../../features/audit/presentation/entity_history_sheet.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
@@ -823,7 +824,7 @@ class FinOpsSectionScreen extends StatelessWidget {
       body: BlocBuilder<FinOpsBloc, FinOpsState>(
         builder: (context, state) {
           if (state is FinOpsLoading) {
-            return const FinOpsOverviewShimmer();
+            return const LedgerListShimmer(itemCount: 6);
           }
           if (state is FinOpsLoaded) {
             return switch (section) {
@@ -1129,29 +1130,47 @@ class FinOpsSectionScreen extends StatelessWidget {
                         color: colors.brand,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isPending
-                            ? colors.accentAmber.withValues(alpha: 0.1)
-                            : colors.accentGreen.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isPending
-                            ? locale.translate('fin_ops_status_pending')
-                            : locale.translate('fin_ops_status_received'),
-                        style: textStyles.captionSans.copyWith(
-                          color: isPending
-                              ? colors.accentAmber
-                              : colors.accentGreen,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11.5,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isPending
+                                ? colors.accentAmber.withValues(alpha: 0.1)
+                                : colors.accentGreen.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isPending
+                                ? locale.translate('fin_ops_status_pending')
+                                : locale.translate('fin_ops_status_received'),
+                            style: textStyles.captionSans.copyWith(
+                              color: isPending
+                                  ? colors.accentAmber
+                                  : colors.accentGreen,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11.5,
+                            ),
+                          ),
                         ),
-                      ),
+                        IconButton(
+                          tooltip: locale.translate('more_audit'),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => showEntityHistorySheet(
+                            context,
+                            entity: 'store_transfer',
+                            id: tr.id,
+                          ),
+                          icon: Icon(
+                            TablerIcons.history,
+                            size: 18,
+                            color: colors.brand,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1413,47 +1432,74 @@ class FinOpsSectionScreen extends StatelessWidget {
               border: Border.all(color: colors.border),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        enc.registerName != null && enc.registerName!.isNotEmpty
+                            ? enc.registerName!
+                            : locale.translate(
+                                'fin_ops_encashment_to',
+                                params: {
+                                  'bank': locale.translateMessage(enc.bankName),
+                                },
+                              ),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.5,
+                          color: colors.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          locale.translateMessage(enc.responsiblePerson),
+                          if (enc.bankName.isNotEmpty)
+                            locale.translateMessage(enc.bankName),
+                        ].join(' • '),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 12.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      enc.registerName != null && enc.registerName!.isNotEmpty
-                          ? enc.registerName!
-                          : locale.translate(
-                              'fin_ops_encashment_to',
-                              params: {
-                                'bank': locale.translateMessage(enc.bankName),
-                              },
-                            ),
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w600,
+                      '+${oCcy.format(enc.amount)} TJS',
+                      style: textStyles.bodyMono.copyWith(
+                        color: colors.accentGreen,
+                        fontWeight: FontWeight.w700,
                         fontSize: 14.5,
-                        color: colors.textPrimary,
                       ),
+                      maxLines: 1,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      [
-                        locale.translateMessage(enc.responsiblePerson),
-                        if (enc.bankName.isNotEmpty)
-                          locale.translateMessage(enc.bankName),
-                      ].join(' • '),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: 12.5,
+                    IconButton(
+                      tooltip: locale.translate('more_audit'),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => showEntityHistorySheet(
+                        context,
+                        entity: 'encashment',
+                        id: enc.id,
+                      ),
+                      icon: Icon(
+                        TablerIcons.history,
+                        size: 16,
+                        color: colors.brand,
                       ),
                     ),
                   ],
-                ),
-                Text(
-                  '+${oCcy.format(enc.amount)} TJS',
-                  style: textStyles.bodyMono.copyWith(
-                    color: colors.accentGreen,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14.5,
-                  ),
                 ),
               ],
             ),

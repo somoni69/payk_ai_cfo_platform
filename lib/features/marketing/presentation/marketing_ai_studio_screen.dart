@@ -6,6 +6,7 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../bloc/marketing_bloc.dart';
 import '../bloc/marketing_event.dart';
 import '../bloc/marketing_state.dart';
@@ -114,9 +115,10 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
         builder: (context, state) {
           return Column(
             children: [
-              // Top Quota Banner
               if (state.videoQuota != null)
-                _buildQuotaBanner(context, state.videoQuota!),
+                _buildQuotaBanner(context, state.videoQuota!)
+              else if (state.isStudioLoading)
+                const MarketingStudioQuotaShimmer(),
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -251,8 +253,9 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
           ),
           const SizedBox(height: 10),
 
-          // List of AI Ideas
-          if (state.aiIdeas.isEmpty && !state.isStudioLoading)
+          if (state.isStudioLoading && state.aiIdeas.isEmpty)
+            const MarketingAiStudioShimmer(wrapList: false)
+          else if (state.aiIdeas.isEmpty && !state.isStudioLoading)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -701,6 +704,12 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
 
     final media = state.currentMedia ?? state.currentScript;
 
+    if (state.isStudioLoading && media == null) {
+      return const MarketingAiStudioShimmer(
+        tab: MarketingStudioShimmerTab.production,
+      );
+    }
+
     if (media == null) {
       return Center(
         child: Padding(
@@ -952,6 +961,10 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
     final locale = context.watch<LanguageCubit>();
     final oCcy = localizedDecimalFormat(context);
 
+    if (state.isStudioLoading && state.publicationStats.isEmpty) {
+      return const MarketingAiStudioShimmer(tab: MarketingStudioShimmerTab.roi);
+    }
+
     if (state.publicationStats.isEmpty) {
       return RefreshIndicator(
         onRefresh: () async {
@@ -1010,27 +1023,57 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                       color: colors.textPrimary,
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isProfitable
-                          ? colors.accentGreen.withValues(alpha: 0.12)
-                          : colors.accentRed.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'ROI: ${roi.toStringAsFixed(1)}%',
-                      style: textStyles.captionSans.copyWith(
-                        color: isProfitable
-                            ? colors.accentGreen
-                            : colors.accentRed,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isProfitable
+                              ? colors.accentGreen.withValues(alpha: 0.12)
+                              : colors.accentRed.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'ROI: ${roi.toStringAsFixed(1)}%',
+                          style: textStyles.captionSans.copyWith(
+                            color: isProfitable
+                                ? colors.accentGreen
+                                : colors.accentRed,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        tooltip: locale.translate('marketing_refresh_stats'),
+                        visualDensity: VisualDensity.compact,
+                        onPressed:
+                            state.refreshingPublicationId == stat.publicationId
+                            ? null
+                            : () => context.read<MarketingBloc>().add(
+                                RefreshPublicationStatsRequested(
+                                  stat.publicationId,
+                                ),
+                              ),
+                        icon:
+                            state.refreshingPublicationId == stat.publicationId
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                TablerIcons.refresh,
+                                size: 18,
+                                color: colors.brand,
+                              ),
+                      ),
+                    ],
                   ),
                 ],
               ),

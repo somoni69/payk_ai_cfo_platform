@@ -486,6 +486,32 @@ class ApiMarketingRepository
   }
 
   @override
+  Future<MarketingPublicationStats> getPublicationStatsById(
+    String publicationId,
+  ) async {
+    final response = await _apiClient.dio.get(
+      '/marketing/ai/publications/$publicationId/stats',
+    );
+    return MarketingPublicationStats.fromJson(
+      Map<String, dynamic>.from(response.data as Map),
+    );
+  }
+
+  @override
+  Future<List<int>> exportCampaigns({String format = 'xlsx'}) async {
+    try {
+      final response = await _apiClient.dio.get<List<int>>(
+        '/marketing/campaigns/export',
+        queryParameters: {'fmt': format},
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data ?? <int>[];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
   void cancelPendingRequests() {
     _ideasCancelToken?.cancel('Экран закрыт');
     _textCancelToken?.cancel('Экран закрыт');

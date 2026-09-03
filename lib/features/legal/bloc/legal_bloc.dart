@@ -19,6 +19,7 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
     on<DeleteLawRequested>(_onDeleteLaw);
     on<CreateDeadlineRequested>(_onCreateDeadline);
     on<CreateTemplateRequested>(_onCreateTemplate);
+    on<UpdateTemplateRequested>(_onUpdateTemplate);
     on<DeleteTemplateRequested>(_onDeleteTemplate);
     on<ExportGeneratedContractRequested>(_onExportGeneratedContract);
   }
@@ -336,6 +337,45 @@ class LegalBloc extends Bloc<LegalEvent, LegalState> {
         latest.copyWith(
           isMutating: false,
           templates: [template, ...latest.templates],
+          successMessage: 'legal_toast_template_saved',
+        ),
+      );
+    } catch (error) {
+      if (emit.isDone || state is! LegalLoaded) return;
+      emit(
+        (state as LegalLoaded).copyWith(
+          isMutating: false,
+          errorMessage: userFacingError(error, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onUpdateTemplate(
+    UpdateTemplateRequested event,
+    Emitter<LegalState> emit,
+  ) async {
+    if (state is! LegalLoaded) return;
+    final current = state as LegalLoaded;
+    emit(
+      current.copyWith(isMutating: true, clearError: true, clearSuccess: true),
+    );
+    try {
+      final template = await _repository.updateTemplate(
+        id: event.id,
+        name: event.name,
+        body: event.body,
+        category: event.category,
+      );
+      if (emit.isDone || state is! LegalLoaded) return;
+      final latest = state as LegalLoaded;
+      emit(
+        latest.copyWith(
+          isMutating: false,
+          templates: latest.templates
+              .map((item) => item.id == template.id ? template : item)
+              .toList(),
+          successMessage: 'legal_toast_template_saved',
         ),
       );
     } catch (error) {

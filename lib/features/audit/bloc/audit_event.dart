@@ -28,3 +28,12 @@ class ResolveAlertRequested extends AuditEvent {
   @override
   List<Object?> get props => [id, isResolved];
 }
+
+class LoadWeeklyReport extends AuditEvent {
+  final int weeksAgo;
+
+  const LoadWeeklyReport({this.weeksAgo = 0});
+
+  @override
+  List<Object?> get props => [weeksAgo];
+}

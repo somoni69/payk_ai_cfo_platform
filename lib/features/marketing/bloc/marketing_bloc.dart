@@ -31,6 +31,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     on<GenerateAiStudioMediaRequested>(_onGenerateAiStudioMediaRequested);
     on<RejectAiStudioMediaRequested>(_onRejectAiStudioMediaRequested);
     on<LoadAiStudioReportRequested>(_onLoadAiStudioReportRequested);
+    on<RefreshPublicationStatsRequested>(_onRefreshPublicationStatsRequested);
   }
 
   final MarketingRepository _repository;
@@ -679,6 +680,48 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           errorMessage: userFacingError(
             e,
             fallback: 'Не удалось загрузить отчёт по ROI.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRefreshPublicationStatsRequested(
+    RefreshPublicationStatsRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        refreshingPublicationId: event.publicationId,
+        clearError: true,
+      ),
+    );
+    try {
+      final updated = await _repository.getPublicationStatsById(
+        event.publicationId,
+      );
+      if (emit.isDone) return;
+      final next = [
+        for (final row in state.publicationStats)
+          if (row.publicationId == updated.publicationId) updated else row,
+      ];
+      if (next.every((row) => row.publicationId != updated.publicationId)) {
+        next.insert(0, updated);
+      }
+      emit(
+        state.copyWith(
+          publicationStats: next,
+          clearRefreshingPublication: true,
+        ),
+      );
+    } catch (e) {
+      if (_isCancelled(e) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          clearRefreshingPublication: true,
+          errorMessage: userFacingError(
+            e,
+            fallback: 'Не удалось обновить статистику публикации.',
           ),
         ),
       );

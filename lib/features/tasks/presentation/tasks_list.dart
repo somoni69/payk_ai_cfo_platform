@@ -259,4 +259,182 @@ extension _TasksListBuilders on _TasksViewMixin {
       }).toList(),
     );
   }
+
+  Widget _buildBoardTab(
+    BuildContext context,
+    List<Task> allTasks,
+    Set<String> pendingTaskIds,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+    final canManage = _canManageTasks(context);
+    final boardTasks = allTasks.where((t) => !t.isPersonal).toList();
+
+    return RefreshIndicator(
+      onRefresh: () => _refreshTasks(context),
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+        itemCount: TaskStatus.values.length,
+        itemBuilder: (context, index) {
+          final status = TaskStatus.values[index];
+          final column = boardTasks.where((t) => t.status == status).toList();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          language.translate(status.localizationKey),
+                          style: textStyles.bodySans.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${column.length}',
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (column.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        language.translate('tasks_board_empty_column'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                    )
+                  else
+                    for (final task in column)
+                      _BoardTaskCard(
+                        task: task,
+                        pending: pendingTaskIds.contains(task.id),
+                        canMove: canManage,
+                        onBack: index == 0
+                            ? null
+                            : () => context.read<TasksBloc>().add(
+                                UpdateTaskStatusRequested(
+                                  taskId: task.id,
+                                  status: TaskStatus.values[index - 1],
+                                ),
+                              ),
+                        onForward: index == TaskStatus.values.length - 1
+                            ? null
+                            : () => context.read<TasksBloc>().add(
+                                UpdateTaskStatusRequested(
+                                  taskId: task.id,
+                                  status: TaskStatus.values[index + 1],
+                                ),
+                              ),
+                      ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BoardTaskCard extends StatelessWidget {
+  const _BoardTaskCard({
+    required this.task,
+    required this.pending,
+    required this.canMove,
+    this.onBack,
+    this.onForward,
+  });
+
+  final Task task;
+  final bool pending;
+  final bool canMove;
+  final VoidCallback? onBack;
+  final VoidCallback? onForward;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: colors.surfaceNested,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: colors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              task.title,
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+            ),
+            if (task.assigneeName != null && task.assigneeName!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                task.assigneeName!,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+            if (canMove) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: pending ? null : onBack,
+                    icon: Icon(
+                      TablerIcons.arrow_left,
+                      size: 18,
+                      color: onBack == null ? colors.textTooltip : colors.brand,
+                    ),
+                  ),
+                  const Spacer(),
+                  if (pending)
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    onPressed: pending ? null : onForward,
+                    icon: Icon(
+                      TablerIcons.arrow_right,
+                      size: 18,
+                      color: onForward == null
+                          ? colors.textTooltip
+                          : colors.brand,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

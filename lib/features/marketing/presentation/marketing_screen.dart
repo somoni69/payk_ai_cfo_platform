@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
@@ -727,6 +731,29 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
         authState.role.canManage(AppCapability.marketing);
   }
 
+  Future<void> _exportCampaigns(BuildContext context, String format) async {
+    final language = context.read<LanguageCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final bytes = await context.read<MarketingRepository>().exportCampaigns(
+        format: format,
+      );
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/campaigns.$format');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translate('marketing_export_ok'))),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translateMessage(e.toString()))),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -749,6 +776,20 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
             color: colors.textPrimary,
           ),
         ),
+        actions: [
+          if (widget.section == MarketingSection.campaigns) ...[
+            IconButton(
+              tooltip: locale.translate('marketing_export_excel'),
+              onPressed: () => _exportCampaigns(context, 'xlsx'),
+              icon: Icon(TablerIcons.file_spreadsheet, color: colors.brand),
+            ),
+            IconButton(
+              tooltip: locale.translate('marketing_export_pdf'),
+              onPressed: () => _exportCampaigns(context, 'pdf'),
+              icon: Icon(TablerIcons.file_type_pdf, color: colors.brand),
+            ),
+          ],
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: colors.border),
@@ -1436,10 +1477,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
       },
       builder: (context, state) {
         if (state.isBrandLoading && state.brandGuide == null) {
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: LedgerListShimmer(itemCount: 4),
-          );
+          return const MarketingBrandGuideShimmer();
         }
 
         final guide = state.brandGuide;

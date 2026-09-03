@@ -10,7 +10,7 @@ Widget _buildAiInsightsTab(
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const DashboardSectionShimmer();
+    return const DashboardSectionShimmer(kind: DashboardShimmerKind.ai);
   }
 
   final isRisk = report.forecast.atRisk;

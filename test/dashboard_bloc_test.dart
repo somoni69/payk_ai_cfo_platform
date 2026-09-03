@@ -181,6 +181,9 @@ class MockFinanceTestRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<PlanItem>> getPlans({String? period}) async => const [];
+
+  @override
   Future<PlanItem> createPlan({
     required String period,
     required String category,

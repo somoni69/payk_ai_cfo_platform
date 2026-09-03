@@ -18,7 +18,7 @@ extension _TasksMyTab on _TasksViewMixin {
     final userId = _currentUserId;
 
     if (state.isMyTasksLoading && !state.myTasksLoaded) {
-      return const TasksOverviewShimmer();
+      return const TasksMyShimmer();
     }
 
     final personal = state.myTasks.where((t) => t.isPersonal).toList();

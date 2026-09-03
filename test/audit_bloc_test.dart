@@ -36,7 +36,7 @@ class MockAuditRepository implements AuditRepository {
   }
 
   @override
-  Future<WeeklyAuditReport> getWeeklyReport({DateTime? weekStart}) async {
+  Future<WeeklyAuditReport> getWeeklyReport({int weeksAgo = 0}) async {
     if (shouldThrowWeekly) {
       throw Exception('Еженедельный отчет недоступен');
     }
@@ -94,11 +94,10 @@ class MockAuditRepository implements AuditRepository {
   }
 
   @override
-  Future<List<int>> exportWeeklyReport({String format = 'pdf'}) async => [
-    1,
-    2,
-    3,
-  ];
+  Future<List<int>> exportWeeklyReport({
+    String format = 'pdf',
+    int weeksAgo = 0,
+  }) async => [1, 2, 3];
 
   @override
   Future<List<EntityHistoryItem>> getEntityHistory(

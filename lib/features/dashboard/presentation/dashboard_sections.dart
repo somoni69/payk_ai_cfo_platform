@@ -1,10 +1,15 @@
 part of 'dashboard_screen.dart';
 
+Widget _metricTileRow(Widget left, Widget right) {
+  return LedgerPairRow(left: left, right: right, gap: 12);
+}
+
 Widget _buildLazyDashboardSection<T>({
   required DashboardSection section,
   required T? Function(DashboardLoaded state) select,
   required Widget Function(BuildContext context, T data, String currency)
   contentBuilder,
+  Widget shimmer = const DashboardSectionShimmer(),
 }) {
   (T?, String, bool, String?) slice(DashboardState state) {
     if (state is! DashboardLoaded) return (null, 'TJS', false, null);
@@ -27,7 +32,7 @@ Widget _buildLazyDashboardSection<T>({
 
       final error = state.sectionErrors[section];
       if (error == null) {
-        return const DashboardSectionShimmer();
+        return shimmer;
       }
 
       final language = context.read<LanguageCubit>();
@@ -229,66 +234,52 @@ Widget _buildOverviewHome(
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: LedgerMetricTile(
-                  icon: TablerIcons.trending_up,
-                  iconColor: colors.accentGreen,
-                  label: language.translate('dashboard_metric_net_profit'),
-                  value: money(m.netProfit),
-                  delta: deltaLabel(m.netProfitDelta),
-                  deltaColor: deltaColor(m.netProfitDelta),
-                  onTap: () => _showMetricBreakdown(context, 'profit'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: LedgerMetricTile(
-                  icon: TablerIcons.trending_down,
-                  iconColor: colors.accentRed,
-                  label: language.translate('dashboard_metric_expenses_june'),
-                  value: money(m.expenses),
-                  delta: deltaLabel(m.expensesDelta),
-                  deltaColor: deltaColor(m.expensesDelta, inverse: true),
-                  onTap: () => _showMetricBreakdown(context, 'expenses'),
-                ),
-              ),
-            ],
+          _metricTileRow(
+            LedgerMetricTile(
+              icon: TablerIcons.trending_up,
+              iconColor: colors.accentGreen,
+              label: language.translate('dashboard_metric_net_profit'),
+              value: money(m.netProfit),
+              delta: deltaLabel(m.netProfitDelta),
+              deltaColor: deltaColor(m.netProfitDelta),
+              onTap: () => _showMetricBreakdown(context, 'profit'),
+            ),
+            LedgerMetricTile(
+              icon: TablerIcons.trending_down,
+              iconColor: colors.accentRed,
+              label: language.translate('dashboard_metric_expenses_june'),
+              value: money(m.expenses),
+              delta: deltaLabel(m.expensesDelta),
+              deltaColor: deltaColor(m.expensesDelta, inverse: true),
+              onTap: () => _showMetricBreakdown(context, 'expenses'),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _metricTileRow(
+            LedgerMetricTile(
+              icon: TablerIcons.cash,
+              iconColor: colors.brand,
+              label: language.translate('dashboard_metric_revenue_june'),
+              value: money(m.revenue),
+              delta: deltaLabel(m.revenueDelta),
+              deltaColor: deltaColor(m.revenueDelta),
+              onTap: () => _showMetricBreakdown(context, 'revenue'),
+            ),
+            LedgerMetricTile(
+              icon: TablerIcons.receipt,
+              iconColor: colors.brand,
+              label: language.translate('dashboard_metric_operations'),
+              value: '${m.operationsCount}',
+              onTap: () => _showMetricBreakdown(context, 'operations'),
+            ),
           ),
           const SizedBox(height: 12),
           LedgerMetricTile(
-            icon: TablerIcons.cash,
-            iconColor: colors.brand,
-            label: language.translate('dashboard_metric_revenue_june'),
-            value: money(m.revenue),
-            delta: deltaLabel(m.revenueDelta),
-            deltaColor: deltaColor(m.revenueDelta),
-            onTap: () => _showMetricBreakdown(context, 'revenue'),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: LedgerMetricTile(
-                  icon: TablerIcons.receipt,
-                  iconColor: colors.brand,
-                  label: language.translate('dashboard_metric_operations'),
-                  value: '${m.operationsCount}',
-                  onTap: () => _showMetricBreakdown(context, 'operations'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: LedgerMetricTile(
-                  icon: TablerIcons.receipt_2,
-                  iconColor: colors.accentGreen,
-                  label: language.translate('dashboard_metric_avg_check'),
-                  value: money(m.avgCheck),
-                  onTap: () => _showMetricBreakdown(context, 'avg_check'),
-                ),
-              ),
-            ],
+            icon: TablerIcons.receipt_2,
+            iconColor: colors.accentGreen,
+            label: language.translate('dashboard_metric_avg_check'),
+            value: money(m.avgCheck),
+            onTap: () => _showMetricBreakdown(context, 'avg_check'),
           ),
           const SizedBox(height: 24),
           const SalesProfitCard(hideOnError: true, wrapCard: false),

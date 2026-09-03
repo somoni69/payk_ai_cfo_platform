@@ -6,9 +6,7 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../audit/domain/audit_models.dart';
-import '../../audit/domain/audit_repository.dart';
-import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../audit/presentation/entity_history_sheet.dart';
 import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
 
@@ -29,35 +27,8 @@ class CashTransactionTile extends StatefulWidget {
   State<CashTransactionTile> createState() => _CashTransactionTileState();
 }
 
-Future<void> _showOperationHistory(BuildContext context, String id) async {
-  final language = context.read<LanguageCubit>();
-  var items = const <EntityHistoryItem>[];
-  try {
-    items = await context.read<AuditRepository>().getEntityHistory(
-      'cash_operation',
-      id,
-    );
-  } catch (_) {}
-  if (!context.mounted) return;
-  await LedgerBottomSheet.show(
-    context: context,
-    title: language.translate('more_audit'),
-    builder: (ctx, setState) {
-      if (items.isEmpty) {
-        return Text(language.translate('dashboard_breakdown_empty'));
-      }
-      return Column(
-        children: [
-          for (final item in items)
-            ListTile(
-              dense: true,
-              title: Text(item.action),
-              subtitle: Text('${item.userName} · ${item.createdAt}'),
-            ),
-        ],
-      );
-    },
-  );
+Future<void> _showOperationHistory(BuildContext context, String id) {
+  return showEntityHistorySheet(context, entity: 'cash_operation', id: id);
 }
 
 class _CashTransactionTileState extends State<CashTransactionTile> {

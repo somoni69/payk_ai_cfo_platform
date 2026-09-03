@@ -7,6 +7,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -137,7 +138,7 @@ class _CrmViewState extends State<CrmView> {
           },
           builder: (context, state) {
             if (state is CrmLoading) {
-              return const _CrmSkeleton();
+              return const CrmOverviewShimmer();
             }
             if (state is CrmError) {
               return _ErrorBody(
@@ -406,79 +407,57 @@ class _CrmViewState extends State<CrmView> {
             ],
 
             // 4. Section Grid Hub (2x2)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCrmHubTile(
-                    context,
-                    icon: TablerIcons.users,
-                    title: language.translate('crm_tab_clients'),
-                    subtitle: '${state.stats.clientsTotal} контактов',
-                    onTap: () => _openCrmSection(context, CrmSection.clients),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildCrmHubTile(
-                    context,
-                    icon: TablerIcons.layout_kanban,
-                    title: language.translate('crm_tab_funnel'),
-                    subtitle: '${state.deals.length} сделок',
-                    onTap: () => _openCrmSection(context, CrmSection.funnel),
-                  ),
-                ),
-              ],
+            LedgerPairRow(
+              left: _buildCrmHubTile(
+                context,
+                icon: TablerIcons.users,
+                title: language.translate('crm_tab_clients'),
+                subtitle: '${state.stats.clientsTotal} контактов',
+                onTap: () => _openCrmSection(context, CrmSection.clients),
+              ),
+              right: _buildCrmHubTile(
+                context,
+                icon: TablerIcons.layout_kanban,
+                title: language.translate('crm_tab_funnel'),
+                subtitle: '${state.deals.length} сделок',
+                onTap: () => _openCrmSection(context, CrmSection.funnel),
+              ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCrmHubTile(
-                    context,
-                    icon: TablerIcons.gift,
-                    title: language.translate('crm_tab_loyalty'),
-                    subtitle: 'Кэшбэк и RFM',
-                    onTap: () => _openCrmSection(context, CrmSection.loyalty),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildCrmHubTile(
-                    context,
-                    icon: TablerIcons.user_x,
-                    title: language.translate('crm_tab_churn'),
-                    subtitle: '${state.stats.churnCount} в зоне риска',
-                    onTap: () => _openCrmSection(context, CrmSection.churn),
-                  ),
-                ),
-              ],
+            LedgerPairRow(
+              left: _buildCrmHubTile(
+                context,
+                icon: TablerIcons.gift,
+                title: language.translate('crm_tab_loyalty'),
+                subtitle: 'Кэшбэк и RFM',
+                onTap: () => _openCrmSection(context, CrmSection.loyalty),
+              ),
+              right: _buildCrmHubTile(
+                context,
+                icon: TablerIcons.user_x,
+                title: language.translate('crm_tab_churn'),
+                subtitle: '${state.stats.churnCount} в зоне риска',
+                onTap: () => _openCrmSection(context, CrmSection.churn),
+              ),
             ),
             const SizedBox(height: 10),
 
             // 5. Secondary Quick Links Row
-            Row(
-              children: [
-                Expanded(
-                  child: _buildCrmHubTile(
-                    context,
-                    icon: TablerIcons.refresh,
-                    title: language.translate('crm_tab_reactivation'),
-                    subtitle: '${state.stats.reactivationCount} клиентов',
-                    onTap: () =>
-                        _openCrmSection(context, CrmSection.reactivation),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildCrmHubTile(
-                    context,
-                    icon: TablerIcons.cake,
-                    title: language.translate('crm_tab_birthdays'),
-                    subtitle: '${state.birthdays.length} в этом месяце',
-                    onTap: () => _openCrmSection(context, CrmSection.birthdays),
-                  ),
-                ),
-              ],
+            LedgerPairRow(
+              left: _buildCrmHubTile(
+                context,
+                icon: TablerIcons.refresh,
+                title: language.translate('crm_tab_reactivation'),
+                subtitle: '${state.stats.reactivationCount} клиентов',
+                onTap: () => _openCrmSection(context, CrmSection.reactivation),
+              ),
+              right: _buildCrmHubTile(
+                context,
+                icon: TablerIcons.cake,
+                title: language.translate('crm_tab_birthdays'),
+                subtitle: '${state.birthdays.length} в этом месяце',
+                onTap: () => _openCrmSection(context, CrmSection.birthdays),
+              ),
             ),
             const SizedBox(height: 20),
 
@@ -850,7 +829,7 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
                     onRefresh: () => _refresh(context),
                   ),
                 }
-              : const _CrmSkeleton(),
+              : _CrmSkeleton(section: widget.section),
         );
       },
     );
@@ -858,11 +837,18 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
 }
 
 class _CrmSkeleton extends StatelessWidget {
-  const _CrmSkeleton();
+  const _CrmSkeleton({required this.section});
+
+  final CrmSection section;
 
   @override
   Widget build(BuildContext context) {
-    return const CrmOverviewShimmer();
+    return switch (section) {
+      CrmSection.funnel => const CrmFunnelShimmer(),
+      CrmSection.clients => const CrmClientsShimmer(),
+      CrmSection.loyalty => const CrmLoyaltyShimmer(),
+      _ => const LedgerListShimmer(itemCount: 6),
+    };
   }
 }
 
@@ -1459,11 +1445,11 @@ class _LoyaltyTab extends StatelessWidget {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: 1.25,
+                childAspectRatio: context.layout.gridChildAspect(1.25),
               ),
               itemCount: state.loyaltySummary.length,
               itemBuilder: (context, index) {

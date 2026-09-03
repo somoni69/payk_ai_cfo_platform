@@ -26,6 +26,7 @@ class MarketingState extends Equatable {
   final MarketingMediaAsset? currentMedia;
   final List<MarketingPublicationStats> publicationStats;
   final String? studioSuccessMessage;
+  final String? refreshingPublicationId;
 
   const MarketingState({
     this.campaigns = const [],
@@ -49,6 +50,7 @@ class MarketingState extends Equatable {
     this.currentMedia,
     this.publicationStats = const [],
     this.studioSuccessMessage,
+    this.refreshingPublicationId,
   });
 
   MarketingState copyWith({
@@ -75,6 +77,8 @@ class MarketingState extends Equatable {
     List<MarketingPublicationStats>? publicationStats,
     String? studioSuccessMessage,
     bool clearStudioSuccess = false,
+    String? refreshingPublicationId,
+    bool clearRefreshingPublication = false,
     bool clearCampaign = false,
     bool clearScript = false,
     bool clearMedia = false,
@@ -105,6 +109,9 @@ class MarketingState extends Equatable {
       studioSuccessMessage: clearStudioSuccess
           ? null
           : (studioSuccessMessage ?? this.studioSuccessMessage),
+      refreshingPublicationId: clearRefreshingPublication
+          ? null
+          : (refreshingPublicationId ?? this.refreshingPublicationId),
     );
   }
 
@@ -131,5 +138,6 @@ class MarketingState extends Equatable {
     currentMedia,
     publicationStats,
     studioSuccessMessage,
+    refreshingPublicationId,
   ];
 }

@@ -4,10 +4,15 @@ class _PosLine {
   _PosLine({required this.product, required this.qty, required this.price});
 
   final SaleProduct product;
-  int qty;
+  double qty;
   double price;
 
   double get amount => qty * price;
+}
+
+bool _isWeighedUnit(String unit) {
+  const weighed = {'кг', 'г', 'гр', 'л', 'мл', 'kg', 'g', 'l', 'ml'};
+  return weighed.contains(unit.trim().toLowerCase());
 }
 
 class CashPosView extends StatefulWidget {
@@ -35,6 +40,11 @@ class _CashPosViewState extends State<CashPosView> {
   String? _error;
   var _submitting = false;
   var _scanning = false;
+  var _pinSet = false;
+  var _isCashier = false;
+  var _isPosAdmin = false;
+
+  bool get _pinNeeded => _isCashier && _pinSet;
 
   @override
   void initState() {
@@ -50,6 +60,9 @@ class _CashPosViewState extends State<CashPosView> {
     }
     _loadCatalog();
     _loadBanks();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadPinStatus();
+    });
   }
 
   @override
@@ -82,6 +95,311 @@ class _CashPosViewState extends State<CashPosView> {
     } catch (_) {}
   }
 
+  Future<void> _loadPinStatus() async {
+    final auth = context.read<AuthBloc>().state;
+    if (auth is! AuthAuthenticated) return;
+    final isCashier = auth.role == UserRole.cashier;
+    final isAdmin =
+        auth.role == UserRole.owner || auth.role == UserRole.director;
+    if (!isCashier && !isAdmin) return;
+    try {
+      final isSet = await context.read<CashRepository>().getPosPinStatus();
+      if (!mounted) return;
+      setState(() {
+        _isCashier = isCashier;
+        _isPosAdmin = isAdmin;
+        _pinSet = isSet;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isCashier = isCashier;
+        _isPosAdmin = isAdmin;
+      });
+    }
+  }
+
+  List<PosCartLine> _cartSnapshot() {
+    return [
+      for (final line in _lines)
+        PosCartLine(
+          name: line.product.name,
+          barcode: line.product.barcode,
+          qty: line.qty.toDouble(),
+          price: line.price,
+        ),
+    ];
+  }
+
+  Future<bool> _confirmCartEdit({
+    required String kind,
+    required SaleProduct product,
+    required double qtyBefore,
+    required double qtyAfter,
+  }) async {
+    if (!_pinNeeded) return true;
+    final language = context.read<LanguageCubit>();
+    final registerId = int.tryParse(_registerId ?? '');
+    final action = PosEditAction(
+      kind: kind,
+      registerId: registerId,
+      productName: product.name,
+      productBarcode: product.barcode,
+      price: product.price,
+      qtyBefore: qtyBefore,
+      qtyAfter: qtyAfter,
+      cart: _cartSnapshot(),
+    );
+    final pinController = TextEditingController();
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dlg) {
+          var error = '';
+          var busy = false;
+          return StatefulBuilder(
+            builder: (context, setDialog) {
+              final colors = context.colors;
+              return AlertDialog(
+                title: Text(language.translate('cash_pin_title')),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: pinController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 8,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        labelText: language.translate('cash_pin_title'),
+                        counterText: '',
+                      ),
+                      onSubmitted: (_) async {
+                        if (busy) return;
+                        final ok = await _submitPin(
+                          pinController.text,
+                          action,
+                          language,
+                          (msg) => setDialog(() => error = msg),
+                        );
+                        if (ok && dlg.mounted) Navigator.pop(dlg, true);
+                      },
+                    ),
+                    if (error.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error,
+                        style: TextStyle(color: colors.accentRed, fontSize: 13),
+                      ),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dlg, false),
+                    child: Text(language.translate('common_cancel')),
+                  ),
+                  ElevatedButton(
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            setDialog(() => busy = true);
+                            final ok = await _submitPin(
+                              pinController.text,
+                              action,
+                              language,
+                              (msg) => setDialog(() {
+                                error = msg;
+                                busy = false;
+                              }),
+                            );
+                            if (ok && dlg.mounted) Navigator.pop(dlg, true);
+                            if (!ok && dlg.mounted) {
+                              setDialog(() => busy = false);
+                            }
+                          },
+                    child: Text(language.translate('cash_pin_confirm')),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+      return confirmed == true;
+    } finally {
+      pinController.dispose();
+    }
+  }
+
+  Future<bool> _submitPin(
+    String pin,
+    PosEditAction action,
+    LanguageCubit language,
+    void Function(String message) onError,
+  ) async {
+    final trimmed = pin.replaceAll(RegExp(r'\D'), '');
+    if (trimmed.length < 4) {
+      onError(language.translate('cash_pin_too_short'));
+      return false;
+    }
+    try {
+      final result = await context.read<CashRepository>().verifyPosPin(
+        trimmed,
+        action: action,
+      );
+      if (result.ok) return true;
+      if (result.retryAfter > 0) {
+        onError(
+          '${language.translate('cash_pin_locked')} ${result.retryAfter} ${language.translate('cash_pin_seconds')}',
+        );
+      } else {
+        onError(language.translate('cash_pin_wrong'));
+      }
+      return false;
+    } catch (_) {
+      onError(language.translate('cash_pin_failed'));
+      return false;
+    }
+  }
+
+  Future<void> _qtyDown(_PosLine line) async {
+    final weighed = _isWeighedUnit(line.product.unit);
+    final remove = weighed || line.qty <= 1;
+    final ok = await _confirmCartEdit(
+      kind: remove ? 'remove' : 'qty_down',
+      product: line.product,
+      qtyBefore: line.qty,
+      qtyAfter: remove ? 0 : line.qty - 1,
+    );
+    if (!ok || !mounted) return;
+    setState(() {
+      if (remove) {
+        _lines.remove(line);
+      } else {
+        line.qty -= 1;
+      }
+    });
+  }
+
+  Future<void> _showPinSetup() async {
+    final language = context.read<LanguageCubit>();
+    final pinController = TextEditingController();
+    final repeatController = TextEditingController();
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dlg) {
+          var error = '';
+          var busy = false;
+          return StatefulBuilder(
+            builder: (context, setDialog) {
+              final colors = context.colors;
+              return AlertDialog(
+                title: Text(language.translate('cash_pin_setup_title')),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: pinController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 8,
+                      decoration: InputDecoration(
+                        labelText: language.translate('cash_pin_new'),
+                        counterText: '',
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: repeatController,
+                      keyboardType: TextInputType.number,
+                      obscureText: true,
+                      maxLength: 8,
+                      decoration: InputDecoration(
+                        labelText: language.translate('cash_pin_repeat'),
+                        counterText: '',
+                      ),
+                    ),
+                    if (error.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        error,
+                        style: TextStyle(color: colors.accentRed, fontSize: 13),
+                      ),
+                    ],
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dlg),
+                    child: Text(language.translate('common_cancel')),
+                  ),
+                  ElevatedButton(
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            final pin = pinController.text.replaceAll(
+                              RegExp(r'\D'),
+                              '',
+                            );
+                            final repeat = repeatController.text.replaceAll(
+                              RegExp(r'\D'),
+                              '',
+                            );
+                            if (pin.length < 4) {
+                              setDialog(
+                                () => error = language.translate(
+                                  'cash_pin_too_short',
+                                ),
+                              );
+                              return;
+                            }
+                            if (pin != repeat) {
+                              setDialog(
+                                () => error = language.translate(
+                                  'cash_pin_mismatch',
+                                ),
+                              );
+                              return;
+                            }
+                            setDialog(() => busy = true);
+                            final messenger = ScaffoldMessenger.of(context);
+                            final repo = context.read<CashRepository>();
+                            try {
+                              await repo.savePosPin(pin);
+                              if (!mounted) return;
+                              setState(() => _pinSet = true);
+                              if (dlg.mounted) Navigator.pop(dlg);
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    language.translate('cash_pin_saved'),
+                                  ),
+                                ),
+                              );
+                            } catch (e) {
+                              setDialog(() {
+                                busy = false;
+                                error = language.translateMessage(e.toString());
+                              });
+                            }
+                          },
+                    child: Text(language.translate('common_save')),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      pinController.dispose();
+      repeatController.dispose();
+    }
+  }
+
   double get _total => _lines.fold<double>(0, (sum, line) => sum + line.amount);
 
   bool get _cashierNeedsShift {
@@ -92,18 +410,72 @@ class _CashPosViewState extends State<CashPosView> {
     return shift == null || !shift.isOpen;
   }
 
-  void _addProduct(SaleProduct product) {
+  void _addProduct(SaleProduct product, {double qty = 1}) {
     setState(() {
       _error = null;
       final index = _lines.indexWhere((l) => l.product.id == product.id);
       if (index >= 0) {
-        _lines[index].qty += 1;
+        _lines[index].qty += qty;
       } else {
-        _lines.add(_PosLine(product: product, qty: 1, price: product.price));
+        _lines.add(_PosLine(product: product, qty: qty, price: product.price));
       }
     });
     _scanController.clear();
     _scanFocus.requestFocus();
+  }
+
+  Future<void> _pickProduct(SaleProduct product) async {
+    if (_isWeighedUnit(product.unit)) {
+      final qty = await _askWeight(product);
+      if (qty == null || qty <= 0 || !mounted) return;
+      _addProduct(product, qty: qty);
+      return;
+    }
+    _addProduct(product);
+  }
+
+  Future<double?> _askWeight(SaleProduct product) async {
+    final language = context.read<LanguageCubit>();
+    final controller = TextEditingController();
+    try {
+      return await showDialog<double>(
+        context: context,
+        builder: (dlg) {
+          return AlertDialog(
+            title: Text(language.translate('cash_pos_weight_title')),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText:
+                    '${language.translate('cash_pos_weight_qty')} (${product.unit})',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dlg),
+                child: Text(language.translate('common_cancel')),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final value =
+                      parseLocalizedNumber(context, controller.text) ??
+                      double.tryParse(controller.text.replaceAll(',', '.'));
+                  if (value == null || value <= 0) return;
+                  Navigator.pop(dlg, value);
+                },
+                child: Text(language.translate('common_add')),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> _openCamera() async {
@@ -128,7 +500,7 @@ class _CashPosViewState extends State<CashPosView> {
           p.name.toLowerCase() == needle;
     });
     if (local.isNotEmpty) {
-      _addProduct(local.first);
+      await _pickProduct(local.first);
       setState(() => _scanning = false);
       return;
     }
@@ -137,7 +509,7 @@ class _CashPosViewState extends State<CashPosView> {
           .read<CashRepository>()
           .getSaleProductByBarcode(code);
       if (!mounted) return;
-      _addProduct(found);
+      await _pickProduct(found);
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -386,8 +758,69 @@ class _CashPosViewState extends State<CashPosView> {
           ),
         ],
         const SizedBox(height: 12),
+        if (!_loadingProducts &&
+            _products.any(
+              (p) => (p.barcode == null || p.barcode!.isEmpty),
+            )) ...[
+          Text(
+            language.translate('cash_quick_title'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            language.translate('cash_quick_hint'),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final p in _products.where(
+                (item) => item.barcode == null || item.barcode!.isEmpty,
+              ))
+                Material(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: () => _pickProduct(p),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 148,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: colors.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            p.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: textStyles.captionSans.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            formatLocalizedNumber(context, p.price),
+                            style: textStyles.bodyMono.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
         if (_loadingProducts)
-          const LedgerListShimmer(itemCount: 3)
+          const CashPosShimmer(catalogOnly: true)
         else
           ...filtered.map(
             (p) => Padding(
@@ -396,7 +829,7 @@ class _CashPosViewState extends State<CashPosView> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(12),
                 child: InkWell(
-                  onTap: () => _addProduct(p),
+                  onTap: () => _pickProduct(p),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -468,15 +901,7 @@ class _CashPosViewState extends State<CashPosView> {
                         ),
                       ),
                       IconButton(
-                        onPressed: () {
-                          setState(() {
-                            if (line.qty <= 1) {
-                              _lines.remove(line);
-                            } else {
-                              line.qty -= 1;
-                            }
-                          });
-                        },
+                        onPressed: () => _qtyDown(line),
                         icon: Icon(
                           TablerIcons.minus,
                           size: 16,
@@ -484,13 +909,20 @@ class _CashPosViewState extends State<CashPosView> {
                         ),
                       ),
                       Text(
-                        '${line.qty}',
+                        formatLocalizedNumber(
+                          context,
+                          line.qty,
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 3,
+                        ),
                         style: textStyles.bodyMono.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       IconButton(
-                        onPressed: () => setState(() => line.qty += 1),
+                        onPressed: _isWeighedUnit(line.product.unit)
+                            ? null
+                            : () => setState(() => line.qty += 1),
                         icon: Icon(
                           TablerIcons.plus,
                           size: 16,
@@ -595,6 +1027,59 @@ class _CashPosViewState extends State<CashPosView> {
                 : Text(language.translate('cash_pos_checkout')),
           ),
         ),
+        if (_isPosAdmin) ...[
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(TablerIcons.key, size: 18, color: colors.brand),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        language.translate('cash_pin_setup_title'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      language.translate(
+                        _pinSet ? 'cash_pin_is_set' : 'cash_pin_not_set',
+                      ),
+                      style: textStyles.captionSans.copyWith(
+                        color: _pinSet
+                            ? colors.accentGreen
+                            : colors.accentAmber,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  language.translate('cash_pin_setup_desc'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton(
+                  onPressed: _showPinSetup,
+                  child: Text(language.translate('cash_pin_change')),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

@@ -143,6 +143,18 @@ class _MyAppState extends State<MyApp> {
               theme: LedgerTheme.light,
               routerConfig: _router,
               debugShowCheckedModeBanner: false,
+              builder: (context, child) {
+                final mq = MediaQuery.of(context);
+                return MediaQuery(
+                  data: mq.copyWith(
+                    textScaler: mq.textScaler.clamp(
+                      minScaleFactor: 0.9,
+                      maxScaleFactor: 1.15,
+                    ),
+                  ),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
               locale: locale,
               supportedLocales: const [Locale('ru'), Locale('tg')],
               localizationsDelegates: const [

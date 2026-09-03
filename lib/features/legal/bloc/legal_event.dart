@@ -112,6 +112,23 @@ class CreateTemplateRequested extends LegalEvent {
   List<Object?> get props => [name, body, category];
 }
 
+class UpdateTemplateRequested extends LegalEvent {
+  final String id;
+  final String name;
+  final String body;
+  final String? category;
+
+  const UpdateTemplateRequested({
+    required this.id,
+    required this.name,
+    required this.body,
+    this.category,
+  });
+
+  @override
+  List<Object?> get props => [id, name, body, category];
+}
+
 class DeleteTemplateRequested extends LegalEvent {
   final String id;
 

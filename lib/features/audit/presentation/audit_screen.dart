@@ -1,7 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
+import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/audit/bloc/audit_bloc.dart';
 import '../../../features/audit/bloc/audit_event.dart';
@@ -444,7 +451,7 @@ class _AuditViewState extends State<AuditView> {
                 child: _buildHubCard(
                   context,
                   title: locale.translate('audit_tab_report'),
-                  subtitle: 'Сводка статуса безопасности',
+                  subtitle: locale.translate('audit_tab_report_hint'),
                   icon: TablerIcons.shield_check,
                   onTap: () => _openAuditSection(context, AuditSection.report),
                 ),
@@ -455,16 +462,20 @@ class _AuditViewState extends State<AuditView> {
 
           // 5. Recent Logs Feed
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                locale.translate('audit_recent_logs'),
-                style: textStyles.h2Sans.copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
+              Expanded(
+                child: Text(
+                  locale.translate('audit_recent_logs'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: () => _openAuditSection(context, AuditSection.logs),
                 style: TextButton.styleFrom(
@@ -737,17 +748,21 @@ class AuditSectionScreen extends StatelessWidget {
             return switch (section) {
               AuditSection.logs => previous.logs != current.logs,
               AuditSection.alerts => previous.alerts != current.alerts,
-              AuditSection.report => previous.weekly != current.weekly,
+              AuditSection.report =>
+                previous.weekly != current.weekly ||
+                    previous.weeksAgo != current.weeksAgo,
             };
           }
           return true;
         },
         builder: (context, state) {
           if (state is AuditLoading) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: LedgerListShimmer(itemCount: 4),
-            );
+            return section == AuditSection.report
+                ? const AuditReportShimmer()
+                : const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: LedgerListShimmer(itemCount: 4),
+                  );
           }
           if (state is! AuditLoaded) {
             return const SizedBox.shrink();
@@ -1028,102 +1043,242 @@ class AuditSectionScreen extends StatelessWidget {
   }
 
   Widget _buildReportTab(BuildContext context, AuditLoaded state) {
+    return _AuditWeeklyReportTab(state: state);
+  }
+}
+
+class _AuditWeeklyReportTab extends StatefulWidget {
+  const _AuditWeeklyReportTab({required this.state});
+
+  final AuditLoaded state;
+
+  @override
+  State<_AuditWeeklyReportTab> createState() => _AuditWeeklyReportTabState();
+}
+
+class _AuditWeeklyReportTabState extends State<_AuditWeeklyReportTab> {
+  var _exporting = false;
+
+  Future<void> _export(String format) async {
+    if (_exporting) return;
+    final language = context.read<LanguageCubit>();
+    final repo = context.read<AuditRepository>();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _exporting = true);
+    try {
+      final bytes = await repo.exportWeeklyReport(
+        format: format,
+        weeksAgo: widget.state.weeksAgo,
+      );
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/audit_weekly.$format');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translate('audit_report_export_ok'))),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translateMessage(e.toString()))),
+      );
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
+  }
+
+  Widget _statCard({
+    required String label,
+    required String value,
+    Color? valueColor,
+  }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            label,
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: textStyles.bodyMono.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: valueColor ?? colors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final locale = context.watch<LanguageCubit>();
+    final weekly = widget.state.weekly;
+    final weeksAgo = widget.state.weeksAgo;
+    final periodKeys = const [
+      'audit_report_week_current',
+      'audit_report_week_last',
+      'audit_report_week_2',
+      'audit_report_week_3',
+    ];
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < periodKeys.length; i++)
+              ChoiceChip(
+                label: Text(locale.translate(periodKeys[i])),
+                selected: weeksAgo == i,
+                onSelected: (_) {
+                  if (weeksAgo == i) return;
+                  context.read<AuditBloc>().add(LoadWeeklyReport(weeksAgo: i));
+                },
+                selectedColor: colors.brand.withValues(alpha: 0.12),
+                side: BorderSide(
+                  color: weeksAgo == i ? colors.brand : colors.border,
+                ),
+                labelStyle: textStyles.smallSans.copyWith(
+                  color: weeksAgo == i ? colors.brand : colors.textPrimary,
+                ),
+                backgroundColor: colors.surface,
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _exporting ? null : () => _export('xlsx'),
+                icon: const Icon(TablerIcons.file_spreadsheet, size: 18),
+                label: Text(locale.translate('audit_report_export_excel')),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _exporting ? null : () => _export('pdf'),
+                icon: const Icon(TablerIcons.file_type_pdf, size: 18),
+                label: Text(locale.translate('audit_report_export_pdf')),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (weekly == null)
+          Text(
+            locale.translate('audit_report_empty'),
+            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+          )
+        else ...[
+          Text(
+            '${locale.translate('audit_report_period')}: ${formatLocalizedDateTime(context, weekly.periodFrom, style: LocalizedDateTimeStyle.date)} — ${formatLocalizedDateTime(context, weekly.periodTo, style: LocalizedDateTimeStyle.date)}',
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: context.layout.gridChildAspect(1.7),
+            children: [
+              _statCard(
+                label: locale.translate('audit_report_operations'),
+                value: '${weekly.operationsCount}',
+              ),
+              _statCard(
+                label: locale.translate('audit_report_income'),
+                value: formatLocalizedNumber(context, weekly.incomeTotal),
+                valueColor: colors.accentGreen,
+              ),
+              _statCard(
+                label: locale.translate('audit_report_expense'),
+                value: formatLocalizedNumber(context, weekly.expenseTotal),
+                valueColor: colors.accentRed,
+              ),
+              _statCard(
+                label: locale.translate('audit_report_net'),
+                value: formatLocalizedNumber(context, weekly.netTotal),
+                valueColor: weekly.netTotal >= 0
+                    ? colors.accentGreen
+                    : colors.accentRed,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: colors.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: colors.border),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  TablerIcons.shield_check_filled,
-                  size: 48,
-                  color: colors.accentGreen,
-                ),
-                const SizedBox(height: 12),
                 Text(
-                  context.read<LanguageCubit>().translate(
-                    'audit_security_status',
-                  ),
-                  style: textStyles.h2Sans.copyWith(
+                  '${locale.translate('audit_report_violations')}: ${weekly.alertsCount}',
+                  style: textStyles.bodySans.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  context.read<LanguageCubit>().translate(
-                    'audit_security_desc',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (state.weekly != null) ...[
-                  Text(
-                    '${state.weekly!.operationsCount} · ${state.weekly!.alertsCount}',
-                    style: textStyles.bodyMono.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
+                const SizedBox(height: 12),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    Column(
-                      children: [
-                        Text(
-                          '${state.logs.length}',
-                          style: textStyles.h1Sans.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 24,
-                          ),
+                    for (final sev in const [
+                      'urgent',
+                      'important',
+                      'info',
+                    ]) ...[
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Text(
+                              '${weekly.alertsBySeverity[sev] ?? 0}',
+                              style: textStyles.h2Sans.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              locale.translate('audit_severity_$sev'),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                        Text(
-                          context.read<LanguageCubit>().translate(
-                            'audit_total_events',
-                          ),
-                          style: textStyles.captionSans,
-                        ),
-                      ],
-                    ),
-                    Container(width: 1, height: 40, color: colors.border),
-                    Column(
-                      children: [
-                        Text(
-                          '${state.alerts.length}',
-                          style: textStyles.h1Sans.copyWith(
-                            color: colors.accentAmber,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 24,
-                          ),
-                        ),
-                        Text(
-                          context.read<LanguageCubit>().translate(
-                            'audit_anomalies',
-                          ),
-                          style: textStyles.captionSans,
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ],
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

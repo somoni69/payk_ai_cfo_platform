@@ -12,6 +12,7 @@ import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -405,11 +406,11 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
               mainAxisSpacing: 8,
               crossAxisSpacing: 8,
-              childAspectRatio: 2.2,
+              childAspectRatio: context.layout.gridChildAspect(2.2),
             ),
             itemCount: 12,
             itemBuilder: (context, index) {
@@ -1180,7 +1181,9 @@ class _HrSectionScreenState extends State<HrSectionScreen>
         },
         builder: (context, state) {
           if (state is HrLoading) {
-            return const HrOverviewShimmer();
+            return widget.section == HrNavSection.org
+                ? const HrOrgShimmer()
+                : const LedgerListShimmer(itemCount: 6);
           }
 
           if (state is HrLoaded) {

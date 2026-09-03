@@ -7,9 +7,14 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
         authState.role.canManage(AppCapability.hr);
   }
 
-  Widget _sectionLoader(HrLoaded state, bool loaded, Widget child) {
+  Widget _sectionLoader(
+    HrLoaded state,
+    bool loaded,
+    Widget child, {
+    Widget? shimmer,
+  }) {
     if (!loaded && state.sectionLoading) {
-      return const HrOverviewShimmer();
+      return shimmer ?? const LedgerListShimmer(itemCount: 5);
     }
     return child;
   }
@@ -200,6 +205,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 },
               ),
       ),
+      shimmer: const HrOrgShimmer(),
     );
   }
 
@@ -1774,11 +1780,28 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     );
     final phoneController = TextEditingController(text: emp.phone ?? '');
     final emailController = TextEditingController(text: emp.email ?? '');
+    var departments = <HrDepartment>[];
+    String? selectedDeptId = emp.departmentId;
+    try {
+      departments = await context.read<HrRepository>().getDepartments();
+    } catch (_) {}
+    if (!context.mounted) {
+      nameController.dispose();
+      posController.dispose();
+      salaryController.dispose();
+      phoneController.dispose();
+      emailController.dispose();
+      return;
+    }
     try {
       await LedgerBottomSheet.show(
         context: context,
         title: localeCubit.translate('hr_edit_employee'),
         builder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
+          final selected = departments
+              .where((d) => d.id == selectedDeptId)
+              .firstOrNull;
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1786,7 +1809,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 controller: nameController,
                 style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: localeCubit.translate('hr_employee_full_name'),
+                  labelText: language.translate('hr_employee_full_name'),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1794,10 +1817,32 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 controller: posController,
                 style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: localeCubit.translate('hr_position'),
+                  labelText: language.translate('hr_position'),
                 ),
               ),
               const SizedBox(height: 12),
+              if (departments.isNotEmpty) ...[
+                ExpansibleWidget<String?>.selection(
+                  title: Text(
+                    selected?.name ?? language.translate('hr_department_none'),
+                    style: textStyles.bodySans,
+                  ),
+                  items: [null, ...departments.map((d) => d.id)],
+                  selectedValue: selectedDeptId,
+                  itemLabelBuilder: (id) {
+                    if (id == null) {
+                      return language.translate('hr_department_none');
+                    }
+                    return departments
+                            .where((d) => d.id == id)
+                            .map((d) => d.name)
+                            .firstOrNull ??
+                        id;
+                  },
+                  onSelected: (id) => setSheetState(() => selectedDeptId = id),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: salaryController,
                 style: textStyles.bodySans,
@@ -1805,7 +1850,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                   decimal: true,
                 ),
                 decoration: InputDecoration(
-                  labelText: localeCubit.translate('hr_salary_tjs'),
+                  labelText: language.translate('hr_salary_tjs'),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1813,7 +1858,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 controller: phoneController,
                 style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: localeCubit.translate('hr_phone'),
+                  labelText: language.translate('hr_phone'),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1821,13 +1866,14 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 controller: emailController,
                 style: textStyles.bodySans,
                 decoration: InputDecoration(
-                  labelText: localeCubit.translate('hr_email'),
+                  labelText: language.translate('hr_email'),
                 ),
               ),
             ],
           );
         },
         footerBuilder: (context, setSheetState) {
+          final language = context.watch<LanguageCubit>();
           return ElevatedButton(
             onPressed: () {
               final name = nameController.text.trim();
@@ -1842,12 +1888,13 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                         emp.baseSalary,
                     phone: phoneController.text.trim(),
                     email: emailController.text.trim(),
+                    departmentId: selectedDeptId,
                   ),
                 ),
               );
               Navigator.pop(context);
             },
-            child: Text(localeCubit.translate('common_save')),
+            child: Text(language.translate('common_save')),
           );
         },
       );
@@ -1869,6 +1916,19 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     final salaryController = TextEditingController();
     final phoneController = TextEditingController();
     final emailController = TextEditingController();
+    var departments = <HrDepartment>[];
+    String? selectedDeptId;
+    try {
+      departments = await context.read<HrRepository>().getDepartments();
+    } catch (_) {}
+    if (!context.mounted) {
+      nameController.dispose();
+      posController.dispose();
+      salaryController.dispose();
+      phoneController.dispose();
+      emailController.dispose();
+      return;
+    }
 
     bool isDirty() {
       return nameController.text.trim().isNotEmpty ||
@@ -1885,6 +1945,9 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
         isDirty: isDirty,
         builder: (context, setSheetState) {
           final language = context.watch<LanguageCubit>();
+          final selected = departments
+              .where((d) => d.id == selectedDeptId)
+              .firstOrNull;
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1904,6 +1967,28 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (departments.isNotEmpty) ...[
+                ExpansibleWidget<String?>.selection(
+                  title: Text(
+                    selected?.name ?? language.translate('hr_department_none'),
+                    style: textStyles.bodySans,
+                  ),
+                  items: [null, ...departments.map((d) => d.id)],
+                  selectedValue: selectedDeptId,
+                  itemLabelBuilder: (id) {
+                    if (id == null) {
+                      return language.translate('hr_department_none');
+                    }
+                    return departments
+                            .where((d) => d.id == id)
+                            .map((d) => d.name)
+                            .firstOrNull ??
+                        id;
+                  },
+                  onSelected: (id) => setSheetState(() => selectedDeptId = id),
+                ),
+                const SizedBox(height: 12),
+              ],
               TextField(
                 controller: salaryController,
                 style: textStyles.bodySans,
@@ -1956,6 +2041,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                     email: emailController.text.trim(),
                     status: 'active',
                     createdAt: DateTime.now(),
+                    departmentId: selectedDeptId,
                   ),
                 ),
               );

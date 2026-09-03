@@ -274,6 +274,30 @@ class MockMarketingTestRepository implements MarketingRepository {
   }
 
   @override
+  Future<MarketingPublicationStats> getPublicationStatsById(
+    String publicationId,
+  ) async {
+    if (shouldFail) throw Exception('Publication Stats failed');
+    return MarketingPublicationStats(
+      publicationId: publicationId,
+      comments: 1,
+      authors: 1,
+      intents: 1,
+      prepaid: 0,
+      purchases: 0,
+      revenue: 0,
+      spend: 0,
+    );
+  }
+
+  @override
+  Future<List<int>> exportCampaigns({String format = 'xlsx'}) async => const [
+    1,
+    2,
+    3,
+  ];
+
+  @override
   Future<List<MarketingPublicationStats>> getPublicationStats() async {
     if (shouldFail) throw Exception('Publication Stats failed');
     return [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/ledger_layout.dart';
 import '../../core/theme/theme_extensions.dart';
 import 'ledger_card.dart';
 
@@ -73,13 +74,18 @@ class LedgerHero extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      value,
-                      style: textStyles.h1Sans.copyWith(
-                        fontSize: context.fontSize(30),
-                        fontWeight: FontWeight.w600,
-                        height: 1.15,
-                        color: colors.textPrimary,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        style: textStyles.h1Sans.copyWith(
+                          fontSize: context.fontSize(30),
+                          fontWeight: FontWeight.w600,
+                          height: 1.15,
+                          color: colors.textPrimary,
+                        ),
                       ),
                     ),
                     if (caption != null) ...[
@@ -131,42 +137,53 @@ class LedgerMetricTile extends StatelessWidget {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    return LedgerCard(
-      style: LedgerCardStyle.outlined,
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20, color: iconColor),
-          const SizedBox(height: 14),
-          Text(
-            label,
-            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: textStyles.h2Sans.copyWith(
-              fontSize: context.fontSize(18),
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (delta != null) ...[
-            const SizedBox(height: 4),
+    return SizedBox(
+      width: double.infinity,
+      child: LedgerCard(
+        style: LedgerCardStyle.outlined,
+        onTap: onTap,
+        padding: const EdgeInsets.all(14),
+        constraints: BoxConstraints(
+          minHeight: context.layout.metricTileMinHeight,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 20, color: iconColor),
+            const SizedBox(height: 12),
             Text(
-              delta!,
-              style: textStyles.smallSans.copyWith(
-                color: deltaColor ?? colors.textSecondary,
-                fontWeight: FontWeight.w500,
+              label,
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: context.fontSize(18),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
+            if (delta != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                delta!,
+                style: textStyles.smallSans.copyWith(
+                  color: deltaColor ?? colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

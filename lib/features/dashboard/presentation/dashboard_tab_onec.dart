@@ -21,7 +21,7 @@ Widget _buildOneCTab(
       authState.role.canWrite(AppCapability.dashboard);
 
   if (onec == null || targets == null) {
-    return const DashboardSectionShimmer();
+    return const DashboardSectionShimmer(kind: DashboardShimmerKind.onec);
   }
 
   final diffTotal = onec.totalOnec - onec.totalPayk;

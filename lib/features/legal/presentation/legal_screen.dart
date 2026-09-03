@@ -668,10 +668,15 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
       body: BlocBuilder<LegalBloc, LegalState>(
         builder: (context, state) {
           if (state is LegalLoading) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: LedgerListShimmer(itemCount: 4),
-            );
+            return switch (widget.section) {
+              LegalSection.aiLawyer => const LegalChatShimmer(),
+              LegalSection.laws => const LegalLawsShimmer(),
+              LegalSection.constructor => const LegalTemplatesShimmer(),
+              _ => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LedgerListShimmer(itemCount: 4),
+              ),
+            };
           }
           if (state is! LegalLoaded) {
             return const SizedBox.shrink();
@@ -703,6 +708,25 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
         icon: const Icon(TablerIcons.plus),
         label: Text(
           locale.translate('legal_law_add'),
+          style: textStyles.bodySans.copyWith(
+            color: colors.surface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    }
+
+    if (widget.section == LegalSection.constructor) {
+      return FloatingActionButton.extended(
+        heroTag: null,
+        onPressed: () => _showTemplateSheet(context),
+        backgroundColor: colors.brand,
+        foregroundColor: colors.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        icon: const Icon(TablerIcons.plus),
+        label: Text(
+          locale.translate('legal_template_new'),
           style: textStyles.bodySans.copyWith(
             color: colors.surface,
             fontWeight: FontWeight.w600,
@@ -1272,7 +1296,7 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
     }
 
     return state.isGenerating
-        ? const LedgerNamedListShimmer(itemCount: 4)
+        ? const LegalTemplatesShimmer()
         : ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: state.templates.length,
@@ -1311,6 +1335,23 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      if ((template.body).isEmpty)
+                        Text(
+                          localeCubit.translate('legal_template_no_text'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        )
+                      else
+                        Text(
+                          template.body,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                          ),
+                        ),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
@@ -1324,7 +1365,19 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                             ),
                           ),
                           if (_canManageLegal(context)) ...[
-                            const SizedBox(width: 8),
+                            IconButton(
+                              tooltip: localeCubit.translate(
+                                'legal_template_edit',
+                              ),
+                              icon: Icon(
+                                TablerIcons.pencil,
+                                color: colors.brand,
+                              ),
+                              onPressed: () => _showTemplateSheet(
+                                context,
+                                template: template,
+                              ),
+                            ),
                             IconButton(
                               icon: Icon(
                                 TablerIcons.trash,
@@ -1407,6 +1460,91 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
             Navigator.pop(context);
           },
           child: Text(localeCubit.translate('legal_generate_contract')),
+        );
+      },
+    );
+  }
+
+  void _showTemplateSheet(BuildContext context, {ContractTemplate? template}) {
+    if (!_canManageLegal(context)) return;
+    final localeCubit = context.read<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final bloc = context.read<LegalBloc>();
+    final nameController = TextEditingController(text: template?.name ?? '');
+    final bodyController = TextEditingController(text: template?.body ?? '');
+    final categoryController = TextEditingController(
+      text: template?.category ?? '',
+    );
+    final editing = template != null;
+
+    LedgerBottomSheet.show(
+      context: context,
+      title: localeCubit.translate(
+        editing ? 'legal_template_edit' : 'legal_template_new',
+      ),
+      builder: (context, setSheetState) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: nameController,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_template_name'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: categoryController,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_template_category'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bodyController,
+              style: textStyles.bodySans,
+              minLines: 6,
+              maxLines: 12,
+              decoration: InputDecoration(
+                labelText: localeCubit.translate('legal_template_body'),
+              ),
+            ),
+          ],
+        );
+      },
+      footerBuilder: (context, setSheetState) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              final name = nameController.text.trim();
+              final body = bodyController.text.trim();
+              if (name.isEmpty || body.isEmpty) return;
+              final category = categoryController.text.trim();
+              if (editing) {
+                bloc.add(
+                  UpdateTemplateRequested(
+                    id: template.id,
+                    name: name,
+                    body: body,
+                    category: category.isEmpty ? null : category,
+                  ),
+                );
+              } else {
+                bloc.add(
+                  CreateTemplateRequested(
+                    name: name,
+                    body: body,
+                    category: category.isEmpty ? null : category,
+                  ),
+                );
+              }
+              Navigator.pop(context);
+            },
+            child: Text(localeCubit.translate('common_save')),
+          ),
         );
       },
     );

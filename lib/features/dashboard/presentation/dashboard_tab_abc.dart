@@ -10,7 +10,7 @@ Widget _buildAbcTab(
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const DashboardSectionShimmer();
+    return const DashboardSectionShimmer(kind: DashboardShimmerKind.abc);
   }
 
   final loaded = context.watch<DashboardBloc>().state;
@@ -74,11 +74,22 @@ Widget _buildAbcTab(
       ),
       if (isLoading) ...[
         const SizedBox(height: 12),
-        const Center(
-          child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+        const LedgerShimmer(
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerFeedRowShimmer(),
+              ),
+              Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerFeedRowShimmer(),
+              ),
+              Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: LedgerFeedRowShimmer(),
+              ),
+            ],
           ),
         ),
       ],

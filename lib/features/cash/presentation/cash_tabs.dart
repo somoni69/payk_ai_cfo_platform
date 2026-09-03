@@ -1008,9 +1008,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
       return Column(
         children: [
           period,
-          const Expanded(
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-          ),
+          const Expanded(child: CashOnecShimmer(includePeriod: false)),
         ],
       );
     }
@@ -1326,6 +1324,200 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
             );
           }),
         ],
+      ),
+    );
+  }
+}
+
+class CashEditsView extends StatefulWidget {
+  const CashEditsView({super.key});
+
+  @override
+  State<CashEditsView> createState() => _CashEditsViewState();
+}
+
+class _CashEditsViewState extends State<CashEditsView> {
+  var _loading = true;
+  String? _error;
+  PosEditsPage _page = const PosEditsPage();
+  String? _openId;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final page = await context.read<CashRepository>().getPosEdits();
+      if (!mounted) return;
+      setState(() {
+        _page = page;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  String _describe(LanguageCubit language, PosEditRecord row) {
+    if (row.kind == 'clear') {
+      return language.translate('cash_edits_cleared');
+    }
+    final name = row.productName ?? '—';
+    final qty = row.qtyRemoved ?? 0;
+    final verb = row.kind == 'remove'
+        ? language.translate('cash_edits_removed')
+        : language.translate('cash_edits_reduced');
+    return '$verb $qty × «$name»';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
+
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: LedgerListShimmer(itemCount: 6),
+      );
+    }
+    if (_error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(language.translateMessage(_error!)),
+        ),
+      );
+    }
+    if (_page.items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            language.translate('cash_edits_empty'),
+            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+        itemCount: _page.items.length + 1,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Text(
+              language.translate('cash_edits_about'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            );
+          }
+          final row = _page.items[index - 1];
+          final open = _openId == row.id;
+          return Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: colors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _openId = open ? null : row.id),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _describe(language, row),
+                              style: textStyles.bodySans.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              [
+                                formatLocalizedDateTime(context, row.createdAt),
+                                row.userName ?? '—',
+                                row.registerName ?? '',
+                              ].where((s) => s.isNotEmpty).join(' · '),
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                            if (row.kind != 'clear')
+                              Text(
+                                '${row.qtyBefore ?? 0} → ${row.qtyAfter ?? 0}',
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      if (row.amountRemoved != null)
+                        Text(
+                          '−${formatLocalizedNumber(context, row.amountRemoved!)}',
+                          style: textStyles.bodyMono.copyWith(
+                            color: colors.accentRed,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (open) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    language.translate('cash_edits_cart'),
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  if (row.cart.isEmpty)
+                    Text(
+                      language.translate('cash_edits_cart_empty'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    )
+                  else
+                    for (final line in row.cart)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          '${formatLocalizedNumber(context, line.qty)} × ${line.name}',
+                          style: textStyles.captionSans,
+                        ),
+                      ),
+                ],
+              ],
+            ),
+          );
+        },
       ),
     );
   }

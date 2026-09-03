@@ -187,6 +187,20 @@ class MockCashTestRepository implements CashRepository {
     if (shouldFail) throw Exception('Import error');
     return 0;
   }
+
+  @override
+  Future<bool> getPosPinStatus() async => false;
+
+  @override
+  Future<void> savePosPin(String pin) async {}
+
+  @override
+  Future<PosPinCheck> verifyPosPin(String pin, {PosEditAction? action}) async =>
+      const PosPinCheck(ok: true);
+
+  @override
+  Future<PosEditsPage> getPosEdits({int page = 1, int size = 50}) async =>
+      const PosEditsPage();
 }
 
 void main() {

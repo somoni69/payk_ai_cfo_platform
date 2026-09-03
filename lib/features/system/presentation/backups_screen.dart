@@ -5,6 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../cubit/backups_cubit.dart';
 import '../domain/system_repository.dart';
 
@@ -115,7 +116,7 @@ class _BackupsView extends StatelessWidget {
             label: Text(language.translate('backups_create')),
           ),
           body: loading
-              ? const Center(child: CircularProgressIndicator())
+              ? const BackupsOverviewShimmer()
               : RefreshIndicator(
                   onRefresh: () => context.read<BackupsCubit>().loadBackups(),
                   child: ListView(

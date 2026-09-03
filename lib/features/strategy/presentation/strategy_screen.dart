@@ -799,7 +799,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
             const SizedBox(height: 20),
 
             if (state.isWhatIfLoading)
-              const StrategyOverviewShimmer()
+              const LedgerShimmer(child: LedgerTextBlockShimmer())
             else if (state.whatIfAnswer != null)
               Container(
                 padding: const EdgeInsets.all(16),
@@ -930,7 +930,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
             const SizedBox(height: 20),
 
             if (state.isMarketingLoading)
-              const StrategyOverviewShimmer()
+              const LedgerShimmer(child: LedgerTextBlockShimmer())
             else if (state.marketingIdeas.isNotEmpty)
               Container(
                 padding: const EdgeInsets.all(16),
@@ -1128,7 +1128,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
               const SizedBox(height: 20),
 
               if (state.isAnalysisLoading || state.isGeneratingAnalysis)
-                const StrategyOverviewShimmer()
+                const StrategyMatricesShimmer()
               else if (analysis == null)
                 Container(
                   padding: const EdgeInsets.all(24),
@@ -1493,7 +1493,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
           previous.macro != current.macro,
       builder: (context, state) {
         if (state.isMacroLoading && !state.macroLoaded) {
-          return const StrategyOverviewShimmer();
+          return const LedgerListShimmer(itemCount: 5);
         }
         if (state.macro.isEmpty) {
           return Center(
@@ -1592,7 +1592,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
           previous.news != current.news,
       builder: (context, state) {
         if (state.isNewsLoading && !state.newsLoaded) {
-          return const StrategyOverviewShimmer();
+          return const StrategyNewsShimmer();
         }
         if (state.news.isEmpty) {
           return Center(
@@ -1677,7 +1677,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
           previous.scenarios != current.scenarios,
       builder: (context, state) {
         if (state.isScenariosLoading && !state.scenariosLoaded) {
-          return const StrategyOverviewShimmer();
+          return const LedgerListShimmer(itemCount: 5);
         }
         return RefreshIndicator(
           onRefresh: () async {
@@ -1777,7 +1777,10 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
           previous.dailySummary != current.dailySummary,
       builder: (context, state) {
         if (state.isSummaryLoading && !state.summaryLoaded) {
-          return const StrategyOverviewShimmer();
+          return const Padding(
+            padding: EdgeInsets.all(16),
+            child: LedgerShimmer(child: LedgerTextBlockShimmer()),
+          );
         }
         final summary = state.dailySummary;
         return RefreshIndicator(

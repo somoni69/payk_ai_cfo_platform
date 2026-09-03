@@ -157,6 +157,8 @@ abstract class HrRepository {
 
   Future<void> deleteContract(String id);
 
+  Future<List<HrDepartment>> getDepartments();
+
   Future<MovementReport> getMovementReport({
     required String dateFrom,
     required String dateTo,

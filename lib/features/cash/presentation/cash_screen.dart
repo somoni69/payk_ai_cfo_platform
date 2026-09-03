@@ -12,6 +12,7 @@ import '../../../core/localization/locale_number_format.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/models/ui_feedback.dart';
+import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -38,7 +39,7 @@ part 'cash_tabs.dart';
 part 'cash_sheets.dart';
 part 'cash_pos.dart';
 
-enum CashSection { operations, shifts, summary, pos, onec }
+enum CashSection { operations, shifts, summary, pos, onec, edits }
 
 String _cashSectionTitle(LanguageCubit language, CashSection section) {
   return language.translate(switch (section) {
@@ -47,7 +48,14 @@ String _cashSectionTitle(LanguageCubit language, CashSection section) {
     CashSection.summary => 'cash_tab_summary',
     CashSection.pos => 'cash_tab_pos',
     CashSection.onec => 'cash_tab_onec_kkm',
+    CashSection.edits => 'cash_tab_edits',
   });
+}
+
+bool _seesPosEdits(BuildContext context) {
+  final auth = context.read<AuthBloc>().state;
+  if (auth is! AuthAuthenticated) return false;
+  return auth.role == UserRole.owner || auth.role == UserRole.director;
 }
 
 void _openCashSection(BuildContext context, CashSection section) {
@@ -683,49 +691,51 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
               const SizedBox(height: 10),
             ],
 
-            // 4. Navigation Grid (3 Section Cards)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildHubSectionCard(
-                    context: context,
-                    icon: TablerIcons.receipt,
-                    title: language.translate('cash_tab_operations'),
-                    subtitle: '$totalOps операций',
-                    onTap: () =>
-                        _openCashSection(context, CashSection.operations),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildHubSectionCard(
-                    context: context,
-                    icon: TablerIcons.clock_hour_4,
-                    title: language.translate('cash_tab_shifts'),
-                    subtitle: isOpen
-                        ? 'Смена открыта'
-                        : '$openShiftsCount акт. смен',
-                    onTap: () => _openCashSection(context, CashSection.shifts),
-                  ),
-                ),
-              ],
+            LedgerPairRow(
+              left: _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.receipt,
+                title: language.translate('cash_tab_operations'),
+                subtitle: '$totalOps операций',
+                onTap: () => _openCashSection(context, CashSection.operations),
+              ),
+              right: _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.clock_hour_4,
+                title: language.translate('cash_tab_shifts'),
+                subtitle: isOpen
+                    ? 'Смена открыта'
+                    : '$openShiftsCount акт. смен',
+                onTap: () => _openCashSection(context, CashSection.shifts),
+              ),
             ),
             const SizedBox(height: 10),
-            _buildHubSectionCard(
-              context: context,
-              icon: TablerIcons.building_bank,
-              title: language.translate('cash_tab_summary'),
-              subtitle: '$totalRegisters касс',
-              onTap: () => _openCashSection(context, CashSection.summary),
+            LedgerPairRow(
+              left: _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.building_bank,
+                title: language.translate('cash_tab_summary'),
+                subtitle: '$totalRegisters касс',
+                onTap: () => _openCashSection(context, CashSection.summary),
+              ),
+              right: _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.device_desktop_analytics,
+                title: language.translate('cash_tab_onec_kkm'),
+                subtitle: language.translate('cash_tab_onec_kkm_hint'),
+                onTap: () => _openCashSection(context, CashSection.onec),
+              ),
             ),
-            const SizedBox(height: 10),
-            _buildHubSectionCard(
-              context: context,
-              icon: TablerIcons.device_desktop_analytics,
-              title: language.translate('cash_tab_onec_kkm'),
-              subtitle: language.translate('cash_tab_onec_kkm_hint'),
-              onTap: () => _openCashSection(context, CashSection.onec),
-            ),
+            if (_seesPosEdits(context)) ...[
+              const SizedBox(height: 10),
+              _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.receipt_off,
+                title: language.translate('cash_tab_edits'),
+                subtitle: language.translate('cash_tab_edits_hint'),
+                onTap: () => _openCashSection(context, CashSection.edits),
+              ),
+            ],
             const SizedBox(height: 10),
 
             // 5. Recent Activity Header
@@ -829,6 +839,10 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            minHeight: context.layout.hubTileMinHeight,
+          ),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -914,6 +928,7 @@ class _CashSectionScreenState extends State<CashSectionScreen>
             CashSection.summary => previous.summaries != current.summaries,
             CashSection.pos => previous.registers != current.registers,
             CashSection.onec => previous.transactions != current.transactions,
+            CashSection.edits => false,
           };
         }
         return true;
@@ -940,7 +955,14 @@ class _CashSectionScreenState extends State<CashSectionScreen>
                 child: Container(height: 1, color: colors.border),
               ),
             ),
-            body: const CashOverviewShimmer(),
+            body: switch (widget.section) {
+              CashSection.pos => const CashPosShimmer(),
+              CashSection.onec => const CashOnecShimmer(),
+              CashSection.shifts => const CashShiftsShimmer(),
+              CashSection.summary => const CashSummaryShimmer(),
+              CashSection.edits => const LedgerListShimmer(itemCount: 6),
+              CashSection.operations => const LedgerListShimmer(itemCount: 6),
+            },
           );
         }
 
@@ -1023,7 +1045,8 @@ class _CashSectionScreenState extends State<CashSectionScreen>
                   ),
                 ),
               if (widget.section != CashSection.pos &&
-                  widget.section != CashSection.onec)
+                  widget.section != CashSection.onec &&
+                  widget.section != CashSection.edits)
                 IconButton(
                   tooltip: language.translate('cash_download_report'),
                   onPressed: () => _showReportDownloadBottomSheet(context),
@@ -1047,6 +1070,7 @@ class _CashSectionScreenState extends State<CashSectionScreen>
             CashSection.summary => _buildSummaryTab(context, state.summaries),
             CashSection.pos => CashPosView(state: state, isViewer: isViewer),
             CashSection.onec => const CashOneCKkmView(),
+            CashSection.edits => const CashEditsView(),
           },
         );
       },

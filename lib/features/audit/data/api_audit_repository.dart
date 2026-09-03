@@ -150,13 +150,10 @@ class ApiAuditRepository implements AuditRepository {
   }
 
   @override
-  Future<WeeklyAuditReport> getWeeklyReport({DateTime? weekStart}) async {
+  Future<WeeklyAuditReport> getWeeklyReport({int weeksAgo = 0}) async {
     final response = await _client.dio.get(
       '/audit/weekly-report',
-      queryParameters: {
-        if (weekStart != null)
-          'week_start': weekStart.toIso8601String().substring(0, 10),
-      },
+      queryParameters: {'weeks_ago': weeksAgo},
     );
     final data = response.data is Map
         ? Map<String, dynamic>.from(response.data as Map)
@@ -185,10 +182,13 @@ class ApiAuditRepository implements AuditRepository {
   }
 
   @override
-  Future<List<int>> exportWeeklyReport({String format = 'pdf'}) async {
+  Future<List<int>> exportWeeklyReport({
+    String format = 'pdf',
+    int weeksAgo = 0,
+  }) async {
     final response = await _client.dio.get<List<int>>(
       '/audit/weekly-report/export',
-      queryParameters: {'fmt': format},
+      queryParameters: {'fmt': format, 'weeks_ago': weeksAgo},
       options: Options(responseType: ResponseType.bytes),
     );
     return response.data ?? <int>[];

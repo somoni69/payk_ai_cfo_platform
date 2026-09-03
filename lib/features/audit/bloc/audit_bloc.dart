@@ -11,6 +11,7 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
     on<LoadAuditData>(_onLoadAuditData);
     on<RunAnomalyDetectorsRequested>(_onRunAnomalyDetectorsRequested);
     on<ResolveAlertRequested>(_onResolveAlert);
+    on<LoadWeeklyReport>(_onLoadWeeklyReport);
   }
 
   Future<void> _onLoadAuditData(
@@ -23,11 +24,21 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
     try {
       final logs = await _repository.getAuditLogs();
       final alerts = await _repository.getAuditAlerts();
+      final weeksAgo = state is AuditLoaded
+          ? (state as AuditLoaded).weeksAgo
+          : 0;
       WeeklyAuditReport? weekly;
       try {
-        weekly = await _repository.getWeeklyReport();
+        weekly = await _repository.getWeeklyReport(weeksAgo: weeksAgo);
       } catch (_) {}
-      emit(AuditLoaded(logs: logs, alerts: alerts, weekly: weekly));
+      emit(
+        AuditLoaded(
+          logs: logs,
+          alerts: alerts,
+          weekly: weekly,
+          weeksAgo: weeksAgo,
+        ),
+      );
     } catch (e) {
       emit(AuditError(e.toString()));
     }
@@ -37,15 +48,9 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
     RunAnomalyDetectorsRequested event,
     Emitter<AuditState> emit,
   ) async {
-    if (state is AuditLoaded) {
-      final curState = state as AuditLoaded;
-      emit(
-        AuditLoaded(
-          logs: curState.logs,
-          alerts: curState.alerts,
-          isRunningDetectors: true,
-        ),
-      );
+    final previous = state is AuditLoaded ? state as AuditLoaded : null;
+    if (previous != null) {
+      emit(previous.copyWith(isRunningDetectors: true, message: null));
     }
     try {
       final alerts = await _repository.runAnomalyDetectors();
@@ -56,6 +61,8 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
           alerts: alerts,
           isRunningDetectors: false,
           message: 'AI-проверка безопасности успешно выполнена',
+          weekly: previous?.weekly,
+          weeksAgo: previous?.weeksAgo ?? 0,
         ),
       );
     } catch (e) {
@@ -83,6 +90,29 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
       );
     } catch (e) {
       emit(AuditError(e.toString()));
+    }
+  }
+
+  Future<void> _onLoadWeeklyReport(
+    LoadWeeklyReport event,
+    Emitter<AuditState> emit,
+  ) async {
+    if (state is! AuditLoaded) return;
+    final current = state as AuditLoaded;
+    try {
+      final weekly = await _repository.getWeeklyReport(
+        weeksAgo: event.weeksAgo,
+      );
+      if (emit.isDone || state is! AuditLoaded) return;
+      emit(
+        (state as AuditLoaded).copyWith(
+          weekly: weekly,
+          weeksAgo: event.weeksAgo,
+        ),
+      );
+    } catch (_) {
+      if (emit.isDone || state is! AuditLoaded) return;
+      emit(current.copyWith(weeksAgo: event.weeksAgo));
     }
   }
 }

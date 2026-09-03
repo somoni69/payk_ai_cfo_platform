@@ -57,6 +57,8 @@ abstract class FinanceRepository {
 
   Future<ClientAnalysisReport> getClientAnalysis();
 
+  Future<List<PlanItem>> getPlans({String? period});
+
   Future<PlanItem> createPlan({
     required String period,
     required String category,

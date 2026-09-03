@@ -969,4 +969,95 @@ class ApiCashRepository implements CashRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
+
+  @override
+  Future<bool> getPosPinStatus() async {
+    final response = await _dio.get('/cash/pos/pin');
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : <String, dynamic>{};
+    return data['is_set'] == true;
+  }
+
+  @override
+  Future<void> savePosPin(String pin) async {
+    try {
+      await _dio.put(
+        '/cash/pos/pin',
+        data: {'pin': pin},
+        options: _writeOptions(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<PosPinCheck> verifyPosPin(String pin, {PosEditAction? action}) async {
+    try {
+      final response = await _dio.post(
+        '/cash/pos/pin/verify',
+        data: {'pin': pin, if (action != null) 'action': action.toJson()},
+        options: _writeOptions(),
+      );
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      return PosPinCheck(
+        ok: data['ok'] == true,
+        retryAfter: (data['retry_after'] as num?)?.toInt() ?? 0,
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<PosEditsPage> getPosEdits({int page = 1, int size = 50}) async {
+    final response = await _dio.get(
+      '/cash/pos/edits',
+      queryParameters: {'page': page, 'size': size},
+    );
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : <String, dynamic>{};
+    final rawItems = data['items'] is List ? data['items'] as List : const [];
+    return PosEditsPage(
+      total: (data['total'] as num?)?.toInt() ?? rawItems.length,
+      items: rawItems.whereType<Map>().map((raw) {
+        final m = Map<String, dynamic>.from(raw);
+        final cartRaw = m['cart'] is List ? m['cart'] as List : const [];
+        return PosEditRecord(
+          id: (m['id'] ?? '').toString(),
+          createdAt:
+              DateTime.tryParse((m['created_at'] ?? '').toString()) ??
+              DateTime.now(),
+          userName: m['user_name']?.toString(),
+          kind: (m['kind'] ?? '').toString(),
+          registerName: m['register_name']?.toString(),
+          productName: m['product_name']?.toString(),
+          productBarcode: m['product_barcode']?.toString(),
+          qtyBefore: m['qty_before'] == null
+              ? null
+              : _toDouble(m['qty_before']),
+          qtyAfter: m['qty_after'] == null ? null : _toDouble(m['qty_after']),
+          qtyRemoved: m['qty_removed'] == null
+              ? null
+              : _toDouble(m['qty_removed']),
+          amountRemoved: m['amount_removed'] == null
+              ? null
+              : _toDouble(m['amount_removed']),
+          cart: cartRaw.whereType<Map>().map((lineRaw) {
+            final line = Map<String, dynamic>.from(lineRaw);
+            return PosCartLine(
+              name: (line['name'] ?? '').toString(),
+              barcode: line['barcode']?.toString(),
+              qty: _toDouble(line['qty']),
+              price: _toDouble(line['price']),
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
+  }
 }

@@ -526,6 +526,31 @@ class ApiFinanceRepository implements FinanceRepository {
   }
 
   @override
+  Future<List<PlanItem>> getPlans({String? period}) async {
+    try {
+      final response = await _dio.get(
+        '/finance/plans',
+        queryParameters: {
+          if (period != null && period.isNotEmpty) 'period': period,
+        },
+      );
+      final list = response.data is List ? response.data as List : const [];
+      return list.whereType<Map>().map((raw) {
+        final map = Map<String, dynamic>.from(raw);
+        return PlanItem(
+          id: (map['id'] as num?)?.toInt() ?? 0,
+          period: map['period']?.toString() ?? period ?? '',
+          category: map['category']?.toString() ?? '',
+          type: map['type']?.toString() ?? 'expense',
+          plannedAmount: _toDouble(map['planned_amount']),
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
   Future<PlanItem> createPlan({
     required String period,
     required String category,

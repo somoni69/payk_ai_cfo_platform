@@ -753,7 +753,7 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
 
             Expanded(
               child: state.isLoading
-                  ? const UsersOverviewShimmer()
+                  ? const LedgerListShimmer(itemCount: 6)
                   : RefreshIndicator(
                       onRefresh: () async {
                         _visibleUsers = _pageSize;
@@ -997,7 +997,7 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
           p.permissionsError != c.permissionsError,
       builder: (context, state) {
         if (state.isPermissionsLoading && state.permissionMatrix == null) {
-          return const UsersOverviewShimmer();
+          return const UsersMatrixShimmer();
         }
 
         if (state.permissionMatrix == null) {

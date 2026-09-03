@@ -70,6 +70,12 @@ abstract class MarketingRepository {
   Future<void> rejectAiMedia({required String mediaId, required String reason});
 
   Future<List<MarketingPublicationStats>> getPublicationStats();
+
+  Future<MarketingPublicationStats> getPublicationStatsById(
+    String publicationId,
+  );
+
+  Future<List<int>> exportCampaigns({String format = 'xlsx'});
 }
 
 abstract interface class CancellableMarketingRepository {

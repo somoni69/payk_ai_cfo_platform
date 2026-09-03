@@ -403,7 +403,7 @@ class ApiHrRepository implements HrRepository {
         'hire_date': (employee.hireDate ?? DateTime.now())
             .toIso8601String()
             .substring(0, 10),
-        if (employee.departmentId != null)
+        if (employee.departmentId != null && employee.departmentId!.isNotEmpty)
           'department_id': int.tryParse(employee.departmentId!),
         if (employee.managerId != null)
           'manager_id': int.tryParse(employee.managerId!),
@@ -426,6 +426,24 @@ class ApiHrRepository implements HrRepository {
   }
 
   @override
+  Future<List<HrDepartment>> getDepartments() async {
+    try {
+      final response = await _apiClient.dio.get('/hr/departments');
+      final list = response.data is List ? response.data as List : const [];
+      return list.whereType<Map>().map((raw) {
+        final m = Map<String, dynamic>.from(raw);
+        return HrDepartment(
+          id: (m['id'] ?? '').toString(),
+          name: (m['name'] ?? '').toString(),
+          parentId: m['parent_id']?.toString(),
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
   Future<Employee> updateEmployee(Employee employee) async {
     try {
       final payload = <String, dynamic>{
@@ -437,6 +455,8 @@ class ApiHrRepository implements HrRepository {
         'status': employee.status,
         if (employee.hireDate != null)
           'hire_date': employee.hireDate!.toIso8601String().substring(0, 10),
+        if (employee.departmentId != null && employee.departmentId!.isNotEmpty)
+          'department_id': int.tryParse(employee.departmentId!),
       };
       final response = await _apiClient.dio.patch(
         '/hr/employees/${_requirePositiveId(employee.id, 'employeeId')}',

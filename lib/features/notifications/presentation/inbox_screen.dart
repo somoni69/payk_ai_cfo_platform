@@ -190,10 +190,7 @@ class _InboxScreenState extends State<InboxScreen> {
         ),
       ),
       body: _loading
-          ? const Padding(
-              padding: EdgeInsets.all(16),
-              child: InboxOverviewShimmer(),
-            )
+          ? const InboxOverviewShimmer()
           : RefreshIndicator(
               onRefresh: _load,
               child: _error != null

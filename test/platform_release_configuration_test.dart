@@ -17,6 +17,9 @@ void main() {
 
       expect(manifest, contains('android:usesCleartextTraffic="false"'));
       expect(manifest, contains('android:allowBackup="false"'));
+      expect(manifest, contains('android:resizeableActivity="true"'));
+      expect(manifest, contains('android.max_aspect'));
+      expect(manifest, contains('2.4'));
       expect(manifest, contains('@xml/backup_rules'));
       expect(manifest, contains('@xml/data_extraction_rules'));
       expect(backupRules, contains('<exclude domain="root" path="."/>'));

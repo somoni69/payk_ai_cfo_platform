@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
+import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -48,7 +49,7 @@ class TasksScreen extends StatelessWidget {
   }
 }
 
-enum TaskSection { myTasks, allTasks, calendar, analytics }
+enum TaskSection { myTasks, allTasks, calendar, analytics, board }
 
 String _taskSectionTitle(LanguageCubit language, TaskSection section) {
   return language.translate(switch (section) {
@@ -56,6 +57,7 @@ String _taskSectionTitle(LanguageCubit language, TaskSection section) {
     TaskSection.allTasks => 'tasks_tab_all_tasks',
     TaskSection.calendar => 'tasks_tab_calendar',
     TaskSection.analytics => 'tasks_tab_analytics',
+    TaskSection.board => 'tasks_tab_board',
   });
 }
 
@@ -668,57 +670,48 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
             const SizedBox(height: 14),
 
             // 4. Navigation Grid (2x2)
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTaskHubCard(
-                    context: context,
-                    icon: TablerIcons.user_check,
-                    title: language.translate('tasks_tab_my_tasks'),
-                    subtitle: myOverdueCount > 0
-                        ? '$myTasksCount шт. ($myOverdueCount проср.)'
-                        : '$myTasksCount шт.',
-                    onTap: () => _openTaskSection(context, TaskSection.myTasks),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTaskHubCard(
-                    context: context,
-                    icon: TablerIcons.list_details,
-                    title: language.translate('tasks_tab_all_tasks'),
-                    subtitle: '$totalTasks шт.',
-                    onTap: () =>
-                        _openTaskSection(context, TaskSection.allTasks),
-                  ),
-                ),
-              ],
+            LedgerPairRow(
+              left: _buildTaskHubCard(
+                context: context,
+                icon: TablerIcons.user_check,
+                title: language.translate('tasks_tab_my_tasks'),
+                subtitle: myOverdueCount > 0
+                    ? '$myTasksCount шт. ($myOverdueCount проср.)'
+                    : '$myTasksCount шт.',
+                onTap: () => _openTaskSection(context, TaskSection.myTasks),
+              ),
+              right: _buildTaskHubCard(
+                context: context,
+                icon: TablerIcons.list_details,
+                title: language.translate('tasks_tab_all_tasks'),
+                subtitle: '$totalTasks шт.',
+                onTap: () => _openTaskSection(context, TaskSection.allTasks),
+              ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildTaskHubCard(
-                    context: context,
-                    icon: TablerIcons.calendar_time,
-                    title: language.translate('tasks_tab_calendar'),
-                    subtitle: language.translate('tasks_calendar_gantt'),
-                    onTap: () =>
-                        _openTaskSection(context, TaskSection.calendar),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildTaskHubCard(
-                    context: context,
-                    icon: TablerIcons.chart_dots_3,
-                    title: language.translate('tasks_tab_analytics'),
-                    subtitle: language.translate('tasks_ai_insights'),
-                    onTap: () =>
-                        _openTaskSection(context, TaskSection.analytics),
-                  ),
-                ),
-              ],
+            LedgerPairRow(
+              left: _buildTaskHubCard(
+                context: context,
+                icon: TablerIcons.calendar_time,
+                title: language.translate('tasks_tab_calendar'),
+                subtitle: language.translate('tasks_calendar_gantt'),
+                onTap: () => _openTaskSection(context, TaskSection.calendar),
+              ),
+              right: _buildTaskHubCard(
+                context: context,
+                icon: TablerIcons.chart_dots_3,
+                title: language.translate('tasks_tab_analytics'),
+                subtitle: language.translate('tasks_ai_insights'),
+                onTap: () => _openTaskSection(context, TaskSection.analytics),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildTaskHubCard(
+              context: context,
+              icon: TablerIcons.layout_kanban,
+              title: language.translate('tasks_tab_board'),
+              subtitle: language.translate('tasks_tab_board_hint'),
+              onTap: () => _openTaskSection(context, TaskSection.board),
             ),
             const SizedBox(height: 20),
 
@@ -842,6 +835,10 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
+          width: double.infinity,
+          constraints: BoxConstraints(
+            minHeight: context.layout.hubTileMinHeight,
+          ),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -945,7 +942,13 @@ class _TaskSectionScreenState extends State<TaskSectionScreen>
                 child: Container(height: 1, color: colors.border),
               ),
             ),
-            body: const TasksOverviewShimmer(),
+            body: switch (widget.section) {
+              TaskSection.calendar => const TasksCalendarShimmer(),
+              TaskSection.analytics => const TasksAnalyticsShimmer(),
+              TaskSection.myTasks => const TasksMyShimmer(),
+              TaskSection.board => const LedgerListShimmer(itemCount: 6),
+              TaskSection.allTasks => const LedgerListShimmer(itemCount: 6),
+            },
           );
         }
 
@@ -1061,6 +1064,11 @@ class _TaskSectionScreenState extends State<TaskSectionScreen>
                     isLoading: state.isAnalyticsLoading,
                     isLoaded: state.analyticsLoaded,
                     error: state.analyticsError,
+                  ),
+                  TaskSection.board => _buildBoardTab(
+                    context,
+                    filteredTasks,
+                    state.pendingStatusTaskIds,
                   ),
                 },
               ),

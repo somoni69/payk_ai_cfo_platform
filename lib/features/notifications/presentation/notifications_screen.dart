@@ -123,7 +123,7 @@ class _NotificationsViewState extends State<NotificationsView> {
         },
         builder: (context, state) {
           if (state is NotificationsLoading) {
-            return const InboxOverviewShimmer();
+            return const NotificationsOverviewShimmer();
           }
 
           if (state is NotificationsError) {

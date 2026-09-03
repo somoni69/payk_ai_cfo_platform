@@ -236,3 +236,12 @@ class RejectAiStudioMediaRequested extends MarketingEvent {
 class LoadAiStudioReportRequested extends MarketingEvent {
   const LoadAiStudioReportRequested();
 }
+
+class RefreshPublicationStatsRequested extends MarketingEvent {
+  final String publicationId;
+
+  const RefreshPublicationStatsRequested(this.publicationId);
+
+  @override
+  List<Object?> get props => [publicationId];
+}

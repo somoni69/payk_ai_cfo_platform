@@ -6,7 +6,7 @@ Widget _buildPnlTab(BuildContext context, PnlReport? report, String currency) {
   final languageCubit = context.read<LanguageCubit>();
 
   if (report == null) {
-    return const DashboardSectionShimmer();
+    return const DashboardSectionShimmer(kind: DashboardShimmerKind.pnl);
   }
 
   Widget buildPnlList(

@@ -16,7 +16,7 @@ Widget _buildAccountsRatesTab(
       auth is AuthAuthenticated && auth.role == UserRole.director;
 
   if (accountsReport == null || ratesReport == null) {
-    return const DashboardSectionShimmer();
+    return const DashboardSectionShimmer(kind: DashboardShimmerKind.accounts);
   }
 
   return ListView(

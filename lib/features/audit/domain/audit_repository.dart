@@ -10,7 +10,10 @@ abstract class AuditRepository {
   Future<List<AuditAlert>> getAuditAlerts({bool? resolved});
   Future<List<AuditAlert>> runAnomalyDetectors();
   Future<AuditAlert> resolveAlert(String id, {bool isResolved = true});
-  Future<WeeklyAuditReport> getWeeklyReport({DateTime? weekStart});
-  Future<List<int>> exportWeeklyReport({String format = 'pdf'});
+  Future<WeeklyAuditReport> getWeeklyReport({int weeksAgo = 0});
+  Future<List<int>> exportWeeklyReport({
+    String format = 'pdf',
+    int weeksAgo = 0,
+  });
   Future<List<EntityHistoryItem>> getEntityHistory(String entity, String id);
 }

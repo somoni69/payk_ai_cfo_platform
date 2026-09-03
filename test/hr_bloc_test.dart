@@ -380,6 +380,9 @@ class MockHrRepository implements HrRepository {
   Future<void> deleteContract(String id) async {}
 
   @override
+  Future<List<HrDepartment>> getDepartments() async => const [];
+
+  @override
   Future<MovementReport> getMovementReport({
     required String dateFrom,
     required String dateTo,

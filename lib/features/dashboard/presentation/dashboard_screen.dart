@@ -5,6 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -94,21 +95,29 @@ Widget _buildOpenedReport(BuildContext context, DashboardSection section) {
       section: DashboardSection.pnl,
       select: (loaded) => loaded.pnl,
       contentBuilder: _buildPnlTab,
+      shimmer: const DashboardSectionShimmer(kind: DashboardShimmerKind.pnl),
     ),
     DashboardSection.planFact => _buildLazyDashboardSection<PlanFactReport>(
       section: DashboardSection.planFact,
       select: (loaded) => loaded.planFact,
       contentBuilder: _buildPlanFactTab,
+      shimmer: const DashboardSectionShimmer(
+        kind: DashboardShimmerKind.planFact,
+      ),
     ),
     DashboardSection.breakEven => _buildLazyDashboardSection<BreakEvenAnalysis>(
       section: DashboardSection.breakEven,
       select: (loaded) => loaded.breakEven,
       contentBuilder: _buildBreakEvenTab,
+      shimmer: const DashboardSectionShimmer(
+        kind: DashboardShimmerKind.breakEven,
+      ),
     ),
     DashboardSection.abc => _buildLazyDashboardSection<AbcAnalysis>(
       section: DashboardSection.abc,
       select: (loaded) => loaded.abc,
       contentBuilder: _buildAbcTab,
+      shimmer: const DashboardSectionShimmer(kind: DashboardShimmerKind.abc),
     ),
     DashboardSection.accountsRates =>
       _buildLazyDashboardSection<_AccountsRatesData>(
@@ -128,6 +137,9 @@ Widget _buildOpenedReport(BuildContext context, DashboardSection section) {
             currency,
           );
         },
+        shimmer: const DashboardSectionShimmer(
+          kind: DashboardShimmerKind.accounts,
+        ),
       ),
     DashboardSection.clients =>
       _buildLazyDashboardSection<ClientAnalysisReport>(
@@ -135,11 +147,15 @@ Widget _buildOpenedReport(BuildContext context, DashboardSection section) {
         select: (loaded) => loaded.clients,
         contentBuilder: (context, data, currency) =>
             _buildClientsTab(context, data),
+        shimmer: const DashboardSectionShimmer(
+          kind: DashboardShimmerKind.clients,
+        ),
       ),
     DashboardSection.aiInsights => _buildLazyDashboardSection<AiInsightsReport>(
       section: DashboardSection.aiInsights,
       select: (loaded) => loaded.aiInsights,
       contentBuilder: _buildAiInsightsTab,
+      shimmer: const DashboardSectionShimmer(kind: DashboardShimmerKind.ai),
     ),
     DashboardSection.onec => _buildLazyDashboardSection<_OneCData>(
       section: DashboardSection.onec,
@@ -153,6 +169,7 @@ Widget _buildOpenedReport(BuildContext context, DashboardSection section) {
       contentBuilder: (context, data, currency) {
         return _buildOneCTab(context, data.onec, data.targets);
       },
+      shimmer: const DashboardSectionShimmer(kind: DashboardShimmerKind.onec),
     ),
   };
 }

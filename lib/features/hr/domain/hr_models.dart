@@ -75,6 +75,15 @@ class Employee {
   }
 }
 
+/// Отдел магазина (`GET /hr/departments`).
+class HrDepartment {
+  final String id;
+  final String name;
+  final String? parentId;
+
+  const HrDepartment({required this.id, required this.name, this.parentId});
+}
+
 /// Узел оргсхемы.
 class OrgNode {
   final String id;

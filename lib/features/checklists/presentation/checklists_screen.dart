@@ -639,10 +639,14 @@ class ChecklistSectionScreen extends StatelessWidget {
       body: BlocBuilder<ChecklistsBloc, ChecklistsState>(
         builder: (context, state) {
           if (state is ChecklistsLoading) {
-            return const Padding(
-              padding: EdgeInsets.all(16),
-              child: LedgerListShimmer(itemCount: 4),
-            );
+            return switch (section) {
+              ChecklistSection.summary => const ChecklistsSummaryShimmer(),
+              ChecklistSection.runs => const ChecklistsRunsShimmer(),
+              _ => const Padding(
+                padding: EdgeInsets.all(16),
+                child: LedgerListShimmer(itemCount: 4),
+              ),
+            };
           }
           if (state is! ChecklistsLoaded) {
             return const SizedBox.shrink();
