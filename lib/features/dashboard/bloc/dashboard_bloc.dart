@@ -341,21 +341,58 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is! DashboardLoaded) return;
     final current = state as DashboardLoaded;
+    final dimension = AbcDimensions.toApi(event.dimension);
+    final currentDimension = current.abc?.dimension;
+    final alreadyShowing =
+        currentDimension != null &&
+        AbcDimensions.toApi(currentDimension) == dimension &&
+        !current.loadingSections.contains(DashboardSection.abc);
+    if (alreadyShowing) return;
+
+    final loading = Set<DashboardSection>.from(current.loadingSections)
+      ..add(DashboardSection.abc);
+    final errors = Map<DashboardSection, String>.from(current.sectionErrors)
+      ..remove(DashboardSection.abc);
+
+    emit(
+      current.copyWith(
+        loadingSections: loading,
+        sectionErrors: errors,
+        abc: AbcAnalysis(dimension: dimension, rows: const [], total: 0),
+      ),
+    );
+
     try {
       final abc = await _repository.getAbcAnalysis(
-        AbcDimensions.toApi(event.dimension),
+        dimension,
         dateFrom: current.reportDateFrom,
         dateTo: current.reportDateTo,
       );
-      emit(current.copyWith(abc: abc));
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
+      emit(
+        latest.copyWith(
+          abc: abc,
+          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+            ..remove(DashboardSection.abc),
+        ),
+      );
     } catch (e) {
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
       final updatedErrors =
-          Map<DashboardSection, String>.from(current.sectionErrors)
+          Map<DashboardSection, String>.from(latest.sectionErrors)
             ..[DashboardSection.abc] = userFacingError(
               e,
               fallback: ErrorKeys.loadFailed,
             );
-      emit(current.copyWith(sectionErrors: updatedErrors));
+      emit(
+        latest.copyWith(
+          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+            ..remove(DashboardSection.abc),
+          sectionErrors: updatedErrors,
+        ),
+      );
     }
   }
 

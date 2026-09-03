@@ -538,26 +538,13 @@ class _LoginScreenState extends State<LoginScreen> {
           // Кнопка переключения на логин/пароль
           SizedBox(
             width: double.infinity,
-            height: 46,
             child: OutlinedButton.icon(
               onPressed: () {
                 HapticFeedback.lightImpact();
                 setState(() => _showManualForm = true);
               },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: colors.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              icon: const Icon(TablerIcons.user_edit, size: 18),
-              label: Text(
-                language.translate('login_use_password'),
-                style: textStyles.captionSans.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              ),
+              icon: const Icon(TablerIcons.user_edit),
+              label: Text(language.translate('login_use_password')),
             ),
           ),
         ],
@@ -709,14 +696,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 22),
             SizedBox(
-              height: 48,
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: isLoading ? null : () => _submitPassword(context),
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
                 child: isLoading
                     ? SizedBox(
                         height: 20,
@@ -834,14 +816,9 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 22),
             SizedBox(
-              height: 48,
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: isLoading ? null : () => _submitTwoFactor(context),
-                style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
                 child: isLoading
                     ? SizedBox(
                         height: 20,

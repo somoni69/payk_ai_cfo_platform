@@ -21,6 +21,7 @@ import '../../../features/hr/domain/hr_repository.dart';
 import '../../../features/audit/presentation/entity_history_sheet.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum FinOpsSection { banks, transfers, aid, encashments }
@@ -370,72 +371,26 @@ class _FinOpsViewState extends State<FinOpsView> {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showEncashmentModal(context, state),
-                      icon: const Icon(TablerIcons.cash_banknote, size: 17),
-                      label: Text(
-                        locale.translate('fin_ops_new_encashment'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.surface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.surface,
-                        elevation: 0,
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showEncashmentModal(context, state),
+                    icon: const Icon(TablerIcons.cash_banknote),
+                    label: Text(
+                      locale.translate('fin_ops_new_encashment'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _showTransferModal(context, state.branches),
-                      icon: Icon(
-                        TablerIcons.arrows_transfer_up,
-                        size: 17,
-                        color: colors.textPrimary,
-                      ),
-                      label: Text(
-                        locale.translate('fin_ops_tab_transfers'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.textPrimary,
-                        backgroundColor: colors.surface,
-                        side: BorderSide(color: colors.border),
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
+                  child: OutlinedButton.icon(
+                    onPressed: () =>
+                        _showTransferModal(context, state.branches),
+                    icon: const Icon(TablerIcons.arrows_transfer_up),
+                    label: Text(
+                      locale.translate('fin_ops_tab_transfers'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
@@ -849,8 +804,6 @@ class FinOpsSectionScreen extends StatelessWidget {
   }
 
   Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
     final state = context.read<FinOpsBloc>().state;
     if (state is! FinOpsLoaded) return null;
 
@@ -877,21 +830,11 @@ class FinOpsSectionScreen extends StatelessWidget {
       ),
     };
 
-    return FloatingActionButton.extended(
+    return LedgerFab(
       heroTag: null,
       onPressed: action,
-      backgroundColor: colors.brand,
-      foregroundColor: colors.surface,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      icon: Icon(icon),
-      label: Text(
-        label,
-        style: textStyles.bodySans.copyWith(
-          color: colors.surface,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      icon: icon,
+      label: label,
     );
   }
 
@@ -1210,14 +1153,6 @@ class FinOpsSectionScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.brand,
-                          foregroundColor: colors.surface,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
                         child: Text(
                           locale.translate('fin_ops_confirm_receive'),
                         ),
@@ -1622,7 +1557,6 @@ void _showEncashmentModal(BuildContext context, FinOpsLoaded state) {
 
 void _showCreateBankSheet(BuildContext context) {
   final locale = context.read<LanguageCubit>();
-  final colors = context.colors;
   final textStyles = context.textStyles;
   final nameCtrl = TextEditingController();
 
@@ -1637,23 +1571,14 @@ void _showCreateBankSheet(BuildContext context) {
       ),
     ),
     footerBuilder: (context, setSheetState) {
-      return SizedBox(
-        width: double.infinity,
-        height: 48,
-        child: ElevatedButton(
-          onPressed: () {
-            final name = nameCtrl.text.trim();
-            if (name.isEmpty) return;
-            context.read<FinOpsBloc>().add(CreateBankRequested(name));
-            Navigator.pop(context);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: colors.brand,
-            foregroundColor: colors.surface,
-            elevation: 0,
-          ),
-          child: Text(locale.translate('common_create')),
-        ),
+      return ElevatedButton(
+        onPressed: () {
+          final name = nameCtrl.text.trim();
+          if (name.isEmpty) return;
+          context.read<FinOpsBloc>().add(CreateBankRequested(name));
+          Navigator.pop(context);
+        },
+        child: Text(locale.translate('common_create')),
       );
     },
   );

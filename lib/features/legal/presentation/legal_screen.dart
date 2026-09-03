@@ -19,8 +19,9 @@ import '../../../features/legal/bloc/legal_state.dart';
 import '../../../features/legal/domain/legal_models.dart';
 import '../../../features/legal/domain/legal_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
-import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 
 bool shouldAutoScrollLegalChat(LegalState previous, LegalState current) {
   return current is LegalLoaded &&
@@ -296,35 +297,13 @@ class _LegalScreenState extends State<LegalScreen> {
 
           // 3. Quick Action Button (if canManage)
           if (canManage) ...[
-            SizedBox(
-              height: 44,
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showCreateLawSheet(context),
-                icon: const Icon(TablerIcons.plus, size: 17),
-                label: Text(
-                  locale.translate('legal_action_law'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  minimumSize: const Size.fromHeight(44),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateLawSheet(context),
+              icon: const Icon(TablerIcons.plus),
+              label: Text(
+                locale.translate('legal_action_law'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 12),
@@ -694,63 +673,30 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
   }
 
   Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-
     if (widget.section == LegalSection.laws) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => _showCreateLawSheet(context),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          locale.translate('legal_law_add'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.plus,
+        label: locale.translate('legal_law_add'),
       );
     }
 
     if (widget.section == LegalSection.constructor) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => _showTemplateSheet(context),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          locale.translate('legal_template_new'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.plus,
+        label: locale.translate('legal_template_new'),
       );
     }
 
     if (widget.section == LegalSection.deadlines) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => _showCreateDeadlineSheet(context),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          locale.translate('legal_deadline_add'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.plus,
+        label: locale.translate('legal_deadline_add'),
       );
     }
 
@@ -1515,36 +1461,33 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
         );
       },
       footerBuilder: (context, setSheetState) {
-        return SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              final name = nameController.text.trim();
-              final body = bodyController.text.trim();
-              if (name.isEmpty || body.isEmpty) return;
-              final category = categoryController.text.trim();
-              if (editing) {
-                bloc.add(
-                  UpdateTemplateRequested(
-                    id: template.id,
-                    name: name,
-                    body: body,
-                    category: category.isEmpty ? null : category,
-                  ),
-                );
-              } else {
-                bloc.add(
-                  CreateTemplateRequested(
-                    name: name,
-                    body: body,
-                    category: category.isEmpty ? null : category,
-                  ),
-                );
-              }
-              Navigator.pop(context);
-            },
-            child: Text(localeCubit.translate('common_save')),
-          ),
+        return ElevatedButton(
+          onPressed: () {
+            final name = nameController.text.trim();
+            final body = bodyController.text.trim();
+            if (name.isEmpty || body.isEmpty) return;
+            final category = categoryController.text.trim();
+            if (editing) {
+              bloc.add(
+                UpdateTemplateRequested(
+                  id: template.id,
+                  name: name,
+                  body: body,
+                  category: category.isEmpty ? null : category,
+                ),
+              );
+            } else {
+              bloc.add(
+                CreateTemplateRequested(
+                  name: name,
+                  body: body,
+                  category: category.isEmpty ? null : category,
+                ),
+              );
+            }
+            Navigator.pop(context);
+          },
+          child: Text(localeCubit.translate('common_save')),
         );
       },
     );
@@ -1733,20 +1676,17 @@ void _showCreateLawSheet(BuildContext context) {
       );
     },
     footerBuilder: (context, setSheetState) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {
-            final title = titleController.text.trim();
-            final body = bodyController.text.trim();
-            if (title.isEmpty || body.isEmpty) return;
-            bloc.add(
-              CreateLawRequested(title: title, body: body, category: category),
-            );
-            Navigator.pop(context);
-          },
-          child: Text(localeCubit.translate('common_save')),
-        ),
+      return ElevatedButton(
+        onPressed: () {
+          final title = titleController.text.trim();
+          final body = bodyController.text.trim();
+          if (title.isEmpty || body.isEmpty) return;
+          bloc.add(
+            CreateLawRequested(title: title, body: body, category: category),
+          );
+          Navigator.pop(context);
+        },
+        child: Text(localeCubit.translate('common_save')),
       );
     },
   );
@@ -1874,29 +1814,26 @@ void _showCreateDeadlineSheet(BuildContext context) {
       );
     },
     footerBuilder: (context, setSheetState) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {
-            final title = titleController.text.trim();
-            if (title.isEmpty) return;
-            bloc.add(
-              CreateDeadlineRequested(
-                title: title,
-                type: type,
-                dueDate: dueDate,
-                amount: amountController.text.trim().isEmpty
-                    ? null
-                    : amountController.text.trim(),
-                note: noteController.text.trim().isEmpty
-                    ? null
-                    : noteController.text.trim(),
-              ),
-            );
-            Navigator.pop(context);
-          },
-          child: Text(localeCubit.translate('common_save')),
-        ),
+      return ElevatedButton(
+        onPressed: () {
+          final title = titleController.text.trim();
+          if (title.isEmpty) return;
+          bloc.add(
+            CreateDeadlineRequested(
+              title: title,
+              type: type,
+              dueDate: dueDate,
+              amount: amountController.text.trim().isEmpty
+                  ? null
+                  : amountController.text.trim(),
+              note: noteController.text.trim().isEmpty
+                  ? null
+                  : noteController.text.trim(),
+            ),
+          );
+          Navigator.pop(context);
+        },
+        child: Text(localeCubit.translate('common_save')),
       );
     },
   );

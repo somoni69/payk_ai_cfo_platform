@@ -9,6 +9,7 @@ import '../../../features/integrations/bloc/integrations_bloc.dart';
 import '../../../features/integrations/bloc/integrations_event.dart';
 import '../../../features/integrations/bloc/integrations_state.dart';
 import '../../../features/integrations/domain/integrations_repository.dart';
+import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class IntegrationsScreen extends StatelessWidget {
@@ -215,26 +216,9 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                                           ),
                                         );
                                       },
-                                icon: const Icon(TablerIcons.refresh, size: 15),
+                                icon: const Icon(TablerIcons.refresh),
                                 label: Text(
                                   localeCubit.translate('integrations_sync'),
-                                  style: textStyles.smallSans.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    color: colors.surface,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: colors.brand,
-                                  foregroundColor: colors.surface,
-                                  elevation: 0,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
                                 ),
                               ),
                           ],
@@ -266,71 +250,29 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                             children: [
                               OutlinedButton.icon(
                                 onPressed: () => _showSmsTestModal(context),
-                                icon: const Icon(
-                                  TablerIcons.message_2,
-                                  size: 16,
-                                ),
+                                icon: const Icon(TablerIcons.message_2),
                                 label: Text(
                                   localeCubit.translate(
                                     'integrations_sms_test_btn',
-                                  ),
-                                  style: textStyles.captionSans.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.brand,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: colors.brand,
-                                  side: BorderSide(color: colors.border),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
                               ),
                               OutlinedButton.icon(
                                 onPressed: () => _showAiTestModal(context),
-                                icon: const Icon(
-                                  TablerIcons.sparkles,
-                                  size: 16,
-                                ),
+                                icon: const Icon(TablerIcons.sparkles),
                                 label: Text(
                                   localeCubit.translate(
                                     'integrations_ai_test_btn',
-                                  ),
-                                  style: textStyles.captionSans.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.brand,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: colors.brand,
-                                  side: BorderSide(color: colors.border),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
                               ),
                               OutlinedButton.icon(
                                 onPressed: () =>
                                     _showTelegramLinkModal(context),
-                                icon: const Icon(
-                                  TablerIcons.brand_telegram,
-                                  size: 16,
-                                ),
+                                icon: const Icon(TablerIcons.brand_telegram),
                                 label: Text(
                                   localeCubit.translate(
                                     'integrations_telegram_btn',
-                                  ),
-                                  style: textStyles.captionSans.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: colors.brand,
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: colors.brand,
-                                  side: BorderSide(color: colors.border),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
                               ),
@@ -489,146 +431,112 @@ class _IntegrationsViewState extends State<IntegrationsView> {
     final locale = context.read<LanguageCubit>();
     final phoneController = TextEditingController(text: '992');
 
-    showModalBottomSheet<void>(
+    LedgerBottomSheet.show<void>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetCtx) {
+      title: locale.translate('integrations_sms_modal_title'),
+      builder: (sheetCtx, setSheetState) {
         return BlocProvider.value(
           value: bloc,
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetCtx).viewInsets.bottom + 16,
-              left: 16,
-              right: 16,
-              top: 16,
-            ),
-            child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
-              builder: (ctx, state) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      locale.translate('integrations_sms_modal_title'),
-                      style: textStyles.h2Sans.copyWith(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
+          child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
+            builder: (ctx, state) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: locale.translate(
+                        'integrations_sms_phone_label',
+                      ),
+                      prefixIcon: const Icon(TablerIcons.phone, size: 18),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: locale.translate(
-                          'integrations_sms_phone_label',
+                  ),
+                  const SizedBox(height: 14),
+                  if (state.smsResult != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: state.smsResult!.ok
+                            ? colors.accentGreen.withValues(alpha: 0.1)
+                            : colors.accentRed.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: state.smsResult!.ok
+                              ? colors.accentGreen.withValues(alpha: 0.3)
+                              : colors.accentRed.withValues(alpha: 0.3),
                         ),
-                        prefixIcon: const Icon(TablerIcons.phone, size: 18),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            state.smsResult!.ok
+                                ? TablerIcons.check
+                                : TablerIcons.alert_circle,
+                            color: state.smsResult!.ok
+                                ? colors.accentGreen
+                                : colors.accentRed,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              state.smsResult!.ok
+                                  ? locale.translate('integrations_sms_success')
+                                  : '${locale.translate('integrations_sms_failed')}: ${state.smsResult!.reason ?? ""}',
+                              style: textStyles.captionSans.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: state.smsResult!.ok
+                                    ? colors.accentGreen
+                                    : colors.accentRed,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 14),
-                    if (state.smsResult != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: state.smsResult!.ok
-                              ? colors.accentGreen.withValues(alpha: 0.1)
-                              : colors.accentRed.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: state.smsResult!.ok
-                                ? colors.accentGreen.withValues(alpha: 0.3)
-                                : colors.accentRed.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              state.smsResult!.ok
-                                  ? TablerIcons.check
-                                  : TablerIcons.alert_circle,
-                              color: state.smsResult!.ok
-                                  ? colors.accentGreen
-                                  : colors.accentRed,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                state.smsResult!.ok
-                                    ? locale.translate(
-                                        'integrations_sms_success',
-                                      )
-                                    : '${locale.translate('integrations_sms_failed')}: ${state.smsResult!.reason ?? ""}',
-                                style: textStyles.captionSans.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: state.smsResult!.ok
-                                      ? colors.accentGreen
-                                      : colors.accentRed,
-                                ),
+                  ],
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: state.isTestingSms
+                          ? null
+                          : () {
+                              final phone = phoneController.text.trim();
+                              if (phone.isNotEmpty) {
+                                bloc.add(TestSmsRequested(phone));
+                              }
+                            },
+                      icon: state.isTestingSms
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: state.isTestingSms
-                            ? null
-                            : () {
-                                final phone = phoneController.text.trim();
-                                if (phone.isNotEmpty) {
-                                  bloc.add(TestSmsRequested(phone));
-                                }
-                              },
-                        icon: state.isTestingSms
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(TablerIcons.send, size: 16),
-                        label: Text(
-                          locale.translate('integrations_sms_send_btn'),
-                          style: textStyles.bodySans.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.brand,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                            )
+                          : const Icon(TablerIcons.send, size: 16),
+                      label: Text(
+                        locale.translate('integrations_sms_send_btn'),
                       ),
                     ),
-                  ],
-                );
-              },
-            ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
-    );
+    ).whenComplete(phoneController.dispose);
   }
 
   void _showAiTestModal(BuildContext context) {
@@ -639,123 +547,103 @@ class _IntegrationsViewState extends State<IntegrationsView> {
 
     bloc.add(const TestAiRequested());
 
-    showModalBottomSheet<void>(
+    LedgerBottomSheet.show<void>(
       context: context,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetCtx) {
+      title: locale.translate('integrations_ai_modal_title'),
+      builder: (sheetCtx, setSheetState) {
         return BlocProvider.value(
           value: bloc,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
-              builder: (ctx, state) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      locale.translate('integrations_ai_modal_title'),
-                      style: textStyles.h2Sans.copyWith(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (state.isTestingAi)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: LedgerShimmer(child: LedgerTextBlockShimmer()),
-                      )
-                    else if (state.aiResult != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
+          child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
+            builder: (ctx, state) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (state.isTestingAi)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: LedgerShimmer(child: LedgerTextBlockShimmer()),
+                    )
+                  else if (state.aiResult != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: state.aiResult!.ok
+                            ? colors.accentGreen.withValues(alpha: 0.1)
+                            : colors.accentRed.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
                           color: state.aiResult!.ok
-                              ? colors.accentGreen.withValues(alpha: 0.1)
-                              : colors.accentRed.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: state.aiResult!.ok
-                                ? colors.accentGreen.withValues(alpha: 0.3)
-                                : colors.accentRed.withValues(alpha: 0.3),
-                          ),
+                              ? colors.accentGreen.withValues(alpha: 0.3)
+                              : colors.accentRed.withValues(alpha: 0.3),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                state.aiResult!.ok
+                                    ? TablerIcons.circle_check
+                                    : TablerIcons.alert_triangle,
+                                color: state.aiResult!.ok
+                                    ? colors.accentGreen
+                                    : colors.accentRed,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
                                   state.aiResult!.ok
-                                      ? TablerIcons.circle_check
-                                      : TablerIcons.alert_triangle,
-                                  color: state.aiResult!.ok
-                                      ? colors.accentGreen
-                                      : colors.accentRed,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    state.aiResult!.ok
-                                        ? locale.translate(
-                                            'integrations_ai_status_ok',
-                                          )
-                                        : (state.aiResult!.error ?? "Ошибка"),
-                                    style: textStyles.bodySans.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: state.aiResult!.ok
-                                          ? colors.accentGreen
-                                          : colors.accentRed,
-                                    ),
+                                      ? locale.translate(
+                                          'integrations_ai_status_ok',
+                                        )
+                                      : (state.aiResult!.error ?? "Ошибка"),
+                                  style: textStyles.bodySans.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: state.aiResult!.ok
+                                        ? colors.accentGreen
+                                        : colors.accentRed,
                                   ),
-                                ),
-                              ],
-                            ),
-                            if (state.aiResult!.model != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                '${locale.translate('integrations_ai_model')}: ${state.aiResult!.model}',
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
                                 ),
                               ),
                             ],
+                          ),
+                          if (state.aiResult!.model != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '${locale.translate('integrations_ai_model')}: ${state.aiResult!.model}',
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: state.isTestingAi
-                            ? null
-                            : () => bloc.add(const TestAiRequested()),
-                        icon: const Icon(TablerIcons.refresh, size: 16),
-                        label: Text(
-                          locale.translate('dashboard_retry'),
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.brand,
-                          side: BorderSide(color: colors.border),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
+                        ],
                       ),
                     ),
+                    const SizedBox(height: 16),
                   ],
-                );
-              },
-            ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: state.isTestingAi
+                          ? null
+                          : () => bloc.add(const TestAiRequested()),
+                      icon: const Icon(TablerIcons.refresh, size: 16),
+                      label: Text(
+                        locale.translate('dashboard_retry'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.brand,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
@@ -770,135 +658,108 @@ class _IntegrationsViewState extends State<IntegrationsView> {
 
     bloc.add(const LoadTelegramLinkRequested());
 
-    showModalBottomSheet<void>(
+    LedgerBottomSheet.show<void>(
       context: context,
-      backgroundColor: colors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (sheetCtx) {
+      title: locale.translate('integrations_telegram_title'),
+      builder: (sheetCtx, setSheetState) {
         return BlocProvider.value(
           value: bloc,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
-              builder: (ctx, state) {
-                final link = state.telegramLink;
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          TablerIcons.brand_telegram,
-                          color: colors.brand,
-                          size: 22,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            locale.translate('integrations_telegram_title'),
-                            style: textStyles.h2Sans.copyWith(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+          child: BlocBuilder<IntegrationsBloc, IntegrationsState>(
+            builder: (ctx, state) {
+              final link = state.telegramLink;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    locale.translate('integrations_telegram_desc'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                      fontSize: 12.5,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      locale.translate('integrations_telegram_desc'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: 12.5,
+                  ),
+                  const SizedBox(height: 16),
+                  if (state.isLoadingTelegramLink)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: CircularProgressIndicator(),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (state.isLoadingTelegramLink)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: CircularProgressIndicator(),
+                    )
+                  else if (link != null) ...[
+                    if (link.connected)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.accentGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              TablerIcons.circle_check,
+                              color: colors.accentGreen,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                locale.translate(
+                                  'integrations_telegram_connected',
+                                ),
+                                style: textStyles.bodySans.copyWith(
+                                  color: colors.accentGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       )
-                    else if (link != null) ...[
-                      if (link.connected)
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colors.accentGreen.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                TablerIcons.circle_check,
-                                color: colors.accentGreen,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  locale.translate(
-                                    'integrations_telegram_connected',
-                                  ),
-                                  style: textStyles.bodySans.copyWith(
-                                    color: colors.accentGreen,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                    else ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceNested,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: colors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: SelectableText(
+                                '/start ${link.token}',
+                                style: textStyles.bodyMono.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ],
-                          ),
-                        )
-                      else ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: colors.surfaceNested,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: colors.border),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: SelectableText(
-                                  '/start ${link.token}',
-                                  style: textStyles.bodyMono.copyWith(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: '/start ${link.token}'),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        locale.translate(
-                                          'integrations_telegram_copy_token',
-                                        ),
+                            ),
+                            IconButton(
+                              onPressed: () {
+                                Clipboard.setData(
+                                  ClipboardData(text: '/start ${link.token}'),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      locale.translate(
+                                        'integrations_telegram_copy_token',
                                       ),
                                     ),
-                                  );
-                                },
-                                icon: const Icon(TablerIcons.copy, size: 18),
-                              ),
-                            ],
-                          ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(TablerIcons.copy, size: 18),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ],
-                    const SizedBox(height: 16),
                   ],
-                );
-              },
-            ),
+                  const SizedBox(height: 16),
+                ],
+              );
+            },
           ),
         );
       },

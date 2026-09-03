@@ -641,7 +641,7 @@ extension _TasksFormBuilders on _TasksViewMixin {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: kLedgerModalButtonHeight,
                 child: OutlinedButton.icon(
                   onPressed: () {
                     if (task.isPersonal) {
@@ -655,9 +655,6 @@ extension _TasksFormBuilders on _TasksViewMixin {
                     foregroundColor: colors.accentRed,
                     side: BorderSide(
                       color: colors.accentRed.withValues(alpha: 0.5),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   icon: const Icon(TablerIcons.trash, size: 18),
@@ -734,12 +731,8 @@ extension _TasksFormBuilders on _TasksViewMixin {
               icon: const Icon(TablerIcons.plus, size: 18),
               label: Text(language.translate('tasks_new_project')),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
                 side: BorderSide(color: colors.brand),
                 foregroundColor: colors.brand,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -833,13 +826,11 @@ extension _TasksFormBuilders on _TasksViewMixin {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
 
-    showDialog<void>(
+    LedgerBottomSheet.show<void>(
       context: context,
-      builder: (dlgContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(language.translate('tasks_new_project')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+      title: language.translate('tasks_new_project'),
+      builder: (ctx, setSheetState) {
+        return Column(
           children: [
             TextField(
               controller: nameCtrl,
@@ -856,31 +847,30 @@ extension _TasksFormBuilders on _TasksViewMixin {
               ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dlgContext),
-            child: Text(language.translate('common_cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
-              tasksBloc.add(
-                CreateProjectRequested(
-                  name: name,
-                  description: descCtrl.text.trim().isNotEmpty
-                      ? descCtrl.text.trim()
-                      : null,
-                ),
-              );
-              Navigator.pop(dlgContext);
-            },
-            child: Text(language.translate('common_create')),
-          ),
-        ],
-      ),
-    );
+        );
+      },
+      footerBuilder: (ctx, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final name = nameCtrl.text.trim();
+            if (name.isEmpty) return;
+            tasksBloc.add(
+              CreateProjectRequested(
+                name: name,
+                description: descCtrl.text.trim().isNotEmpty
+                    ? descCtrl.text.trim()
+                    : null,
+              ),
+            );
+            Navigator.pop(ctx);
+          },
+          child: Text(language.translate('common_create')),
+        );
+      },
+    ).whenComplete(() {
+      nameCtrl.dispose();
+      descCtrl.dispose();
+    });
   }
 
   void _showEditProjectDialog(BuildContext context, TaskProject project) {
@@ -889,13 +879,11 @@ extension _TasksFormBuilders on _TasksViewMixin {
     final nameCtrl = TextEditingController(text: project.name);
     final descCtrl = TextEditingController(text: project.description ?? '');
 
-    showDialog<void>(
+    LedgerBottomSheet.show<void>(
       context: context,
-      builder: (dlgContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(language.translate('tasks_edit_project')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+      title: language.translate('tasks_edit_project'),
+      builder: (ctx, setSheetState) {
+        return Column(
           children: [
             TextField(
               controller: nameCtrl,
@@ -912,32 +900,31 @@ extension _TasksFormBuilders on _TasksViewMixin {
               ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dlgContext),
-            child: Text(language.translate('common_cancel')),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
-              tasksBloc.add(
-                UpdateProjectRequested(
-                  projectId: project.id,
-                  name: name,
-                  description: descCtrl.text.trim().isNotEmpty
-                      ? descCtrl.text.trim()
-                      : null,
-                ),
-              );
-              Navigator.pop(dlgContext);
-            },
-            child: Text(language.translate('common_save')),
-          ),
-        ],
-      ),
-    );
+        );
+      },
+      footerBuilder: (ctx, setSheetState) {
+        return ElevatedButton(
+          onPressed: () {
+            final name = nameCtrl.text.trim();
+            if (name.isEmpty) return;
+            tasksBloc.add(
+              UpdateProjectRequested(
+                projectId: project.id,
+                name: name,
+                description: descCtrl.text.trim().isNotEmpty
+                    ? descCtrl.text.trim()
+                    : null,
+              ),
+            );
+            Navigator.pop(ctx);
+          },
+          child: Text(language.translate('common_save')),
+        );
+      },
+    ).whenComplete(() {
+      nameCtrl.dispose();
+      descCtrl.dispose();
+    });
   }
 
   void _showDeleteProjectDialog(BuildContext context, TaskProject project) {
@@ -947,27 +934,32 @@ extension _TasksFormBuilders on _TasksViewMixin {
 
     showDialog<void>(
       context: context,
-      builder: (dlgContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(language.translate('tasks_delete_project')),
-        content: Text(language.translate('tasks_delete_project_confirm')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dlgContext),
-            child: Text(language.translate('common_cancel')),
+      builder: (dlgContext) => Theme(
+        data: LedgerButtons.modalOverlay(dlgContext),
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.accentRed,
-              foregroundColor: Colors.white,
+          title: Text(language.translate('tasks_delete_project')),
+          content: Text(language.translate('tasks_delete_project_confirm')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dlgContext),
+              child: Text(language.translate('common_cancel')),
             ),
-            onPressed: () {
-              tasksBloc.add(DeleteProjectRequested(project.id));
-              Navigator.pop(dlgContext);
-            },
-            child: Text(language.translate('common_delete')),
-          ),
-        ],
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.accentRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                tasksBloc.add(DeleteProjectRequested(project.id));
+                Navigator.pop(dlgContext);
+              },
+              child: Text(language.translate('common_delete')),
+            ),
+          ],
+        ),
       ),
     );
   }

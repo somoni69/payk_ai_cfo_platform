@@ -168,24 +168,8 @@ Widget _buildOneCTab(
                   const RefreshOneCReconcileRequested(),
                 );
               },
-              icon: const Icon(TablerIcons.refresh, size: 16),
-              label: Text(
-                language.translate('dashboard_onec_refresh'),
-                style: textStyles.captionSans.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: colors.brand,
-                side: BorderSide(color: colors.border),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+              icon: const Icon(TablerIcons.refresh),
+              label: Text(language.translate('dashboard_onec_refresh')),
             ),
           ],
         ),
@@ -505,121 +489,85 @@ void _showOneCLinkModal(
   final language = context.read<LanguageCubit>();
   final bloc = context.read<DashboardBloc>();
 
-  showModalBottomSheet<void>(
+  LedgerBottomSheet.show<void>(
     context: context,
-    backgroundColor: colors.surface,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (ctx) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                language.translate('dashboard_onec_select_target'),
-                style: textStyles.h2Sans.copyWith(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
+    title: language.translate('dashboard_onec_select_target'),
+    builder: (ctx, setSheetState) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '1С: ${row.onecName}',
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              TablerIcons.link_off,
+              color: colors.accentRed,
+              size: 20,
+            ),
+            title: Text(
+              language.translate('dashboard_onec_unlink'),
+              style: textStyles.bodySans.copyWith(
+                color: colors.accentRed,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            onTap: () {
+              Navigator.of(ctx).pop();
+              bloc.add(
+                SaveOneCLinkRequested(
+                  onecName: row.onecName,
+                  kind: null,
+                  targetId: null,
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ...targets.map((target) {
+            final isSelected =
+                row.paykKind == target.kind && row.paykId == target.id;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                target.kind == 'account'
+                    ? TablerIcons.building_bank
+                    : TablerIcons.wallet,
+                color: isSelected ? colors.brand : colors.textSecondary,
+                size: 20,
+              ),
+              title: Text(
+                target.name,
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? colors.brand : colors.textPrimary,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                '1С: ${row.onecName}',
+              subtitle: Text(
+                '${target.kind == 'account' ? language.translate('dashboard_tab_accounts_rates') : language.translate('dashboard_metric_cash_balance')} • ${_formatAmount(context, target.amount)} TJS',
                 style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
                 ),
               ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    // Вариант снять привязку
-                    ListTile(
-                      leading: Icon(
-                        TablerIcons.link_off,
-                        color: colors.accentRed,
-                        size: 20,
-                      ),
-                      title: Text(
-                        language.translate('dashboard_onec_unlink'),
-                        style: textStyles.bodySans.copyWith(
-                          color: colors.accentRed,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.of(ctx).pop();
-                        bloc.add(
-                          SaveOneCLinkRequested(
-                            onecName: row.onecName,
-                            kind: null,
-                            targetId: null,
-                          ),
-                        );
-                      },
-                    ),
-                    const Divider(height: 1),
-                    ...targets.map((target) {
-                      final isSelected =
-                          row.paykKind == target.kind &&
-                          row.paykId == target.id;
-                      return ListTile(
-                        leading: Icon(
-                          target.kind == 'account'
-                              ? TablerIcons.building_bank
-                              : TablerIcons.wallet,
-                          color: isSelected
-                              ? colors.brand
-                              : colors.textSecondary,
-                          size: 20,
-                        ),
-                        title: Text(
-                          target.name,
-                          style: textStyles.bodySans.copyWith(
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: isSelected
-                                ? colors.brand
-                                : colors.textPrimary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${target.kind == 'account' ? language.translate('dashboard_tab_accounts_rates') : language.translate('dashboard_metric_cash_balance')} • ${_formatAmount(context, target.amount)} TJS',
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? Icon(
-                                TablerIcons.check,
-                                color: colors.brand,
-                                size: 18,
-                              )
-                            : null,
-                        onTap: () {
-                          Navigator.of(ctx).pop();
-                          bloc.add(
-                            SaveOneCLinkRequested(
-                              onecName: row.onecName,
-                              kind: target.kind,
-                              targetId: target.id,
-                            ),
-                          );
-                        },
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+              trailing: isSelected
+                  ? Icon(TablerIcons.check, color: colors.brand, size: 18)
+                  : null,
+              onTap: () {
+                Navigator.of(ctx).pop();
+                bloc.add(
+                  SaveOneCLinkRequested(
+                    onecName: row.onecName,
+                    kind: target.kind,
+                    targetId: target.id,
+                  ),
+                );
+              },
+            );
+          }),
+        ],
       );
     },
   );

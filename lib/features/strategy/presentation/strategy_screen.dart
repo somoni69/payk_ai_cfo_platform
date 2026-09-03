@@ -6,6 +6,8 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
@@ -604,45 +606,22 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
   }
 
   Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-
     if (widget.section == StrategySection.macro) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => _showCreateMacroSheet(context),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          locale.translate('strategy_add_macro'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.plus,
+        label: locale.translate('strategy_add_macro'),
       );
     }
     if (widget.section == StrategySection.scenarios) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => context.read<StrategyBloc>().add(
           GenerateScenariosRequested(_currentQuarter()),
         ),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.sparkles),
-        label: Text(
-          locale.translate('strategy_scenarios_generate'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.sparkles,
+        label: locale.translate('strategy_scenarios_generate'),
       );
     }
     return null;
@@ -777,18 +756,6 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                             );
                           }
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
                   child: Icon(
                     TablerIcons.send,
                     semanticLabel: localeCubit.translate('common_send'),
@@ -908,18 +875,6 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                             );
                           }
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                  ),
                   child: Icon(
                     TablerIcons.send,
                     semanticLabel: localeCubit.translate('common_send'),
@@ -1011,86 +966,19 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // Выбор типа матрицы
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('SWOT'),
-                      labelStyle: textStyles.captionSans.copyWith(
-                        color: _selectedAnalysisType == 'swot'
-                            ? Colors.white
-                            : colors.textPrimary,
-                        fontWeight: _selectedAnalysisType == 'swot'
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                      checkmarkColor: Colors.white,
-                      selected: _selectedAnalysisType == 'swot',
-                      onSelected: (val) {
-                        if (val) {
-                          setState(() {
-                            _selectedAnalysisType = 'swot';
-                          });
-                          context.read<StrategyBloc>().add(
-                            const LoadStrategicAnalyses('swot'),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('PESTEL'),
-                      labelStyle: textStyles.captionSans.copyWith(
-                        color: _selectedAnalysisType == 'pestel'
-                            ? Colors.white
-                            : colors.textPrimary,
-                        fontWeight: _selectedAnalysisType == 'pestel'
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                      checkmarkColor: Colors.white,
-                      selected: _selectedAnalysisType == 'pestel',
-                      onSelected: (val) {
-                        if (val) {
-                          setState(() {
-                            _selectedAnalysisType = 'pestel';
-                          });
-                          context.read<StrategyBloc>().add(
-                            const LoadStrategicAnalyses('pestel'),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: const Text('BCG'),
-                      labelStyle: textStyles.captionSans.copyWith(
-                        color: _selectedAnalysisType == 'bcg'
-                            ? Colors.white
-                            : colors.textPrimary,
-                        fontWeight: _selectedAnalysisType == 'bcg'
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
-                      checkmarkColor: Colors.white,
-                      selected: _selectedAnalysisType == 'bcg',
-                      onSelected: (val) {
-                        if (val) {
-                          setState(() {
-                            _selectedAnalysisType = 'bcg';
-                          });
-                          context.read<StrategyBloc>().add(
-                            const LoadStrategicAnalyses('bcg'),
-                          );
-                        }
-                      },
-                    ),
-                  ),
+              LedgerSegmentedControl<String>(
+                height: 36,
+                selectedValue: _selectedAnalysisType,
+                onValueChanged: (value) {
+                  setState(() => _selectedAnalysisType = value);
+                  context.read<StrategyBloc>().add(
+                    LoadStrategicAnalyses(value),
+                  );
+                },
+                segments: const [
+                  LedgerSegmentItem(value: 'swot', label: 'SWOT'),
+                  LedgerSegmentItem(value: 'pestel', label: 'PESTEL'),
+                  LedgerSegmentItem(value: 'bcg', label: 'BCG'),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1108,14 +996,6 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
                           ),
                         );
                       },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
                 icon: const Icon(TablerIcons.plus),
                 label: Text(
                   localeCubit.translate(

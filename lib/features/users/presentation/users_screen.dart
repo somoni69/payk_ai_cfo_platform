@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/users/bloc/users_bloc.dart';
 import '../../../features/users/bloc/users_event.dart';
@@ -10,6 +11,7 @@ import '../../../features/users/domain/user_models.dart';
 import '../../../features/users/domain/users_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum UsersSection { usersList, permissionsMatrix }
@@ -316,35 +318,13 @@ class _UsersViewState extends State<UsersView> {
           const SizedBox(height: 12),
 
           // 3. Quick Action Button
-          SizedBox(
-            height: 44,
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _showUserDialog(context),
-              icon: const Icon(TablerIcons.user_plus, size: 17),
-              label: Text(
-                language.translate('users_action_new'),
-                style: textStyles.captionSans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                minimumSize: const Size.fromHeight(44),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 10,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
+          ElevatedButton.icon(
+            onPressed: () => _showUserDialog(context),
+            icon: const Icon(TablerIcons.user_plus),
+            label: Text(
+              language.translate('users_action_new'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(height: 12),
@@ -674,23 +654,11 @@ class _UsersSectionScreenState extends State<UsersSectionScreen> {
         ),
       ),
       floatingActionButton: widget.section == UsersSection.usersList
-          ? FloatingActionButton.extended(
+          ? LedgerFab(
               heroTag: null,
               onPressed: () => _showUserDialog(context),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              icon: const Icon(TablerIcons.user_plus),
-              label: Text(
-                language.translate('users_new_user_btn'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              icon: TablerIcons.user_plus,
+              label: language.translate('users_new_user_btn'),
             )
           : null,
       body: BlocListener<UsersBloc, UsersState>(
@@ -1489,28 +1457,33 @@ void _confirmDelete(BuildContext context, String id) {
   final language = context.read<LanguageCubit>();
   showDialog(
     context: context,
-    builder: (dCtx) => AlertDialog(
-      title: Text(language.translate('users_delete_title')),
-      content: Text(language.translate('users_delete_message')),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dCtx),
-          child: Text(
-            language.translate('common_cancel'),
-            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+    builder: (dCtx) => Theme(
+      data: LedgerButtons.modalOverlay(dCtx),
+      child: AlertDialog(
+        title: Text(language.translate('users_delete_title')),
+        content: Text(language.translate('users_delete_message')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx),
+            child: Text(
+              language.translate('common_cancel'),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
           ),
-        ),
-        TextButton(
-          onPressed: () {
-            context.read<UsersBloc>().add(DeleteUserRequested(id));
-            Navigator.pop(dCtx);
-          },
-          child: Text(
-            language.translate('common_delete'),
-            style: textStyles.captionSans.copyWith(color: colors.accentRed),
+          TextButton(
+            onPressed: () {
+              context.read<UsersBloc>().add(DeleteUserRequested(id));
+              Navigator.pop(dCtx);
+            },
+            child: Text(
+              language.translate('common_delete'),
+              style: textStyles.captionSans.copyWith(color: colors.accentRed),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -1792,7 +1765,7 @@ Future<void> _showUserDialog(BuildContext context, {UserProfile? user}) async {
             const SizedBox(height: 24),
 
             SizedBox(
-              height: 48,
+              height: kLedgerModalButtonHeight,
               child: ElevatedButton(
                 onPressed: () {
                   final fn = fullNameCtrl.text.trim();
@@ -1849,7 +1822,7 @@ Future<void> _showUserDialog(BuildContext context, {UserProfile? user}) async {
             if (isEdit) ...[
               const SizedBox(height: 12),
               SizedBox(
-                height: 48,
+                height: kLedgerModalButtonHeight,
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
@@ -1859,9 +1832,6 @@ Future<void> _showUserDialog(BuildContext context, {UserProfile? user}) async {
                     foregroundColor: colors.accentRed,
                     side: BorderSide(
                       color: colors.accentRed.withValues(alpha: 0.5),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   icon: const Icon(TablerIcons.trash, size: 18),

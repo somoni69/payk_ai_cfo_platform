@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'app_text_styles.dart';
+import 'ledger_buttons.dart';
 
 /// Тема оформления Ledger для Flutter (design_language.md).
 /// - Нет мягких теней (блоки — 1px [LedgerColors.border])
-/// - Радиус карточек: 16px; кнопки/поля: 8px
+/// - Радиус карточек: 16px; поля: 8px; кнопки экрана: 12px / 44px
+/// - Кнопки в модалках: 12px / 48px (см. [LedgerButtons.modalOverlay])
 /// - Начертания только w400 / w500
 class LedgerTheme {
   static final ThemeData light = _buildLight();
@@ -92,19 +94,10 @@ class LedgerTheme {
         hintStyle: textStyles.bodySans.copyWith(color: colors.textTooltip),
       ),
 
-      // Основные кнопки: скругление 8px, без теней
+      // Кнопки на экранах: 44px, радиус 12. Модалки перекрывают через
+      // [LedgerButtons.modalOverlay] (48px).
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: colors.brand,
-          foregroundColor: colors.surface,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: textStyles.bodySans.copyWith(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
+        style: LedgerButtons.screenElevated(colors, textStyles),
       ),
 
       // Настройка иконок-кнопок
@@ -116,30 +109,17 @@ class LedgerTheme {
         ),
       ),
 
-      // Вторичные кнопки с границами: скругление 8px, 1px нейтральная граница, темный текст
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: colors.textPrimary,
-          backgroundColor: colors.surface,
-          elevation: 0,
-          side: BorderSide(color: colors.border, width: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: textStyles.bodySans.copyWith(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
+        style: LedgerButtons.screenOutlined(colors, textStyles),
       ),
 
-      // Текстовые кнопки
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: colors.brand,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          textStyle: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-        ),
+        style: LedgerButtons.screenText(colors, textStyles),
+      ),
+
+      floatingActionButtonTheme: LedgerButtons.screenFabTheme(
+        colors,
+        textStyles,
       ),
 
       // Нижняя панель навигации (5 табов)

@@ -671,162 +671,139 @@ extension _CashSheetBuilders on _CashViewMixin {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      final items = <SaleItemInput>[];
-                      if (isIncome && saleLines.isNotEmpty) {
-                        for (final line in saleLines) {
-                          if (line.productId == null ||
-                              line.productId!.isEmpty) {
-                            setSheetState(() {
-                              itemsError = 'cash_sale_err_no_product';
-                            });
-                            return;
-                          }
-                          final qty = parseLocalizedNumber(
-                            context,
-                            line.qtyCtrl.text,
-                          );
-                          final price = parseLocalizedNumber(
-                            context,
-                            line.priceCtrl.text,
-                          );
-                          if (qty == null ||
-                              qty <= 0 ||
-                              price == null ||
-                              price < 0) {
-                            setSheetState(() {
-                              itemsError = 'cash_sale_err_qty_price';
-                            });
-                            return;
-                          }
-                          SaleProduct? product;
-                          for (final p in saleProducts) {
-                            if (p.id == line.productId) {
-                              product = p;
-                              break;
-                            }
-                          }
-                          if (product != null && qty > product.stockQty) {
-                            setSheetState(() {
-                              itemsError = 'cash_sale_err_stock';
-                            });
-                            return;
-                          }
-                          items.add(
-                            SaleItemInput(
-                              productId: line.productId!,
-                              qty: qty,
-                              price: price,
-                            ),
-                          );
-                        }
-                      }
-
-                      final amt = items.isNotEmpty
-                          ? items.fold<double>(0, (s, i) => s + i.amount)
-                          : parseLocalizedNumber(
-                              context,
-                              amountController.text,
-                            );
-                      if (amt == null || amt <= 0) {
-                        setSheetState(() {
-                          itemsError = 'cash_amount_required';
-                        });
-                        return;
-                      }
-
-                      double? cashPart;
-                      double? cashlessPart;
-                      if (selectedPaymentMethod == PaymentMethod.mixed) {
-                        cashPart = parseLocalizedNumber(
-                          context,
-                          cashPartController.text,
-                        );
-                        cashlessPart = parseLocalizedNumber(
-                          context,
-                          cashlessPartController.text,
-                        );
-                        if (cashPart == null ||
-                            cashlessPart == null ||
-                            cashPart < 0 ||
-                            cashlessPart < 0 ||
-                            (cashPart + cashlessPart - amt).abs() > 0.01) {
+          return ElevatedButton(
+            onPressed: submitting
+                ? null
+                : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final items = <SaleItemInput>[];
+                    if (isIncome && saleLines.isNotEmpty) {
+                      for (final line in saleLines) {
+                        if (line.productId == null || line.productId!.isEmpty) {
                           setSheetState(() {
-                            itemsError = 'cash_mixed_err_sum';
+                            itemsError = 'cash_sale_err_no_product';
                           });
                           return;
                         }
+                        final qty = parseLocalizedNumber(
+                          context,
+                          line.qtyCtrl.text,
+                        );
+                        final price = parseLocalizedNumber(
+                          context,
+                          line.priceCtrl.text,
+                        );
+                        if (qty == null ||
+                            qty <= 0 ||
+                            price == null ||
+                            price < 0) {
+                          setSheetState(() {
+                            itemsError = 'cash_sale_err_qty_price';
+                          });
+                          return;
+                        }
+                        SaleProduct? product;
+                        for (final p in saleProducts) {
+                          if (p.id == line.productId) {
+                            product = p;
+                            break;
+                          }
+                        }
+                        if (product != null && qty > product.stockQty) {
+                          setSheetState(() {
+                            itemsError = 'cash_sale_err_stock';
+                          });
+                          return;
+                        }
+                        items.add(
+                          SaleItemInput(
+                            productId: line.productId!,
+                            qty: qty,
+                            price: price,
+                          ),
+                        );
                       }
+                    }
 
-                      final tx = Transaction(
-                        id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
-                        title: counterpartyController.text.trim(),
-                        category: selectedCategory ?? 'cash_category_other',
-                        amount: amt,
-                        isIncome: isIncome,
-                        paymentMethod: selectedPaymentMethod,
-                        dateTime: DateTime.now(),
-                        registerId: selectedRegisterId,
-                        cashierName: authState is AuthAuthenticated
-                            ? authState.username
-                            : 'role_director',
-                        description: descriptionController.text.trim().isEmpty
-                            ? null
-                            : descriptionController.text.trim(),
-                        cashAmount: cashPart,
-                        cashlessAmount: cashlessPart,
-                        bankId: selectedBankId,
-                        saleItems: items,
-                      );
-
+                    final amt = items.isNotEmpty
+                        ? items.fold<double>(0, (s, i) => s + i.amount)
+                        : parseLocalizedNumber(context, amountController.text);
+                    if (amt == null || amt <= 0) {
                       setSheetState(() {
-                        submitting = true;
-                        itemsError = null;
+                        itemsError = 'cash_amount_required';
                       });
-                      final bloc = context.read<CashBloc>();
-                      bloc.add(AddTransactionRequested(tx));
-                      final nextState = await bloc.stream.firstWhere(
-                        (s) => s is CashLoaded && !s.isSubmitting,
+                      return;
+                    }
+
+                    double? cashPart;
+                    double? cashlessPart;
+                    if (selectedPaymentMethod == PaymentMethod.mixed) {
+                      cashPart = parseLocalizedNumber(
+                        context,
+                        cashPartController.text,
                       );
-                      if (!context.mounted) return;
-                      if (nextState is CashLoaded &&
-                          nextState.errorMessage != null &&
-                          !nextState.errorMessage!.startsWith(
-                            'cash_tx_saved',
-                          )) {
+                      cashlessPart = parseLocalizedNumber(
+                        context,
+                        cashlessPartController.text,
+                      );
+                      if (cashPart == null ||
+                          cashlessPart == null ||
+                          cashPart < 0 ||
+                          cashlessPart < 0 ||
+                          (cashPart + cashlessPart - amt).abs() > 0.01) {
                         setSheetState(() {
-                          submitting = false;
-                          itemsError = nextState.errorMessage;
+                          itemsError = 'cash_mixed_err_sum';
                         });
                         return;
                       }
-                      for (final line in saleLines) {
-                        line.dispose();
-                      }
-                      Navigator.pop(context);
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                language.translate('save_to_ledger'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+                    }
+
+                    final tx = Transaction(
+                      id: 'tx-${DateTime.now().millisecondsSinceEpoch}',
+                      title: counterpartyController.text.trim(),
+                      category: selectedCategory ?? 'cash_category_other',
+                      amount: amt,
+                      isIncome: isIncome,
+                      paymentMethod: selectedPaymentMethod,
+                      dateTime: DateTime.now(),
+                      registerId: selectedRegisterId,
+                      cashierName: authState is AuthAuthenticated
+                          ? authState.username
+                          : 'role_director',
+                      description: descriptionController.text.trim().isEmpty
+                          ? null
+                          : descriptionController.text.trim(),
+                      cashAmount: cashPart,
+                      cashlessAmount: cashlessPart,
+                      bankId: selectedBankId,
+                      saleItems: items,
+                    );
+
+                    setSheetState(() {
+                      submitting = true;
+                      itemsError = null;
+                    });
+                    final bloc = context.read<CashBloc>();
+                    bloc.add(AddTransactionRequested(tx));
+                    final nextState = await bloc.stream.firstWhere(
+                      (s) => s is CashLoaded && !s.isSubmitting,
+                    );
+                    if (!context.mounted) return;
+                    if (nextState is CashLoaded &&
+                        nextState.errorMessage != null &&
+                        !nextState.errorMessage!.startsWith('cash_tx_saved')) {
+                      setSheetState(() {
+                        submitting = false;
+                        itemsError = nextState.errorMessage;
+                      });
+                      return;
+                    }
+                    for (final line in saleLines) {
+                      line.dispose();
+                    }
+                    Navigator.pop(context);
+                  },
+            child: Text(language.translate('save_to_ledger')),
           );
         },
       );
@@ -1130,92 +1107,73 @@ extension _CashSheetBuilders on _CashViewMixin {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      if (!formKey.currentState!.validate()) return;
-                      final amt = parseLocalizedNumber(
+          return ElevatedButton(
+            onPressed: submitting
+                ? null
+                : () async {
+                    if (!formKey.currentState!.validate()) return;
+                    final amt = parseLocalizedNumber(
+                      context,
+                      amountController.text,
+                    );
+                    if (amt == null || amt <= 0) {
+                      setSheetState(() => error = 'cash_amount_required');
+                      return;
+                    }
+                    double? cashPart;
+                    double? cashlessPart;
+                    if (method == PaymentMethod.mixed) {
+                      cashPart = parseLocalizedNumber(
                         context,
-                        amountController.text,
+                        cashPartController.text,
                       );
-                      if (amt == null || amt <= 0) {
-                        setSheetState(() => error = 'cash_amount_required');
+                      cashlessPart = parseLocalizedNumber(
+                        context,
+                        cashlessPartController.text,
+                      );
+                      if (cashPart == null ||
+                          cashlessPart == null ||
+                          cashPart < 0 ||
+                          cashlessPart < 0 ||
+                          (cashPart + cashlessPart - amt).abs() > 0.01) {
+                        setSheetState(() => error = 'cash_mixed_err_sum');
                         return;
                       }
-                      double? cashPart;
-                      double? cashlessPart;
-                      if (method == PaymentMethod.mixed) {
-                        cashPart = parseLocalizedNumber(
-                          context,
-                          cashPartController.text,
-                        );
-                        cashlessPart = parseLocalizedNumber(
-                          context,
-                          cashlessPartController.text,
-                        );
-                        if (cashPart == null ||
-                            cashlessPart == null ||
-                            cashPart < 0 ||
-                            cashlessPart < 0 ||
-                            (cashPart + cashlessPart - amt).abs() > 0.01) {
-                          setSheetState(() => error = 'cash_mixed_err_sum');
-                          return;
-                        }
-                      }
-                      setSheetState(() {
-                        submitting = true;
-                        error = null;
-                      });
-                      final bloc = context.read<CashBloc>();
-                      bloc.add(
-                        UpdateTransactionRequested(
-                          transaction.copyWith(
-                            title: counterpartyController.text.trim(),
-                            amount: amt,
-                            isIncome: isIncome,
-                            paymentMethod: method,
-                            description: descriptionController.text.trim(),
-                            cashAmount: cashPart,
-                            cashlessAmount: cashlessPart,
-                          ),
+                    }
+                    setSheetState(() {
+                      submitting = true;
+                      error = null;
+                    });
+                    final bloc = context.read<CashBloc>();
+                    bloc.add(
+                      UpdateTransactionRequested(
+                        transaction.copyWith(
+                          title: counterpartyController.text.trim(),
+                          amount: amt,
+                          isIncome: isIncome,
+                          paymentMethod: method,
+                          description: descriptionController.text.trim(),
+                          cashAmount: cashPart,
+                          cashlessAmount: cashlessPart,
                         ),
-                      );
-                      final nextState = await bloc.stream.firstWhere(
-                        (s) => s is CashLoaded && !s.isSubmitting,
-                      );
-                      if (!context.mounted) return;
-                      if (nextState is CashLoaded &&
-                          nextState.errorMessage != null &&
-                          !nextState.errorMessage!.startsWith(
-                            'cash_tx_saved',
-                          )) {
-                        setSheetState(() {
-                          submitting = false;
-                          error = nextState.errorMessage;
-                        });
-                        return;
-                      }
-                      Navigator.pop(context);
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                language.translate('common_save'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+                      ),
+                    );
+                    final nextState = await bloc.stream.firstWhere(
+                      (s) => s is CashLoaded && !s.isSubmitting,
+                    );
+                    if (!context.mounted) return;
+                    if (nextState is CashLoaded &&
+                        nextState.errorMessage != null &&
+                        !nextState.errorMessage!.startsWith('cash_tx_saved')) {
+                      setSheetState(() {
+                        submitting = false;
+                        error = nextState.errorMessage;
+                      });
+                      return;
+                    }
+                    Navigator.pop(context);
+                  },
+            child: Text(language.translate('common_save')),
           );
         },
       );
@@ -1352,7 +1310,7 @@ class _OpenShiftSheetContentState extends State<_OpenShiftSheetContent> {
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: kLedgerModalButtonHeight,
           child: ElevatedButton(
             onPressed: () {
               final bal = parseLocalizedNumber(context, _controller.text);
@@ -1363,20 +1321,7 @@ class _OpenShiftSheetContentState extends State<_OpenShiftSheetContent> {
                 Navigator.pop(context);
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              language.translate('cash_open_shift_action'),
-              style: textStyles.bodySans.copyWith(
-                color: colors.surface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            child: Text(language.translate('cash_open_shift_action')),
           ),
         ),
       ],
@@ -1456,7 +1401,7 @@ class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: kLedgerModalButtonHeight,
           child: ElevatedButton(
             onPressed: () {
               final bal = parseLocalizedNumber(context, _balanceCtrl.text);

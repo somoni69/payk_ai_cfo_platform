@@ -359,7 +359,6 @@ class UnifiedTaskCard extends StatelessWidget {
 
   Widget _buildActionBar(BuildContext context) {
     final colors = context.colors;
-    final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
 
     // 1. Accept receipt button
@@ -367,28 +366,10 @@ class UnifiedTaskCard extends StatelessWidget {
       return Row(
         children: [
           Expanded(
-            child: SizedBox(
-              height: 36,
-              child: ElevatedButton.icon(
-                onPressed: onAccept,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: const Icon(TablerIcons.check, size: 16),
-                label: Text(
-                  language.translate('tasks_action_accept_receipt'),
-                  style: textStyles.captionSans.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            child: ElevatedButton.icon(
+              onPressed: onAccept,
+              icon: const Icon(TablerIcons.check),
+              label: Text(language.translate('tasks_action_accept_receipt')),
             ),
           ),
         ],
@@ -403,27 +384,10 @@ class UnifiedTaskCard extends StatelessWidget {
       return Row(
         children: [
           Expanded(
-            child: SizedBox(
-              height: 36,
-              child: OutlinedButton.icon(
-                onPressed: onSubmit,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.brand,
-                  side: BorderSide(color: colors.brand),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: const Icon(TablerIcons.send, size: 16),
-                label: Text(
-                  language.translate('tasks_action_submit_review'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.brand,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
+            child: OutlinedButton.icon(
+              onPressed: onSubmit,
+              icon: const Icon(TablerIcons.send),
+              label: Text(language.translate('tasks_action_submit_review')),
             ),
           ),
         ],
@@ -435,53 +399,26 @@ class UnifiedTaskCard extends StatelessWidget {
       return Row(
         children: [
           Expanded(
-            child: SizedBox(
-              height: 36,
-              child: ElevatedButton.icon(
-                onPressed: onApprove,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.accentGreen,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: const Icon(TablerIcons.circle_check, size: 16),
-                label: Text(
-                  language.translate('tasks_action_approve'),
-                  style: textStyles.captionSans.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+            child: ElevatedButton.icon(
+              onPressed: onApprove,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.accentGreen,
+                foregroundColor: colors.surface,
               ),
+              icon: const Icon(TablerIcons.circle_check),
+              label: Text(language.translate('tasks_action_approve')),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: SizedBox(
-              height: 36,
-              child: OutlinedButton.icon(
-                onPressed: onReject,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.accentRed,
-                  side: BorderSide(color: colors.accentRed),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                icon: const Icon(TablerIcons.arrow_back_up, size: 16),
-                label: Text(
-                  language.translate('tasks_action_rework'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.accentRed,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+            child: OutlinedButton.icon(
+              onPressed: onReject,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: colors.accentRed,
+                side: BorderSide(color: colors.accentRed),
               ),
+              icon: const Icon(TablerIcons.arrow_back_up),
+              label: Text(language.translate('tasks_action_rework')),
             ),
           ),
         ],

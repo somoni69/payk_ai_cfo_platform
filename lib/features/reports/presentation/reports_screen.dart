@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -22,6 +23,7 @@ import '../../../features/reports/domain/report_models.dart';
 import '../../../features/reports/domain/reports_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class ReportsScreen extends StatelessWidget {
@@ -175,20 +177,23 @@ class _ReportsViewState extends State<ReportsView> {
     final colors = context.colors;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(locale.translate('reports_delete_title')),
-        content: Text(locale.translate('reports_delete_msg')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(locale.translate('common_cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: colors.accentRed),
-            child: Text(locale.translate('common_delete')),
-          ),
-        ],
+      builder: (ctx) => Theme(
+        data: LedgerButtons.modalOverlay(ctx),
+        child: AlertDialog(
+          title: Text(locale.translate('reports_delete_title')),
+          content: Text(locale.translate('reports_delete_msg')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(locale.translate('common_cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: colors.accentRed),
+              child: Text(locale.translate('common_delete')),
+            ),
+          ],
+        ),
       ),
     );
     if (ok == true && mounted) {
@@ -453,88 +458,70 @@ class _ReportsViewState extends State<ReportsView> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final total =
-                    parseLocalizedNumber(context, totalCtrl.text.trim()) ?? 0;
-                final cash =
-                    parseLocalizedNumber(context, cashCtrl.text.trim()) ?? 0;
-                final cashless =
-                    parseLocalizedNumber(context, cashlessCtrl.text.trim()) ??
-                    0;
-                final returnsAmount =
-                    parseLocalizedNumber(
-                      context,
-                      returnsAmountCtrl.text.trim(),
-                    ) ??
-                    0;
-                final returnsCount =
-                    int.tryParse(returnsCountCtrl.text.trim()) ?? 0;
+          return ElevatedButton(
+            onPressed: () {
+              final total =
+                  parseLocalizedNumber(context, totalCtrl.text.trim()) ?? 0;
+              final cash =
+                  parseLocalizedNumber(context, cashCtrl.text.trim()) ?? 0;
+              final cashless =
+                  parseLocalizedNumber(context, cashlessCtrl.text.trim()) ?? 0;
+              final returnsAmount =
+                  parseLocalizedNumber(
+                    context,
+                    returnsAmountCtrl.text.trim(),
+                  ) ??
+                  0;
+              final returnsCount =
+                  int.tryParse(returnsCountCtrl.text.trim()) ?? 0;
 
-                if (_isManagement &&
-                    editing == null &&
-                    (selectedBranchId == null || selectedBranchId! <= 0)) {
-                  setSheetState(() {
-                    formError = locale.translate('reports_error_branch');
-                  });
-                  return;
-                }
+              if (_isManagement &&
+                  editing == null &&
+                  (selectedBranchId == null || selectedBranchId! <= 0)) {
+                setSheetState(() {
+                  formError = locale.translate('reports_error_branch');
+                });
+                return;
+              }
 
-                // Backend requires cash + cashless == total_sales
-                if ((cash + cashless - total).abs() > 0.009) {
-                  setSheetState(() {
-                    formError = locale.translate('reports_error_sum_mismatch');
-                  });
-                  return;
-                }
+              // Backend requires cash + cashless == total_sales
+              if ((cash + cashless - total).abs() > 0.009) {
+                setSheetState(() {
+                  formError = locale.translate('reports_error_sum_mismatch');
+                });
+                return;
+              }
 
-                final input = DailyReportInput(
-                  branchId: editing == null ? selectedBranchId : null,
-                  reportDate: reportDate,
-                  totalSales: total,
-                  cashAmount: cash,
-                  cashlessAmount: cashless,
-                  returnsCount: returnsCount < 0 ? 0 : returnsCount,
-                  returnsAmount: returnsAmount,
-                  hasInvoices: hasInvoices,
-                  productsSold: productsCtrl.text.trim().isEmpty
-                      ? null
-                      : productsCtrl.text.trim(),
-                  note: noteCtrl.text.trim().isEmpty
-                      ? null
-                      : noteCtrl.text.trim(),
+              final input = DailyReportInput(
+                branchId: editing == null ? selectedBranchId : null,
+                reportDate: reportDate,
+                totalSales: total,
+                cashAmount: cash,
+                cashlessAmount: cashless,
+                returnsCount: returnsCount < 0 ? 0 : returnsCount,
+                returnsAmount: returnsAmount,
+                hasInvoices: hasInvoices,
+                productsSold: productsCtrl.text.trim().isEmpty
+                    ? null
+                    : productsCtrl.text.trim(),
+                note: noteCtrl.text.trim().isEmpty
+                    ? null
+                    : noteCtrl.text.trim(),
+              );
+
+              final bloc = this.context.read<ReportsBloc>();
+              if (editing != null) {
+                bloc.add(
+                  UpdateDailyReportRequested(id: editing.id, input: input),
                 );
-
-                final bloc = this.context.read<ReportsBloc>();
-                if (editing != null) {
-                  bloc.add(
-                    UpdateDailyReportRequested(id: editing.id, input: input),
-                  );
-                } else {
-                  bloc.add(CreateDailyReportRequested(input));
-                }
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                locale.translate(
-                  editing == null ? 'common_create' : 'common_save',
-                ),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 16,
-                ),
+              } else {
+                bloc.add(CreateDailyReportRequested(input));
+              }
+              Navigator.pop(context);
+            },
+            child: Text(
+              locale.translate(
+                editing == null ? 'common_create' : 'common_save',
               ),
             ),
           );
@@ -560,27 +547,11 @@ class _ReportsViewState extends State<ReportsView> {
 
     return Scaffold(
       floatingActionButton: _canWrite
-          ? FloatingActionButton.extended(
+          ? LedgerFab(
               heroTag: null,
               onPressed: () => _showReportForm(),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              highlightElevation: 0,
-              focusElevation: 0,
-              hoverElevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: colors.brand),
-              ),
-              icon: const Icon(TablerIcons.plus),
-              label: Text(
-                locale.translate('reports_new'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              icon: TablerIcons.plus,
+              label: locale.translate('reports_new'),
             )
           : null,
       appBar: AppBar(

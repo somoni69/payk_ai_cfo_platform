@@ -18,6 +18,7 @@ import '../../../features/dashboard/domain/finance_model.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/ledger_spotlight.dart';
@@ -212,31 +213,15 @@ class DashboardReportScreen extends StatelessWidget {
               (section == DashboardSection.planFact &&
                   canWrite &&
                   loadedState != null)
-              ? FloatingActionButton.extended(
+              ? LedgerFab(
                   heroTag: null,
                   onPressed: () {
                     final period =
                         loadedState.planFact?.period ?? _defaultPlanPeriod();
                     _showCreatePlanSheet(context, period);
                   },
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  highlightElevation: 0,
-                  focusElevation: 0,
-                  hoverElevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: colors.brand),
-                  ),
-                  icon: const Icon(TablerIcons.plus),
-                  label: Text(
-                    languageCubit.translate('dashboard_plan_add'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  icon: TablerIcons.plus,
+                  label: languageCubit.translate('dashboard_plan_add'),
                 )
               : null,
           body: NestedScrollView(

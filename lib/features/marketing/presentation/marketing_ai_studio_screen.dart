@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
@@ -232,22 +233,9 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                 style: OutlinedButton.styleFrom(
                   foregroundColor: colors.brand,
                   side: BorderSide(color: colors.brand),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
                 ),
-                icon: const Icon(TablerIcons.sparkles, size: 15),
-                label: Text(
-                  locale.translate('marketing_refresh_ideas_btn'),
-                  style: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
+                icon: const Icon(TablerIcons.sparkles),
+                label: Text(locale.translate('marketing_refresh_ideas_btn')),
               ),
             ],
           ),
@@ -305,25 +293,9 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                             ),
                           );
                         },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(TablerIcons.bulb, size: 16),
+                  icon: const Icon(TablerIcons.bulb),
                   label: Text(
                     locale.translate('marketing_generate_concepts_btn'),
-                    style: textStyles.bodySans.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
                   ),
                 ),
               )
@@ -390,27 +362,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
               const Spacer(),
               ElevatedButton(
                 onPressed: () => _openCreateCampaignFromIdea(context, idea),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  locale.translate('marketing_use_idea_btn'),
-                  style: textStyles.captionSans.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
+                child: Text(locale.translate('marketing_use_idea_btn')),
               ),
             ],
           ),
@@ -607,26 +559,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             children: [
               OutlinedButton(
                 onPressed: () => _openReviseModal(context, campaignId, concept),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: colors.textSecondary,
-                  side: BorderSide(color: colors.border),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  'Доработать',
-                  style: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                  ),
-                ),
+                child: const Text('Доработать'),
               ),
               const SizedBox(width: 8),
               if (!concept.isApproved)
@@ -638,25 +571,9 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.accentGreen,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    foregroundColor: colors.surface,
                   ),
-                  child: Text(
-                    'Утвердить',
-                    style: textStyles.captionSans.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
+                  child: const Text('Утвердить'),
                 )
               else
                 ElevatedButton.icon(
@@ -666,28 +583,8 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                     );
                     _tabController.animateTo(1);
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(TablerIcons.movie, size: 14),
-                  label: Text(
-                    locale.translate('marketing_produce_media_btn'),
-                    style: textStyles.captionSans.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
+                  icon: const Icon(TablerIcons.movie),
+                  label: Text(locale.translate('marketing_produce_media_btn')),
                 ),
             ],
           ),
@@ -855,19 +752,9 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                       style: OutlinedButton.styleFrom(
                         foregroundColor: colors.brand,
                         side: BorderSide(color: colors.brand),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
-                      icon: const Icon(TablerIcons.photo, size: 16),
-                      label: Text(
-                        locale.translate('marketing_imagen_photo'),
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                        ),
-                      ),
+                      icon: const Icon(TablerIcons.photo),
+                      label: Text(locale.translate('marketing_imagen_photo')),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -876,23 +763,8 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                       onPressed: state.isStudioLoading
                           ? null
                           : () => _confirmVeoVideoGeneration(context, media.id),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      icon: const Icon(TablerIcons.video, size: 16),
-                      label: Text(
-                        locale.translate('marketing_veo_video'),
-                        style: textStyles.bodySans.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.5,
-                        ),
-                      ),
+                      icon: const Icon(TablerIcons.video),
+                      label: Text(locale.translate('marketing_veo_video')),
                     ),
                   ),
                 ],
@@ -934,12 +806,6 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                         style: OutlinedButton.styleFrom(
                           foregroundColor: colors.accentRed,
                           side: BorderSide(color: colors.accentRed),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         child: Text(locale.translate('marketing_reject')),
                       ),
@@ -1137,8 +1003,6 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
     final nameCtrl = TextEditingController(text: idea.title);
     final notesCtrl = TextEditingController(text: idea.reason);
     final daysCtrl = TextEditingController(text: '7');
-    final colors = context.colors;
-    final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
 
     LedgerBottomSheet.show(
@@ -1194,21 +1058,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                locale.translate('marketing_create_campaign_cta'),
-                style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text(locale.translate('marketing_create_campaign_cta')),
             ),
           ),
         ],
@@ -1266,21 +1116,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                   ),
                 );
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                locale.translate('marketing_concept_regenerate'),
-                style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text(locale.translate('marketing_concept_regenerate')),
             ),
           ),
         ],
@@ -1289,44 +1125,42 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
   }
 
   void _confirmVeoVideoGeneration(BuildContext context, String mediaId) {
-    final colors = context.colors;
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          locale.translate('marketing_veo_dialog_title'),
-          style: textStyles.h2Sans.copyWith(fontSize: 16),
-        ),
-        content: Text(
-          locale.translate('marketing_veo_dialog_desc'),
-          style: textStyles.bodySans.copyWith(fontSize: 13.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(locale.translate('cancel')),
+      builder: (ctx) => Theme(
+        data: LedgerButtons.modalOverlay(ctx),
+        child: AlertDialog(
+          title: Text(
+            locale.translate('marketing_veo_dialog_title'),
+            style: textStyles.h2Sans.copyWith(fontSize: 16),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              context.read<MarketingBloc>().add(
-                GenerateAiStudioMediaRequested(
-                  mediaId: mediaId,
-                  kind: 'video',
-                  confirm: true,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: Colors.white,
+          content: Text(
+            locale.translate('marketing_veo_dialog_desc'),
+            style: textStyles.bodySans.copyWith(fontSize: 13.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(locale.translate('cancel')),
             ),
-            child: Text(locale.translate('save_to_ledger')),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                context.read<MarketingBloc>().add(
+                  GenerateAiStudioMediaRequested(
+                    mediaId: mediaId,
+                    kind: 'video',
+                    confirm: true,
+                  ),
+                );
+              },
+              child: Text(locale.translate('save_to_ledger')),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1376,18 +1210,8 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accentRed,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               ),
-              child: Text(
-                locale.translate('marketing_reject_confirm'),
-                style: textStyles.bodySans.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text(locale.translate('marketing_reject_confirm')),
             ),
           ),
         ],

@@ -665,9 +665,6 @@ class _MoreScreenState extends State<MoreScreen> {
               ),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: colors.border),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               ),
             ),
           ],

@@ -100,19 +100,22 @@ extension _CashTabBuilders on _CashViewMixin {
                 ? () async {
                     final ok = await showDialog<bool>(
                       context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: Text(language.translate('cash_delete_title')),
-                        content: Text(language.translate('cash_delete_msg')),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: Text(language.translate('common_cancel')),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: Text(language.translate('common_delete')),
-                          ),
-                        ],
+                      builder: (ctx) => Theme(
+                        data: LedgerButtons.modalOverlay(ctx),
+                        child: AlertDialog(
+                          title: Text(language.translate('cash_delete_title')),
+                          content: Text(language.translate('cash_delete_msg')),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text(language.translate('common_cancel')),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: Text(language.translate('common_delete')),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                     if (ok == true && context.mounted) {
@@ -280,55 +283,18 @@ extension _CashTabBuilders on _CashViewMixin {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              height: 44,
               child: isOpen
                   ? OutlinedButton(
                       onPressed: () =>
                           _showCloseShiftBottomSheet(context, shift),
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        side: BorderSide(color: colors.border),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
                       child: Text(
                         language.translate('cash_close_shift_action'),
-                        style: textStyles.bodySans.copyWith(
-                          color: colors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                        ),
                       ),
                     )
                   : ElevatedButton(
                       onPressed: () =>
                           _showOpenShiftBottomSheet(context, state.registers),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.surface,
-                        elevation: 0,
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: Text(
-                        language.translate('cash_open_shift_btn'),
-                        style: textStyles.bodySans.copyWith(
-                          color: colors.surface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                        ),
-                      ),
+                      child: Text(language.translate('cash_open_shift_btn')),
                     ),
             ),
           ],

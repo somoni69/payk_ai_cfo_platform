@@ -157,73 +157,79 @@ class _CashPosViewState extends State<CashPosView> {
         builder: (dlg) {
           var error = '';
           var busy = false;
-          return StatefulBuilder(
-            builder: (context, setDialog) {
-              final colors = context.colors;
-              return AlertDialog(
-                title: Text(language.translate('cash_pin_title')),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: pinController,
-                      keyboardType: TextInputType.number,
-                      obscureText: true,
-                      maxLength: 8,
-                      autofocus: true,
-                      decoration: InputDecoration(
-                        labelText: language.translate('cash_pin_title'),
-                        counterText: '',
+          return Theme(
+            data: LedgerButtons.modalOverlay(dlg),
+            child: StatefulBuilder(
+              builder: (context, setDialog) {
+                final colors = context.colors;
+                return AlertDialog(
+                  title: Text(language.translate('cash_pin_title')),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: pinController,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        maxLength: 8,
+                        autofocus: true,
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_pin_title'),
+                          counterText: '',
+                        ),
+                        onSubmitted: (_) async {
+                          if (busy) return;
+                          final ok = await _submitPin(
+                            pinController.text,
+                            action,
+                            language,
+                            (msg) => setDialog(() => error = msg),
+                          );
+                          if (ok && dlg.mounted) Navigator.pop(dlg, true);
+                        },
                       ),
-                      onSubmitted: (_) async {
-                        if (busy) return;
-                        final ok = await _submitPin(
-                          pinController.text,
-                          action,
-                          language,
-                          (msg) => setDialog(() => error = msg),
-                        );
-                        if (ok && dlg.mounted) Navigator.pop(dlg, true);
-                      },
-                    ),
-                    if (error.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        error,
-                        style: TextStyle(color: colors.accentRed, fontSize: 13),
-                      ),
+                      if (error.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          error,
+                          style: TextStyle(
+                            color: colors.accentRed,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dlg, false),
+                      child: Text(language.translate('common_cancel')),
+                    ),
+                    ElevatedButton(
+                      onPressed: busy
+                          ? null
+                          : () async {
+                              setDialog(() => busy = true);
+                              final ok = await _submitPin(
+                                pinController.text,
+                                action,
+                                language,
+                                (msg) => setDialog(() {
+                                  error = msg;
+                                  busy = false;
+                                }),
+                              );
+                              if (ok && dlg.mounted) Navigator.pop(dlg, true);
+                              if (!ok && dlg.mounted) {
+                                setDialog(() => busy = false);
+                              }
+                            },
+                      child: Text(language.translate('cash_pin_confirm')),
+                    ),
                   ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dlg, false),
-                    child: Text(language.translate('common_cancel')),
-                  ),
-                  ElevatedButton(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            setDialog(() => busy = true);
-                            final ok = await _submitPin(
-                              pinController.text,
-                              action,
-                              language,
-                              (msg) => setDialog(() {
-                                error = msg;
-                                busy = false;
-                              }),
-                            );
-                            if (ok && dlg.mounted) Navigator.pop(dlg, true);
-                            if (!ok && dlg.mounted) {
-                              setDialog(() => busy = false);
-                            }
-                          },
-                    child: Text(language.translate('cash_pin_confirm')),
-                  ),
-                ],
-              );
-            },
+                );
+              },
+            ),
           );
         },
       );
@@ -293,104 +299,112 @@ class _CashPosViewState extends State<CashPosView> {
         builder: (dlg) {
           var error = '';
           var busy = false;
-          return StatefulBuilder(
-            builder: (context, setDialog) {
-              final colors = context.colors;
-              return AlertDialog(
-                title: Text(language.translate('cash_pin_setup_title')),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: pinController,
-                      keyboardType: TextInputType.number,
-                      obscureText: true,
-                      maxLength: 8,
-                      decoration: InputDecoration(
-                        labelText: language.translate('cash_pin_new'),
-                        counterText: '',
+          return Theme(
+            data: LedgerButtons.modalOverlay(dlg),
+            child: StatefulBuilder(
+              builder: (context, setDialog) {
+                final colors = context.colors;
+                return AlertDialog(
+                  title: Text(language.translate('cash_pin_setup_title')),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: pinController,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        maxLength: 8,
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_pin_new'),
+                          counterText: '',
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: repeatController,
-                      keyboardType: TextInputType.number,
-                      obscureText: true,
-                      maxLength: 8,
-                      decoration: InputDecoration(
-                        labelText: language.translate('cash_pin_repeat'),
-                        counterText: '',
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: repeatController,
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        maxLength: 8,
+                        decoration: InputDecoration(
+                          labelText: language.translate('cash_pin_repeat'),
+                          counterText: '',
+                        ),
                       ),
-                    ),
-                    if (error.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        error,
-                        style: TextStyle(color: colors.accentRed, fontSize: 13),
-                      ),
+                      if (error.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          error,
+                          style: TextStyle(
+                            color: colors.accentRed,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dlg),
-                    child: Text(language.translate('common_cancel')),
                   ),
-                  ElevatedButton(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            final pin = pinController.text.replaceAll(
-                              RegExp(r'\D'),
-                              '',
-                            );
-                            final repeat = repeatController.text.replaceAll(
-                              RegExp(r'\D'),
-                              '',
-                            );
-                            if (pin.length < 4) {
-                              setDialog(
-                                () => error = language.translate(
-                                  'cash_pin_too_short',
-                                ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dlg),
+                      child: Text(language.translate('common_cancel')),
+                    ),
+                    ElevatedButton(
+                      onPressed: busy
+                          ? null
+                          : () async {
+                              final pin = pinController.text.replaceAll(
+                                RegExp(r'\D'),
+                                '',
                               );
-                              return;
-                            }
-                            if (pin != repeat) {
-                              setDialog(
-                                () => error = language.translate(
-                                  'cash_pin_mismatch',
-                                ),
+                              final repeat = repeatController.text.replaceAll(
+                                RegExp(r'\D'),
+                                '',
                               );
-                              return;
-                            }
-                            setDialog(() => busy = true);
-                            final messenger = ScaffoldMessenger.of(context);
-                            final repo = context.read<CashRepository>();
-                            try {
-                              await repo.savePosPin(pin);
-                              if (!mounted) return;
-                              setState(() => _pinSet = true);
-                              if (dlg.mounted) Navigator.pop(dlg);
-                              messenger.showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    language.translate('cash_pin_saved'),
+                              if (pin.length < 4) {
+                                setDialog(
+                                  () => error = language.translate(
+                                    'cash_pin_too_short',
                                   ),
-                                ),
-                              );
-                            } catch (e) {
-                              setDialog(() {
-                                busy = false;
-                                error = language.translateMessage(e.toString());
-                              });
-                            }
-                          },
-                    child: Text(language.translate('common_save')),
-                  ),
-                ],
-              );
-            },
+                                );
+                                return;
+                              }
+                              if (pin != repeat) {
+                                setDialog(
+                                  () => error = language.translate(
+                                    'cash_pin_mismatch',
+                                  ),
+                                );
+                                return;
+                              }
+                              setDialog(() => busy = true);
+                              final messenger = ScaffoldMessenger.of(context);
+                              final repo = context.read<CashRepository>();
+                              try {
+                                await repo.savePosPin(pin);
+                                if (!mounted) return;
+                                setState(() => _pinSet = true);
+                                if (dlg.mounted) Navigator.pop(dlg);
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      language.translate('cash_pin_saved'),
+                                    ),
+                                  ),
+                                );
+                              } catch (e) {
+                                setDialog(() {
+                                  busy = false;
+                                  error = language.translateMessage(
+                                    e.toString(),
+                                  );
+                                });
+                              }
+                            },
+                      child: Text(language.translate('common_save')),
+                    ),
+                  ],
+                );
+              },
+            ),
           );
         },
       );
@@ -441,35 +455,38 @@ class _CashPosViewState extends State<CashPosView> {
       return await showDialog<double>(
         context: context,
         builder: (dlg) {
-          return AlertDialog(
-            title: Text(language.translate('cash_pos_weight_title')),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+          return Theme(
+            data: LedgerButtons.modalOverlay(dlg),
+            child: AlertDialog(
+              title: Text(language.translate('cash_pos_weight_title')),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText:
+                      '${language.translate('cash_pos_weight_qty')} (${product.unit})',
+                ),
               ),
-              decoration: InputDecoration(
-                labelText:
-                    '${language.translate('cash_pos_weight_qty')} (${product.unit})',
-              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dlg),
+                  child: Text(language.translate('common_cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final value =
+                        parseLocalizedNumber(context, controller.text) ??
+                        double.tryParse(controller.text.replaceAll(',', '.'));
+                    if (value == null || value <= 0) return;
+                    Navigator.pop(dlg, value);
+                  },
+                  child: Text(language.translate('common_add')),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dlg),
-                child: Text(language.translate('common_cancel')),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final value =
-                      parseLocalizedNumber(context, controller.text) ??
-                      double.tryParse(controller.text.replaceAll(',', '.'));
-                  if (value == null || value <= 0) return;
-                  Navigator.pop(dlg, value);
-                },
-                child: Text(language.translate('common_add')),
-              ),
-            ],
           );
         },
       );
@@ -593,58 +610,63 @@ class _CashPosViewState extends State<CashPosView> {
     return showDialog<bool>(
       context: context,
       builder: (dlg) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(language.translate('cash_pos_change_title')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                formatLocalizedNumber(context, _total),
-                style: textStyles.displayMono.copyWith(fontSize: 22),
+        return Theme(
+          data: LedgerButtons.modalOverlay(dlg),
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(language.translate('cash_pos_change_title')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  formatLocalizedNumber(context, _total),
+                  style: textStyles.displayMono.copyWith(fontSize: 22),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _gotController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: textStyles.bodyMono,
+                  decoration: InputDecoration(
+                    labelText: language.translate('cash_pos_change_got'),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dlg, false),
+                child: Text(language.translate('common_cancel')),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _gotController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: textStyles.bodyMono,
-                decoration: InputDecoration(
-                  labelText: language.translate('cash_pos_change_got'),
-                ),
+              ElevatedButton(
+                onPressed: () {
+                  final got =
+                      double.tryParse(
+                        _gotController.text.replaceAll(',', '.'),
+                      ) ??
+                      _total;
+                  final change = got - _total;
+                  Navigator.pop(dlg, true);
+                  if (change > 0 && mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '${language.translate('cash_pos_change_due')}: ${formatLocalizedNumber(context, change)}',
+                        ),
+                        backgroundColor: colors.brand,
+                      ),
+                    );
+                  }
+                },
+                child: Text(language.translate('cash_pos_checkout')),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dlg, false),
-              child: Text(language.translate('common_cancel')),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final got =
-                    double.tryParse(_gotController.text.replaceAll(',', '.')) ??
-                    _total;
-                final change = got - _total;
-                Navigator.pop(dlg, true);
-                if (change > 0 && mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        '${language.translate('cash_pos_change_due')}: ${formatLocalizedNumber(context, change)}',
-                      ),
-                      backgroundColor: colors.brand,
-                    ),
-                  );
-                }
-              },
-              child: Text(language.translate('cash_pos_checkout')),
-            ),
-          ],
         );
       },
     );
@@ -1012,7 +1034,7 @@ class _CashPosViewState extends State<CashPosView> {
         ],
         const SizedBox(height: 16),
         SizedBox(
-          height: 44,
+          width: double.infinity,
           child: ElevatedButton(
             onPressed: widget.isViewer || _submitting ? null : _checkout,
             child: _submitting

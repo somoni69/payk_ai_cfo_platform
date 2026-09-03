@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -12,6 +13,7 @@ import '../../../features/branches/bloc/branches_state.dart';
 import '../../../features/branches/domain/branch_models.dart';
 import '../../../features/branches/domain/branches_repository.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 class BranchesScreen extends StatelessWidget {
@@ -73,26 +75,11 @@ class BranchesView extends StatelessWidget {
         ),
       ),
       floatingActionButton: canManage
-          ? FloatingActionButton.extended(
+          ? LedgerFab(
               heroTag: null,
               onPressed: () => _showBranchModal(context),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              highlightElevation: 0,
-              focusElevation: 0,
-              hoverElevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              icon: const Icon(TablerIcons.plus),
-              label: Text(
-                locale.translate('branches_new'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              icon: TablerIcons.plus,
+              label: locale.translate('branches_new'),
             )
           : null,
       body: BlocConsumer<BranchesBloc, BranchesState>(
@@ -429,7 +416,7 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
-          height: 48,
+          height: kLedgerModalButtonHeight,
           child: ElevatedButton(
             onPressed: () {
               if (_nameCtrl.text.trim().isEmpty) return;
@@ -467,7 +454,7 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: kLedgerModalButtonHeight,
             child: OutlinedButton.icon(
               onPressed: () {
                 widget.branchesBloc.add(DeleteBranchRequested(editing.id));
@@ -477,9 +464,6 @@ class _BranchFormSheetState extends State<_BranchFormSheet> {
                 foregroundColor: colors.accentRed,
                 side: BorderSide(
                   color: colors.accentRed.withValues(alpha: 0.5),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
               icon: const Icon(TablerIcons.trash, size: 18),

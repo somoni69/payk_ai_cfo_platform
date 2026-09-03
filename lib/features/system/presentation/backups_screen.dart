@@ -5,6 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../cubit/backups_cubit.dart';
 import '../domain/system_repository.dart';
@@ -97,13 +98,11 @@ class _BackupsView extends StatelessWidget {
               child: Container(height: 1, color: colors.border),
             ),
           ),
-          floatingActionButton: FloatingActionButton.extended(
+          floatingActionButton: LedgerFab(
             heroTag: null,
             onPressed: creating ? null : () => _create(context),
-            backgroundColor: colors.brand,
-            foregroundColor: colors.surface,
-            elevation: 0,
-            icon: creating
+            icon: TablerIcons.plus,
+            iconWidget: creating
                 ? const SizedBox(
                     width: 18,
                     height: 18,
@@ -112,8 +111,8 @@ class _BackupsView extends StatelessWidget {
                       color: Colors.white,
                     ),
                   )
-                : const Icon(TablerIcons.plus, size: 18),
-            label: Text(language.translate('backups_create')),
+                : null,
+            label: language.translate('backups_create'),
           ),
           body: loading
               ? const BackupsOverviewShimmer()

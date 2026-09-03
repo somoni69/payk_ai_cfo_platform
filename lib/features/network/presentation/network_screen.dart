@@ -10,11 +10,13 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../../../core/network/user_facing_error.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../bloc/network_bloc.dart';
@@ -58,6 +60,11 @@ class _NetworkViewState extends State<_NetworkView> {
     return '${formatLocalizedNumber(context, amount)} TJS';
   }
 
+  Widget _networkAmount({required bool loading, required Widget child}) {
+    if (!loading) return child;
+    return LedgerShimmer(child: child);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -81,21 +88,19 @@ class _NetworkViewState extends State<_NetworkView> {
             color: colors.textPrimary,
           ),
         ),
-        actions: [
-          if (isOwner) ...[
-            IconButton(
-              tooltip: language.translate('network_new_store'),
-              icon: Icon(TablerIcons.plus, color: colors.brand, size: 20),
-              onPressed: () => _showCreateStoreDialog(context),
-            ),
-            const SizedBox(width: 4),
-          ],
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: colors.border),
         ),
       ),
+      floatingActionButton: isOwner
+          ? LedgerFab(
+              heroTag: null,
+              onPressed: () => _showCreateStoreDialog(context),
+              icon: TablerIcons.plus,
+              label: language.translate('network_new_store'),
+            )
+          : null,
       body: BlocConsumer<NetworkBloc, NetworkState>(
         listener: (context, state) {
           if (state is NetworkLoaded && state.actionMessage != null) {
@@ -128,7 +133,11 @@ class _NetworkViewState extends State<_NetworkView> {
                       forceRefresh: true,
                     ),
                   );
-                  await bloc.stream.firstWhere((s) => s is! NetworkLoading);
+                  await bloc.stream.firstWhere(
+                    (s) =>
+                        s is NetworkError ||
+                        (s is NetworkLoaded && !s.isSummaryLoading),
+                  );
                 },
               ),
               SliverPadding(
@@ -171,6 +180,7 @@ class _NetworkViewState extends State<_NetworkView> {
                               ),
                             ),
                             isCurrent: store.id == state.actingStore?.id,
+                            summaryLoading: state.isSummaryLoading,
                           ),
                           const SizedBox(height: 10),
                         ],
@@ -248,23 +258,7 @@ class _NetworkViewState extends State<_NetworkView> {
               context.read<AuthBloc>().add(const ActingStoreUpdated());
               context.go('/dashboard');
             },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              side: BorderSide(color: colors.border),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: Text(
-              language.translate('network_leave_store'),
-              style: textStyles.captionSans.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colors.brand,
-                fontSize: 12.5,
-              ),
-            ),
+            child: Text(language.translate('network_leave_store')),
           ),
         ],
       ),
@@ -305,14 +299,17 @@ class _NetworkViewState extends State<_NetworkView> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      _formatMoney(context, state.totalProfit),
-                      style: textStyles.displayMono.copyWith(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: state.totalProfit >= 0
-                            ? colors.textPrimary
-                            : colors.accentRed,
+                    _networkAmount(
+                      loading: state.isSummaryLoading,
+                      child: Text(
+                        _formatMoney(context, state.totalProfit),
+                        style: textStyles.displayMono.copyWith(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: state.totalProfit >= 0
+                              ? colors.textPrimary
+                              : colors.accentRed,
+                        ),
                       ),
                     ),
                   ],
@@ -369,13 +366,16 @@ class _NetworkViewState extends State<_NetworkView> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        _formatMoney(context, state.totalRevenue),
-                        style: textStyles.bodyMono.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                          color: colors.textPrimary,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                      _networkAmount(
+                        loading: state.isSummaryLoading,
+                        child: Text(
+                          _formatMoney(context, state.totalRevenue),
+                          style: textStyles.bodyMono.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5,
+                            color: colors.textPrimary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ],
@@ -414,13 +414,16 @@ class _NetworkViewState extends State<_NetworkView> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        _formatMoney(context, state.totalExpenses),
-                        style: textStyles.bodyMono.copyWith(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13.5,
-                          color: colors.textPrimary,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                      _networkAmount(
+                        loading: state.isSummaryLoading,
+                        child: Text(
+                          _formatMoney(context, state.totalExpenses),
+                          style: textStyles.bodyMono.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5,
+                            color: colors.textPrimary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ],
@@ -430,11 +433,14 @@ class _NetworkViewState extends State<_NetworkView> {
             ],
           ),
           const SizedBox(height: 10),
-          Text(
-            '${language.translate('network_operations_short')}: ${state.totalOperations}',
-            style: textStyles.smallMono.copyWith(
-              color: colors.textSecondary,
-              fontFeatures: const [FontFeature.tabularFigures()],
+          _networkAmount(
+            loading: state.isSummaryLoading,
+            child: Text(
+              '${language.translate('network_operations_short')}: ${state.totalOperations}',
+              style: textStyles.smallMono.copyWith(
+                color: colors.textSecondary,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
         ],
@@ -461,10 +467,11 @@ class _NetworkViewState extends State<_NetworkView> {
     ];
 
     return LedgerSegmentedControl<NetworkPeriod>(
-      height: 38,
+      height: 36,
       segments: periods,
       selectedValue: current,
       onValueChanged: (p) {
+        if (p == current) return;
         context.read<NetworkBloc>().add(LoadNetworkData(period: p));
       },
     );
@@ -475,6 +482,7 @@ class _NetworkViewState extends State<_NetworkView> {
     NetworkStore store,
     StoreSummaryRow summary, {
     required bool isCurrent,
+    bool summaryLoading = false,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
@@ -717,20 +725,26 @@ class _NetworkViewState extends State<_NetworkView> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMetricCell(
-                        context,
-                        label: language.translate('network_revenue_short'),
-                        value: _formatMoney(context, summary.revenue),
-                        valueColor: colors.textPrimary,
+                      child: _networkAmount(
+                        loading: summaryLoading,
+                        child: _buildMetricCell(
+                          context,
+                          label: language.translate('network_revenue_short'),
+                          value: _formatMoney(context, summary.revenue),
+                          valueColor: colors.textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildMetricCell(
-                        context,
-                        label: language.translate('network_expenses_short'),
-                        value: _formatMoney(context, summary.expenses),
-                        valueColor: colors.accentRed,
+                      child: _networkAmount(
+                        loading: summaryLoading,
+                        child: _buildMetricCell(
+                          context,
+                          label: language.translate('network_expenses_short'),
+                          value: _formatMoney(context, summary.expenses),
+                          valueColor: colors.accentRed,
+                        ),
                       ),
                     ),
                   ],
@@ -745,14 +759,17 @@ class _NetworkViewState extends State<_NetworkView> {
                 Row(
                   children: [
                     Expanded(
-                      child: _buildMetricCell(
-                        context,
-                        label: language.translate('network_profit_short'),
-                        value: _formatMoney(context, summary.profit),
-                        valueColor: summary.profit >= 0
-                            ? colors.accentGreen
-                            : colors.accentRed,
-                        isBold: true,
+                      child: _networkAmount(
+                        loading: summaryLoading,
+                        child: _buildMetricCell(
+                          context,
+                          label: language.translate('network_profit_short'),
+                          value: _formatMoney(context, summary.profit),
+                          valueColor: summary.profit >= 0
+                              ? colors.accentGreen
+                              : colors.accentRed,
+                          isBold: true,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -778,11 +795,14 @@ class _NetworkViewState extends State<_NetworkView> {
                         color: colors.textSecondary,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '${language.translate('network_operations_short')}: ${summary.operationsCount}',
-                        style: textStyles.smallMono.copyWith(
-                          color: colors.textSecondary,
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                      _networkAmount(
+                        loading: summaryLoading,
+                        child: Text(
+                          '${language.translate('network_operations_short')}: ${summary.operationsCount}',
+                          style: textStyles.smallMono.copyWith(
+                            color: colors.textSecondary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ),
                     ],
@@ -839,22 +859,10 @@ class _NetworkViewState extends State<_NetworkView> {
           else if (!store.isActive)
             SizedBox(
               width: double.infinity,
-              height: 38,
               child: OutlinedButton(
                 onPressed: null,
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: colors.border),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
                 child: Text(
                   language.translate('network_enter_disabled_hint'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -862,18 +870,8 @@ class _NetworkViewState extends State<_NetworkView> {
           else
             SizedBox(
               width: double.infinity,
-              height: 38,
               child: ElevatedButton(
                 onPressed: _enteringStoreId != null ? null : enterStore,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
                 child: isEntering
                     ? SizedBox(
                         width: 18,
@@ -1338,37 +1336,44 @@ class _NetworkViewState extends State<_NetworkView> {
 
     showDialog<void>(
       context: context,
-      builder: (dlgContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(language.translate('network_store_delete_confirm_title')),
-        content: Text(
-          language.translate(
-            store.hasData ? 'network_delete_has_data' : 'network_delete_empty',
+      builder: (dlgContext) => Theme(
+        data: LedgerButtons.modalOverlay(dlgContext),
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dlgContext).pop(),
-            child: Text(language.translate('common_cancel')),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.accentRed,
-              foregroundColor: Colors.white,
+          title: Text(language.translate('network_store_delete_confirm_title')),
+          content: Text(
+            language.translate(
+              store.hasData
+                  ? 'network_delete_has_data'
+                  : 'network_delete_empty',
             ),
-            onPressed: () async {
-              Navigator.of(dlgContext).pop();
-              bloc.add(DeleteStoreRequested(storeId: store.id));
-            },
-            child: Text(
-              language.translate(
-                store.hasData
-                    ? 'network_disable_confirm'
-                    : 'network_store_delete_btn',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dlgContext).pop(),
+              child: Text(language.translate('common_cancel')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: colors.accentRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.of(dlgContext).pop();
+                bloc.add(DeleteStoreRequested(storeId: store.id));
+              },
+              child: Text(
+                language.translate(
+                  store.hasData
+                      ? 'network_disable_confirm'
+                      : 'network_store_delete_btn',
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../bloc/crm_bloc.dart';
@@ -258,32 +259,35 @@ class _DealCard extends StatelessWidget {
     final textStyles = context.textStyles;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(language.translate('crm_delete_deal')),
-        content: Text(
-          language.translate(
-            'crm_delete_deal_confirm',
-            params: {'name': deal.title},
+      builder: (ctx) => Theme(
+        data: LedgerButtons.modalOverlay(ctx),
+        child: AlertDialog(
+          title: Text(language.translate('crm_delete_deal')),
+          content: Text(
+            language.translate(
+              'crm_delete_deal_confirm',
+              params: {'name': deal.title},
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              language.translate('common_cancel'),
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(
+                language.translate('common_cancel'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(
-              language.translate('common_delete'),
-              style: textStyles.captionSans.copyWith(color: colors.accentRed),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(
+                language.translate('common_delete'),
+                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
     if (ok == true && context.mounted) {

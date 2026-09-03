@@ -2,6 +2,24 @@ import 'package:flutter/material.dart';
 
 import 'theme_extensions.dart';
 
+/// Max height of the AI assistant and every content sheet (88% of the screen).
+/// Short forms wrap to their content; tall ones cap here and scroll.
+const kLedgerModalHeightFactor = 0.88;
+
+/// Top corners of the AI assistant and every content sheet.
+const kLedgerModalTopRadius = 16.0;
+
+/// Max height of a content modal: 88% of the screen, never taller than the
+/// remaining space above the keyboard.
+double ledgerModalHeightOf(BuildContext context) {
+  final media = MediaQuery.of(context);
+  final keyboard = media.viewInsets.bottom;
+  final target = media.size.height * kLedgerModalHeightFactor;
+  final maxH = media.size.height - keyboard;
+  if (maxH > 0 && target > maxH) return maxH;
+  return target;
+}
+
 /// Layout tokens for phones from 16:9 up to 20:9 / 21:9 (Tecno Pova 6 etc.).
 class LedgerLayout {
   const LedgerLayout({

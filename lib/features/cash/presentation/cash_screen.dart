@@ -12,6 +12,7 @@ import '../../../core/localization/locale_number_format.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/models/ui_feedback.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -30,6 +31,7 @@ import '../../assistant/presentation/ledger_ai_assistant.dart';
 import '../../../presentation/widgets/ledger_barcode_scanner.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import 'cash_transaction_tile.dart';
@@ -262,9 +264,6 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
                         size: 18,
                       ),
                       label: Text(language.translate('cash_export_excel')),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -282,9 +281,6 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
                         size: 18,
                       ),
                       label: Text(language.translate('cash_export_pdf')),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -300,9 +296,6 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
                         size: 18,
                       ),
                       label: Text(language.translate('cash_import')),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
                     ),
                   ),
                 ],
@@ -642,39 +635,17 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
             // 3. Quick Action Button (Full-width)
             // 3. Quick Action Button (Matches Hero shift button style)
             if (!isViewer) ...[
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showAddTransactionBottomSheet(
-                    context,
-                    authState,
-                    state.registers,
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    minimumSize: const Size.fromHeight(44),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  icon: const Icon(TablerIcons.plus, size: 17),
-                  label: Text(
-                    language.translate('cash_new_operation_btn'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13.5,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              ElevatedButton.icon(
+                onPressed: () => _showAddTransactionBottomSheet(
+                  context,
+                  authState,
+                  state.registers,
+                ),
+                icon: const Icon(TablerIcons.plus),
+                label: Text(
+                  language.translate('cash_new_operation_btn'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               const SizedBox(height: 10),
@@ -969,47 +940,23 @@ class _CashSectionScreenState extends State<CashSectionScreen>
         Widget? fab;
         if (!isViewer) {
           if (widget.section == CashSection.operations) {
-            fab = FloatingActionButton.extended(
+            fab = LedgerFab(
               heroTag: 'cash_op_fab',
               onPressed: () => _showAddTransactionBottomSheet(
                 context,
                 authState,
                 state.registers,
               ),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              icon: const Icon(TablerIcons.plus),
-              label: Text(
-                language.translate('cash_new_operation_btn'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              icon: TablerIcons.plus,
+              label: language.translate('cash_new_operation_btn'),
             );
           } else if (widget.section == CashSection.shifts) {
-            fab = FloatingActionButton.extended(
+            fab = LedgerFab(
               heroTag: 'cash_shift_fab',
               onPressed: () =>
                   _showOpenShiftBottomSheet(context, state.registers),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              icon: const Icon(TablerIcons.plus),
-              label: Text(
-                language.translate('cash_open_shift_btn'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              icon: TablerIcons.plus,
+              label: language.translate('cash_open_shift_btn'),
             );
           }
         }

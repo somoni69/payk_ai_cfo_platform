@@ -18,6 +18,7 @@ import '../../../features/crm/bloc/crm_state.dart';
 import '../../../features/crm/domain/crm_models.dart';
 import '../../../features/crm/domain/crm_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import 'crm_funnel.dart';
 import 'crm_labels.dart';
@@ -328,76 +329,30 @@ class _CrmViewState extends State<CrmView> {
               Row(
                 children: [
                   Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: ElevatedButton.icon(
-                        onPressed: () => showCrmClientForm(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.brand,
-                          foregroundColor: colors.surface,
-                          elevation: 0,
-                          minimumSize: const Size.fromHeight(44),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        icon: const Icon(TablerIcons.user_plus, size: 17),
-                        label: Text(
-                          language.translate('crm_new_client'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.surface,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    child: ElevatedButton.icon(
+                      onPressed: () => showCrmClientForm(context),
+                      icon: const Icon(TablerIcons.user_plus),
+                      label: Text(
+                        language.translate('crm_new_client'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: OutlinedButton.icon(
-                        onPressed: () => showCrmDealForm(
-                          context,
-                          clients: state.pickClients.isNotEmpty
-                              ? state.pickClients
-                              : state.clients,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.textPrimary,
-                          backgroundColor: colors.surface,
-                          side: BorderSide(color: colors.border),
-                          minimumSize: const Size.fromHeight(44),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        icon: Icon(
-                          TablerIcons.plus,
-                          size: 17,
-                          color: colors.textPrimary,
-                        ),
-                        label: Text(
-                          language.translate('crm_new_deal'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    child: OutlinedButton.icon(
+                      onPressed: () => showCrmDealForm(
+                        context,
+                        clients: state.pickClients.isNotEmpty
+                            ? state.pickClients
+                            : state.clients,
+                      ),
+                      icon: const Icon(TablerIcons.plus),
+                      label: Text(
+                        language.translate('crm_new_deal'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
@@ -735,27 +690,13 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
           ),
           floatingActionButton: canWrite && loadedState != null
               ? switch (widget.section) {
-                  CrmSection.clients => FloatingActionButton.extended(
+                  CrmSection.clients => LedgerFab(
                     heroTag: null,
                     onPressed: () => showCrmClientForm(context),
-                    backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    icon: const Icon(TablerIcons.user_plus, size: 18),
-                    label: Text(
-                      language.translate('crm_new_client'),
-                      style: textStyles.bodySans.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
+                    icon: TablerIcons.user_plus,
+                    label: language.translate('crm_new_client'),
                   ),
-                  CrmSection.funnel => FloatingActionButton.extended(
+                  CrmSection.funnel => LedgerFab(
                     heroTag: null,
                     onPressed: () => showCrmDealForm(
                       context,
@@ -763,22 +704,8 @@ class _CrmSectionScreenState extends State<CrmSectionScreen> {
                           ? loadedState.pickClients
                           : loadedState.clients,
                     ),
-                    backgroundColor: colors.brand,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    highlightElevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    icon: const Icon(TablerIcons.plus, size: 18),
-                    label: Text(
-                      language.translate('crm_new_deal'),
-                      style: textStyles.bodySans.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
+                    icon: TablerIcons.plus,
+                    label: language.translate('crm_new_deal'),
                   ),
                   _ => null,
                 }
@@ -1673,20 +1600,8 @@ class _LoyaltyTab extends StatelessWidget {
                       ElevatedButton.icon(
                         onPressed: () =>
                             showCrmBonusSheet(context, clients: pick),
-                        icon: const Icon(TablerIcons.plus, size: 16),
+                        icon: const Icon(TablerIcons.plus),
                         label: Text(language.translate('crm_add_bonus')),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: colors.brand,
-                          foregroundColor: colors.surface,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 9,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
                       ),
                     ],
                   ],

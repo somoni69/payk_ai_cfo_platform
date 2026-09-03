@@ -192,7 +192,6 @@ Widget _buildAccountsRatesTab(
 }
 
 Future<void> _showCreateAccountSheet(BuildContext context) async {
-  final colors = context.colors;
   final textStyles = context.textStyles;
   final language = context.read<LanguageCubit>();
   final nameCtrl = TextEditingController();
@@ -263,37 +262,28 @@ Future<void> _showCreateAccountSheet(BuildContext context) async {
         );
       },
       footerBuilder: (context, setSheetState) {
-        return SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              final name = nameCtrl.text.trim();
-              if (name.isEmpty) return;
-              final balance =
-                  parseLocalizedNumber(context, balanceCtrl.text.trim()) ?? 0;
-              context.read<DashboardBloc>().add(
-                CreateAccountRequested(
-                  name: name,
-                  bank: bankCtrl.text.trim().isEmpty
-                      ? null
-                      : bankCtrl.text.trim(),
-                  number: numberCtrl.text.trim().isEmpty
-                      ? null
-                      : numberCtrl.text.trim(),
-                  currency: currency,
-                  balance: balance,
-                ),
-              );
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-            ),
-            child: Text(language.translate('common_create')),
-          ),
+        return ElevatedButton(
+          onPressed: () {
+            final name = nameCtrl.text.trim();
+            if (name.isEmpty) return;
+            final balance =
+                parseLocalizedNumber(context, balanceCtrl.text.trim()) ?? 0;
+            context.read<DashboardBloc>().add(
+              CreateAccountRequested(
+                name: name,
+                bank: bankCtrl.text.trim().isEmpty
+                    ? null
+                    : bankCtrl.text.trim(),
+                number: numberCtrl.text.trim().isEmpty
+                    ? null
+                    : numberCtrl.text.trim(),
+                currency: currency,
+                balance: balance,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          child: Text(language.translate('common_create')),
         );
       },
     );

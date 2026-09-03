@@ -282,22 +282,19 @@ extension _TasksMyTab on _TasksViewMixin {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                context.read<TasksBloc>().add(
-                  RejectTaskRequested(
-                    taskId: task.id,
-                    reason: reasonCtrl.text.trim().isEmpty
-                        ? null
-                        : reasonCtrl.text.trim(),
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              child: Text(language.translate('tasks_review_reject')),
-            ),
+          return ElevatedButton(
+            onPressed: () {
+              context.read<TasksBloc>().add(
+                RejectTaskRequested(
+                  taskId: task.id,
+                  reason: reasonCtrl.text.trim().isEmpty
+                      ? null
+                      : reasonCtrl.text.trim(),
+                ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(language.translate('tasks_review_reject')),
           );
         },
       );
@@ -412,7 +409,7 @@ extension _TasksMyTab on _TasksViewMixin {
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: kLedgerModalButtonHeight,
                   child: OutlinedButton.icon(
                     onPressed: () {
                       tasksBloc.add(DeletePersonalTaskRequested(editing.id));
@@ -422,9 +419,6 @@ extension _TasksMyTab on _TasksViewMixin {
                       foregroundColor: colors.accentRed,
                       side: BorderSide(
                         color: colors.accentRed.withValues(alpha: 0.5),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     icon: const Icon(TablerIcons.trash, size: 18),
@@ -436,38 +430,31 @@ extension _TasksMyTab on _TasksViewMixin {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final title = titleCtrl.text.trim();
-                if (title.isEmpty) return;
-                final input = PersonalTaskInput(
-                  title: title,
-                  description: descCtrl.text.trim().isEmpty
-                      ? null
-                      : descCtrl.text.trim(),
-                  dueDate: dueDate,
-                  priority: priority,
-                  status: editing == null ? null : status,
+          return ElevatedButton(
+            onPressed: () {
+              final title = titleCtrl.text.trim();
+              if (title.isEmpty) return;
+              final input = PersonalTaskInput(
+                title: title,
+                description: descCtrl.text.trim().isEmpty
+                    ? null
+                    : descCtrl.text.trim(),
+                dueDate: dueDate,
+                priority: priority,
+                status: editing == null ? null : status,
+              );
+              if (editing != null) {
+                tasksBloc.add(
+                  UpdatePersonalTaskRequested(taskId: editing.id, input: input),
                 );
-                if (editing != null) {
-                  tasksBloc.add(
-                    UpdatePersonalTaskRequested(
-                      taskId: editing.id,
-                      input: input,
-                    ),
-                  );
-                } else {
-                  tasksBloc.add(CreatePersonalTaskRequested(input));
-                }
-                Navigator.pop(context);
-              },
-              child: Text(
-                language.translate(
-                  editing == null ? 'common_create' : 'common_save',
-                ),
+              } else {
+                tasksBloc.add(CreatePersonalTaskRequested(input));
+              }
+              Navigator.pop(context);
+            },
+            child: Text(
+              language.translate(
+                editing == null ? 'common_create' : 'common_save',
               ),
             ),
           );

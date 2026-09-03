@@ -12,6 +12,7 @@ import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../core/localization/language_cubit.dart';
@@ -25,6 +26,7 @@ import '../../../features/hr/domain/hr_models.dart';
 import '../../../features/hr/domain/hr_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 part 'hr_extra_tabs.dart';
@@ -671,31 +673,13 @@ class _HrViewState extends State<HrView> with HrExtraTabsMixin {
 
           // 3. Quick Action Button (if canWrite)
           if (canWrite) ...[
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton.icon(
-                onPressed: () => _showAddEmployeeBottomSheet(context),
-                icon: const Icon(TablerIcons.user_plus, size: 17),
-                label: Text(locale.translate('hr_hire_title')),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  minimumSize: const Size.fromHeight(44),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  textStyle: textStyles.bodySans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13.5,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+            ElevatedButton.icon(
+              onPressed: () => _showAddEmployeeBottomSheet(context),
+              icon: const Icon(TablerIcons.user_plus),
+              label: Text(
+                locale.translate('hr_hire_title'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 14),
@@ -1219,8 +1203,6 @@ class _HrSectionScreenState extends State<HrSectionScreen>
   }
 
   Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
     final state = context.read<HrBloc>().state;
     if (state is! HrLoaded) return null;
 
@@ -1260,21 +1242,11 @@ class _HrSectionScreenState extends State<HrSectionScreen>
 
     if (icon == null || label == null || action == null) return null;
 
-    return FloatingActionButton.extended(
+    return LedgerFab(
       heroTag: null,
       onPressed: action,
-      backgroundColor: colors.brand,
-      foregroundColor: colors.surface,
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      icon: Icon(icon),
-      label: Text(
-        label,
-        style: textStyles.bodySans.copyWith(
-          color: colors.surface,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
+      icon: icon,
+      label: label,
     );
   }
 }

@@ -338,7 +338,6 @@ class _PlanItemsEditorState extends State<_PlanItemsEditor> {
 }
 
 Future<void> _showCreatePlanSheet(BuildContext context, String period) async {
-  final colors = context.colors;
   final textStyles = context.textStyles;
   final language = context.read<LanguageCubit>();
   final categoryCtrl = TextEditingController();
@@ -395,32 +394,23 @@ Future<void> _showCreatePlanSheet(BuildContext context, String period) async {
         );
       },
       footerBuilder: (context, setSheetState) {
-        return SizedBox(
-          width: double.infinity,
-          height: 48,
-          child: ElevatedButton(
-            onPressed: () {
-              final category = categoryCtrl.text.trim();
-              final amount =
-                  parseLocalizedNumber(context, amountCtrl.text.trim()) ?? 0;
-              if (category.isEmpty || amount <= 0) return;
-              context.read<DashboardBloc>().add(
-                CreatePlanRequested(
-                  period: period.isEmpty ? _defaultPlanPeriod() : period,
-                  category: category,
-                  type: type,
-                  plannedAmount: amount,
-                ),
-              );
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-            ),
-            child: Text(language.translate('common_create')),
-          ),
+        return ElevatedButton(
+          onPressed: () {
+            final category = categoryCtrl.text.trim();
+            final amount =
+                parseLocalizedNumber(context, amountCtrl.text.trim()) ?? 0;
+            if (category.isEmpty || amount <= 0) return;
+            context.read<DashboardBloc>().add(
+              CreatePlanRequested(
+                period: period.isEmpty ? _defaultPlanPeriod() : period,
+                category: category,
+                type: type,
+                plannedAmount: amount,
+              ),
+            );
+            Navigator.pop(context);
+          },
+          child: Text(language.translate('common_create')),
         );
       },
     );

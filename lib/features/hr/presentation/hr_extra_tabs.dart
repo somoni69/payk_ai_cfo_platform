@@ -75,34 +75,35 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: colors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(
-          locale.translate('hr_sync_iiko_title'),
-          style: textStyles.h2Sans.copyWith(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
+      builder: (ctx) => Theme(
+        data: LedgerButtons.modalOverlay(ctx),
+        child: AlertDialog(
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        content: Text(
-          locale.translate('hr_sync_iiko_confirm'),
-          style: textStyles.bodySans.copyWith(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(locale.translate('common_cancel')),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
+          title: Text(
+            locale.translate('hr_sync_iiko_title'),
+            style: textStyles.h2Sans.copyWith(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
             ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(locale.translate('hr_sync_button')),
           ),
-        ],
+          content: Text(
+            locale.translate('hr_sync_iiko_confirm'),
+            style: textStyles.bodySans.copyWith(fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(locale.translate('common_cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(locale.translate('hr_sync_button')),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -394,7 +395,6 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     BuildContext context,
     HrLoaded state,
   ) async {
-    final colors = context.colors;
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
     if (state.employees.isEmpty) return;
@@ -479,39 +479,21 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final hours =
-                    parseLocalizedNumber(context, hoursCtrl.text.trim()) ?? 0;
-                if (hours <= 0 || hours > 24) return;
-                this.context.read<HrBloc>().add(
-                  CreateAttendanceRequested(
-                    employeeId: employeeId,
-                    workDate: workDate,
-                    hours: hours,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          return ElevatedButton(
+            onPressed: () {
+              final hours =
+                  parseLocalizedNumber(context, hoursCtrl.text.trim()) ?? 0;
+              if (hours <= 0 || hours > 24) return;
+              this.context.read<HrBloc>().add(
+                CreateAttendanceRequested(
+                  employeeId: employeeId,
+                  workDate: workDate,
+                  hours: hours,
                 ),
-              ),
-              child: Text(
-                locale.translate('common_create'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_create')),
           );
         },
       );
@@ -651,7 +633,6 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> _showCandidateSheet(BuildContext context) async {
-    final colors = context.colors;
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
     final nameCtrl = TextEditingController();
@@ -693,41 +674,23 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final name = nameCtrl.text.trim();
-                final vacancy = vacancyCtrl.text.trim();
-                if (name.isEmpty || vacancy.isEmpty) return;
-                this.context.read<HrBloc>().add(
-                  CreateCandidateRequested(
-                    fullName: name,
-                    vacancy: vacancy,
-                    phone: phoneCtrl.text.trim().isEmpty
-                        ? null
-                        : phoneCtrl.text.trim(),
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          return ElevatedButton(
+            onPressed: () {
+              final name = nameCtrl.text.trim();
+              final vacancy = vacancyCtrl.text.trim();
+              if (name.isEmpty || vacancy.isEmpty) return;
+              this.context.read<HrBloc>().add(
+                CreateCandidateRequested(
+                  fullName: name,
+                  vacancy: vacancy,
+                  phone: phoneCtrl.text.trim().isEmpty
+                      ? null
+                      : phoneCtrl.text.trim(),
                 ),
-              ),
-              child: Text(
-                locale.translate('common_create'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_create')),
           );
         },
       );
@@ -891,40 +854,22 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                this.context.read<HrBloc>().add(
-                  CreateEvaluationRequested(
-                    employeeId: employeeId,
-                    period: state.period,
-                    performance: performance,
-                    potential: potential,
-                    note: noteCtrl.text.trim().isEmpty
-                        ? null
-                        : noteCtrl.text.trim(),
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          return ElevatedButton(
+            onPressed: () {
+              this.context.read<HrBloc>().add(
+                CreateEvaluationRequested(
+                  employeeId: employeeId,
+                  period: state.period,
+                  performance: performance,
+                  potential: potential,
+                  note: noteCtrl.text.trim().isEmpty
+                      ? null
+                      : noteCtrl.text.trim(),
                 ),
-              ),
-              child: Text(
-                locale.translate('common_create'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_create')),
           );
         },
       );
@@ -1049,7 +994,6 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
   }
 
   Future<void> _showContractSheet(BuildContext context, HrLoaded state) async {
-    final colors = context.colors;
     final textStyles = context.textStyles;
     final locale = context.read<LanguageCubit>();
     String employeeId = state.employees.first.id;
@@ -1161,39 +1105,21 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final number = numberCtrl.text.trim();
-                if (number.isEmpty) return;
-                this.context.read<HrBloc>().add(
-                  CreateContractRequested(
-                    employeeId: employeeId,
-                    number: number,
-                    startDate: startDate,
-                    endDate: endDate,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+          return ElevatedButton(
+            onPressed: () {
+              final number = numberCtrl.text.trim();
+              if (number.isEmpty) return;
+              this.context.read<HrBloc>().add(
+                CreateContractRequested(
+                  employeeId: employeeId,
+                  number: number,
+                  startDate: startDate,
+                  endDate: endDate,
                 ),
-              ),
-              child: Text(
-                locale.translate('common_create'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_create')),
           );
         },
       );
@@ -1364,15 +1290,11 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
             // Export PDF button
             OutlinedButton.icon(
               onPressed: () => _exportMovementPdf(context),
-              icon: const Icon(TablerIcons.file_download, size: 16),
+              icon: const Icon(TablerIcons.file_download),
               label: Text(locale.translate('hr_export_pdf_button')),
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(40),
                 foregroundColor: colors.brand,
                 side: BorderSide(color: colors.brand.withValues(alpha: 0.4)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -2247,46 +2169,25 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          final colors = context.colors;
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final metric = metricCtrl.text.trim();
-                final plan =
-                    parseLocalizedNumber(context, planCtrl.text) ?? 0.0;
-                final fact =
-                    parseLocalizedNumber(context, factCtrl.text) ?? 0.0;
-                if (metric.isEmpty || plan <= 0) return;
+          return ElevatedButton(
+            onPressed: () {
+              final metric = metricCtrl.text.trim();
+              final plan = parseLocalizedNumber(context, planCtrl.text) ?? 0.0;
+              final fact = parseLocalizedNumber(context, factCtrl.text) ?? 0.0;
+              if (metric.isEmpty || plan <= 0) return;
 
-                hrBloc.add(
-                  CreateKpiRequested(
-                    employeeId: selectedEmpId,
-                    period: state.period,
-                    metric: metric,
-                    planValue: plan,
-                    factValue: fact,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              hrBloc.add(
+                CreateKpiRequested(
+                  employeeId: selectedEmpId,
+                  period: state.period,
+                  metric: metric,
+                  planValue: plan,
+                  factValue: fact,
                 ),
-              ),
-              child: Text(
-                locale.translate('common_save'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_save')),
           );
         },
       );
@@ -2361,42 +2262,23 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
         footerBuilder: (context, setSheetState) {
-          final colors = context.colors;
-          return SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton(
-              onPressed: () {
-                final metric = metricCtrl.text.trim();
-                final plan = parseLocalizedNumber(context, planCtrl.text);
-                final fact = parseLocalizedNumber(context, factCtrl.text);
+          return ElevatedButton(
+            onPressed: () {
+              final metric = metricCtrl.text.trim();
+              final plan = parseLocalizedNumber(context, planCtrl.text);
+              final fact = parseLocalizedNumber(context, factCtrl.text);
 
-                hrBloc.add(
-                  UpdateKpiRequested(
-                    kpiId: kpi.id,
-                    metric: metric.isNotEmpty ? metric : null,
-                    planValue: plan,
-                    factValue: fact,
-                  ),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              hrBloc.add(
+                UpdateKpiRequested(
+                  kpiId: kpi.id,
+                  metric: metric.isNotEmpty ? metric : null,
+                  planValue: plan,
+                  factValue: fact,
                 ),
-              ),
-              child: Text(
-                locale.translate('common_save'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+              );
+              Navigator.pop(context);
+            },
+            child: Text(locale.translate('common_save')),
           );
         },
       );

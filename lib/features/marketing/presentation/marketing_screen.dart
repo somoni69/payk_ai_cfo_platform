@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -21,6 +22,8 @@ import '../../../features/marketing/domain/marketing_repository.dart';
 import 'marketing_ai_studio_screen.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum MarketingSection { aiStudio, aiWriter, campaigns, posts, brandGuide }
@@ -366,35 +369,13 @@ class _MarketingViewState extends State<MarketingView> {
 
           // 3. Quick Action Button (if canManage)
           if (canManage) ...[
-            SizedBox(
-              height: 44,
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showCreateCampaignDialog(context),
-                icon: const Icon(TablerIcons.plus, size: 17),
-                label: Text(
-                  locale.translate('marketing_action_campaign'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  minimumSize: const Size.fromHeight(44),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateCampaignDialog(context),
+              icon: const Icon(TablerIcons.plus),
+              label: Text(
+                locale.translate('marketing_action_campaign'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 12),
@@ -809,44 +790,21 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
   }
 
   Widget? _buildSectionFab(BuildContext context, LanguageCubit locale) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-
     if (widget.section == MarketingSection.campaigns) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => _showCreateCampaignDialog(context),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          locale.translate('marketing_new_campaign'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.plus,
+        label: locale.translate('marketing_new_campaign'),
       );
     }
 
     if (widget.section == MarketingSection.posts) {
-      return FloatingActionButton.extended(
+      return LedgerFab(
         heroTag: null,
         onPressed: () => _showCreatePostDialog(context),
-        backgroundColor: colors.brand,
-        foregroundColor: colors.surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        icon: const Icon(TablerIcons.plus),
-        label: Text(
-          locale.translate('marketing_new_publication'),
-          style: textStyles.bodySans.copyWith(
-            color: colors.surface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        icon: TablerIcons.plus,
+        label: locale.translate('marketing_new_publication'),
       );
     }
 
@@ -876,57 +834,20 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Режим генерации (Идеи / Пост)
-            Row(
-              children: [
-                Expanded(
-                  child: ChoiceChip(
-                    label: Text(
-                      localeCubit.translate('marketing_mode_ad_ideas'),
-                    ),
-                    labelStyle: textStyles.captionSans.copyWith(
-                      color: !_generatePostTextMode
-                          ? Colors.white
-                          : colors.textPrimary,
-                      fontWeight: !_generatePostTextMode
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                    ),
-                    checkmarkColor: Colors.white,
-                    selected: !_generatePostTextMode,
-                    onSelected: (val) {
-                      if (val) {
-                        setState(() {
-                          _generatePostTextMode = false;
-                        });
-                      }
-                    },
-                  ),
+            LedgerSegmentedControl<bool>(
+              height: 36,
+              selectedValue: _generatePostTextMode,
+              onValueChanged: (value) {
+                setState(() => _generatePostTextMode = value);
+              },
+              segments: [
+                LedgerSegmentItem(
+                  value: false,
+                  label: localeCubit.translate('marketing_mode_ad_ideas'),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ChoiceChip(
-                    label: Text(
-                      localeCubit.translate('marketing_mode_ready_post'),
-                    ),
-                    labelStyle: textStyles.captionSans.copyWith(
-                      color: _generatePostTextMode
-                          ? Colors.white
-                          : colors.textPrimary,
-                      fontWeight: _generatePostTextMode
-                          ? FontWeight.w600
-                          : FontWeight.w400,
-                    ),
-                    checkmarkColor: Colors.white,
-                    selected: _generatePostTextMode,
-                    onSelected: (val) {
-                      if (val) {
-                        setState(() {
-                          _generatePostTextMode = true;
-                        });
-                      }
-                    },
-                  ),
+                LedgerSegmentItem(
+                  value: true,
+                  label: localeCubit.translate('marketing_mode_ready_post'),
                 ),
               ],
             ),
@@ -963,14 +884,6 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                         );
                       }
                     },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: colors.brand,
-                foregroundColor: colors.surface,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
               icon: const Icon(TablerIcons.plus),
               label: Text(
                 localeCubit.translate(
@@ -1189,30 +1102,33 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                               onPressed: () async {
                                 final ok = await showDialog<bool>(
                                   context: context,
-                                  builder: (ctx) => AlertDialog(
-                                    title: Text(
-                                      localeCubit.translate('common_delete'),
+                                  builder: (ctx) => Theme(
+                                    data: LedgerButtons.modalOverlay(ctx),
+                                    child: AlertDialog(
+                                      title: Text(
+                                        localeCubit.translate('common_delete'),
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          child: Text(
+                                            localeCubit.translate(
+                                              'common_cancel',
+                                            ),
+                                          ),
+                                        ),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          child: Text(
+                                            localeCubit.translate(
+                                              'common_delete',
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, false),
-                                        child: Text(
-                                          localeCubit.translate(
-                                            'common_cancel',
-                                          ),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(ctx, true),
-                                        child: Text(
-                                          localeCubit.translate(
-                                            'common_delete',
-                                          ),
-                                        ),
-                                      ),
-                                    ],
                                   ),
                                 );
                                 if (ok == true && context.mounted) {
@@ -1616,7 +1532,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                   ),
                   const SizedBox(height: 20),
                   SizedBox(
-                    height: 48,
+                    width: double.infinity,
                     child: ElevatedButton(
                       onPressed: (!canManage || state.isSavingBrand)
                           ? null

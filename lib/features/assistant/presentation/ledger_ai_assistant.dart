@@ -4,7 +4,9 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../cubit/assistant_cubit.dart';
 import '../domain/assistant_models.dart';
@@ -27,23 +29,14 @@ class LedgerAiAssistantHost extends StatelessWidget {
 
     final repo = context.read<AssistantRepository>();
 
-    showModalBottomSheet<void>(
+    showLedgerModalSheet<void>(
       context: context,
-      useRootNavigator: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        child: SizedBox(
-          height: MediaQuery.of(ctx).size.height * 0.88,
-          child: BlocProvider<AssistantCubit>(
-            create: (_) => AssistantCubit(repo),
-            child: _AssistantPanel(
-              initialModule: module,
-              onClose: () => Navigator.of(ctx).pop(),
-            ),
-          ),
+      expand: true,
+      builder: (ctx) => BlocProvider<AssistantCubit>(
+        create: (_) => AssistantCubit(repo),
+        child: _AssistantPanel(
+          initialModule: module,
+          onClose: () => Navigator.of(ctx).pop(),
         ),
       ),
     );
@@ -184,20 +177,23 @@ class _AssistantPanelState extends State<_AssistantPanel> {
     final colors = context.colors;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(language.translate('assistant_clear_title')),
-        content: Text(language.translate('assistant_clear_msg')),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(language.translate('common_cancel')),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(foregroundColor: colors.accentRed),
-            child: Text(language.translate('common_delete')),
-          ),
-        ],
+      builder: (ctx) => Theme(
+        data: LedgerButtons.modalOverlay(ctx),
+        child: AlertDialog(
+          title: Text(language.translate('assistant_clear_title')),
+          content: Text(language.translate('assistant_clear_msg')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(language.translate('common_cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: colors.accentRed),
+              child: Text(language.translate('common_delete')),
+            ),
+          ],
+        ),
       ),
     );
     if (confirmed != true || !mounted) return;
@@ -219,225 +215,232 @@ class _AssistantPanelState extends State<_AssistantPanel> {
     final section = language.translate(_moduleLabelKey);
     final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Material(
-      color: colors.surface,
-      child: SafeArea(
-        bottom: true,
-        child: Padding(
-          padding: EdgeInsets.only(bottom: keyboardInset),
-          child: BlocBuilder<AssistantCubit, AssistantState>(
-            builder: (context, state) {
-              final messages = state.historyFor(_module);
-              final loadingHistory = state.isLoading;
-              final sending = state.isSendingMessage;
-              final error = state.error;
+    return Theme(
+      data: LedgerButtons.modalOverlay(context),
+      child: Material(
+        color: colors.surface,
+        child: SafeArea(
+          bottom: true,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboardInset),
+            child: BlocBuilder<AssistantCubit, AssistantState>(
+              builder: (context, state) {
+                final messages = state.historyFor(_module);
+                final loadingHistory = state.isLoading;
+                final sending = state.isSendingMessage;
+                final error = state.error;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: colors.border)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          TablerIcons.sparkles,
-                          color: colors.brand,
-                          size: 20,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: colors.border),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                language.translate('assistant_title'),
-                                style: textStyles.h2Sans,
-                              ),
-                              Text(
-                                '${language.translate('assistant_context')}: $section',
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: language.translate('assistant_clear_title'),
-                          icon: Icon(
-                            TablerIcons.trash,
-                            size: 18,
-                            color: colors.textSecondary,
-                          ),
-                          onPressed: messages.isEmpty ? null : _clear,
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            TablerIcons.x,
-                            size: 20,
-                            color: colors.textSecondary,
-                          ),
-                          onPressed: widget.onClose,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: loadingHistory
-                        ? const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: LedgerShimmer(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  ShimmerBox(
-                                    width: 220,
-                                    height: 44,
-                                    borderRadius: 12,
-                                  ),
-                                  SizedBox(height: 10),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: ShimmerBox(
-                                      width: 180,
-                                      height: 36,
-                                      borderRadius: 12,
-                                    ),
-                                  ),
-                                  SizedBox(height: 10),
-                                  ShimmerBox(
-                                    width: 260,
-                                    height: 56,
-                                    borderRadius: 12,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListView(
-                            controller: _scrollController,
-                            padding: const EdgeInsets.all(12),
-                            children: [
-                              if (messages.isEmpty && !sending)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  child: Text(
-                                    language.translate('assistant_empty'),
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.textSecondary,
-                                    ),
-                                  ),
-                                ),
-                              for (final m in messages) _bubble(context, m),
-                              if (sending)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    language.translate('assistant_thinking'),
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.accentAmber,
-                                    ),
-                                  ),
-                                ),
-                              if (error != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    language.resolveMessage(error),
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.accentRed,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                  ),
-                  if (!loadingHistory && messages.isEmpty && !sending)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      ),
+                      child: Row(
                         children: [
-                          for (final n in const [1, 2, 3])
-                            ActionChip(
-                              label: Text(
-                                _presetQuestion(language, _module, n),
-                                style: textStyles.smallSans.copyWith(
-                                  color: colors.textPrimary,
+                          Icon(
+                            TablerIcons.sparkles,
+                            color: colors.brand,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  language.translate('assistant_title'),
+                                  style: textStyles.h2Sans,
                                 ),
-                              ),
-                              backgroundColor: colors.surfaceNested,
-                              side: BorderSide(color: colors.border),
-                              onPressed: sending
-                                  ? null
-                                  : () => _send(
-                                      _presetQuestion(language, _module, n),
-                                    ),
+                                Text(
+                                  '${language.translate('assistant_context')}: $section',
+                                  style: textStyles.captionSans.copyWith(
+                                    color: colors.textSecondary,
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
+                          IconButton(
+                            tooltip: language.translate(
+                              'assistant_clear_title',
+                            ),
+                            icon: Icon(
+                              TablerIcons.trash,
+                              size: 18,
+                              color: colors.textSecondary,
+                            ),
+                            onPressed: messages.isEmpty ? null : _clear,
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              TablerIcons.x,
+                              size: 20,
+                              color: colors.textSecondary,
+                            ),
+                            onPressed: widget.onClose,
+                          ),
                         ],
                       ),
                     ),
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: colors.border)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            enabled: !sending,
-                            decoration: InputDecoration(
-                              hintText: language.translate(
-                                'assistant_input_hint',
+                    Expanded(
+                      child: loadingHistory
+                          ? const Padding(
+                              padding: EdgeInsets.all(16),
+                              child: LedgerShimmer(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    ShimmerBox(
+                                      width: 220,
+                                      height: 44,
+                                      borderRadius: 12,
+                                    ),
+                                    SizedBox(height: 10),
+                                    Align(
+                                      alignment: Alignment.centerRight,
+                                      child: ShimmerBox(
+                                        width: 180,
+                                        height: 36,
+                                        borderRadius: 12,
+                                      ),
+                                    ),
+                                    SizedBox(height: 10),
+                                    ShimmerBox(
+                                      width: 260,
+                                      height: 56,
+                                      borderRadius: 12,
+                                    ),
+                                  ],
+                                ),
                               ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide: BorderSide(color: colors.border),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 10,
-                              ),
-                              isDense: true,
-                            ),
-                            onSubmitted: (_) => _send(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.filled(
-                          onPressed: sending ? null : () => _send(),
-                          style: IconButton.styleFrom(
-                            backgroundColor: colors.brand,
-                            foregroundColor: colors.surface,
-                          ),
-                          icon: sending
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: colors.surface,
+                            )
+                          : ListView(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(12),
+                              children: [
+                                if (messages.isEmpty && !sending)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    child: Text(
+                                      language.translate('assistant_empty'),
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
+                                    ),
                                   ),
-                                )
-                              : const Icon(TablerIcons.send, size: 18),
-                        ),
-                      ],
+                                for (final m in messages) _bubble(context, m),
+                                if (sending)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      language.translate('assistant_thinking'),
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.accentAmber,
+                                      ),
+                                    ),
+                                  ),
+                                if (error != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Text(
+                                      language.resolveMessage(error),
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.accentRed,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                     ),
-                  ),
-                ],
-              );
-            },
+                    if (!loadingHistory && messages.isEmpty && !sending)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final n in const [1, 2, 3])
+                              ActionChip(
+                                label: Text(
+                                  _presetQuestion(language, _module, n),
+                                  style: textStyles.smallSans.copyWith(
+                                    color: colors.textPrimary,
+                                  ),
+                                ),
+                                backgroundColor: colors.surfaceNested,
+                                side: BorderSide(color: colors.border),
+                                onPressed: sending
+                                    ? null
+                                    : () => _send(
+                                        _presetQuestion(language, _module, n),
+                                      ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: colors.border)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              enabled: !sending,
+                              decoration: InputDecoration(
+                                hintText: language.translate(
+                                  'assistant_input_hint',
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(color: colors.border),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                                isDense: true,
+                              ),
+                              onSubmitted: (_) => _send(),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton.filled(
+                            onPressed: sending ? null : () => _send(),
+                            style: IconButton.styleFrom(
+                              backgroundColor: colors.brand,
+                              foregroundColor: colors.surface,
+                            ),
+                            icon: sending
+                                ? SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: colors.surface,
+                                    ),
+                                  )
+                                : const Icon(TablerIcons.send, size: 18),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

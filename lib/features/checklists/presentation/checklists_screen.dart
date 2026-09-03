@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../features/branches/domain/branch_models.dart';
 import '../../../features/branches/domain/branches_repository.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -16,6 +17,7 @@ import '../../../features/checklists/domain/checklist_models.dart';
 import '../../../features/checklists/domain/checklists_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum ChecklistSection { runs, templates, summary }
@@ -261,35 +263,13 @@ class _ChecklistsViewState extends State<ChecklistsView> {
 
           // 3. Quick Action Button (if canManage)
           if (canManage) ...[
-            SizedBox(
-              height: 44,
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _showTemplateModal(context),
-                icon: const Icon(TablerIcons.plus, size: 17),
-                label: Text(
-                  locale.translate('checklists_action_template'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.surface,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.brand,
-                  foregroundColor: colors.surface,
-                  elevation: 0,
-                  minimumSize: const Size.fromHeight(44),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+            ElevatedButton.icon(
+              onPressed: () => _showTemplateModal(context),
+              icon: const Icon(TablerIcons.plus),
+              label: Text(
+                locale.translate('checklists_action_template'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(height: 12),
@@ -617,23 +597,11 @@ class ChecklistSectionScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: canManage && section == ChecklistSection.templates
-          ? FloatingActionButton.extended(
+          ? LedgerFab(
               heroTag: null,
               onPressed: () => _showTemplateModal(context),
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              icon: const Icon(TablerIcons.plus),
-              label: Text(
-                locale.translate('checklists_new_template'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              icon: TablerIcons.plus,
+              label: locale.translate('checklists_new_template'),
             )
           : null,
       body: BlocBuilder<ChecklistsBloc, ChecklistsState>(
@@ -1307,7 +1275,7 @@ Future<void> _showTemplateModal(
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
-              height: 48,
+              height: kLedgerModalButtonHeight,
               child: ElevatedButton(
                 onPressed: () {
                   if (titleCtrl.text.trim().isEmpty) return;
@@ -1337,7 +1305,7 @@ Future<void> _showTemplateModal(
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: kLedgerModalButtonHeight,
                 child: OutlinedButton.icon(
                   onPressed: () {
                     checklistsBloc.add(DeleteTemplateRequested(template.id));
@@ -1347,9 +1315,6 @@ Future<void> _showTemplateModal(
                     foregroundColor: colors.accentRed,
                     side: BorderSide(
                       color: colors.accentRed.withValues(alpha: 0.5),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   icon: const Icon(TablerIcons.trash, size: 18),

@@ -20,6 +20,7 @@ class NetworkLoaded extends NetworkState {
   final ActingStore? actingStore;
   final String? actionMessage;
   final bool isSubmitting;
+  final bool isSummaryLoading;
 
   const NetworkLoaded({
     required this.stores,
@@ -28,6 +29,7 @@ class NetworkLoaded extends NetworkState {
     this.actingStore,
     this.actionMessage,
     this.isSubmitting = false,
+    this.isSummaryLoading = false,
   });
 
   double get totalRevenue => summary.fold(0.0, (sum, row) => sum + row.revenue);
@@ -47,6 +49,7 @@ class NetworkLoaded extends NetworkState {
     ActingStore? Function()? actingStore,
     String? Function()? actionMessage,
     bool? isSubmitting,
+    bool? isSummaryLoading,
   }) {
     return NetworkLoaded(
       stores: stores ?? this.stores,
@@ -57,6 +60,7 @@ class NetworkLoaded extends NetworkState {
           ? actionMessage()
           : this.actionMessage,
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      isSummaryLoading: isSummaryLoading ?? this.isSummaryLoading,
     );
   }
 
@@ -68,6 +72,7 @@ class NetworkLoaded extends NetworkState {
     actingStore,
     actionMessage,
     isSubmitting,
+    isSummaryLoading,
   ];
 }
 

@@ -13,6 +13,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../crm/domain/crm_models.dart';
 import '../../crm/domain/crm_repository.dart';
@@ -460,40 +461,21 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
           if (cursor == 0) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: SizedBox(
+              child: LedgerSegmentedControl<String>(
                 height: 36,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _metaChannels.length,
-                  itemBuilder: (context, chipIndex) {
-                    final ch = _metaChannels[chipIndex];
-                    final isSel = state.selectedChannel == ch;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(
-                          ch.isEmpty
-                              ? language.translate('meta_channel_all')
-                              : language.translate('meta_channel_$ch'),
-                        ),
-                        selected: isSel,
-                        selectedColor: colors.brand,
-                        labelStyle: textStyles.captionSans.copyWith(
-                          color: isSel ? Colors.white : colors.textPrimary,
-                          fontWeight: isSel ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                        checkmarkColor: Colors.white,
-                        side: BorderSide(
-                          color: isSel ? colors.brand : colors.border,
-                        ),
-                        onSelected: (val) {
-                          if (!val) return;
-                          context.read<MetaCubit>().setChannel(ch);
-                        },
-                      ),
-                    );
-                  },
-                ),
+                selectedValue: state.selectedChannel,
+                onValueChanged: (ch) {
+                  context.read<MetaCubit>().setChannel(ch);
+                },
+                segments: [
+                  for (final ch in _metaChannels)
+                    LedgerSegmentItem(
+                      value: ch,
+                      label: ch.isEmpty
+                          ? language.translate('meta_channel_all')
+                          : language.translate('meta_channel_$ch'),
+                    ),
+                ],
               ),
             );
           }

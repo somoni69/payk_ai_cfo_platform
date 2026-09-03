@@ -27,53 +27,34 @@ Widget _buildAbcTab(
     children: [
       _buildFinancePeriodStrip(context),
       const SizedBox(height: 12),
-      Row(
-        children: [
-          Expanded(
-            child: ChoiceChip(
-              label: Text(
-                languageCubit.translate('dashboard_abc_by_categories'),
-              ),
-              labelStyle: textStyles.captionSans.copyWith(
-                color: isCategory ? Colors.white : colors.textPrimary,
-                fontWeight: isCategory ? FontWeight.w500 : FontWeight.w400,
-              ),
-              checkmarkColor: Colors.white,
-              selected: isCategory,
-              onSelected: isLoading
-                  ? null
-                  : (val) {
-                      if (!val) return;
-                      context.read<DashboardBloc>().add(
-                        const ChangeAbcDimension(AbcDimensions.category),
-                      );
-                    },
-            ),
+      LedgerSegmentedControl<String>(
+        height: 36,
+        selectedValue: isCategory
+            ? AbcDimensions.category
+            : AbcDimensions.counterparty,
+        onValueChanged: (value) {
+          context.read<DashboardBloc>().add(ChangeAbcDimension(value));
+        },
+        segments: [
+          LedgerSegmentItem(
+            value: AbcDimensions.category,
+            label: languageCubit.translate('dashboard_abc_by_categories'),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: ChoiceChip(
-              label: Text(languageCubit.translate('dashboard_abc_by_clients')),
-              labelStyle: textStyles.captionSans.copyWith(
-                color: !isCategory ? Colors.white : colors.textPrimary,
-                fontWeight: !isCategory ? FontWeight.w500 : FontWeight.w400,
-              ),
-              checkmarkColor: Colors.white,
-              selected: !isCategory,
-              onSelected: isLoading
-                  ? null
-                  : (val) {
-                      if (!val) return;
-                      context.read<DashboardBloc>().add(
-                        const ChangeAbcDimension(AbcDimensions.counterparty),
-                      );
-                    },
-            ),
+          LedgerSegmentItem(
+            value: AbcDimensions.counterparty,
+            label: languageCubit.translate('dashboard_abc_by_clients'),
           ),
         ],
       ),
-      if (isLoading) ...[
-        const SizedBox(height: 12),
+      const SizedBox(height: 20),
+      Text(
+        isCategory
+            ? languageCubit.translate('dashboard_abc_category_analysis')
+            : languageCubit.translate('dashboard_abc_client_analysis'),
+        style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+      ),
+      const SizedBox(height: 8),
+      if (isLoading)
         const LedgerShimmer(
           child: Column(
             children: [
@@ -91,24 +72,13 @@ Widget _buildAbcTab(
               ),
             ],
           ),
-        ),
-      ],
-      if (error != null) ...[
-        const SizedBox(height: 8),
+        )
+      else if (error != null)
         Text(
           languageCubit.translateMessage(error),
           style: textStyles.captionSans.copyWith(color: colors.accentRed),
-        ),
-      ],
-      const SizedBox(height: 20),
-      Text(
-        isCategory
-            ? languageCubit.translate('dashboard_abc_category_analysis')
-            : languageCubit.translate('dashboard_abc_client_analysis'),
-        style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-      ),
-      const SizedBox(height: 8),
-      if (report.rows.isEmpty)
+        )
+      else if (report.rows.isEmpty)
         LedgerCard(
           padding: const EdgeInsets.all(16),
           child: Center(

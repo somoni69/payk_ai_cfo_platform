@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -20,6 +21,7 @@ import '../../../features/tasks/domain/task_model.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../assistant/presentation/ledger_ai_assistant.dart';
 
 part 'tasks_list.dart';
@@ -591,76 +593,30 @@ class _TasksViewState extends State<TasksView> with _TasksViewMixin {
             Row(
               children: [
                 Expanded(
-                  child: SizedBox(
-                    height: 44,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _showPersonalTaskSheet(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.brand,
-                        foregroundColor: colors.surface,
-                        elevation: 0,
-                        minimumSize: const Size.fromHeight(44),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 10,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      icon: const Icon(TablerIcons.plus, size: 17),
-                      label: Text(
-                        language.translate('tasks_fab_personal'),
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.surface,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showPersonalTaskSheet(context),
+                    icon: const Icon(TablerIcons.plus),
+                    label: Text(
+                      language.translate('tasks_fab_personal'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
                 if (canManage) ...[
                   const SizedBox(width: 8),
                   Expanded(
-                    child: SizedBox(
-                      height: 44,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showAddTaskBottomSheet(
-                          context,
-                          state.projects,
-                          state.assignees,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: colors.textPrimary,
-                          backgroundColor: colors.surface,
-                          side: BorderSide(color: colors.border),
-                          minimumSize: const Size.fromHeight(44),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 10,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        icon: Icon(
-                          TablerIcons.users_group,
-                          size: 17,
-                          color: colors.textPrimary,
-                        ),
-                        label: Text(
-                          language.translate('tasks_fab_team'),
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showAddTaskBottomSheet(
+                        context,
+                        state.projects,
+                        state.assignees,
+                      ),
+                      icon: const Icon(TablerIcons.users_group),
+                      label: Text(
+                        language.translate('tasks_fab_team'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
@@ -946,7 +902,7 @@ class _TaskSectionScreenState extends State<TaskSectionScreen>
               TaskSection.calendar => const TasksCalendarShimmer(),
               TaskSection.analytics => const TasksAnalyticsShimmer(),
               TaskSection.myTasks => const TasksMyShimmer(),
-              TaskSection.board => const LedgerListShimmer(itemCount: 6),
+              TaskSection.board => const CrmFunnelShimmer(),
               TaskSection.allTasks => const LedgerListShimmer(itemCount: 6),
             },
           );
@@ -957,46 +913,22 @@ class _TaskSectionScreenState extends State<TaskSectionScreen>
 
         Widget? fab;
         if (widget.section == TaskSection.myTasks) {
-          fab = FloatingActionButton.extended(
+          fab = LedgerFab(
             heroTag: 'task_my_fab',
             onPressed: () => _showPersonalTaskSheet(context),
-            backgroundColor: colors.brand,
-            foregroundColor: colors.surface,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            icon: const Icon(TablerIcons.plus),
-            label: Text(
-              language.translate('tasks_fab_personal'),
-              style: textStyles.bodySans.copyWith(
-                color: colors.surface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            icon: TablerIcons.plus,
+            label: language.translate('tasks_fab_personal'),
           );
         } else if (widget.section == TaskSection.allTasks && canManage) {
-          fab = FloatingActionButton.extended(
+          fab = LedgerFab(
             heroTag: 'task_team_fab',
             onPressed: () => _showAddTaskBottomSheet(
               context,
               state.projects,
               state.assignees,
             ),
-            backgroundColor: colors.brand,
-            foregroundColor: colors.surface,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            icon: const Icon(TablerIcons.plus),
-            label: Text(
-              language.translate('tasks_fab_team'),
-              style: textStyles.bodySans.copyWith(
-                color: colors.surface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            icon: TablerIcons.plus,
+            label: language.translate('tasks_fab_team'),
           );
         }
 
@@ -1069,6 +1001,8 @@ class _TaskSectionScreenState extends State<TaskSectionScreen>
                     context,
                     filteredTasks,
                     state.pendingStatusTaskIds,
+                    state.projects,
+                    state.assignees,
                   ),
                 },
               ),

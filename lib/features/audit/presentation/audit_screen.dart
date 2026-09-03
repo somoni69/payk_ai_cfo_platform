@@ -15,6 +15,9 @@ import '../../../features/audit/bloc/audit_event.dart';
 import '../../../features/audit/bloc/audit_state.dart';
 import '../../../features/audit/domain/audit_models.dart';
 import '../../../features/audit/domain/audit_repository.dart';
+import '../../../presentation/widgets/ledger_card.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum AuditSection { logs, alerts, report }
@@ -337,76 +340,30 @@ class _AuditViewState extends State<AuditView> {
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      context.read<AuditBloc>().add(
-                        const RunAnomalyDetectorsRequested(),
-                      );
-                    },
-                    icon: const Icon(TablerIcons.shield_check, size: 17),
-                    label: Text(
-                      locale.translate('audit_action_check'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.surface,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colors.brand,
-                      foregroundColor: colors.surface,
-                      elevation: 0,
-                      minimumSize: const Size.fromHeight(44),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    context.read<AuditBloc>().add(
+                      const RunAnomalyDetectorsRequested(),
+                    );
+                  },
+                  icon: const Icon(TablerIcons.shield_check),
+                  label: Text(
+                    locale.translate('audit_action_check'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: OutlinedButton.icon(
-                    onPressed: () =>
-                        _openAuditSection(context, AuditSection.logs),
-                    icon: Icon(
-                      TablerIcons.list_details,
-                      size: 17,
-                      color: colors.textPrimary,
-                    ),
-                    label: Text(
-                      locale.translate('audit_action_logs'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.textPrimary,
-                      backgroundColor: colors.surface,
-                      side: BorderSide(color: colors.border),
-                      minimumSize: const Size.fromHeight(44),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
+                child: OutlinedButton.icon(
+                  onPressed: () =>
+                      _openAuditSection(context, AuditSection.logs),
+                  icon: const Icon(TablerIcons.list_details),
+                  label: Text(
+                    locale.translate('audit_action_logs'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
@@ -718,27 +675,15 @@ class AuditSectionScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: section == AuditSection.alerts
-          ? FloatingActionButton.extended(
+          ? LedgerFab(
               heroTag: null,
               onPressed: () {
                 context.read<AuditBloc>().add(
                   const RunAnomalyDetectorsRequested(),
                 );
               },
-              backgroundColor: colors.brand,
-              foregroundColor: colors.surface,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              icon: const Icon(TablerIcons.shield_check),
-              label: Text(
-                locale.translate('audit_run_check'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.surface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              icon: TablerIcons.shield_check,
+              label: locale.translate('audit_run_check'),
             )
           : null,
       body: BlocBuilder<AuditBloc, AuditState>(
@@ -1095,13 +1040,8 @@ class _AuditWeeklyReportTabState extends State<_AuditWeeklyReportTab> {
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
-    return Container(
+    return LedgerCard(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: colors.border),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1109,12 +1049,12 @@ class _AuditWeeklyReportTabState extends State<_AuditWeeklyReportTab> {
             label,
             style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value,
             style: textStyles.bodyMono.copyWith(
               fontWeight: FontWeight.w700,
-              fontSize: 16,
+              fontSize: 18,
               color: valueColor ?? colors.textPrimary,
             ),
           ),
@@ -1130,58 +1070,48 @@ class _AuditWeeklyReportTabState extends State<_AuditWeeklyReportTab> {
     final locale = context.watch<LanguageCubit>();
     final weekly = widget.state.weekly;
     final weeksAgo = widget.state.weeksAgo;
-    final periodKeys = const [
-      'audit_report_week_current',
-      'audit_report_week_last',
-      'audit_report_week_2',
-      'audit_report_week_3',
+    const weekKeys = [
+      'audit_report_week_current_short',
+      'audit_report_week_last_short',
+      'audit_report_week_2_short',
+      'audit_report_week_3_short',
     ];
 
+    Color severityColor(String sev) {
+      return switch (sev) {
+        'urgent' => colors.accentRed,
+        'important' => colors.accentAmber,
+        _ => colors.textSecondary,
+      };
+    }
+
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < periodKeys.length; i++)
-              ChoiceChip(
-                label: Text(locale.translate(periodKeys[i])),
-                selected: weeksAgo == i,
-                onSelected: (_) {
-                  if (weeksAgo == i) return;
-                  context.read<AuditBloc>().add(LoadWeeklyReport(weeksAgo: i));
-                },
-                selectedColor: colors.brand.withValues(alpha: 0.12),
-                side: BorderSide(
-                  color: weeksAgo == i ? colors.brand : colors.border,
-                ),
-                labelStyle: textStyles.smallSans.copyWith(
-                  color: weeksAgo == i ? colors.brand : colors.textPrimary,
-                ),
-                backgroundColor: colors.surface,
-              ),
+        LedgerSegmentedControl<int>(
+          height: 36,
+          selectedValue: weeksAgo.clamp(0, 3),
+          onValueChanged: (value) {
+            if (value == weeksAgo) return;
+            context.read<AuditBloc>().add(LoadWeeklyReport(weeksAgo: value));
+          },
+          segments: [
+            for (var i = 0; i < weekKeys.length; i++)
+              LedgerSegmentItem(value: i, label: locale.translate(weekKeys[i])),
           ],
         ),
         const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _exporting ? null : () => _export('xlsx'),
-                icon: const Icon(TablerIcons.file_spreadsheet, size: 18),
-                label: Text(locale.translate('audit_report_export_excel')),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _exporting ? null : () => _export('pdf'),
-                icon: const Icon(TablerIcons.file_type_pdf, size: 18),
-                label: Text(locale.translate('audit_report_export_pdf')),
-              ),
-            ),
-          ],
+        LedgerPairRow(
+          left: OutlinedButton.icon(
+            onPressed: _exporting ? null : () => _export('xlsx'),
+            icon: const Icon(TablerIcons.file_spreadsheet),
+            label: Text(locale.translate('audit_report_export_excel')),
+          ),
+          right: OutlinedButton.icon(
+            onPressed: _exporting ? null : () => _export('pdf'),
+            icon: const Icon(TablerIcons.file_type_pdf),
+            label: Text(locale.translate('audit_report_export_pdf')),
+          ),
         ),
         const SizedBox(height: 16),
         if (weekly == null)
@@ -1195,45 +1125,34 @@ class _AuditWeeklyReportTabState extends State<_AuditWeeklyReportTab> {
             style: textStyles.captionSans.copyWith(color: colors.textSecondary),
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: context.layout.gridChildAspect(1.7),
-            children: [
-              _statCard(
-                label: locale.translate('audit_report_operations'),
-                value: '${weekly.operationsCount}',
-              ),
-              _statCard(
-                label: locale.translate('audit_report_income'),
-                value: formatLocalizedNumber(context, weekly.incomeTotal),
-                valueColor: colors.accentGreen,
-              ),
-              _statCard(
-                label: locale.translate('audit_report_expense'),
-                value: formatLocalizedNumber(context, weekly.expenseTotal),
-                valueColor: colors.accentRed,
-              ),
-              _statCard(
-                label: locale.translate('audit_report_net'),
-                value: formatLocalizedNumber(context, weekly.netTotal),
-                valueColor: weekly.netTotal >= 0
-                    ? colors.accentGreen
-                    : colors.accentRed,
-              ),
-            ],
+          LedgerPairRow(
+            left: _statCard(
+              label: locale.translate('audit_report_operations'),
+              value: '${weekly.operationsCount}',
+            ),
+            right: _statCard(
+              label: locale.translate('audit_report_income'),
+              value: formatLocalizedNumber(context, weekly.incomeTotal),
+              valueColor: colors.accentGreen,
+            ),
+          ),
+          const SizedBox(height: 10),
+          LedgerPairRow(
+            left: _statCard(
+              label: locale.translate('audit_report_expense'),
+              value: formatLocalizedNumber(context, weekly.expenseTotal),
+              valueColor: colors.accentRed,
+            ),
+            right: _statCard(
+              label: locale.translate('audit_report_net'),
+              value: formatLocalizedNumber(context, weekly.netTotal),
+              valueColor: weekly.netTotal >= 0
+                  ? colors.accentGreen
+                  : colors.accentRed,
+            ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
-            ),
+          LedgerCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1258,6 +1177,7 @@ class _AuditWeeklyReportTabState extends State<_AuditWeeklyReportTab> {
                               '${weekly.alertsBySeverity[sev] ?? 0}',
                               style: textStyles.h2Sans.copyWith(
                                 fontWeight: FontWeight.w700,
+                                color: severityColor(sev),
                               ),
                             ),
                             const SizedBox(height: 4),

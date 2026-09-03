@@ -5,6 +5,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
@@ -382,7 +383,7 @@ Future<void> showCrmDealForm(
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  height: 48,
+                  height: kLedgerModalButtonHeight,
                   child: OutlinedButton.icon(
                     onPressed: () {
                       crmBloc.add(DeleteDealRequested(existing.id));
@@ -392,9 +393,6 @@ Future<void> showCrmDealForm(
                       foregroundColor: ctx.colors.accentRed,
                       side: BorderSide(
                         color: ctx.colors.accentRed.withValues(alpha: 0.5),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     icon: const Icon(TablerIcons.trash, size: 18),
@@ -1136,7 +1134,7 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) async {
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      height: 48,
+                      height: kLedgerModalButtonHeight,
                       child: OutlinedButton.icon(
                         onPressed: () {
                           crmBloc.add(DeleteClientRequested(detail.id));
@@ -1146,9 +1144,6 @@ Future<void> showCrmClientDetail(BuildContext context, CrmClient client) async {
                           foregroundColor: colors.accentRed,
                           side: BorderSide(
                             color: colors.accentRed.withValues(alpha: 0.5),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         icon: const Icon(TablerIcons.trash, size: 18),

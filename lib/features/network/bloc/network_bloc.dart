@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/network_models.dart';
@@ -10,7 +11,7 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
   final Map<NetworkPeriod, List<StoreSummaryRow>> _summaryCache = {};
 
   NetworkBloc(this._repository) : super(const NetworkLoading()) {
-    on<LoadNetworkData>(_onLoadNetworkData);
+    on<LoadNetworkData>(_onLoadNetworkData, transformer: restartable());
     on<CreateStoreRequested>(_onCreateStoreRequested);
     on<UpdateStoreRequested>(_onUpdateStoreRequested);
     on<DeleteStoreRequested>(_onDeleteStoreRequested);
@@ -47,11 +48,21 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
     if (previous != null && !event.forceRefresh) {
       final cachedSummary = _summaryCache[event.period];
       if (cachedSummary != null) {
-        emit(previous.copyWith(period: event.period, summary: cachedSummary));
+        emit(
+          previous.copyWith(
+            period: event.period,
+            summary: cachedSummary,
+            isSummaryLoading: false,
+          ),
+        );
         return;
       }
 
-      emit(previous.copyWith(period: event.period));
+      if (previous.period == event.period && !previous.isSummaryLoading) {
+        return;
+      }
+
+      emit(previous.copyWith(period: event.period, isSummaryLoading: true));
 
       try {
         final (from, to) = _dateRangeFor(event.period);
@@ -61,21 +72,26 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
         );
         _summaryCache[event.period] = summary;
 
-        final current = state is NetworkLoaded
-            ? state as NetworkLoaded
-            : previous;
+        if (state is! NetworkLoaded) return;
+        final current = state as NetworkLoaded;
         if (current.period == event.period) {
-          emit(current.copyWith(summary: summary));
+          emit(current.copyWith(summary: summary, isSummaryLoading: false));
         }
       } catch (e) {
+        if (state is! NetworkLoaded) return;
         emit(
-          previous.copyWith(
+          (state as NetworkLoaded).copyWith(
+            isSummaryLoading: false,
             actionMessage: () =>
                 userFacingError(e, fallback: ErrorKeys.loadFailed),
           ),
         );
       }
       return;
+    }
+
+    if (previous != null && event.forceRefresh) {
+      emit(previous.copyWith(period: event.period, isSummaryLoading: true));
     }
 
     if (previous == null) {
@@ -106,7 +122,14 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
       );
     } catch (e) {
       final msg = userFacingError(e, fallback: ErrorKeys.loadFailed);
-      if (previous != null) {
+      if (state is NetworkLoaded) {
+        emit(
+          (state as NetworkLoaded).copyWith(
+            isSummaryLoading: false,
+            actionMessage: () => msg,
+          ),
+        );
+      } else if (previous != null) {
         emit(previous.copyWith(actionMessage: () => msg));
       } else {
         emit(NetworkError(msg));

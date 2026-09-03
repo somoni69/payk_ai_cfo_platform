@@ -4,8 +4,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import '../../core/localization/language_cubit.dart';
+import '../../core/theme/ledger_buttons.dart';
+import '../../core/theme/ledger_layout.dart';
 import '../../core/theme/theme_extensions.dart';
 import 'bottom_action_wrapper.dart';
+
+/// Shared chrome for the AI assistant and every content sheet: full width,
+/// 16px top radius, max height 88% (same as the AI assistant).
+///
+/// Pass [expand] so the sheet always fills that 88% (chat). Forms omit it
+/// and wrap to their content instead of leaving a blank body.
+Future<T?> showLedgerModalSheet<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool isDismissible = true,
+  bool enableDrag = true,
+  bool expand = false,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    isDismissible: isDismissible,
+    enableDrag: enableDrag,
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    builder: (ctx) {
+      final height = ledgerModalHeightOf(ctx);
+      final content = builder(ctx);
+      final sheet = expand
+          ? SizedBox(height: height, width: double.infinity, child: content)
+          : ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: height),
+              child: SizedBox(width: double.infinity, child: content),
+            );
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(kLedgerModalTopRadius),
+          ),
+          child: sheet,
+        ),
+      );
+    },
+  );
+}
 
 /// Единый переиспользуемый компонент для плавающего модального окна (Bottom Sheet).
 class LedgerBottomSheet extends StatelessWidget {
@@ -38,15 +83,10 @@ class LedgerBottomSheet extends StatelessWidget {
     bool isDismissible = true,
     bool enableDrag = true,
   }) {
-    return showModalBottomSheet<T>(
+    return showLedgerModalSheet<T>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      useRootNavigator: true,
       isDismissible: isDismissible,
       enableDrag: enableDrag,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
       builder: (sheetContext) {
         return _LedgerSheetHost<T>(
           title: title,
@@ -63,61 +103,61 @@ class LedgerBottomSheet extends StatelessWidget {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Container(
-        clipBehavior: Clip.antiAlias,
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(24),
-          // Ledger: borders over shadows (design_language.md)
-          border: Border.all(color: colors.border, width: 1.5),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 32,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: colors.textSecondary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(1.5),
+    return Theme(
+      data: LedgerButtons.modalOverlay(context),
+      child: Material(
+        color: colors.surface,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: colors.textSecondary.withValues(alpha: 0.28),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                title,
-                style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w500),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Divider(height: 16),
-            Flexible(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  4,
-                  20,
-                  footer == null ? 20 : 8,
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  title,
+                  style: textStyles.h2Sans.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: child,
               ),
-            ),
-            if (footer != null) ...[
-              const Divider(height: 1),
-              BottomActionWrapper(
-                backgroundColor: colors.surface,
-                child: footer!,
+              const Divider(height: 16),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    4,
+                    20,
+                    footer == null ? 20 : 8,
+                  ),
+                  children: [child],
+                ),
               ),
+              if (footer != null) ...[
+                const Divider(height: 1),
+                BottomActionWrapper(
+                  backgroundColor: colors.surface,
+                  child: footer!,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -132,89 +172,70 @@ class LedgerBottomSheet extends StatelessWidget {
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 40),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        backgroundColor: colors.surface,
-        elevation: 0,
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: colors.accentAmber.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  TablerIcons.alert_triangle,
-                  color: colors.accentAmber,
-                  size: 36,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                language.translate('discard_title'),
-                style: textStyles.h2Sans.copyWith(
-                  fontWeight: FontWeight.w500,
-                  fontSize: 20,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                language.translate('discard_message'),
-                style: textStyles.bodySans.copyWith(
-                  color: colors.textSecondary,
-                  height: 1.5,
-                  fontSize: 15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: colors.brand,
-                    foregroundColor: colors.surface,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+      builder: (context) => Theme(
+        data: LedgerButtons.modalOverlay(context),
+        child: Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          backgroundColor: colors.surface,
+          elevation: 0,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: colors.accentAmber.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    language.translate('discard_continue'),
-                    style: textStyles.bodySans.copyWith(
-                      color: colors.surface,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Icon(
+                    TablerIcons.alert_triangle,
+                    color: colors.accentAmber,
+                    size: 36,
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 16,
-                  ),
-                ),
-                child: Text(
-                  language.translate('discard_close'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.accentRed,
+                const SizedBox(height: 20),
+                Text(
+                  language.translate('discard_title'),
+                  style: textStyles.h2Sans.copyWith(
                     fontWeight: FontWeight.w500,
+                    fontSize: 20,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  language.translate('discard_message'),
+                  style: textStyles.bodySans.copyWith(
+                    color: colors.textSecondary,
+                    height: 1.5,
+                    fontSize: 15,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(language.translate('discard_continue')),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: TextButton.styleFrom(
+                    foregroundColor: colors.accentRed,
+                  ),
+                  child: Text(language.translate('discard_close')),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -269,39 +290,15 @@ class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.sizeOf(context);
-    final viewInsets = MediaQuery.viewInsetsOf(context);
-    final padding = MediaQuery.paddingOf(context);
-
-    final keyboardHeight = viewInsets.bottom;
-    final topSafeArea = padding.top;
-
-    final availableHeight =
-        screenSize.height -
-        keyboardHeight -
-        (topSafeArea > 0 ? topSafeArea : 24) -
-        48;
-    final maxAvailableHeight = availableHeight * 0.92;
-
-    final childWidget = Padding(
-      padding: EdgeInsets.only(
-        bottom: keyboardHeight + 16,
-        left: 16,
-        right: 16,
-        top: (topSafeArea > 0 ? topSafeArea : 24) + 16,
-      ),
-      child: _LedgerSheetContentHost(
-        title: widget.title,
-        maxHeight: maxAvailableHeight,
-        builder: widget.builder,
-        footerBuilder: widget.footerBuilder,
-      ),
-    );
-
     return PopScope(
       canPop: !_dirty || _isDiscarding,
       onPopInvokedWithResult: _handlePopInvoked,
-      child: childWidget,
+      child: _LedgerSheetContentHost(
+        title: widget.title,
+        maxHeight: ledgerModalHeightOf(context),
+        builder: widget.builder,
+        footerBuilder: widget.footerBuilder,
+      ),
     );
   }
 }
