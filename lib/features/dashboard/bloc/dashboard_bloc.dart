@@ -606,6 +606,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       cashForecastDelta: metrics.cashForecastDelta,
       operationsCount: metrics.operationsCount,
       avgCheck: metrics.avgCheck * factor,
+      period: metrics.period,
     );
   }
 

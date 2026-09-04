@@ -138,6 +138,7 @@ class ApiFinanceRepository implements FinanceRepository {
         cashForecastDelta: cashForecastDelta,
         operationsCount: (data['operations_count'] as num?)?.toInt() ?? 0,
         avgCheck: _toDouble(data['avg_check'] ?? data['avgCheck']),
+        period: (data['period'] ?? '').toString(),
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
@@ -150,7 +151,7 @@ class ApiFinanceRepository implements FinanceRepository {
       final data = await _getOverviewData();
       final list = data['cashflow'] as List<dynamic>? ?? [];
 
-      final double runningBalance = (data['balance'] ?? 0.0).toDouble();
+      final double runningBalance = _toDouble(data['balance']);
 
       // Сортируем по дате по возрастанию
       final sortedList = List.from(list);
@@ -163,8 +164,8 @@ class ApiFinanceRepository implements FinanceRepository {
       double startBalance =
           runningBalance -
           sortedList.fold(0.0, (sum, item) {
-            final double income = (item['income'] ?? 0.0).toDouble();
-            final double expense = (item['expense'] ?? 0.0).toDouble();
+            final double income = _toDouble(item['income']);
+            final double expense = _toDouble(item['expense']);
             return sum + (income - expense);
           });
 
@@ -172,8 +173,8 @@ class ApiFinanceRepository implements FinanceRepository {
       double currentBalance = startBalance;
 
       for (final item in sortedList) {
-        final double income = (item['income'] ?? 0.0).toDouble();
-        final double expense = (item['expense'] ?? 0.0).toDouble();
+        final double income = _toDouble(item['income']);
+        final double expense = _toDouble(item['expense']);
         currentBalance += (income - expense);
 
         points.add(

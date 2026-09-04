@@ -117,6 +117,42 @@ void main() {
     expect(find.text('long'), findsOneWidget);
   });
 
+  testWidgets('tapping above a sheet dismisses it', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: LedgerTheme.light,
+        home: Builder(
+          builder: (context) {
+            return TextButton(
+              onPressed: () {
+                showLedgerModalSheet<void>(
+                  context: context,
+                  builder: (_) => const Material(
+                    child: SizedBox(height: 180, child: Text('sheet-body')),
+                  ),
+                );
+              },
+              child: const Text('open'),
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('sheet-body'), findsOneWidget);
+
+    await tester.tapAt(const Offset(180, 24));
+    await tester.pumpAndSettle();
+    expect(find.text('sheet-body'), findsNothing);
+  });
+
   group('LedgerButtons', () {
     test('screen and modal sizes stay distinct', () {
       expect(kLedgerScreenButtonHeight, 44);
@@ -125,6 +161,9 @@ void main() {
       expect(kLedgerScreenButtonRadius, 12);
       expect(kLedgerScreenButtonFont, 13);
       expect(kLedgerModalButtonFont, 14);
+      expect(kLedgerFabSize, 52);
+      expect(kLedgerFabRadius, 14);
+      expect(kLedgerFabFont, 14);
     });
 
     test('screen elevated style is 44px / radius 12', () {

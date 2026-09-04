@@ -109,18 +109,22 @@ class SaleLine {
 /// Чистая прибыль с продаж (`GET /cash/profit`).
 class SalesProfit {
   final double revenue;
+  final double revenueCosted;
   final double cost;
   final double profit;
   final double? markupPercent;
   final int itemsSold;
+  final int itemsCosted;
   final List<String> missingCost;
 
   const SalesProfit({
     required this.revenue,
     required this.cost,
     required this.profit,
+    this.revenueCosted = 0,
     this.markupPercent,
     this.itemsSold = 0,
+    this.itemsCosted = 0,
     this.missingCost = const [],
   });
 }

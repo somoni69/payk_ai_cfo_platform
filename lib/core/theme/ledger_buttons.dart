@@ -11,6 +11,13 @@ const kLedgerScreenButtonHPad = 16.0;
 const kLedgerScreenButtonFont = 13.0;
 const kLedgerScreenButtonIcon = 18.0;
 
+/// Labeled floating buttons above the liquid nav.
+const kLedgerFabSize = 52.0;
+const kLedgerFabRadius = 14.0;
+const kLedgerFabHPad = 18.0;
+const kLedgerFabFont = 14.0;
+const kLedgerFabIcon = 20.0;
+
 /// Sheet / dialog primary and secondary actions.
 const kLedgerModalButtonHeight = 48.0;
 const kLedgerModalButtonRadius = 12.0;
@@ -62,7 +69,7 @@ abstract final class LedgerButtons {
         style: modalOutlined(colors, text),
       ),
       textButtonTheme: TextButtonThemeData(style: modalText(colors, text)),
-      floatingActionButtonTheme: _fabTheme(colors, text, modal: true),
+      floatingActionButtonTheme: _fabTheme(colors, text),
     );
   }
 
@@ -70,7 +77,7 @@ abstract final class LedgerButtons {
     LedgerColors colors,
     LedgerTextStyles text,
   ) {
-    return _fabTheme(colors, text, modal: false);
+    return _fabTheme(colors, text);
   }
 
   static ButtonStyle _elevated(
@@ -158,10 +165,8 @@ abstract final class LedgerButtons {
 
   static FloatingActionButtonThemeData _fabTheme(
     LedgerColors colors,
-    LedgerTextStyles text, {
-    required bool modal,
-  }) {
-    final h = _height(modal);
+    LedgerTextStyles text,
+  ) {
     return FloatingActionButtonThemeData(
       backgroundColor: colors.brand,
       foregroundColor: colors.surface,
@@ -170,16 +175,22 @@ abstract final class LedgerButtons {
       hoverElevation: 0,
       highlightElevation: 0,
       disabledElevation: 0,
-      extendedPadding: EdgeInsets.symmetric(horizontal: _hPad(modal)),
+      extendedPadding: const EdgeInsets.symmetric(horizontal: kLedgerFabHPad),
       extendedIconLabelSpacing: 8,
-      extendedSizeConstraints: BoxConstraints.tightFor(height: h),
-      sizeConstraints: BoxConstraints.tightFor(width: h, height: h),
+      extendedSizeConstraints: const BoxConstraints.tightFor(
+        height: kLedgerFabSize,
+      ),
+      sizeConstraints: const BoxConstraints.tightFor(
+        width: kLedgerFabSize,
+        height: kLedgerFabSize,
+      ),
+      iconSize: kLedgerFabIcon,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(_radius(modal)),
+        borderRadius: BorderRadius.circular(kLedgerFabRadius),
       ),
       extendedTextStyle: text.bodySans.copyWith(
         fontWeight: FontWeight.w600,
-        fontSize: _font(modal),
+        fontSize: kLedgerFabFont,
         color: colors.surface,
         height: 1.2,
       ),

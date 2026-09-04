@@ -15,6 +15,7 @@ class FinanceMetrics {
   final double? cashForecastDelta;
   final int operationsCount;
   final double avgCheck;
+  final String period;
 
   const FinanceMetrics({
     required this.cashBalance,
@@ -30,6 +31,7 @@ class FinanceMetrics {
     required this.cashForecastDelta,
     this.operationsCount = 0,
     this.avgCheck = 0,
+    this.period = '',
   });
 }
 
@@ -379,10 +381,11 @@ class OneCRow {
   });
 
   factory OneCRow.fromJson(Map<String, dynamic> json) {
+    final kindRaw = json['payk_kind']?.toString().trim();
     return OneCRow(
       onecName: (json['onec_name'] ?? '').toString(),
       onecAmount: (json['onec_amount'] as num?)?.toDouble() ?? 0.0,
-      paykKind: json['payk_kind']?.toString(),
+      paykKind: (kindRaw == null || kindRaw.isEmpty) ? null : kindRaw,
       paykId: (json['payk_id'] as num?)?.toInt(),
       paykName: json['payk_name']?.toString(),
       paykAmount: (json['payk_amount'] as num?)?.toDouble(),
@@ -472,6 +475,11 @@ class OneCReconcileReport {
   final List<OneCNotInOnecItem> notInOnec;
   final double totalOnec;
   final double totalPayk;
+  final int matchedCount;
+  final int unmatchedCount;
+  final double matchedOnec;
+  final double matchedPayk;
+  final double matchedDiff;
 
   const OneCReconcileReport({
     required this.date,
@@ -479,6 +487,11 @@ class OneCReconcileReport {
     required this.notInOnec,
     required this.totalOnec,
     required this.totalPayk,
+    this.matchedCount = 0,
+    this.unmatchedCount = 0,
+    this.matchedOnec = 0,
+    this.matchedPayk = 0,
+    this.matchedDiff = 0,
   });
 
   factory OneCReconcileReport.fromJson(Map<String, dynamic> json) {
@@ -492,12 +505,29 @@ class OneCReconcileReport {
             ?.map((e) => OneCNotInOnecItem.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [];
+    final matchedRows = rowsList
+        .where((r) => r.paykKind != null && r.paykKind!.isNotEmpty)
+        .toList();
     return OneCReconcileReport(
       date: (json['date'] ?? '').toString(),
       rows: rowsList,
       notInOnec: notInList,
       totalOnec: (json['total_onec'] as num?)?.toDouble() ?? 0.0,
       totalPayk: (json['total_payk'] as num?)?.toDouble() ?? 0.0,
+      matchedCount:
+          (json['matched_count'] as num?)?.toInt() ?? matchedRows.length,
+      unmatchedCount:
+          (json['unmatched_count'] as num?)?.toInt() ??
+          (rowsList.length - matchedRows.length),
+      matchedOnec:
+          (json['matched_onec'] as num?)?.toDouble() ??
+          matchedRows.fold<double>(0, (s, r) => s + r.onecAmount),
+      matchedPayk:
+          (json['matched_payk'] as num?)?.toDouble() ??
+          matchedRows.fold<double>(0, (s, r) => s + (r.paykAmount ?? 0)),
+      matchedDiff:
+          (json['matched_diff'] as num?)?.toDouble() ??
+          matchedRows.fold<double>(0, (s, r) => s + (r.difference ?? 0)),
     );
   }
 
@@ -507,6 +537,11 @@ class OneCReconcileReport {
     'not_in_onec': notInOnec.map((e) => e.toJson()).toList(),
     'total_onec': totalOnec,
     'total_payk': totalPayk,
+    'matched_count': matchedCount,
+    'unmatched_count': unmatchedCount,
+    'matched_onec': matchedOnec,
+    'matched_payk': matchedPayk,
+    'matched_diff': matchedDiff,
   };
 }
 

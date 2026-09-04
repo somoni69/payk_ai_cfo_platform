@@ -290,7 +290,7 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                     child: _metricContent(
                       context,
                       language.translate('cash_profit_revenue'),
-                      formatLocalizedNumber(context, _data!.revenue),
+                      formatLocalizedNumber(context, _data!.revenueCosted),
                       colors.textPrimary,
                     ),
                   ),
@@ -362,7 +362,7 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
                 _metric(
                   context,
                   language.translate('cash_profit_revenue'),
-                  formatLocalizedNumber(context, _data!.revenue),
+                  formatLocalizedNumber(context, _data!.revenueCosted),
                   colors.textPrimary,
                 ),
                 _metric(
@@ -397,6 +397,19 @@ class _SalesProfitCardState extends State<SalesProfitCard> {
             const SizedBox(height: 8),
             Text(
               language.translate('cash_profit_no_sales'),
+              style: textStyles.smallSans.copyWith(color: colors.textTooltip),
+            ),
+          ],
+          if (_data!.itemsSold > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              language.translate(
+                'cash_profit_basis',
+                params: {
+                  'costed': '${_data!.itemsCosted}',
+                  'total': '${_data!.itemsSold}',
+                },
+              ),
               style: textStyles.smallSans.copyWith(color: colors.textTooltip),
             ),
           ],

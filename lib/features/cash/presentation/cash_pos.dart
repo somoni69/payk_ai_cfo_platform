@@ -29,6 +29,8 @@ class _CashPosViewState extends State<CashPosView> {
   final _scanController = TextEditingController();
   final _scanFocus = FocusNode();
   final _gotController = TextEditingController();
+  final _cashPartController = TextEditingController();
+  final _cashlessPartController = TextEditingController();
 
   List<SaleProduct> _products = const [];
   var _loadingProducts = true;
@@ -70,6 +72,8 @@ class _CashPosViewState extends State<CashPosView> {
     _scanController.dispose();
     _scanFocus.dispose();
     _gotController.dispose();
+    _cashPartController.dispose();
+    _cashlessPartController.dispose();
     super.dispose();
   }
 
@@ -549,6 +553,24 @@ class _CashPosViewState extends State<CashPosView> {
     }
     if (_registerId == null || _registerId!.isEmpty) return;
 
+    double? cashPart;
+    double? cashlessPart;
+    if (_method == PaymentMethod.mixed) {
+      cashPart = parseLocalizedNumber(context, _cashPartController.text);
+      cashlessPart = parseLocalizedNumber(
+        context,
+        _cashlessPartController.text,
+      );
+      if (cashPart == null ||
+          cashlessPart == null ||
+          cashPart < 0 ||
+          cashlessPart < 0 ||
+          (cashPart + cashlessPart - _total).abs() > 0.01) {
+        setState(() => _error = language.translate('cash_mixed_err_sum'));
+        return;
+      }
+    }
+
     final cashBloc = context.read<CashBloc>();
     if (_method == PaymentMethod.cash) {
       final proceed = await _confirmCashChange(language);
@@ -575,6 +597,8 @@ class _CashPosViewState extends State<CashPosView> {
             price: line.price,
           ),
       ],
+      cashAmount: cashPart,
+      cashlessAmount: cashlessPart,
       bankId: _method == PaymentMethod.cash ? null : _bankId,
     );
     cashBloc.add(AddTransactionRequested(tx));
@@ -668,6 +692,34 @@ class _CashPosViewState extends State<CashPosView> {
             ],
           ),
         );
+      },
+    );
+  }
+
+  Widget _buildPaymentChip(BuildContext context, PaymentMethod method) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final isSelected = _method == method;
+    final selectedColor = switch (method) {
+      PaymentMethod.alif => colors.accentGreen,
+      PaymentMethod.dushanbeCity => const Color(0xFFFF6B22),
+      _ => colors.brand,
+    };
+
+    return ChoiceChip(
+      label: Text(language.translate(method.labelKey)),
+      selected: isSelected,
+      selectedColor: selectedColor,
+      backgroundColor: colors.surface,
+      checkmarkColor: Colors.white,
+      labelStyle: textStyles.captionSans.copyWith(
+        color: isSelected ? Colors.white : colors.textPrimary,
+        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+      ),
+      side: BorderSide(color: isSelected ? selectedColor : colors.border),
+      onSelected: (selected) {
+        if (selected) setState(() => _method = method);
       },
     );
   }
@@ -982,26 +1034,51 @@ class _CashPosViewState extends State<CashPosView> {
             ),
           ),
         const SizedBox(height: 12),
+        Text(
+          language.translate('cash_payment_method'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final method in PaymentMethod.values)
-              ChoiceChip(
-                label: Text(language.translate(method.labelKey)),
-                selected: _method == method,
-                onSelected: (_) => setState(() => _method = method),
-                selectedColor: colors.brand.withValues(alpha: 0.12),
-                side: BorderSide(
-                  color: _method == method ? colors.brand : colors.border,
-                ),
-                labelStyle: textStyles.smallSans.copyWith(
-                  color: _method == method ? colors.brand : colors.textPrimary,
-                ),
-                backgroundColor: colors.surface,
-              ),
+              _buildPaymentChip(context, method),
           ],
         ),
+        if (_method == PaymentMethod.mixed) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _cashPartController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: textStyles.bodyMono,
+                  decoration: InputDecoration(
+                    labelText: language.translate('cash_mixed_cash'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _cashlessPartController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  style: textStyles.bodyMono,
+                  decoration: InputDecoration(
+                    labelText: language.translate('cash_mixed_cashless'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         if (_method != PaymentMethod.cash && _banks.isNotEmpty) ...[
           const SizedBox(height: 12),
           ExpansibleWidget<String>.selection(

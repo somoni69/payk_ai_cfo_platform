@@ -27,7 +27,9 @@ import '../../../features/hr/domain/hr_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_fab.dart';
+import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+import 'hr_recruitment_board.dart';
 
 part 'hr_extra_tabs.dart';
 

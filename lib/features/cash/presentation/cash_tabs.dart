@@ -688,23 +688,50 @@ extension _CashTabBuilders on _CashViewMixin {
           return Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: colors.surface,
+              color: isNegativeNet
+                  ? colors.accentRed.withValues(alpha: 0.06)
+                  : colors.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.border),
+              border: Border.all(
+                color: isNegativeNet
+                    ? colors.accentRed.withValues(alpha: 0.45)
+                    : colors.border,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      language.translateMessage(row.registerName),
-                      style: textStyles.h2Sans.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                    Expanded(
+                      child: Text(
+                        language.translateMessage(row.registerName),
+                        style: textStyles.h2Sans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
+                    if (isNegativeNet)
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.accentRed.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          language.translate('cash_summary_negative'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.accentRed,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     if (row.hasOpenShift)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -791,6 +818,15 @@ extension _CashTabBuilders on _CashViewMixin {
                     ),
                   ],
                 ),
+                if (isNegativeNet) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    language.translate('cash_summary_negative_hint'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.accentRed,
+                    ),
+                  ),
+                ],
               ],
             ),
           );
@@ -833,6 +869,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
   OneCKkmOverview? _data;
   String? _error;
   var _loading = true;
+  final Set<String> _expanded = {};
   DateTime _dateFrom = DateTime(
     DateTime.now().year,
     DateTime.now().month,
@@ -1027,6 +1064,53 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
     final diff = onecTotal - paykTotal;
     final children = <Widget>[
       period,
+      if (data.source == 'cache')
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          child: LedgerCard(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(TablerIcons.cloud_off, size: 20, color: colors.accentRed),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        language.translate('cash_onec_stale_title'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        data.syncedAt != null && data.syncedAt!.isNotEmpty
+                            ? language.translate(
+                                'cash_onec_stale_since',
+                                params: {'date': data.syncedAt!},
+                              )
+                            : language.translate('cash_onec_stale_never'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      if (data.error != null && data.error!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          data.error!,
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.accentRed,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
         child: LedgerCard(
@@ -1039,18 +1123,18 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${data.source}${data.syncedAt != null ? ' • ${data.syncedAt}' : ''}${data.error != null ? ' • ${data.error}' : ''}',
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
               const SizedBox(height: 12),
               _metricRow(
                 context,
                 language.translate('cash_onec_total_onec'),
                 formatLocalizedNumber(context, onecTotal),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${language.translate('cash_onec_cash')}: ${formatLocalizedNumber(context, _num(data.totals['onec_cash']))}  •  ${language.translate('cash_onec_cashless')}: ${formatLocalizedNumber(context, _num(data.totals['onec_cashless']))}',
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
               ),
               const SizedBox(height: 6),
               _metricRow(
@@ -1073,7 +1157,21 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
       ),
     ];
 
+    children.add(
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+        child: Text(
+          language.translate('cash_onec_shifts_subtitle'),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+      ),
+    );
+
     for (final shift in data.shifts) {
+      final key = shift.number.isEmpty
+          ? '${shift.registerName}-${shift.closedAt}'
+          : shift.number;
+      final open = _expanded.contains(key);
       children.add(
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
@@ -1081,26 +1179,76 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${shift.registerName} · #${shift.number}',
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w600,
+                Semantics(
+                  button: true,
+                  label: language.translate('cash_onec_show_details'),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        if (open) {
+                          _expanded.remove(key);
+                        } else {
+                          _expanded.add(key);
+                        }
+                      });
+                    },
+                    child: Row(
+                      children: [
+                        Icon(
+                          open
+                              ? TablerIcons.chevron_down
+                              : TablerIcons.chevron_right,
+                          size: 18,
+                          color: colors.textSecondary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${shift.registerName} · #${shift.number}',
+                            style: textStyles.bodySans.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  [
-                    shift.cashierName,
-                    if (shift.departmentName != null &&
-                        shift.departmentName!.isNotEmpty)
-                      shift.departmentName,
-                    if (shift.paykRegisterName != null)
-                      '${language.translate('cash_onec_our')}: ${shift.paykRegisterName}',
-                  ].join(' • '),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
+                const SizedBox(height: 6),
+                if (shift.docDate != null && shift.docDate!.isNotEmpty)
+                  Text(
+                    shift.docDate!,
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
                   ),
-                ),
+                if (shift.departmentName != null &&
+                    shift.departmentName!.isNotEmpty)
+                  Text(
+                    shift.departmentName!,
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                if (shift.paykRegisterName != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${language.translate('cash_onec_our')}: ${shift.paykRegisterName}',
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+                if (shift.paykBranchName != null &&
+                    shift.paykBranchName!.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    '${language.translate('cash_onec_our')}: ${shift.paykBranchName}',
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Text(
                   formatLocalizedNumber(context, shift.total),
@@ -1115,29 +1263,77 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
                     color: colors.textSecondary,
                   ),
                 ),
-                if (shift.payments.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ...shift.payments.map(
-                    (p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              p.card.isEmpty ? p.kind : p.card,
-                              style: textStyles.captionSans,
-                            ),
-                          ),
-                          Text(
-                            formatLocalizedNumber(context, p.amount),
-                            style: textStyles.captionSans.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
+                if (open) ...[
+                  const SizedBox(height: 10),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_cashier'),
+                    shift.cashierName.isEmpty ? '—' : shift.cashierName,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    language.translate('cash_onec_cashier_hint'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_opened'),
+                    shift.openedAtKnown && shift.openedAt != null
+                        ? formatLocalizedDateTime(
+                            context,
+                            shift.openedAt!,
+                            style: LocalizedDateTimeStyle.dateTime,
+                          )
+                        : language.translate('cash_onec_no_open_time'),
+                  ),
+                  if (shift.closedAt != null && shift.closedAt!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _metricRow(
+                      context,
+                      language.translate('cash_onec_closed'),
+                      _formatShiftInstant(context, shift.closedAt!),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  Text(
+                    language.translate('cash_onec_cards_title'),
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  if (shift.payments.isEmpty)
+                    Text(
+                      language.translate('cash_onec_no_cards'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    )
+                  else
+                    ...shift.payments.map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                p.card.isEmpty ? p.kind : p.card,
+                                style: textStyles.captionSans,
+                              ),
+                            ),
+                            Text(
+                              formatLocalizedNumber(context, p.amount),
+                              style: textStyles.captionSans.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ],
             ),
@@ -1158,6 +1354,116 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
           ),
         ),
       );
+    }
+
+    if (data.reconcile.isNotEmpty) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                language.translate('cash_onec_reconcile_title'),
+                style: textStyles.bodySans.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                language.translate('cash_onec_reconcile_subtitle'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      for (final row in data.reconcile) {
+        children.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: LedgerCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    row.onecRegister,
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      if (row.docDate.isNotEmpty) row.docDate,
+                      language.translate(
+                        'cash_onec_shifts_count',
+                        params: {'n': '${row.shiftsCount}'},
+                      ),
+                    ].join(' · '),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    row.paykRegisterName != null
+                        ? '${language.translate('cash_onec_our')}: ${row.paykRegisterName}'
+                        : language.translate('cash_onec_not_linked'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_total_onec'),
+                    formatLocalizedNumber(context, row.onecTotal),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${language.translate('cash_onec_cash')}: ${formatLocalizedNumber(context, row.onecCash)}  •  ${language.translate('cash_onec_cashless')}: ${formatLocalizedNumber(context, row.onecCashless)}',
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_total_payk'),
+                    row.paykTotal == null
+                        ? '—'
+                        : formatLocalizedNumber(context, row.paykTotal!),
+                  ),
+                  const SizedBox(height: 6),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_total_diff'),
+                    _diffLabel(context, row.diffTotal),
+                    valueColor: _diffColor(context, row.diffTotal),
+                  ),
+                  const SizedBox(height: 6),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_diff_cash'),
+                    _diffLabel(context, row.diffCash),
+                    valueColor: _diffColor(context, row.diffCash),
+                  ),
+                  const SizedBox(height: 6),
+                  _metricRow(
+                    context,
+                    language.translate('cash_onec_diff_cashless'),
+                    _diffLabel(context, row.diffCashless),
+                    valueColor: _diffColor(context, row.diffCashless),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     }
 
     if (data.mappingRegisters.isNotEmpty ||
@@ -1211,6 +1517,31 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
         padding: const EdgeInsets.only(bottom: 24 + kLiquidNavClearance),
         children: children,
       ),
+    );
+  }
+
+  String _diffLabel(BuildContext context, double? value) {
+    if (value == null) return '—';
+    if (value.abs() < 0.01) {
+      return context.read<LanguageCubit>().translate('cash_onec_match');
+    }
+    return formatLocalizedNumber(context, value);
+  }
+
+  Color _diffColor(BuildContext context, double? value) {
+    final colors = context.colors;
+    if (value == null) return colors.textSecondary;
+    if (value.abs() < 0.01) return colors.accentGreen;
+    return colors.accentRed;
+  }
+
+  String _formatShiftInstant(BuildContext context, String raw) {
+    final parsed = DateTime.tryParse(raw);
+    if (parsed == null) return raw;
+    return formatLocalizedDateTime(
+      context,
+      parsed,
+      style: LocalizedDateTimeStyle.dateTime,
     );
   }
 

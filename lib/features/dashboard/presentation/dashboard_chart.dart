@@ -28,7 +28,7 @@ class CashFlowChartPainter extends CustomPainter {
 
     final double width = size.width;
 
-    const double chartLeft = 45.0;
+    const double chartLeft = 64.0;
     final double chartBottom = size.height - 24.0;
     const double chartTop = 10.0;
     final double chartWidth = width - chartLeft;

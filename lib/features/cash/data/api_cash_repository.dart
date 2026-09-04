@@ -390,20 +390,33 @@ class ApiCashRepository implements CashRepository {
           ? Map<String, dynamic>.from(response.data as Map)
           : <String, dynamic>{};
       final missing = map['missing_cost'] ?? map['missingCost'];
+      final itemsSold = switch (map['items_sold'] ?? map['itemsSold']) {
+        int v => v,
+        num v => v.toInt(),
+        String v => int.tryParse(v) ?? 0,
+        _ => 0,
+      };
+      final itemsCosted = switch (map['items_costed'] ?? map['itemsCosted']) {
+        int v => v,
+        num v => v.toInt(),
+        String v => int.tryParse(v) ?? 0,
+        _ => 0,
+      };
+      final revenue = _toDouble(map['revenue']);
+      final revenueCostedRaw = map['revenue_costed'] ?? map['revenueCosted'];
       return SalesProfit(
-        revenue: _toDouble(map['revenue']),
+        revenue: revenue,
+        revenueCosted: revenueCostedRaw == null
+            ? revenue
+            : _toDouble(revenueCostedRaw),
         cost: _toDouble(map['cost']),
         profit: _toDouble(map['profit']),
         markupPercent:
             map['markup_percent'] == null && map['markupPercent'] == null
             ? null
             : _toDouble(map['markup_percent'] ?? map['markupPercent']),
-        itemsSold: switch (map['items_sold'] ?? map['itemsSold']) {
-          int v => v,
-          num v => v.toInt(),
-          String v => int.tryParse(v) ?? 0,
-          _ => 0,
-        },
+        itemsSold: itemsSold,
+        itemsCosted: itemsCosted,
         missingCost: missing is List
             ? missing.map((e) => e.toString()).toList()
             : const [],
@@ -915,12 +928,22 @@ class ApiCashRepository implements CashRepository {
             paykRegisterName: m['payk_register_name']?.toString(),
             shiftsCount: (m['shifts_count'] as num?)?.toInt() ?? 0,
             onecTotal: _toDouble(m['onec_total']),
+            onecCash: _toDouble(m['onec_cash']),
+            onecCashless: _toDouble(m['onec_cashless']),
             paykTotal: m['payk_total'] == null
                 ? null
                 : _toDouble(m['payk_total']),
+            paykCash: m['payk_cash'] == null ? null : _toDouble(m['payk_cash']),
+            paykCashless: m['payk_cashless'] == null
+                ? null
+                : _toDouble(m['payk_cashless']),
             diffTotal: m['diff_total'] == null
                 ? null
                 : _toDouble(m['diff_total']),
+            diffCash: m['diff_cash'] == null ? null : _toDouble(m['diff_cash']),
+            diffCashless: m['diff_cashless'] == null
+                ? null
+                : _toDouble(m['diff_cashless']),
           );
         }).toList(),
         shifts: shiftsRaw.whereType<Map>().map((raw) {
@@ -931,11 +954,15 @@ class ApiCashRepository implements CashRepository {
             registerName: (m['register_name'] ?? '').toString(),
             cashierName: (m['cashier_name'] ?? '').toString(),
             departmentName: m['department_name']?.toString(),
+            openedAt: DateTime.tryParse((m['opened_at'] ?? '').toString()),
+            openedAtKnown: m['opened_at_known'] == true,
             closedAt: m['closed_at']?.toString(),
+            docDate: m['doc_date']?.toString(),
             total: _toDouble(m['total']),
             cashTotal: _toDouble(m['cash_total']),
             cashlessTotal: _toDouble(m['cashless_total']),
             paykRegisterName: m['payk_register_name']?.toString(),
+            paykBranchName: m['payk_branch_name']?.toString(),
             payments: paymentsRaw.whereType<Map>().map((pRaw) {
               final p = Map<String, dynamic>.from(pRaw);
               return OneCKkmPayment(

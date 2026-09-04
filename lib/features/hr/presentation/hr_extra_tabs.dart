@@ -73,38 +73,38 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     final colors = context.colors;
     final textStyles = context.textStyles;
 
-    final confirm = await showDialog<bool>(
+    final confirm = await LedgerBottomSheet.show<bool>(
       context: context,
-      builder: (ctx) => Theme(
-        data: LedgerButtons.modalOverlay(ctx),
-        child: AlertDialog(
-          backgroundColor: colors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          title: Text(
-            locale.translate('hr_sync_iiko_title'),
-            style: textStyles.h2Sans.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
+      title: locale.translate('hr_sync_iiko_title'),
+      builder: (ctx, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              locale.translate('hr_sync_iiko_confirm'),
+              style: textStyles.bodySans.copyWith(color: colors.textSecondary),
             ),
-          ),
-          content: Text(
-            locale.translate('hr_sync_iiko_confirm'),
-            style: textStyles.bodySans.copyWith(fontSize: 14),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(locale.translate('common_cancel')),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: kLedgerModalButtonHeight,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(locale.translate('hr_sync_button')),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(locale.translate('hr_sync_button')),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: kLedgerModalButtonHeight,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(locale.translate('common_cancel')),
+              ),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
 
     if (confirm == true && context.mounted) {
@@ -503,15 +503,14 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
   }
 
   Widget _buildRecruitmentTab(BuildContext context, HrLoaded state) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final locale = context.watch<LanguageCubit>();
     final canWrite = _canManageHr(context);
 
     return _sectionLoader(
       state,
       state.candidatesLoaded,
-      RefreshIndicator(
+      HrRecruitmentBoard(
+        candidates: state.candidates,
+        canWrite: canWrite,
         onRefresh: () async {
           final bloc = context.read<HrBloc>();
           bloc.add(
@@ -521,113 +520,6 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
             (s) => s is HrLoaded && !s.sectionLoading,
           );
         },
-        child: state.candidates.isEmpty
-            ? _buildEmptyState(
-                icon: TablerIcons.user_search,
-                title: locale.translate('hr_candidates_empty'),
-                colors: colors,
-                textStyles: textStyles,
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-                itemCount: state.candidates.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  final c = state.candidates[index];
-                  return Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                c.fullName,
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14.5,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: colors.brand.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                locale.translate(
-                                  'hr_candidate_stage_${c.stage}',
-                                ),
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.brand,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          c.vacancy,
-                          style: textStyles.captionSans.copyWith(
-                            color: colors.textSecondary,
-                          ),
-                        ),
-                        if (canWrite) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            children: [
-                              for (final stage in const [
-                                'screening',
-                                'interview',
-                                'offer',
-                                'hired',
-                                'rejected',
-                              ])
-                                ActionChip(
-                                  label: Text(
-                                    locale.translate(
-                                      'hr_candidate_stage_$stage',
-                                    ),
-                                    style: textStyles.smallSans,
-                                  ),
-                                  onPressed: () => context.read<HrBloc>().add(
-                                    UpdateCandidateStageRequested(
-                                      id: c.id,
-                                      stage: stage,
-                                    ),
-                                  ),
-                                ),
-                              IconButton(
-                                onPressed: () => context.read<HrBloc>().add(
-                                  DeleteCandidateRequested(c.id),
-                                ),
-                                icon: Icon(
-                                  TablerIcons.trash,
-                                  size: 18,
-                                  color: colors.accentRed,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                },
-              ),
       ),
     );
   }
@@ -2510,13 +2402,29 @@ class _StaffTabWidget extends StatefulWidget {
 
 class _StaffTabWidgetState extends State<_StaffTabWidget> {
   int _filterIndex = 0;
+  var _filterLoading = false;
+  Timer? _filterTimer;
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
 
   @override
   void dispose() {
+    _filterTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  void _selectFilter(int index) {
+    if (index == _filterIndex) return;
+    _filterTimer?.cancel();
+    setState(() {
+      _filterIndex = index;
+      _filterLoading = true;
+    });
+    _filterTimer = Timer(const Duration(milliseconds: 280), () {
+      if (!mounted) return;
+      setState(() => _filterLoading = false);
+    });
   }
 
   @override
@@ -2590,32 +2498,24 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
                 onChanged: (v) => setState(() => _searchQuery = v.trim()),
               ),
               const SizedBox(height: 10),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildFilterChip(
-                      0,
-                      locale.translate('hr_filter_all'),
-                      colors,
-                      textStyles,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      1,
-                      locale.translate('hr_filter_vacation'),
-                      colors,
-                      textStyles,
-                    ),
-                    const SizedBox(width: 8),
-                    _buildFilterChip(
-                      2,
-                      locale.translate('hr_filter_archive'),
-                      colors,
-                      textStyles,
-                    ),
-                  ],
-                ),
+              LedgerSegmentedControl<int>(
+                height: 38,
+                selectedValue: _filterIndex,
+                onValueChanged: _selectFilter,
+                segments: [
+                  LedgerSegmentItem(
+                    value: 0,
+                    label: locale.translate('hr_filter_all'),
+                  ),
+                  LedgerSegmentItem(
+                    value: 1,
+                    label: locale.translate('hr_filter_vacation'),
+                  ),
+                  LedgerSegmentItem(
+                    value: 2,
+                    label: locale.translate('hr_filter_archive'),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2633,7 +2533,9 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
               );
               await bloc.stream.firstWhere((s) => s is! HrLoading);
             },
-            child: filtered.isEmpty
+            child: _filterLoading
+                ? const LedgerListShimmer(itemCount: 5)
+                : filtered.isEmpty
                 ? ListView(
                     children: [
                       const SizedBox(height: 80),
@@ -2667,34 +2569,6 @@ class _StaffTabWidgetState extends State<_StaffTabWidget> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFilterChip(
-    int index,
-    String label,
-    LedgerColors colors,
-    LedgerTextStyles textStyles,
-  ) {
-    final isSelected = _filterIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _filterIndex = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? colors.brand : colors.surfaceNested,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? colors.brand : colors.border),
-        ),
-        child: Text(
-          label,
-          style: textStyles.captionSans.copyWith(
-            color: isSelected ? colors.surface : colors.textPrimary,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            fontSize: 13,
-          ),
-        ),
-      ),
     );
   }
 

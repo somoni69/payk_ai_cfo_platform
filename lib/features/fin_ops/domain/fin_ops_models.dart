@@ -1,5 +1,24 @@
 import 'package:equatable/equatable.dart';
 
+double _money(dynamic value, [double fallback = 0]) {
+  if (value == null) return fallback;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value.replaceAll(' ', '').replaceAll(',', '.')) ??
+        fallback;
+  }
+  return fallback;
+}
+
+double? _moneyOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value.replaceAll(' ', '').replaceAll(',', '.'));
+  }
+  return null;
+}
+
 /// Справочник банков (web `/finance-ops/banks`).
 class BankAccount extends Equatable {
   final String id;
@@ -26,7 +45,7 @@ class BankAccount extends Equatable {
       bankName: (json['name'] ?? json['bank_name'] ?? '').toString(),
       isActive: json['is_active'] as bool? ?? true,
       accountNumber: json['account_number']?.toString() ?? '',
-      balance: (json['balance'] as num?)?.toDouble() ?? 0.0,
+      balance: _money(json['balance']),
       currency: json['currency']?.toString() ?? 'TJS',
     );
   }
@@ -102,7 +121,7 @@ class Encashment extends Equatable {
       id: (json['id'] ?? '').toString(),
       bankName: (json['bank_name'] ?? '').toString(),
       registerName: json['register_name']?.toString(),
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      amount: _money(json['amount']),
       responsiblePerson:
           (json['responsible_name'] ?? json['responsible_person'] ?? '')
               .toString(),
@@ -159,7 +178,7 @@ class StoreTransfer extends Equatable {
       fromBranch: (json['from_branch_name'] ?? json['from_branch'] ?? '')
           .toString(),
       toBranch: (json['to_branch_name'] ?? json['to_branch'] ?? '').toString(),
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      amount: _money(json['amount']),
       status: (json['status'] ?? 'pending').toString(),
       date:
           DateTime.tryParse(
@@ -198,7 +217,7 @@ class AidRepayment extends Equatable {
     return AidRepayment(
       id: (json['id'] ?? '').toString(),
       period: (json['salary_period'] ?? json['period'] ?? '').toString(),
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+      amount: _money(json['amount']),
     );
   }
 
@@ -233,9 +252,9 @@ class FinancialAid extends Equatable {
   }
 
   factory FinancialAid.fromJson(Map<String, dynamic> json) {
-    final remaining = (json['remaining_amount'] as num?)?.toDouble();
-    final repaid = (json['repaid_amount'] as num?)?.toDouble() ?? 0.0;
-    final amount = (json['amount'] as num?)?.toDouble() ?? 0.0;
+    final remaining = _moneyOrNull(json['remaining_amount']);
+    final repaid = _money(json['repaid_amount']);
+    final amount = _money(json['amount']);
     final deduct = json['deduct_from_salary'] != false;
     final rawRepayments = json['repayments'] as List? ?? [];
     final closed =
@@ -303,11 +322,8 @@ class BranchBalance extends Equatable {
     return BranchBalance(
       branchId: (json['branch_id'] ?? json['id'] ?? '').toString(),
       branchName: (json['branch_name'] ?? json['name'] ?? '').toString(),
-      balance: (json['balance'] as num?)?.toDouble() ?? 0,
-      inTransit:
-          (json['incoming_in_transit'] as num?)?.toDouble() ??
-          (json['in_transit'] as num?)?.toDouble() ??
-          0,
+      balance: _money(json['balance']),
+      inTransit: _money(json['incoming_in_transit'] ?? json['in_transit']),
     );
   }
 

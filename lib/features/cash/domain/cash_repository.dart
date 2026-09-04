@@ -97,8 +97,14 @@ class OneCKkmReconcileRow {
   final String? paykRegisterName;
   final int shiftsCount;
   final double onecTotal;
+  final double onecCash;
+  final double onecCashless;
   final double? paykTotal;
+  final double? paykCash;
+  final double? paykCashless;
   final double? diffTotal;
+  final double? diffCash;
+  final double? diffCashless;
 
   const OneCKkmReconcileRow({
     required this.docDate,
@@ -106,8 +112,14 @@ class OneCKkmReconcileRow {
     this.paykRegisterName,
     this.shiftsCount = 0,
     this.onecTotal = 0,
+    this.onecCash = 0,
+    this.onecCashless = 0,
     this.paykTotal,
+    this.paykCash,
+    this.paykCashless,
     this.diffTotal,
+    this.diffCash,
+    this.diffCashless,
   });
 }
 
@@ -118,7 +130,10 @@ class OneCKkmShiftSummary {
   final String cashierName;
   final String? departmentName;
   final String? paykRegisterName;
+  final String? paykBranchName;
+  final String? docDate;
   final DateTime? openedAt;
+  final bool openedAtKnown;
   final String? closedAt;
   final double total;
   final double cashTotal;
@@ -140,7 +155,10 @@ class OneCKkmShiftSummary {
     required this.cashierName,
     this.departmentName,
     this.paykRegisterName,
+    this.paykBranchName,
+    this.docDate,
     this.openedAt,
+    this.openedAtKnown = false,
     this.closedAt,
     this.total = 0,
     this.cashTotal = 0,

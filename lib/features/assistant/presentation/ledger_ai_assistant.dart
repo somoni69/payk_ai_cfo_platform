@@ -46,7 +46,7 @@ class LedgerAiAssistantHost extends StatelessWidget {
   Widget build(BuildContext context) => child;
 }
 
-/// Compact AI Assistant Floating Action Button matching the square cube design (44x44, 12px radius).
+/// Compact AI assistant cube (44×44, radius 12).
 class LedgerAiFloatingButton extends StatelessWidget {
   const LedgerAiFloatingButton({super.key, this.onPressed, this.heroTag});
 
@@ -233,6 +233,32 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Semantics(
+                      button: true,
+                      label: MaterialLocalizations.of(
+                        context,
+                      ).modalBarrierDismissLabel,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: widget.onClose,
+                        child: SizedBox(
+                          height: 28,
+                          width: double.infinity,
+                          child: Center(
+                            child: Container(
+                              width: 36,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: colors.textSecondary.withValues(
+                                  alpha: 0.28,
+                                ),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,

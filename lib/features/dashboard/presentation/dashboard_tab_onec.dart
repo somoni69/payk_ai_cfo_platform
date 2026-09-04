@@ -24,7 +24,8 @@ Widget _buildOneCTab(
     return const DashboardSectionShimmer(kind: DashboardShimmerKind.onec);
   }
 
-  final diffTotal = onec.totalOnec - onec.totalPayk;
+  final nothingMatched = onec.matchedCount == 0;
+  final diffTotal = onec.matchedDiff;
   final isDiffZero = diffTotal.abs() < 0.01;
 
   return RefreshIndicator(
@@ -119,13 +120,17 @@ Widget _buildOneCTab(
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_formatAmount(context, diffTotal)} TJS',
+                      nothingMatched
+                          ? '—'
+                          : '${_formatAmount(context, diffTotal)} TJS',
                       style: textStyles.bodyMono.copyWith(
                         fontWeight: FontWeight.w600,
                         fontSize: 13.5,
-                        color: isDiffZero
-                            ? colors.accentGreen
-                            : colors.accentRed,
+                        color: nothingMatched
+                            ? colors.textSecondary
+                            : (isDiffZero
+                                  ? colors.accentGreen
+                                  : colors.accentRed),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -136,6 +141,29 @@ Widget _buildOneCTab(
             ),
           ],
         ),
+        const SizedBox(height: 8),
+        Text(
+          nothingMatched
+              ? language.translate('dashboard_onec_diff_none')
+              : language.translate(
+                  'dashboard_onec_diff_basis',
+                  params: {
+                    'matched': '${onec.matchedCount}',
+                    'total': '${onec.matchedCount + onec.unmatchedCount}',
+                  },
+                ),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+        if (onec.unmatchedCount > 0) ...[
+          const SizedBox(height: 8),
+          Text(
+            language.translate(
+              'dashboard_onec_unmatched_note',
+              params: {'n': '${onec.unmatchedCount}'},
+            ),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+        ],
         const SizedBox(height: 12),
 
         // --- 2. Кнопка ручного обновления и инфо-блок ---

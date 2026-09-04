@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
@@ -22,11 +23,27 @@ class CurrencyBoardCard extends StatefulWidget {
 
 class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
   static const _codes = ['USD', 'EUR', 'RUB'];
+  static const _switchDuration = Duration(milliseconds: 420);
+  static const _switchCurve = Curves.easeOutCubic;
   String _selectedCurrency = 'USD';
+
+  /// 1 — к следующей валюте (вправо), −1 — к предыдущей.
+  var _slideDir = 1;
   CurrencyBoard? _board;
   var _loading = true;
   var _failed = false;
   Timer? _poll;
+
+  void _selectCurrency(String code) {
+    if (code == _selectedCurrency) return;
+    final from = _codes.indexOf(_selectedCurrency);
+    final to = _codes.indexOf(code);
+    HapticFeedback.selectionClick();
+    setState(() {
+      _slideDir = to >= from ? 1 : -1;
+      _selectedCurrency = code;
+    });
+  }
 
   @override
   void initState() {
@@ -44,7 +61,17 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
     super.dispose();
   }
 
+  bool get _refreshing => _loading && _board != null;
+
+  Widget _shimmerWhenRefreshing(Widget child) {
+    if (!_refreshing) return child;
+    return LedgerShimmer(child: child);
+  }
+
   Future<void> _load() async {
+    if (_board != null) {
+      setState(() => _loading = true);
+    }
     try {
       final board = await context.read<FinanceRepository>().getCurrencyBoard();
       if (!mounted) return;
@@ -57,7 +84,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _failed = true;
+        if (_board == null) _failed = true;
       });
     }
   }
@@ -160,20 +187,22 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
                   ),
                   if (freshest != null) ...[
                     const SizedBox(height: 1),
-                    Text(
-                      language.translate(
-                        'dashboard_rates_updated',
-                        params: {
-                          'time': formatLocalizedDateTime(
-                            context,
-                            freshest,
-                            style: LocalizedDateTimeStyle.dateTime,
-                          ),
-                        },
-                      ),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: context.fontSize(11),
+                    _shimmerWhenRefreshing(
+                      Text(
+                        language.translate(
+                          'dashboard_rates_updated',
+                          params: {
+                            'time': formatLocalizedDateTime(
+                              context,
+                              freshest,
+                              style: LocalizedDateTimeStyle.dateTime,
+                            ),
+                          },
+                        ),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: context.fontSize(11),
+                        ),
                       ),
                     ),
                   ],
@@ -302,136 +331,253 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
             ),
           )
         else ...[
-          // Верхний ряд: Интерактивные карточки НБТ (переключатели валют)
+          _shimmerWhenRefreshing(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildCurrencySwitcher(context, official: official, fmt: fmt),
+                const SizedBox(height: 14),
+                _buildRatesPanel(
+                  context,
+                  byBank: byBank,
+                  names: names,
+                  maxBuy: maxBuy,
+                  minSell: minSell,
+                  fmt: fmt,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCurrencySwitcher(
+    BuildContext context, {
+    required Map<String, RateRow> official,
+    required String Function(
+      double?, {
+      String? code,
+      int? minDecimals,
+      int? maxDecimals,
+    })
+    fmt,
+  }) {
+    final colors = context.colors;
+    final count = _codes.length;
+    final selectedIndex = _codes.indexOf(_selectedCurrency).clamp(0, count - 1);
+    final bubbleAlign = count <= 1
+        ? Alignment.center
+        : Alignment(-1.0 + (2.0 * selectedIndex / (count - 1)), 0);
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: colors.surfaceNested,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colors.border),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: AnimatedAlign(
+              duration: _switchDuration,
+              curve: _switchCurve,
+              alignment: bubbleAlign,
+              child: FractionallySizedBox(
+                widthFactor: 1 / count,
+                heightFactor: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: colors.brand.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           Row(
             children: [
-              for (var i = 0; i < _codes.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
+              for (final code in _codes)
                 Expanded(
                   child: _buildNbtCurrencyCard(
                     context,
-                    code: _codes[i],
-                    rate: official[_codes[i]]?.rate,
-                    isSelected: _selectedCurrency == _codes[i],
-                    onTap: () {
-                      if (_selectedCurrency != _codes[i]) {
-                        setState(() => _selectedCurrency = _codes[i]);
-                      }
-                    },
+                    code: code,
+                    rate: official[code]?.rate,
+                    isSelected: _selectedCurrency == code,
+                    onTap: () => _selectCurrency(code),
                     fmt: fmt,
                   ),
                 ),
-              ],
             ],
           ),
+        ],
+      ),
+    );
+  }
 
-          const SizedBox(height: 14),
+  Widget _buildRatesPanel(
+    BuildContext context, {
+    required Map<String, Map<String, BankRateQuote>> byBank,
+    required Map<String, String> names,
+    required double? maxBuy,
+    required double? minSell,
+    required String Function(
+      double?, {
+      String? code,
+      int? minDecimals,
+      int? maxDecimals,
+    })
+    fmt,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.watch<LanguageCubit>();
 
-          // Сравнение курсов в банках
-          if (byBank.isNotEmpty) ...[
-            // Подзаголовок с легендой
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  language.translate(
-                    'dashboard_rates_for_currency',
-                    params: {'currency': _selectedCurrency},
-                  ),
-                  style: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontSize: context.fontSize(13),
-                    color: colors.textSecondary,
-                  ),
+    if (byBank.isEmpty) {
+      return Text(
+        language.translate('dashboard_rates_banks_pending'),
+        style: textStyles.smallSans.copyWith(color: colors.textTooltip),
+      );
+    }
+
+    return ClipRect(
+      child: AnimatedSwitcher(
+        duration: _switchDuration,
+        switchInCurve: _switchCurve,
+        switchOutCurve: Curves.easeInCubic,
+        layoutBuilder: (currentChild, previousChildren) {
+          return Stack(
+            alignment: Alignment.topCenter,
+            clipBehavior: Clip.hardEdge,
+            children: [...previousChildren, ?currentChild],
+          );
+        },
+        transitionBuilder: (child, animation) {
+          final isIncoming =
+              (child.key as ValueKey<String>?)?.value == _selectedCurrency;
+          final begin = Offset(_slideDir * (isIncoming ? 0.12 : -0.12), 0);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(begin: begin, end: Offset.zero).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: _switchCurve,
+                  reverseCurve: Curves.easeInCubic,
                 ),
-                Row(
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: colors.accentGreen,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      language.translate('dashboard_rates_buy'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: context.fontSize(11),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: colors.accentRed,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      language.translate('dashboard_rates_sell'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: context.fontSize(11),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            // Единая, чистая карточка-таблица со всеми банками
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colors.border),
               ),
-              child: Column(
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(_selectedCurrency),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  for (var idx = 0; idx < byBank.entries.length; idx++) ...[
-                    if (idx > 0)
-                      Divider(
-                        height: 1,
-                        thickness: 1,
-                        color: colors.border.withValues(alpha: 0.6),
-                      ),
-                    _buildBankRow(
-                      context,
-                      currencyCode: _selectedCurrency,
-                      bankName:
-                          names[byBank.entries.elementAt(idx).key] ??
-                          byBank.entries.elementAt(idx).key,
-                      quote: byBank.entries
-                          .elementAt(idx)
-                          .value[_selectedCurrency],
-                      maxBuy: maxBuy,
-                      minSell: minSell,
-                      fmt: fmt,
+                  Text(
+                    language.translate(
+                      'dashboard_rates_for_currency',
+                      params: {'currency': _selectedCurrency},
                     ),
-                  ],
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: context.fontSize(13),
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: colors.accentGreen,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        language.translate('dashboard_rates_buy'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: context.fontSize(11),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: colors.accentRed,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        language.translate('dashboard_rates_sell'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: context.fontSize(11),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-            ),
-          ],
-
-          if (byBank.isEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              language.translate('dashboard_rates_banks_pending'),
-              style: textStyles.smallSans.copyWith(color: colors.textTooltip),
-            ),
-          ],
-        ],
-      ],
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.border),
+                ),
+                child: Column(
+                  children: [
+                    for (var idx = 0; idx < byBank.entries.length; idx++) ...[
+                      if (idx > 0)
+                        Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: colors.border.withValues(alpha: 0.6),
+                        ),
+                      _buildBankRow(
+                        context,
+                        currencyCode: _selectedCurrency,
+                        bankName:
+                            names[byBank.entries.elementAt(idx).key] ??
+                            byBank.entries.elementAt(idx).key,
+                        quote: byBank.entries
+                            .elementAt(idx)
+                            .value[_selectedCurrency],
+                        maxBuy: maxBuy,
+                        minSell: minSell,
+                        fmt: fmt,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -452,65 +598,68 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
+    final accent = isSelected ? colors.brand : colors.textPrimary;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colors.brand.withValues(alpha: 0.05)
-              : colors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? colors.brand : colors.border,
-            width: isSelected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  code,
-                  style: textStyles.captionSans.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: isSelected ? colors.brand : colors.textPrimary,
-                    fontSize: context.fontSize(13),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: colors.brand.withValues(alpha: 0.08),
+        highlightColor: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 240),
+                    curve: _switchCurve,
+                    style: textStyles.captionSans.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: accent,
+                      fontSize: context.fontSize(13),
+                    ),
+                    child: Text(code),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _getCurrencyFlag(code),
+                    style: TextStyle(fontSize: context.fontSize(15)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              AnimatedScale(
+                scale: isSelected ? 1.04 : 1,
+                duration: const Duration(milliseconds: 240),
+                curve: _switchCurve,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 240),
+                    curve: _switchCurve,
+                    style: textStyles.bodyMono.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: context.fontSize(18),
+                      color: accent,
+                    ),
+                    child: Text(fmt(rate, code: code)),
                   ),
                 ),
-                Text(
-                  _getCurrencyFlag(code),
-                  style: TextStyle(fontSize: context.fontSize(15)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                fmt(rate, code: code),
-                style: textStyles.bodyMono.copyWith(
-                  fontWeight: FontWeight.w700,
-                  fontSize: context.fontSize(18),
-                  color: isSelected ? colors.brand : colors.textPrimary,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${language.translate('dashboard_rates_nbt')} · TJS',
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: context.fontSize(10),
                 ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${language.translate('dashboard_rates_nbt')} · TJS',
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-                fontSize: context.fontSize(10),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -39,14 +39,45 @@ Future<T?> showLedgerModalSheet<T>({
               constraints: BoxConstraints(maxHeight: height),
               child: SizedBox(width: double.infinity, child: content),
             );
-      return Align(
-        alignment: Alignment.bottomCenter,
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(kLedgerModalTopRadius),
-          ),
-          child: sheet,
+      final panel = ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(kLedgerModalTopRadius),
         ),
+        child: sheet,
+      );
+
+      void dismiss() {
+        if (!isDismissible) return;
+        Navigator.of(ctx).maybePop();
+      }
+
+      // Align fills the overlay, so the transparent area above the sheet
+      // would swallow taps and never reach the modal barrier. Catch them
+      // here — same as tapping outside in most mobile apps.
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (isDismissible)
+            Positioned.fill(
+              child: Semantics(
+                button: true,
+                label: MaterialLocalizations.of(ctx).modalBarrierDismissLabel,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: dismiss,
+                  child: const ColoredBox(color: Colors.transparent),
+                ),
+              ),
+            ),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {},
+              child: panel,
+            ),
+          ),
+        ],
       );
     },
   );
@@ -113,18 +144,30 @@ class LedgerBottomSheet extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 10),
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.textSecondary.withValues(alpha: 0.28),
-                    borderRadius: BorderRadius.circular(2),
+              Semantics(
+                button: true,
+                label: MaterialLocalizations.of(
+                  context,
+                ).modalBarrierDismissLabel,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).maybePop(),
+                  child: SizedBox(
+                    height: 28,
+                    width: double.infinity,
+                    child: Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.textSecondary.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Text(

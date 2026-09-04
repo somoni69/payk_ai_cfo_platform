@@ -1327,6 +1327,95 @@ class _LoyaltyTab extends StatelessWidget {
     return '#$id';
   }
 
+  Widget _loyaltyLevelCard(
+    BuildContext context,
+    LoyaltySummaryRow row,
+    String Function(num value) money,
+  ) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+    final lc = crmLoyaltyColors(colors, row.level);
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: lc.bg,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              crmLoyaltyLabel(language, row.level),
+              style: textStyles.captionSans.copyWith(
+                color: lc.fg,
+                fontWeight: FontWeight.w600,
+                fontSize: 11.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(TablerIcons.users, size: 14, color: colors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  language.translate(
+                    'crm_loyalty_clients_count',
+                    params: {'count': '${row.clients}'},
+                  ),
+                  style: textStyles.captionSans.copyWith(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            language.translate(
+              'crm_loyalty_spent',
+              params: {'amount': money(row.totalSpent)},
+            ),
+            style: textStyles.captionSans.copyWith(
+              fontSize: 11.5,
+              color: colors.textSecondary,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            language.translate(
+              'crm_loyalty_bonus_total',
+              params: {'amount': money(row.bonusPoints)},
+            ),
+            style: textStyles.bodyMono.copyWith(
+              fontSize: 12.5,
+              color: colors.brand,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
@@ -1369,106 +1458,34 @@ class _LoyaltyTab extends StatelessWidget {
               ),
             )
           else
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: context.layout.gridChildAspect(1.25),
+            for (var i = 0; i < state.loyaltySummary.length; i += 2)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: i + 2 < state.loyaltySummary.length ? 8 : 0,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _loyaltyLevelCard(
+                        context,
+                        state.loyaltySummary[i],
+                        oCcy.format,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: i + 1 < state.loyaltySummary.length
+                          ? _loyaltyLevelCard(
+                              context,
+                              state.loyaltySummary[i + 1],
+                              oCcy.format,
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
-              itemCount: state.loyaltySummary.length,
-              itemBuilder: (context, index) {
-                final row = state.loyaltySummary[index];
-                final lc = crmLoyaltyColors(colors, row.level);
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: lc.bg,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          crmLoyaltyLabel(language, row.level),
-                          style: textStyles.captionSans.copyWith(
-                            color: lc.fg,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 11.5,
-                          ),
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                TablerIcons.users,
-                                size: 14,
-                                color: colors.textSecondary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                language.translate(
-                                  'crm_loyalty_clients_count',
-                                  params: {'count': '${row.clients}'},
-                                ),
-                                style: textStyles.captionSans.copyWith(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: colors.textPrimary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            language.translate(
-                              'crm_loyalty_spent',
-                              params: {'amount': oCcy.format(row.totalSpent)},
-                            ),
-                            style: textStyles.captionSans.copyWith(
-                              fontSize: 11.5,
-                              color: colors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            language.translate(
-                              'crm_loyalty_bonus_total',
-                              params: {'amount': oCcy.format(row.bonusPoints)},
-                            ),
-                            style: textStyles.bodyMono.copyWith(
-                              fontSize: 12.5,
-                              color: colors.brand,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
           const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

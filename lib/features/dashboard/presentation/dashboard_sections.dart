@@ -4,6 +4,19 @@ Widget _metricTileRow(Widget left, Widget right) {
   return LedgerPairRow(left: left, right: right, gap: 12);
 }
 
+String _overviewMonthLabel(BuildContext context, String period) {
+  final parts = period.split('-');
+  if (parts.length < 2) return period;
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  if (year == null || month == null || month < 1 || month > 12) return period;
+  final locale = Localizations.maybeLocaleOf(context) ?? const Locale('ru');
+  final raw = DateFormat.yMMMM(
+    resolveDateTimeFormatLocale(locale),
+  ).format(DateTime(year, month, 1));
+  return raw.replaceAll(RegExp(r'\s*г\.?\s*$'), '').trim();
+}
+
 Widget _buildLazyDashboardSection<T>({
   required DashboardSection section,
   required T? Function(DashboardLoaded state) select,
@@ -70,6 +83,8 @@ Widget _buildCurrencySelector(BuildContext context, String currentCurrency) {
 
   return PopupMenuButton<String>(
     onSelected: (String c) {
+      if (c == currentCurrency) return;
+      HapticFeedback.selectionClick();
       context.read<DashboardBloc>().add(ChangeCurrency(c));
     },
     offset: const Offset(0, 44),
@@ -113,12 +128,30 @@ Widget _buildCurrencySelector(BuildContext context, String currentCurrency) {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            currentCurrency,
-            style: textStyles.bodyMono.copyWith(
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
-              color: colors.brand,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.35),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: Text(
+              currentCurrency,
+              key: ValueKey(currentCurrency),
+              style: textStyles.bodyMono.copyWith(
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: colors.brand,
+              ),
             ),
           ),
           const SizedBox(width: 4),
@@ -217,6 +250,20 @@ Widget _buildOverviewHome(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const LedgerAdvicePanel(module: 'finance'),
+          if (loaded.metrics.period.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              language.translate(
+                'dashboard_overview_period_note',
+                params: {
+                  'month': _overviewMonthLabel(context, loaded.metrics.period),
+                },
+              ),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           GestureDetector(
             onTap: () => _showMetricBreakdown(context, 'balance'),

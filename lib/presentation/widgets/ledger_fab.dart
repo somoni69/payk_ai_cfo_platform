@@ -37,17 +37,16 @@ class LedgerFab extends StatelessWidget {
       hoverElevation: 0,
       disabledElevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(kLedgerScreenButtonRadius),
+        borderRadius: BorderRadius.circular(kLedgerFabRadius),
       ),
       icon:
-          iconWidget ??
-          Icon(icon, size: kLedgerScreenButtonIcon, color: colors.surface),
+          iconWidget ?? Icon(icon, size: kLedgerFabIcon, color: colors.surface),
       label: Text(
         label,
         style: textStyles.bodySans.copyWith(
           color: colors.surface,
           fontWeight: FontWeight.w600,
-          fontSize: kLedgerScreenButtonFont,
+          fontSize: kLedgerFabFont,
         ),
       ),
     );

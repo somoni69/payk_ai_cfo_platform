@@ -77,9 +77,8 @@ class LedgerHero extends StatelessWidget {
                     FittedBox(
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        value,
-                        maxLines: 1,
+                      child: LedgerAnimatedValue(
+                        value: value,
                         style: textStyles.h1Sans.copyWith(
                           fontSize: context.fontSize(30),
                           fontWeight: FontWeight.w600,
@@ -163,9 +162,8 @@ class LedgerMetricTile extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                maxLines: 1,
+              child: LedgerAnimatedValue(
+                value: value,
                 style: textStyles.h2Sans.copyWith(
                   fontSize: context.fontSize(18),
                   fontWeight: FontWeight.w600,
@@ -184,6 +182,54 @@ class LedgerMetricTile extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Cross-fade + slight rise when a money/KPI string changes (currency switch).
+class LedgerAnimatedValue extends StatelessWidget {
+  const LedgerAnimatedValue({
+    super.key,
+    required this.value,
+    required this.style,
+    this.maxLines = 1,
+  });
+
+  final String value;
+  final TextStyle style;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.centerLeft,
+          clipBehavior: Clip.hardEdge,
+          children: [...previousChildren, ?currentChild],
+        );
+      },
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.22),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+      },
+      child: Text(
+        value,
+        key: ValueKey(value),
+        maxLines: maxLines,
+        style: style,
       ),
     );
   }
