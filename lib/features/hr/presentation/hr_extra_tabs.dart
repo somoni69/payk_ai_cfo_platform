@@ -521,6 +521,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
           );
         },
       ),
+      shimmer: const HrRecruitmentShimmer(),
     );
   }
 

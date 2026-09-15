@@ -38,11 +38,31 @@ class CloseShiftRequested extends CashEvent {
   final double endingBalance;
   final String? shiftId;
   final String? note;
+  final List<ShiftTerminalFact> terminalFacts;
+  final int? collectorId;
+  final int? chiefCashierId;
+  final int? auditorId;
 
-  const CloseShiftRequested(this.endingBalance, {this.shiftId, this.note});
+  const CloseShiftRequested(
+    this.endingBalance, {
+    this.shiftId,
+    this.note,
+    this.terminalFacts = const [],
+    this.collectorId,
+    this.chiefCashierId,
+    this.auditorId,
+  });
 
   @override
-  List<Object?> get props => [endingBalance, shiftId, note];
+  List<Object?> get props => [
+    endingBalance,
+    shiftId,
+    note,
+    terminalFacts,
+    collectorId,
+    chiefCashierId,
+    auditorId,
+  ];
 }
 
 class UpdateTransactionRequested extends CashEvent {

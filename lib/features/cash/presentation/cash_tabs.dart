@@ -523,59 +523,71 @@ extension _CashTabBuilders on _CashViewMixin {
               horizontal: 12,
               vertical: 4,
             ),
-            title: Row(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        shift.registerName ??
-                            language.translate('cash_default_register'),
-                        style: textStyles.bodySans.copyWith(
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "${language.translate('cash_detail_cashier')}: ${shift.cashierName ?? language.translate('role_director')}",
-                        style: textStyles.captionSans.copyWith(
-                          color: colors.textSecondary,
-                        ),
-                      ),
-                    ],
+                Text(
+                  shift.registerName ??
+                      language.translate('cash_default_register'),
+                  style: textStyles.bodySans.copyWith(
+                    fontWeight: FontWeight.w500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                if (shift.isOpen && !isViewer)
-                  TextButton(
-                    onPressed: () => _showCloseShiftBottomSheet(context, shift),
-                    child: Text(language.translate('cash_close_shift_action')),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: shift.isOpen
-                          ? colors.accentGreen.withValues(alpha: 0.12)
-                          : colors.surfaceNested,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      shift.isOpen
-                          ? language.translate('cash_shift_open')
-                          : language.translate('cash_shift_closed'),
-                      style: textStyles.captionSans.copyWith(
-                        color: shift.isOpen
-                            ? colors.accentGreen
-                            : colors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  "${language.translate('cash_detail_cashier')}: ${shift.cashierName ?? language.translate('role_director')}",
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 0,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    if (shift.isOpen && !isViewer)
+                      TextButton(
+                        onPressed: () =>
+                            _showCloseShiftBottomSheet(context, shift),
+                        child: Text(
+                          language.translate('cash_close_shift_action'),
+                        ),
+                      )
+                    else ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceNested,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          language.translate('cash_shift_closed_at'),
+                          style: textStyles.captionSans.copyWith(
+                            color: colors.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (shift.id != null)
+                        TextButton(
+                          onPressed: () =>
+                              _showShiftReportSheet(context, shift.id!),
+                          child: Text(
+                            language.translate('cash_shift_report_open'),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
               ],
             ),
             children: [

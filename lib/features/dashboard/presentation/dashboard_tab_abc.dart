@@ -59,16 +59,76 @@ Widget _buildAbcTab(
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: LedgerFeedRowShimmer(),
+                padding: EdgeInsets.only(bottom: 10),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 180, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      ShimmerBox(width: 72, height: 14, borderRadius: 4),
+                      SizedBox(width: 12),
+                      ShimmerBox(width: 28, height: 28, borderRadius: 4),
+                    ],
+                  ),
+                ),
               ),
               Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: LedgerFeedRowShimmer(),
+                padding: EdgeInsets.only(bottom: 10),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 120, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 160, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      ShimmerBox(width: 72, height: 14, borderRadius: 4),
+                      SizedBox(width: 12),
+                      ShimmerBox(width: 28, height: 28, borderRadius: 4),
+                    ],
+                  ),
+                ),
               ),
               Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: LedgerFeedRowShimmer(),
+                padding: EdgeInsets.only(bottom: 10),
+                child: LedgerCard(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerBox(width: 100, height: 14, borderRadius: 4),
+                            SizedBox(height: 4),
+                            ShimmerBox(width: 150, height: 11, borderRadius: 4),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      ShimmerBox(width: 72, height: 14, borderRadius: 4),
+                      SizedBox(width: 12),
+                      ShimmerBox(width: 28, height: 28, borderRadius: 4),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

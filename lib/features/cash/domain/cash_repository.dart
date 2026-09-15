@@ -275,7 +275,23 @@ abstract interface class CashRepository {
     double endingBalance, {
     String? shiftId,
     String? note,
+    List<ShiftTerminalFact> terminalFacts = const [],
+    int? collectorId,
+    int? chiefCashierId,
+    int? auditorId,
   });
+
+  /// Терминалы смены для ввода факта (без системных сумм).
+  Future<List<ShiftClosingLine>> getClosingForm(String shiftId);
+
+  /// Сотрудники для бланка: инкассатор, главный кассир, аудитор.
+  Future<List<ShiftPersonOption>> lookupShiftPeople();
+
+  /// Бланк приёма от кассира.
+  Future<CashShiftReport> getShiftReport(String shiftId);
+
+  /// PDF или Excel бланка.
+  Future<Uint8List> exportShiftReport(String shiftId, {required String format});
 
   /// Закрыть текущую смену с подсчетом разницы (CASH-06)
   Future<CashShift> closeShift(double endingBalance, {String? note});

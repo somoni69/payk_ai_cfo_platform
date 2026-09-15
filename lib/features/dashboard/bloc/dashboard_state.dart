@@ -79,6 +79,7 @@ class DashboardLoaded extends DashboardState {
     DateTime? reportDateFrom,
     DateTime? reportDateTo,
     String? planPeriod,
+    bool clearReportDates = false,
   }) {
     return DashboardLoaded(
       metrics: metrics ?? this.metrics,
@@ -102,8 +103,12 @@ class DashboardLoaded extends DashboardState {
       actionMessage: clearActionMessage
           ? null
           : (actionMessage ?? this.actionMessage),
-      reportDateFrom: reportDateFrom ?? this.reportDateFrom,
-      reportDateTo: reportDateTo ?? this.reportDateTo,
+      reportDateFrom: clearReportDates
+          ? reportDateFrom
+          : (reportDateFrom ?? this.reportDateFrom),
+      reportDateTo: clearReportDates
+          ? reportDateTo
+          : (reportDateTo ?? this.reportDateTo),
       planPeriod: planPeriod ?? this.planPeriod,
     );
   }

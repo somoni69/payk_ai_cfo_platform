@@ -22,20 +22,9 @@ Widget _buildAccountsRatesTab(
   return ListView(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
     children: [
-      Row(
-        children: [
-          Expanded(
-            child: Text(
-              languageCubit.translate('dashboard_bank_accounts'),
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
-            ),
-          ),
-          if (canWrite)
-            IconButton(
-              onPressed: () => _showCreateAccountSheet(context),
-              icon: Icon(TablerIcons.plus, color: colors.brand),
-            ),
-        ],
+      Text(
+        languageCubit.translate('dashboard_bank_accounts'),
+        style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
       ),
       const SizedBox(height: 8),
       ...accountsReport.accounts.map(
@@ -111,27 +100,11 @@ Widget _buildAccountsRatesTab(
         ),
       ),
       const SizedBox(height: 12),
-      LedgerCard(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              languageCubit.translate('dashboard_total_balance_tjs'),
-              style: textStyles.captionSans.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '${_formatAmount(context, accountsReport.totalTjs)} TJS',
-              style: textStyles.bodyMono.copyWith(
-                fontWeight: FontWeight.w500,
-                color: colors.brand,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
+      _reportAmountTile(
+        context,
+        label: languageCubit.translate('dashboard_total_balance_tjs'),
+        value: '${_formatAmount(context, accountsReport.totalTjs)} TJS',
+        valueColor: colors.brand,
       ),
       const SizedBox(height: 24),
       Row(

@@ -2261,6 +2261,27 @@ class DashboardSectionShimmer extends StatelessWidget {
     );
   }
 
+  static Widget _periodStrip() {
+    return const ShimmerBox(
+      width: double.infinity,
+      height: 36,
+      borderRadius: 14,
+    );
+  }
+
+  static Widget _amountTile() {
+    return const LedgerCard(
+      padding: EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(
+        children: [
+          Expanded(child: ShimmerBox(height: 12, borderRadius: 4)),
+          SizedBox(width: 10),
+          ShimmerBox(width: 112, height: 16, borderRadius: 4),
+        ],
+      ),
+    );
+  }
+
   static List<Widget> _tableRows({int count = 6}) {
     return List.generate(count, (index) {
       return const Padding(
@@ -2280,32 +2301,77 @@ class DashboardSectionShimmer extends StatelessWidget {
 
   static List<Widget> _pnl() {
     return [
-      const ShimmerBox(width: 90, height: 15, borderRadius: 4),
+      _periodStrip(),
+      const SizedBox(height: 12),
+      const ShimmerBox(width: 180, height: 15, borderRadius: 4),
       const SizedBox(height: 8),
       LedgerCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Column(children: _tableRows()),
+        child: Column(
+          children: [
+            ..._tableRows(),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ShimmerBox(width: 70, height: 14, borderRadius: 4),
+                  ShimmerBox(width: 90, height: 14, borderRadius: 4),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      const SizedBox(height: 16),
-      const ShimmerBox(width: 110, height: 15, borderRadius: 4),
+      const SizedBox(height: 24),
+      const ShimmerBox(width: 200, height: 15, borderRadius: 4),
       const SizedBox(height: 8),
       LedgerCard(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Column(children: _tableRows(count: 4)),
+        child: Column(
+          children: [
+            ..._tableRows(count: 4),
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ShimmerBox(width: 70, height: 14, borderRadius: 4),
+                  ShimmerBox(width: 90, height: 14, borderRadius: 4),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+      const LedgerCard(
+        padding: EdgeInsets.all(16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            ShimmerBox(width: 120, height: 14, borderRadius: 4),
+            ShimmerBox(width: 100, height: 18, borderRadius: 4),
+          ],
+        ),
       ),
     ];
   }
 
   static List<Widget> _planFact() {
     return [
-      const Row(
-        children: [
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-        ],
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: List.generate(6, (index) {
+            return const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: ShimmerBox(width: 88, height: 32, borderRadius: 16),
+            );
+          }),
+        ),
       ),
       const SizedBox(height: 12),
       const LedgerCard(
@@ -2332,8 +2398,29 @@ class DashboardSectionShimmer extends StatelessWidget {
       const SizedBox(height: 8),
       ...List.generate(4, (index) {
         return const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: LedgerFeedRowShimmer(),
+          padding: EdgeInsets.only(bottom: 10),
+          child: LedgerCard(
+            padding: EdgeInsets.all(14),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(child: ShimmerBox(height: 14, borderRadius: 4)),
+                    SizedBox(width: 8),
+                    ShimmerBox(width: 48, height: 20, borderRadius: 4),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    ShimmerBox(width: 70, height: 28, borderRadius: 4),
+                    ShimmerBox(width: 70, height: 28, borderRadius: 4),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
       }),
     ];
@@ -2341,22 +2428,14 @@ class DashboardSectionShimmer extends StatelessWidget {
 
   static List<Widget> _breakEven() {
     return [
-      const Row(
-        children: [
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-        ],
-      ),
+      _periodStrip(),
       const SizedBox(height: 12),
       const LedgerCard(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ShimmerBox(width: 150, height: 13, borderRadius: 4),
+            ShimmerBox(width: 180, height: 13, borderRadius: 4),
             SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2365,45 +2444,71 @@ class DashboardSectionShimmer extends StatelessWidget {
                 ShimmerBox(width: 100, height: 13, borderRadius: 4),
               ],
             ),
+            SizedBox(height: 12),
+            ShimmerBox(width: double.infinity, height: 8, borderRadius: 4),
           ],
         ),
       ),
-      const SizedBox(height: 16),
-      const LedgerHubGridShimmer(count: 2, gap: 8),
-      const SizedBox(height: 16),
-      ...List.generate(3, (index) {
-        return const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: LedgerFeedRowShimmer(),
-        );
-      }),
+      const SizedBox(height: 20),
+      const ShimmerBox(width: 200, height: 15, borderRadius: 4),
+      const SizedBox(height: 8),
+      LedgerCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: List.generate(6, (index) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: index == 5 ? 0 : 0),
+              child: Column(
+                children: [
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ShimmerBox(width: 140, height: 13, borderRadius: 4),
+                      ShimmerBox(width: 90, height: 13, borderRadius: 4),
+                    ],
+                  ),
+                  if (index < 5) const Divider(),
+                ],
+              ),
+            );
+          }),
+        ),
+      ),
     ];
   }
 
   static List<Widget> _abc() {
     return [
-      const Row(
-        children: [
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 8)),
-        ],
-      ),
+      _periodStrip(),
       const SizedBox(height: 12),
-      const Row(
-        children: [
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 999)),
-          SizedBox(width: 8),
-          Expanded(child: ShimmerBox(height: 36, borderRadius: 999)),
-        ],
-      ),
-      const SizedBox(height: 16),
+      const ShimmerBox(width: double.infinity, height: 36, borderRadius: 14),
+      const SizedBox(height: 20),
+      const ShimmerBox(width: 220, height: 15, borderRadius: 4),
+      const SizedBox(height: 8),
       ...List.generate(5, (index) {
         return const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: LedgerFeedRowShimmer(),
+          padding: EdgeInsets.only(bottom: 10),
+          child: LedgerCard(
+            padding: EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShimmerBox(width: 140, height: 14, borderRadius: 4),
+                      SizedBox(height: 4),
+                      ShimmerBox(width: 180, height: 11, borderRadius: 4),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                ShimmerBox(width: 72, height: 14, borderRadius: 4),
+                SizedBox(width: 12),
+                ShimmerBox(width: 28, height: 28, borderRadius: 4),
+              ],
+            ),
+          ),
         );
       }),
     ];
@@ -2440,18 +2545,15 @@ class DashboardSectionShimmer extends StatelessWidget {
           ),
         );
       }),
-      const LedgerCard(
-        padding: EdgeInsets.all(14),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            ShimmerBox(width: 120, height: 13, borderRadius: 4),
-            ShimmerBox(width: 90, height: 16, borderRadius: 4),
-          ],
-        ),
-      ),
+      _amountTile(),
       const SizedBox(height: 24),
-      const ShimmerBox(width: 110, height: 15, borderRadius: 4),
+      const Row(
+        children: [
+          Expanded(child: ShimmerBox(height: 15, borderRadius: 4)),
+          SizedBox(width: 8),
+          ShimmerBox(width: 110, height: 15, borderRadius: 4),
+        ],
+      ),
       const SizedBox(height: 8),
       const LedgerCard(
         padding: EdgeInsets.all(16),
@@ -2510,6 +2612,12 @@ class DashboardSectionShimmer extends StatelessWidget {
 
   static List<Widget> _ai() {
     return [
+      _amountTile(),
+      const SizedBox(height: 8),
+      _amountTile(),
+      const SizedBox(height: 8),
+      _amountTile(),
+      const SizedBox(height: 12),
       const LedgerCard(
         padding: EdgeInsets.all(16),
         child: Column(
@@ -2519,7 +2627,7 @@ class DashboardSectionShimmer extends StatelessWidget {
               children: [
                 ShimmerBox(width: 22, height: 22, borderRadius: 4),
                 SizedBox(width: 10),
-                ShimmerBox(width: 160, height: 14, borderRadius: 4),
+                ShimmerBox(width: 180, height: 14, borderRadius: 4),
               ],
             ),
             SizedBox(height: 12),
@@ -2529,65 +2637,112 @@ class DashboardSectionShimmer extends StatelessWidget {
           ],
         ),
       ),
-      const SizedBox(height: 16),
-      const LedgerAdviceShimmer(),
-      const SizedBox(height: 12),
-      const LedgerAdviceShimmer(),
+      const SizedBox(height: 20),
+      const ShimmerBox(width: 200, height: 15, borderRadius: 4),
+      const SizedBox(height: 8),
+      const LedgerCard(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShimmerBox(width: double.infinity, height: 13, borderRadius: 4),
+            SizedBox(height: 6),
+            ShimmerBox(width: double.infinity, height: 13, borderRadius: 4),
+            SizedBox(height: 6),
+            ShimmerBox(width: 180, height: 13, borderRadius: 4),
+          ],
+        ),
+      ),
     ];
   }
 
   static List<Widget> _onec() {
     return [
+      _amountTile(),
+      const SizedBox(height: 8),
+      _amountTile(),
+      const SizedBox(height: 8),
+      _amountTile(),
+      const SizedBox(height: 8),
+      const ShimmerBox(width: double.infinity, height: 12, borderRadius: 4),
+      const SizedBox(height: 6),
+      const ShimmerBox(width: 240, height: 12, borderRadius: 4),
+      const SizedBox(height: 12),
       const Row(
         children: [
           Expanded(
-            child: LedgerCard(
-              padding: EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ShimmerBox(width: 70, height: 11, borderRadius: 4),
-                  SizedBox(height: 4),
-                  ShimmerBox(width: 90, height: 14, borderRadius: 4),
-                ],
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ShimmerBox(width: 120, height: 16, borderRadius: 4),
+                SizedBox(height: 4),
+                ShimmerBox(width: 140, height: 12, borderRadius: 4),
+              ],
             ),
           ),
-          SizedBox(width: 8),
-          Expanded(
-            child: LedgerCard(
-              padding: EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ShimmerBox(width: 70, height: 11, borderRadius: 4),
-                  SizedBox(height: 4),
-                  ShimmerBox(width: 90, height: 14, borderRadius: 4),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(width: 8),
-          Expanded(
-            child: LedgerCard(
-              padding: EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ShimmerBox(width: 70, height: 11, borderRadius: 4),
-                  SizedBox(height: 4),
-                  ShimmerBox(width: 90, height: 14, borderRadius: 4),
-                ],
-              ),
-            ),
-          ),
+          ShimmerBox(width: 120, height: 36, borderRadius: 12),
         ],
       ),
-      const SizedBox(height: 16),
-      ...List.generate(4, (index) {
+      const SizedBox(height: 12),
+      ...List.generate(3, (index) {
         return const Padding(
-          padding: EdgeInsets.only(bottom: 8),
-          child: LedgerFeedRowShimmer(),
+          padding: EdgeInsets.only(bottom: 10),
+          child: LedgerCard(
+            padding: EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerBox(width: 28, height: 28, borderRadius: 6),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ShimmerBox(
+                            width: double.infinity,
+                            height: 14,
+                            borderRadius: 4,
+                          ),
+                          SizedBox(height: 4),
+                          ShimmerBox(width: 90, height: 11, borderRadius: 4),
+                          SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: ShimmerBox(
+                              width: 100,
+                              height: 14,
+                              borderRadius: 4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 10),
+                ShimmerBox(width: double.infinity, height: 1, borderRadius: 1),
+                SizedBox(height: 10),
+                Row(
+                  children: [
+                    ShimmerBox(width: 28, height: 28, borderRadius: 6),
+                    SizedBox(width: 10),
+                    Expanded(child: ShimmerBox(height: 14, borderRadius: 4)),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Row(
+                  children: [
+                    ShimmerBox(width: 140, height: 22, borderRadius: 6),
+                    Spacer(),
+                    ShimmerBox(width: 88, height: 16, borderRadius: 4),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
       }),
     ];
@@ -3775,24 +3930,135 @@ class CashShiftsShimmer extends StatelessWidget {
             padding: EdgeInsets.only(bottom: 6),
             child: LedgerCard(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ShimmerBox(width: 130, height: 14, borderRadius: 4),
-                        SizedBox(height: 4),
-                        ShimmerBox(width: 160, height: 12, borderRadius: 4),
-                      ],
-                    ),
+                  ShimmerBox(width: 130, height: 14, borderRadius: 4),
+                  SizedBox(height: 4),
+                  ShimmerBox(width: 180, height: 12, borderRadius: 4),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      LedgerChipShimmer(width: 64, height: 22),
+                      SizedBox(width: 8),
+                      LedgerChipShimmer(width: 56, height: 22),
+                    ],
                   ),
-                  LedgerChipShimmer(width: 72, height: 22),
                 ],
               ),
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+/// Скелетон канбана найма: колонки этапов и карточки кандидатов.
+class HrRecruitmentShimmer extends StatelessWidget {
+  const HrRecruitmentShimmer({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return LedgerShimmer(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        child: SizedBox(
+          height: 420,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: List.generate(2, (index) {
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: index == 0 ? 10 : 0),
+                  child: const LedgerCard(
+                    padding: EdgeInsets.fromLTRB(10, 10, 10, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ShimmerBox(height: 14, borderRadius: 4),
+                            ),
+                            SizedBox(width: 8),
+                            ShimmerBox(
+                              width: 28,
+                              height: 22,
+                              borderRadius: 999,
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 10),
+                        LedgerCard(
+                          padding: EdgeInsets.fromLTRB(10, 10, 8, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ShimmerBox(
+                                width: 120,
+                                height: 14,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 4),
+                              ShimmerBox(
+                                width: 90,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 8),
+                              ShimmerBox(
+                                width: 70,
+                                height: 11,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  ShimmerBox(
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 8,
+                                  ),
+                                  Spacer(),
+                                  ShimmerBox(
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: 8,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        LedgerCard(
+                          padding: EdgeInsets.fromLTRB(10, 10, 8, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ShimmerBox(
+                                width: 100,
+                                height: 14,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 4),
+                              ShimmerBox(
+                                width: 80,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
       ),
     );
   }

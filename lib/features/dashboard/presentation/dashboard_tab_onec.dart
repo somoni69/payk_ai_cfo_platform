@@ -32,114 +32,37 @@ Widget _buildOneCTab(
     onRefresh: () {
       final bloc = context.read<DashboardBloc>();
       bloc.add(const RefreshOneCReconcileRequested());
-      return bloc.stream.firstWhere((state) => state is DashboardLoaded);
+      return bloc.stream.firstWhere((state) {
+        if (state is! DashboardLoaded) return false;
+        return !state.loadingSections.contains(DashboardSection.onec);
+      });
     },
     child: ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
       children: [
-        // --- 1. Сводные метрики (3 карточки) ---
-        Row(
-          children: [
-            Expanded(
-              child: LedgerCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      language.translate('dashboard_onec_total_onec'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: 11.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_formatAmount(context, onec.totalOnec)} TJS',
-                      style: textStyles.bodyMono.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
-                        color: colors.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: LedgerCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      language.translate('dashboard_onec_total_payk'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: 11.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_formatAmount(context, onec.totalPayk)} TJS',
-                      style: textStyles.bodyMono.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
-                        color: colors.brand,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: LedgerCard(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      language.translate('dashboard_onec_diff'),
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
-                        fontSize: 11.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      nothingMatched
-                          ? '—'
-                          : '${_formatAmount(context, diffTotal)} TJS',
-                      style: textStyles.bodyMono.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13.5,
-                        color: nothingMatched
-                            ? colors.textSecondary
-                            : (isDiffZero
-                                  ? colors.accentGreen
-                                  : colors.accentRed),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+        _reportAmountTile(
+          context,
+          label: language.translate('dashboard_onec_total_onec'),
+          value: '${_formatAmount(context, onec.totalOnec)} TJS',
+        ),
+        const SizedBox(height: 8),
+        _reportAmountTile(
+          context,
+          label: language.translate('dashboard_onec_total_payk'),
+          value: '${_formatAmount(context, onec.totalPayk)} TJS',
+          valueColor: colors.brand,
+        ),
+        const SizedBox(height: 8),
+        _reportAmountTile(
+          context,
+          label: language.translate('dashboard_onec_diff'),
+          value: nothingMatched
+              ? '—'
+              : '${_formatAmount(context, diffTotal)} TJS',
+          valueColor: nothingMatched
+              ? colors.textSecondary
+              : (isDiffZero ? colors.accentGreen : colors.accentRed),
         ),
         const SizedBox(height: 8),
         Text(
@@ -351,6 +274,8 @@ Widget _buildOneCRowCard(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -360,14 +285,18 @@ Widget _buildOneCRowCard(
                       color: colors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '${_formatAmount(context, row.onecAmount)} TJS',
+                      style: textStyles.bodyMono.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            Text(
-              '${_formatAmount(context, row.onecAmount)} TJS',
-              style: textStyles.bodyMono.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
               ),
             ),
           ],
@@ -410,6 +339,8 @@ Widget _buildOneCRowCard(
                           ? colors.textPrimary
                           : colors.textSecondary,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (row.matchedBy != null) ...[
                     const SizedBox(height: 2),
@@ -423,26 +354,33 @@ Widget _buildOneCRowCard(
                       ),
                     ),
                   ],
+                  if (row.paykAmount != null) ...[
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        '${_formatAmount(context, row.paykAmount!)} TJS',
+                        style: textStyles.bodyMono.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13.5,
+                          color: colors.brand,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            if (row.paykAmount != null)
-              Text(
-                '${_formatAmount(context, row.paykAmount!)} TJS',
-                style: textStyles.bodyMono.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13.5,
-                  color: colors.brand,
-                ),
-              ),
           ],
         ),
 
         const SizedBox(height: 10),
 
         // Статус расхождения и кнопка привязки
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -484,6 +422,7 @@ Widget _buildOneCRowCard(
                     vertical: 4,
                   ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(TablerIcons.link, size: 14, color: colors.brand),
                       const SizedBox(width: 4),

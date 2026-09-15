@@ -264,6 +264,112 @@ class CashRegister {
   const CashRegister({required this.id, required this.name, this.location});
 }
 
+/// Строка терминала в форме закрытия смены (без сумм системы).
+class ShiftClosingLine {
+  final String key;
+  final String label;
+
+  const ShiftClosingLine({required this.key, required this.label});
+}
+
+class ShiftTerminalFact {
+  final String key;
+  final double amount;
+
+  const ShiftTerminalFact({required this.key, required this.amount});
+
+  Map<String, dynamic> toJson() => {'key': key, 'amount': amount};
+}
+
+class ShiftPersonOption {
+  final String id;
+  final String fullName;
+  final String? position;
+
+  const ShiftPersonOption({
+    required this.id,
+    required this.fullName,
+    this.position,
+  });
+
+  String get label {
+    final role = position?.trim();
+    if (role == null || role.isEmpty) return fullName;
+    return '$fullName — $role';
+  }
+}
+
+class ShiftReportLine {
+  final String key;
+  final String label;
+  final bool cashless;
+  final double? fact;
+  final double system;
+  final double? diff;
+
+  const ShiftReportLine({
+    required this.key,
+    required this.label,
+    this.cashless = true,
+    this.fact,
+    this.system = 0,
+    this.diff,
+  });
+}
+
+class ShiftReportExpense {
+  final String name;
+  final String? direction;
+  final double amount;
+
+  const ShiftReportExpense({
+    required this.name,
+    this.direction,
+    this.amount = 0,
+  });
+}
+
+/// Бланк приёма от кассира.
+class CashShiftReport {
+  final String shiftId;
+  final String? storeName;
+  final String? registerName;
+  final String? cashierName;
+  final String? collectorName;
+  final String? chiefCashierName;
+  final String? auditorName;
+  final DateTime? openedAt;
+  final DateTime? closedAt;
+  final double openingBalance;
+  final double? actualBalance;
+  final double? expectedBalance;
+  final List<ShiftReportLine> lines;
+  final List<ShiftReportExpense> expenses;
+  final double expensesTotal;
+  final String? note;
+  final bool isClosed;
+
+  const CashShiftReport({
+    required this.shiftId,
+    this.storeName,
+    this.registerName,
+    this.cashierName,
+    this.collectorName,
+    this.chiefCashierName,
+    this.auditorName,
+    this.openedAt,
+    this.closedAt,
+    this.openingBalance = 0,
+    this.actualBalance,
+    this.expectedBalance,
+    this.lines = const [],
+    this.expenses = const [],
+    this.expensesTotal = 0,
+    this.note,
+    this.isClosed = true,
+  });
+}
+
 /// Сводные показатели кассы / кассового аппарата (SummaryRow).
 class CashSummary {
   final String registerId;

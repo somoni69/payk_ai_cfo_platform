@@ -66,6 +66,47 @@ String _formatAmount(BuildContext context, double amount) {
   return formatLocalizedNumber(context, amount);
 }
 
+/// Full-width label + amount so large TJS figures stay readable on a phone.
+Widget _reportAmountTile(
+  BuildContext context, {
+  required String label,
+  required String value,
+  Color? valueColor,
+}) {
+  final colors = context.colors;
+  final textStyles = context.textStyles;
+  return LedgerCard(
+    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: textStyles.bodyMono.copyWith(
+                fontWeight: FontWeight.w600,
+                color: valueColor ?? colors.textPrimary,
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 void _openDashboardReport(BuildContext context, DashboardSection section) {
   final bloc = context.read<DashboardBloc>();
   bloc.add(LoadDashboardSection(section));
@@ -211,12 +252,11 @@ class DashboardReportScreen extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: colors.background,
-          floatingActionButton:
-              (section == DashboardSection.planFact &&
-                  canWrite &&
-                  loadedState != null)
+          floatingActionButton: !canWrite
+              ? null
+              : section == DashboardSection.planFact && loadedState != null
               ? LedgerFab(
-                  heroTag: null,
+                  heroTag: 'plan-fact-fab',
                   onPressed: () {
                     final period =
                         loadedState.planFact?.period ?? _defaultPlanPeriod();
@@ -224,6 +264,13 @@ class DashboardReportScreen extends StatelessWidget {
                   },
                   icon: TablerIcons.plus,
                   label: languageCubit.translate('dashboard_plan_add'),
+                )
+              : section == DashboardSection.accountsRates
+              ? LedgerFab(
+                  heroTag: 'accounts-fab',
+                  onPressed: () => _showCreateAccountSheet(context),
+                  icon: TablerIcons.plus,
+                  label: languageCubit.translate('dashboard_account_add'),
                 )
               : null,
           body: NestedScrollView(

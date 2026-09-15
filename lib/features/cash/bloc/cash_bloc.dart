@@ -428,6 +428,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
         event.endingBalance,
         shiftId: targetShift.id,
         note: event.note,
+        terminalFacts: event.terminalFacts,
+        collectorId: event.collectorId,
+        chiefCashierId: event.chiefCashierId,
+        auditorId: event.auditorId,
       );
 
       // CASH-06: Автоматический подсчет разницы

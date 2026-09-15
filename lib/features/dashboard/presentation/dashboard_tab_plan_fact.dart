@@ -16,7 +16,11 @@ Widget _buildPlanFactTab(
   final textStyles = context.textStyles;
   final languageCubit = context.read<LanguageCubit>();
 
-  if (report == null) {
+  final blocState = context.watch<DashboardBloc>().state;
+  final isLoading =
+      blocState is DashboardLoaded &&
+      blocState.loadingSections.contains(DashboardSection.planFact);
+  if (report == null || isLoading) {
     return const DashboardSectionShimmer(kind: DashboardShimmerKind.planFact);
   }
 

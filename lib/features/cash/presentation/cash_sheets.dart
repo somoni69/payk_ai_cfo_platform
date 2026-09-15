@@ -819,14 +819,29 @@ extension _CashSheetBuilders on _CashViewMixin {
     }
   }
 
-  void _showCloseShiftBottomSheet(BuildContext context, CashShift shift) {
+  Future<void> _showCloseShiftBottomSheet(
+    BuildContext context,
+    CashShift shift,
+  ) async {
     final language = context.read<LanguageCubit>();
-
-    LedgerBottomSheet.show(
+    final closedId = await LedgerBottomSheet.show<String>(
       context: context,
       title: language.translate('cash_close_shift_title'),
       builder: (context, setSheetState) =>
           _CloseShiftSheetContent(shift: shift),
+    );
+    if (closedId != null && context.mounted) {
+      await _showShiftReportSheet(context, closedId);
+    }
+  }
+
+  Future<void> _showShiftReportSheet(BuildContext context, String shiftId) {
+    final language = context.read<LanguageCubit>();
+    return LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('cash_shift_report_title'),
+      builder: (context, setSheetState) =>
+          _ShiftReportSheetContent(shiftId: shiftId),
     );
   }
 
@@ -1341,19 +1356,112 @@ class _CloseShiftSheetContent extends StatefulWidget {
 class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
   late final TextEditingController _balanceCtrl;
   late final TextEditingController _noteCtrl;
+  final Map<String, TextEditingController> _factCtrls = {};
+  List<ShiftClosingLine> _lines = const [];
+  List<ShiftPersonOption> _people = const [];
+  String? _collectorId;
+  String? _chiefId;
+  String? _auditorId;
+  String? _error;
+  var _loading = true;
+  var _submitting = false;
 
   @override
   void initState() {
     super.initState();
     _balanceCtrl = TextEditingController();
     _noteCtrl = TextEditingController();
+    _loadForm();
+  }
+
+  Future<void> _loadForm() async {
+    final id = widget.shift.id;
+    if (id == null || id.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final repo = context.read<CashRepository>();
+      final results = await Future.wait([
+        repo.getClosingForm(id),
+        repo.lookupShiftPeople(),
+      ]);
+      if (!mounted) return;
+      final lines = results[0] as List<ShiftClosingLine>;
+      for (final line in lines) {
+        _factCtrls[line.key] = TextEditingController();
+      }
+      setState(() {
+        _lines = lines;
+        _people = results[1] as List<ShiftPersonOption>;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
   @override
   void dispose() {
     _balanceCtrl.dispose();
     _noteCtrl.dispose();
+    for (final c in _factCtrls.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final language = context.read<LanguageCubit>();
+    final bal = parseLocalizedNumber(context, _balanceCtrl.text);
+    if (bal == null || bal < 0) {
+      setState(() => _error = language.translate('cash_actual_balance_hint'));
+      return;
+    }
+    final facts = <ShiftTerminalFact>[];
+    for (final line in _lines) {
+      final raw = _factCtrls[line.key]?.text ?? '';
+      final amount = parseLocalizedNumber(context, raw);
+      if (amount == null || amount < 0) {
+        setState(() => _error = language.translate('cash_close_err_terminal'));
+        return;
+      }
+      facts.add(ShiftTerminalFact(key: line.key, amount: amount));
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    final bloc = context.read<CashBloc>();
+    bloc.add(
+      CloseShiftRequested(
+        bal,
+        shiftId: widget.shift.id,
+        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        terminalFacts: facts,
+        collectorId: int.tryParse(_collectorId ?? ''),
+        chiefCashierId: int.tryParse(_chiefId ?? ''),
+        auditorId: int.tryParse(_auditorId ?? ''),
+      ),
+    );
+    final next = await bloc.stream.firstWhere(
+      (s) => s is CashLoaded && !s.isSubmitting,
+    );
+    if (!mounted) return;
+    if (next is CashLoaded && next.errorMessage == null) {
+      Navigator.pop(context, widget.shift.id);
+    } else {
+      setState(() {
+        _submitting = false;
+        _error = next is CashLoaded
+            ? context.read<LanguageCubit>().translateMessage(
+                next.errorMessage ?? 'error_save_failed',
+              )
+            : null;
+      });
+    }
   }
 
   @override
@@ -1362,6 +1470,44 @@ class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
     final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
     final shift = widget.shift;
+    final peopleItems = ['', ..._people.map((p) => p.id)];
+
+    String personLabel(String id) {
+      if (id.isEmpty) return language.translate('cash_close_person_none');
+      for (final p in _people) {
+        if (p.id == id) return p.label;
+      }
+      return id;
+    }
+
+    if (_loading) {
+      return const LedgerShimmer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ShimmerBox(width: 140, height: 14, borderRadius: 4),
+            SizedBox(height: 4),
+            ShimmerBox(width: 180, height: 12, borderRadius: 4),
+            SizedBox(height: 16),
+            ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+            SizedBox(height: 16),
+            ShimmerBox(width: 120, height: 14, borderRadius: 4),
+            SizedBox(height: 8),
+            ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+            SizedBox(height: 10),
+            ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+            SizedBox(height: 16),
+            ShimmerBox(width: 150, height: 14, borderRadius: 4),
+            SizedBox(height: 8),
+            ShimmerBox(width: double.infinity, height: 40, borderRadius: 12),
+            SizedBox(height: 10),
+            ShimmerBox(width: double.infinity, height: 40, borderRadius: 12),
+            SizedBox(height: 20),
+            ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+          ],
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1389,7 +1535,94 @@ class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
           decoration: InputDecoration(
             labelText: language.translate('cash_shift_actual_balance'),
             suffixText: language.translate('cash_currency_suffix'),
+            helperText: language.translate('cash_close_actual_hint'),
+            helperMaxLines: 3,
           ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          language.translate('cash_close_terminals'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        if (_lines.isEmpty)
+          Text(
+            language.translate('cash_close_no_terminals'),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          )
+        else ...[
+          for (final line in _lines) ...[
+            TextField(
+              controller: _factCtrls[line.key],
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: textStyles.bodyMono,
+              decoration: InputDecoration(
+                labelText: line.label,
+                suffixText: language.translate('cash_currency_suffix'),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          Text(
+            language.translate('cash_close_terminal_hint'),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Text(
+          language.translate('cash_close_people'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          language.translate('cash_close_collector'),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+        ExpansibleWidget<String>.selection(
+          cardPadding: EdgeInsets.zero,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+          title: Text(
+            personLabel(_collectorId ?? ''),
+            style: textStyles.bodySans,
+          ),
+          items: peopleItems,
+          selectedValue: _collectorId ?? '',
+          itemLabelBuilder: personLabel,
+          onSelected: (v) =>
+              setState(() => _collectorId = v.isEmpty ? null : v),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          language.translate('cash_close_chief'),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+        ExpansibleWidget<String>.selection(
+          cardPadding: EdgeInsets.zero,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+          title: Text(personLabel(_chiefId ?? ''), style: textStyles.bodySans),
+          items: peopleItems,
+          selectedValue: _chiefId ?? '',
+          itemLabelBuilder: personLabel,
+          onSelected: (v) => setState(() => _chiefId = v.isEmpty ? null : v),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          language.translate('cash_close_auditor'),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+        ExpansibleWidget<String>.selection(
+          cardPadding: EdgeInsets.zero,
+          tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+          title: Text(
+            personLabel(_auditorId ?? ''),
+            style: textStyles.bodySans,
+          ),
+          items: peopleItems,
+          selectedValue: _auditorId ?? '',
+          itemLabelBuilder: personLabel,
+          onSelected: (v) => setState(() => _auditorId = v.isEmpty ? null : v),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -1398,26 +1631,259 @@ class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
             labelText: language.translate('cash_close_shift_note'),
           ),
         ),
+        if (_error != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _error!,
+            style: textStyles.captionSans.copyWith(color: colors.accentRed),
+          ),
+        ],
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
           height: kLedgerModalButtonHeight,
           child: ElevatedButton(
-            onPressed: () {
-              final bal = parseLocalizedNumber(context, _balanceCtrl.text);
-              if (bal == null || bal < 0) return;
-              context.read<CashBloc>().add(
-                CloseShiftRequested(
-                  bal,
-                  shiftId: shift.id,
-                  note: _noteCtrl.text.trim().isEmpty
-                      ? null
-                      : _noteCtrl.text.trim(),
-                ),
-              );
-              Navigator.pop(context);
-            },
+            onPressed: _submitting ? null : _submit,
             child: Text(language.translate('cash_close_shift_action')),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShiftReportSheetContent extends StatefulWidget {
+  final String shiftId;
+  const _ShiftReportSheetContent({required this.shiftId});
+
+  @override
+  State<_ShiftReportSheetContent> createState() =>
+      _ShiftReportSheetContentState();
+}
+
+class _ShiftReportSheetContentState extends State<_ShiftReportSheetContent> {
+  CashShiftReport? _report;
+  String? _error;
+  var _loading = true;
+  var _sharing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final report = await context.read<CashRepository>().getShiftReport(
+        widget.shiftId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _report = report;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _share(String format) async {
+    if (_sharing) return;
+    setState(() => _sharing = true);
+    try {
+      final bytes = await context.read<CashRepository>().exportShiftReport(
+        widget.shiftId,
+        format: format,
+      );
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/smena_${widget.shiftId}.$format');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.read<LanguageCubit>().translateMessage(e.toString()),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _sharing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final language = context.read<LanguageCubit>();
+
+    if (_loading) {
+      return const LedgerShimmer(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ShimmerBox(width: double.infinity, height: 12, borderRadius: 4),
+            SizedBox(height: 12),
+            ShimmerBox(width: 160, height: 16, borderRadius: 4),
+            SizedBox(height: 10),
+            ShimmerBox(width: double.infinity, height: 14, borderRadius: 4),
+            SizedBox(height: 8),
+            ShimmerBox(width: double.infinity, height: 14, borderRadius: 4),
+            SizedBox(height: 16),
+            ShimmerBox(width: 100, height: 14, borderRadius: 4),
+            SizedBox(height: 8),
+            ShimmerBox(width: double.infinity, height: 13, borderRadius: 4),
+            SizedBox(height: 6),
+            ShimmerBox(width: double.infinity, height: 13, borderRadius: 4),
+            SizedBox(height: 16),
+            ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+            SizedBox(height: 8),
+            ShimmerBox(width: double.infinity, height: 48, borderRadius: 12),
+          ],
+        ),
+      );
+    }
+    if (_error != null || _report == null) {
+      return Text(
+        language.translate('cash_shift_report_error'),
+        style: textStyles.bodySans.copyWith(color: colors.accentRed),
+      );
+    }
+
+    final report = _report!;
+    Widget moneyRow(String label, String value, {Color? color}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerRight,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: textStyles.bodyMono.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          language.translate('cash_shift_report_hint'),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          report.registerName ?? language.translate('cash_default_register'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+        ),
+        if (report.cashierName != null)
+          Text(
+            report.cashierName!,
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+        const SizedBox(height: 10),
+        moneyRow(
+          language.translate('cash_starting_balance_label'),
+          '${formatLocalizedNumber(context, report.openingBalance)} TJS',
+        ),
+        if (report.actualBalance != null)
+          moneyRow(
+            language.translate('cash_shift_actual_balance'),
+            '${formatLocalizedNumber(context, report.actualBalance!)} TJS',
+          ),
+        const SizedBox(height: 8),
+        for (final line in report.lines) ...[
+          Text(
+            line.label,
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
+          moneyRow(
+            language.translate('cash_shift_report_system'),
+            '${formatLocalizedNumber(context, line.system)} TJS',
+          ),
+          moneyRow(
+            language.translate('cash_shift_report_fact'),
+            line.fact == null
+                ? '—'
+                : '${formatLocalizedNumber(context, line.fact!)} TJS',
+          ),
+          moneyRow(
+            language.translate('cash_shift_report_diff'),
+            line.diff == null
+                ? '—'
+                : '${formatLocalizedNumber(context, line.diff!)} TJS',
+            color: line.diff == null || line.diff!.abs() < 0.01
+                ? colors.accentGreen
+                : colors.accentRed,
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (report.expenses.isNotEmpty) ...[
+          Text(
+            language.translate('cash_shift_report_expenses'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+          ),
+          for (final exp in report.expenses)
+            moneyRow(
+              exp.name,
+              '${formatLocalizedNumber(context, exp.amount)} TJS',
+            ),
+        ],
+        if (report.collectorName != null)
+          moneyRow(
+            language.translate('cash_close_collector'),
+            report.collectorName!,
+          ),
+        if (report.chiefCashierName != null)
+          moneyRow(
+            language.translate('cash_close_chief'),
+            report.chiefCashierName!,
+          ),
+        if (report.auditorName != null)
+          moneyRow(
+            language.translate('cash_close_auditor'),
+            report.auditorName!,
+          ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: kLedgerModalButtonHeight,
+          child: ElevatedButton(
+            onPressed: _sharing ? null : () => _share('pdf'),
+            child: Text(language.translate('cash_shift_report_pdf')),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: kLedgerModalButtonHeight,
+          child: OutlinedButton(
+            onPressed: _sharing ? null : () => _share('xlsx'),
+            child: Text(language.translate('cash_shift_report_excel')),
           ),
         ),
       ],

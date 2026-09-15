@@ -265,14 +265,19 @@ class LedgerReportTile extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: colors.brand),
           const SizedBox(height: 12),
-          Text(
-            title,
-            style: textStyles.bodySans.copyWith(
-              fontWeight: FontWeight.w500,
-              height: 1.25,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              title,
+              style: textStyles.bodySans.copyWith(
+                fontWeight: FontWeight.w500,
+                height: 1.2,
+                fontSize: context.fontSize(13.5),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 4),

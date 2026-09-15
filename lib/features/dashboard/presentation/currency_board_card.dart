@@ -237,92 +237,167 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
           LedgerShimmer(
             child: Column(
               children: [
-                Row(
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: colors.border),
+                  ),
+                  child: const Row(
+                    children: [
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
+                          child: Column(
+                            children: [
+                              ShimmerBox(
+                                width: 36,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 6),
+                              ShimmerBox(
+                                width: 64,
+                                height: 18,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 4),
+                              ShimmerBox(
+                                width: 48,
+                                height: 10,
+                                borderRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
+                          child: Column(
+                            children: [
+                              ShimmerBox(
+                                width: 36,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 6),
+                              ShimmerBox(
+                                width: 64,
+                                height: 18,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 4),
+                              ShimmerBox(
+                                width: 48,
+                                height: 10,
+                                borderRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 10,
+                          ),
+                          child: Column(
+                            children: [
+                              ShimmerBox(
+                                width: 36,
+                                height: 12,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 6),
+                              ShimmerBox(
+                                width: 64,
+                                height: 18,
+                                borderRadius: 4,
+                              ),
+                              SizedBox(height: 4),
+                              ShimmerBox(
+                                width: 48,
+                                height: 10,
+                                borderRadius: 4,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Row(
                   children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ShimmerBox(width: 32, height: 12, borderRadius: 4),
-                            SizedBox(height: 6),
-                            ShimmerBox(width: 60, height: 18, borderRadius: 4),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ShimmerBox(width: 32, height: 12, borderRadius: 4),
-                            SizedBox(height: 6),
-                            ShimmerBox(width: 60, height: 18, borderRadius: 4),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: colors.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ShimmerBox(width: 32, height: 12, borderRadius: 4),
-                            SizedBox(height: 6),
-                            ShimmerBox(width: 60, height: 18, borderRadius: 4),
-                          ],
-                        ),
-                      ),
-                    ),
+                    ShimmerBox(width: 110, height: 13, borderRadius: 4),
+                    Spacer(),
+                    ShimmerBox(width: 90, height: 11, borderRadius: 4),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: colors.surface,
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: colors.border),
                   ),
-                  child: Column(
+                  child: const Column(
                     children: [
-                      ShimmerBox(
-                        width: double.infinity,
-                        height: 24,
-                        borderRadius: 4,
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ShimmerBox(height: 14, borderRadius: 4),
+                            ),
+                            SizedBox(width: 12),
+                            ShimmerBox(width: 64, height: 14, borderRadius: 4),
+                            SizedBox(width: 12),
+                            ShimmerBox(width: 64, height: 14, borderRadius: 4),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 12),
-                      ShimmerBox(
-                        width: double.infinity,
-                        height: 48,
-                        borderRadius: 6,
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ShimmerBox(height: 14, borderRadius: 4),
+                            ),
+                            SizedBox(width: 12),
+                            ShimmerBox(width: 64, height: 14, borderRadius: 4),
+                            SizedBox(width: 12),
+                            ShimmerBox(width: 64, height: 14, borderRadius: 4),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 8),
-                      ShimmerBox(
-                        width: double.infinity,
-                        height: 48,
-                        borderRadius: 6,
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ShimmerBox(height: 14, borderRadius: 4),
+                            ),
+                            SizedBox(width: 12),
+                            ShimmerBox(width: 64, height: 14, borderRadius: 4),
+                            SizedBox(width: 12),
+                            ShimmerBox(width: 64, height: 14, borderRadius: 4),
+                          ],
+                        ),
                       ),
                     ],
                   ),

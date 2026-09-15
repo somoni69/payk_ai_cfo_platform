@@ -263,10 +263,16 @@ class CashGapForecast {
 }
 
 class AiInsightsReport {
+  final double revenue;
+  final double expenses;
+  final double balance;
   final CashGapForecast forecast;
   final String recommendations;
 
   const AiInsightsReport({
+    this.revenue = 0,
+    this.expenses = 0,
+    this.balance = 0,
     required this.forecast,
     required this.recommendations,
   });

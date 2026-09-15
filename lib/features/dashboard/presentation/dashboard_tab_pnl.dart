@@ -5,7 +5,11 @@ Widget _buildPnlTab(BuildContext context, PnlReport? report, String currency) {
   final textStyles = context.textStyles;
   final languageCubit = context.read<LanguageCubit>();
 
-  if (report == null) {
+  final blocState = context.watch<DashboardBloc>().state;
+  final isLoading =
+      blocState is DashboardLoaded &&
+      blocState.loadingSections.contains(DashboardSection.pnl);
+  if (report == null || isLoading) {
     return const DashboardSectionShimmer(kind: DashboardShimmerKind.pnl);
   }
 
@@ -27,43 +31,54 @@ Widget _buildPnlTab(BuildContext context, PnlReport? report, String currency) {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           child: Column(
             children: [
-              ...rows.map(
-                (row) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          languageCubit.translateMessage(row.category),
-                          style: textStyles.bodySans,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            '${_formatAmount(context, row.amount)} $currency',
-                            style: textStyles.bodyMono.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+              if (rows.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    languageCubit.translate('dashboard_no_analysis_data'),
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                )
+              else
+                ...rows.map(
+                  (row) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            languageCubit.translateMessage(row.category),
+                            style: textStyles.bodySans,
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 50,
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              '${formatLocalizedNumber(context, row.share, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
-                              style: textStyles.smallMono.copyWith(
-                                color: colors.textSecondary,
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              '${_formatAmount(context, row.amount)} $currency',
+                              style: textStyles.bodyMono.copyWith(
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                            const SizedBox(width: 8),
+                            Container(
+                              width: 50,
+                              alignment: Alignment.centerRight,
+                              child: Text(
+                                '${formatLocalizedNumber(context, row.share, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+                                style: textStyles.smallMono.copyWith(
+                                  color: colors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
               if (rows.isNotEmpty) const Divider(),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),

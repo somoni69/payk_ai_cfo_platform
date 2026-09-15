@@ -16,7 +16,28 @@ class MockCashRepository implements CashRepository {
     double endingBalance, {
     String? shiftId,
     String? note,
+    List<ShiftTerminalFact> terminalFacts = const [],
+    int? collectorId,
+    int? chiefCashierId,
+    int? auditorId,
   }) => closeShift(endingBalance, note: note);
+
+  @override
+  Future<List<ShiftClosingLine>> getClosingForm(String shiftId) async =>
+      const [];
+
+  @override
+  Future<List<ShiftPersonOption>> lookupShiftPeople() async => const [];
+
+  @override
+  Future<CashShiftReport> getShiftReport(String shiftId) async =>
+      CashShiftReport(shiftId: shiftId);
+
+  @override
+  Future<Uint8List> exportShiftReport(
+    String shiftId, {
+    required String format,
+  }) async => Uint8List(0);
 
   static final List<Transaction> _transactions = [
     Transaction(

@@ -446,11 +446,14 @@ class ApiFinanceRepository implements FinanceRepository {
       final forecastMap = data['forecast'] as Map<String, dynamic>? ?? {};
 
       return AiInsightsReport(
+        revenue: _toDouble(data['revenue']),
+        expenses: _toDouble(data['expenses']),
+        balance: _toDouble(data['balance']),
         forecast: CashGapForecast(
           atRisk: forecastMap['at_risk'] ?? false,
           avgDailyNet: _toDouble(forecastMap['avg_daily_net']),
           balance: _toDouble(forecastMap['balance']),
-          daysToZero: forecastMap['days_to_zero'],
+          daysToZero: (forecastMap['days_to_zero'] as num?)?.toInt(),
           message: forecastMap['message'] ?? '',
         ),
         recommendations: data['recommendations'] ?? 'Рекомендаций нет.',

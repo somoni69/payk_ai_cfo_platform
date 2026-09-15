@@ -13,8 +13,11 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   DashboardBloc(this._repository) : super(DashboardLoading()) {
     on<LoadDashboardData>(_onLoadDashboardData);
     on<LoadDashboardSection>(_onLoadDashboardSection);
-    on<SetFinanceReportPeriod>(_onSetFinanceReportPeriod);
-    on<SetPlanFactPeriod>(_onSetPlanFactPeriod);
+    on<SetFinanceReportPeriod>(
+      _onSetFinanceReportPeriod,
+      transformer: restartable(),
+    );
+    on<SetPlanFactPeriod>(_onSetPlanFactPeriod, transformer: restartable());
     on<ChangeCurrency>(_onChangeCurrency, transformer: restartable());
     on<ChangeAbcDimension>(_onChangeAbcDimension, transformer: restartable());
     on<CreatePlanRequested>(_onCreatePlan);
@@ -81,6 +84,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is! DashboardLoaded) return;
     final current = state as DashboardLoaded;
+
+    if (!event.forceRefresh &&
+        !_sectionLoading(current, event.section) &&
+        _sectionHasData(current, event.section)) {
+      return;
+    }
 
     final updatedLoading = Set<DashboardSection>.from(current.loadingSections)
       ..add(event.section);
@@ -164,7 +173,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
 
       final finishLoading = Set<DashboardSection>.from(next.loadingSections)
         ..remove(event.section);
-      emit(next.copyWith(loadingSections: finishLoading));
+      emit(
+        _applySectionCurrency(
+          next.copyWith(loadingSections: finishLoading),
+          event.section,
+        ),
+      );
     } catch (e) {
       if (state is! DashboardLoaded) return;
       final latest = state as DashboardLoaded;
@@ -189,12 +203,80 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is! DashboardLoaded) return;
     final current = state as DashboardLoaded;
+    final clearDates = event.dateFrom == null && event.dateTo == null;
+    final reload = <DashboardSection>{
+      if (current.pnl != null) DashboardSection.pnl,
+      if (current.breakEven != null) DashboardSection.breakEven,
+      if (current.abc != null) DashboardSection.abc,
+    };
     emit(
       current.copyWith(
+        clearReportDates: clearDates,
         reportDateFrom: event.dateFrom,
         reportDateTo: event.dateTo,
+        loadingSections: Set<DashboardSection>.from(current.loadingSections)
+          ..addAll(reload),
       ),
     );
+    if (reload.isEmpty) return;
+
+    try {
+      final results = await Future.wait([
+        if (reload.contains(DashboardSection.pnl))
+          _repository.getPnlReport(
+            dateFrom: event.dateFrom,
+            dateTo: event.dateTo,
+          ),
+        if (reload.contains(DashboardSection.breakEven))
+          _repository.getBreakEvenAnalysis(
+            dateFrom: event.dateFrom,
+            dateTo: event.dateTo,
+          ),
+        if (reload.contains(DashboardSection.abc))
+          _repository.getAbcAnalysis(
+            AbcDimensions.toApi(
+              current.abc?.dimension ?? AbcDimensions.category,
+            ),
+            dateFrom: event.dateFrom,
+            dateTo: event.dateTo,
+          ),
+      ]);
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
+      var i = 0;
+      var next = latest;
+      if (reload.contains(DashboardSection.pnl)) {
+        next = next.copyWith(pnl: results[i++] as PnlReport);
+      }
+      if (reload.contains(DashboardSection.breakEven)) {
+        next = next.copyWith(breakEven: results[i++] as BreakEvenAnalysis);
+      }
+      if (reload.contains(DashboardSection.abc)) {
+        next = next.copyWith(abc: results[i++] as AbcAnalysis);
+      }
+      emit(
+        _applyLoadedCurrency(
+          next.copyWith(
+            loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+              ..removeAll(reload),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
+      emit(
+        latest.copyWith(
+          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+            ..removeAll(reload),
+          sectionErrors: {
+            ...latest.sectionErrors,
+            for (final section in reload)
+              section: userFacingError(e, fallback: ErrorKeys.loadFailed),
+          },
+        ),
+      );
+    }
   }
 
   Future<void> _onSetPlanFactPeriod(
@@ -203,7 +285,44 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is! DashboardLoaded) return;
     final current = state as DashboardLoaded;
-    emit(current.copyWith(planPeriod: event.period));
+    emit(
+      current.copyWith(
+        planPeriod: event.period,
+        loadingSections: Set<DashboardSection>.from(current.loadingSections)
+          ..add(DashboardSection.planFact),
+      ),
+    );
+    try {
+      final report = await _repository.getPlanFactReport(period: event.period);
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
+      emit(
+        _applySectionCurrency(
+          latest.copyWith(
+            planFact: report,
+            loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+              ..remove(DashboardSection.planFact),
+          ),
+          DashboardSection.planFact,
+        ),
+      );
+    } catch (e) {
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
+      emit(
+        latest.copyWith(
+          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+            ..remove(DashboardSection.planFact),
+          sectionErrors: {
+            ...latest.sectionErrors,
+            DashboardSection.planFact: userFacingError(
+              e,
+              fallback: ErrorKeys.loadFailed,
+            ),
+          },
+        ),
+      );
+    }
   }
 
   Future<void> _onChangeCurrency(
@@ -371,10 +490,13 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       if (state is! DashboardLoaded) return;
       final latest = state as DashboardLoaded;
       emit(
-        latest.copyWith(
-          abc: abc,
-          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
-            ..remove(DashboardSection.abc),
+        _applySectionCurrency(
+          latest.copyWith(
+            abc: abc,
+            loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+              ..remove(DashboardSection.abc),
+          ),
+          DashboardSection.abc,
         ),
       );
     } catch (e) {
@@ -564,24 +686,185 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   ) async {
     if (state is! DashboardLoaded) return;
     final current = state as DashboardLoaded;
+    emit(
+      current.copyWith(
+        loadingSections: Set<DashboardSection>.from(current.loadingSections)
+          ..add(DashboardSection.onec),
+      ),
+    );
     try {
       final refreshed = await Future.wait([
         _repository.getOneCReconcile(forceRefresh: true, day: event.day),
         _repository.getOneCTargets(forceRefresh: true),
       ]);
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
       emit(
-        current.copyWith(
+        latest.copyWith(
           onec: refreshed[0] as OneCReconcileReport,
           onecTargets: refreshed[1] as List<OneCTarget>,
+          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+            ..remove(DashboardSection.onec),
         ),
       );
     } catch (e) {
+      if (state is! DashboardLoaded) return;
+      final latest = state as DashboardLoaded;
       emit(
-        current.copyWith(
+        latest.copyWith(
+          loadingSections: Set<DashboardSection>.from(latest.loadingSections)
+            ..remove(DashboardSection.onec),
           actionMessage: userFacingError(e, fallback: ErrorKeys.loadFailed),
         ),
       );
     }
+  }
+
+  bool _sectionHasData(DashboardLoaded state, DashboardSection section) {
+    return switch (section) {
+      DashboardSection.pnl => state.pnl != null,
+      DashboardSection.planFact => state.planFact != null,
+      DashboardSection.breakEven => state.breakEven != null,
+      DashboardSection.abc => state.abc != null,
+      DashboardSection.accountsRates =>
+        state.bankAccounts != null && state.rates != null,
+      DashboardSection.clients => state.clients != null,
+      DashboardSection.aiInsights => state.aiInsights != null,
+      DashboardSection.onec => state.onec != null && state.onecTargets != null,
+    };
+  }
+
+  bool _sectionLoading(DashboardLoaded state, DashboardSection section) {
+    return state.loadingSections.contains(section);
+  }
+
+  double _rateFactor(DashboardLoaded state) {
+    if (state.currency == 'TJS' || state.rates == null) return 1;
+    for (final row in state.rates!.rates) {
+      if (row.code == state.currency && row.rate > 0) {
+        return 1.0 / row.rate;
+      }
+    }
+    return 1;
+  }
+
+  DashboardLoaded _applySectionCurrency(
+    DashboardLoaded state,
+    DashboardSection section,
+  ) {
+    final factor = _rateFactor(state);
+    if (factor == 1) return state;
+    return switch (section) {
+      DashboardSection.pnl when state.pnl != null => state.copyWith(
+        pnl: _convertPnlWithFactor(state.pnl!, factor),
+      ),
+      DashboardSection.breakEven when state.breakEven != null => state.copyWith(
+        breakEven: _convertBreakEvenWithFactor(state.breakEven!, factor),
+      ),
+      DashboardSection.abc when state.abc != null => state.copyWith(
+        abc: _convertAbcWithFactor(state.abc!, factor),
+      ),
+      DashboardSection.planFact when state.planFact != null => state.copyWith(
+        planFact: _convertPlanFactWithFactor(state.planFact!, factor),
+      ),
+      _ => state,
+    };
+  }
+
+  DashboardLoaded _applyLoadedCurrency(DashboardLoaded state) {
+    final factor = _rateFactor(state);
+    if (factor == 1) return state;
+    return state.copyWith(
+      pnl: state.pnl == null ? null : _convertPnlWithFactor(state.pnl!, factor),
+      breakEven: state.breakEven == null
+          ? null
+          : _convertBreakEvenWithFactor(state.breakEven!, factor),
+      abc: state.abc == null ? null : _convertAbcWithFactor(state.abc!, factor),
+      planFact: state.planFact == null
+          ? null
+          : _convertPlanFactWithFactor(state.planFact!, factor),
+    );
+  }
+
+  PnlReport _convertPnlWithFactor(PnlReport pnl, double factor) {
+    return PnlReport(
+      income: pnl.income
+          .map(
+            (r) => PnlRow(
+              category: r.category,
+              amount: r.amount * factor,
+              share: r.share,
+            ),
+          )
+          .toList(),
+      expense: pnl.expense
+          .map(
+            (r) => PnlRow(
+              category: r.category,
+              amount: r.amount * factor,
+              share: r.share,
+            ),
+          )
+          .toList(),
+      totalIncome: pnl.totalIncome * factor,
+      totalExpense: pnl.totalExpense * factor,
+      profit: pnl.profit * factor,
+    );
+  }
+
+  BreakEvenAnalysis _convertBreakEvenWithFactor(
+    BreakEvenAnalysis report,
+    double factor,
+  ) {
+    return BreakEvenAnalysis(
+      revenue: report.revenue * factor,
+      fixedCosts: report.fixedCosts * factor,
+      variableCosts: report.variableCosts * factor,
+      variableRatio: report.variableRatio,
+      breakEvenRevenue: report.breakEvenRevenue * factor,
+      marginOfSafety: report.marginOfSafety,
+    );
+  }
+
+  AbcAnalysis _convertAbcWithFactor(AbcAnalysis report, double factor) {
+    return AbcAnalysis(
+      dimension: report.dimension,
+      rows: report.rows
+          .map(
+            (r) => AbcRow(
+              name: r.name,
+              turnover: r.turnover * factor,
+              share: r.share,
+              cumulative: r.cumulative,
+              abcClass: r.abcClass,
+            ),
+          )
+          .toList(),
+      total: report.total * factor,
+    );
+  }
+
+  PlanFactReport _convertPlanFactWithFactor(
+    PlanFactReport report,
+    double factor,
+  ) {
+    return PlanFactReport(
+      period: report.period,
+      rows: report.rows
+          .map(
+            (r) => PlanFactRow(
+              category: r.category,
+              type: r.type,
+              planned: r.planned * factor,
+              fact: r.fact * factor,
+              deviation: r.deviation * factor,
+              completion: r.completion,
+            ),
+          )
+          .toList(),
+      totalPlanned: report.totalPlanned * factor,
+      totalFact: report.totalFact * factor,
+    );
   }
 
   FinanceMetrics _convertMetricsWithFactor(

@@ -18,6 +18,27 @@ Widget _buildAiInsightsTab(
   return ListView(
     padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
     children: [
+      _reportAmountTile(
+        context,
+        label: languageCubit.translate('dashboard_metric_revenue_june'),
+        value: '${_formatAmount(context, report.revenue)} $currency',
+        valueColor: colors.accentGreen,
+      ),
+      const SizedBox(height: 8),
+      _reportAmountTile(
+        context,
+        label: languageCubit.translate('dashboard_metric_expenses_june'),
+        value: '${_formatAmount(context, report.expenses)} $currency',
+        valueColor: colors.accentRed,
+      ),
+      const SizedBox(height: 8),
+      _reportAmountTile(
+        context,
+        label: languageCubit.translate('dashboard_metric_cash_balance'),
+        value: '${_formatAmount(context, report.balance)} $currency',
+        valueColor: colors.brand,
+      ),
+      const SizedBox(height: 12),
       LedgerCard(
         padding: const EdgeInsets.all(16),
         child: Column(

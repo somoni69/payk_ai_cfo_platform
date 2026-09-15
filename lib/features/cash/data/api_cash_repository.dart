@@ -538,6 +538,10 @@ class ApiCashRepository implements CashRepository {
     double endingBalance, {
     String? shiftId,
     String? note,
+    List<ShiftTerminalFact> terminalFacts = const [],
+    int? collectorId,
+    int? chiefCashierId,
+    int? auditorId,
   }) async {
     try {
       final normalizedShiftId = shiftId?.trim();
@@ -546,11 +550,16 @@ class ApiCashRepository implements CashRepository {
           : null;
 
       final resolvedShiftId = normalizedShiftId ?? activeShift?.id ?? 'sh-1';
-      final payload = {
+      final payload = <String, dynamic>{
         'actual_balance': endingBalance,
         'note': (note == null || note.trim().isEmpty)
             ? 'Закрыто с мобильного устройства'
             : note.trim(),
+        if (terminalFacts.isNotEmpty)
+          'terminal_facts': [for (final f in terminalFacts) f.toJson()],
+        'collector_id': collectorId,
+        'chief_cashier_id': chiefCashierId,
+        'auditor_id': auditorId,
       };
 
       final response = await _dio.post(
@@ -599,6 +608,117 @@ class ApiCashRepository implements CashRepository {
         registerName: 'cash_default_register',
         status: 'closed',
       );
+    }
+  }
+
+  @override
+  Future<List<ShiftClosingLine>> getClosingForm(String shiftId) async {
+    try {
+      final response = await _dio.get('/cash/shifts/$shiftId/closing-form');
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final lines = data['lines'] as List<dynamic>? ?? const [];
+      return lines.whereType<Map>().map((raw) {
+        final m = Map<String, dynamic>.from(raw);
+        return ShiftClosingLine(
+          key: (m['key'] ?? '').toString(),
+          label: (m['label'] ?? '').toString(),
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<ShiftPersonOption>> lookupShiftPeople() async {
+    try {
+      final response = await _dio.get('/hr/employees/lookup');
+      final list = response.data as List<dynamic>? ?? const [];
+      return list.whereType<Map>().map((raw) {
+        final m = Map<String, dynamic>.from(raw);
+        return ShiftPersonOption(
+          id: (m['id'] ?? '').toString(),
+          fullName: (m['full_name'] ?? m['fullName'] ?? '').toString(),
+          position: m['position']?.toString(),
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<CashShiftReport> getShiftReport(String shiftId) async {
+    try {
+      final response = await _dio.get('/cash/shifts/$shiftId/report');
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return CashShiftReport(
+        shiftId: (map['shift_id'] ?? shiftId).toString(),
+        storeName: map['store_name']?.toString(),
+        registerName: map['register_name']?.toString(),
+        cashierName: map['cashier_name']?.toString(),
+        collectorName: map['collector_name']?.toString(),
+        chiefCashierName: map['chief_cashier_name']?.toString(),
+        auditorName: map['auditor_name']?.toString(),
+        openedAt: DateTime.tryParse((map['opened_at'] ?? '').toString()),
+        closedAt: DateTime.tryParse((map['closed_at'] ?? '').toString()),
+        openingBalance: _toDouble(map['opening_balance']),
+        actualBalance: map['actual_balance'] == null
+            ? null
+            : _toDouble(map['actual_balance']),
+        expectedBalance: map['expected_balance'] == null
+            ? null
+            : _toDouble(map['expected_balance']),
+        lines: (map['lines'] as List<dynamic>? ?? const [])
+            .whereType<Map>()
+            .map((raw) {
+              final m = Map<String, dynamic>.from(raw);
+              return ShiftReportLine(
+                key: (m['key'] ?? '').toString(),
+                label: (m['label'] ?? '').toString(),
+                cashless: m['cashless'] == true,
+                fact: m['fact'] == null ? null : _toDouble(m['fact']),
+                system: _toDouble(m['system']),
+                diff: m['diff'] == null ? null : _toDouble(m['diff']),
+              );
+            })
+            .toList(),
+        expenses: (map['expenses'] as List<dynamic>? ?? const [])
+            .whereType<Map>()
+            .map((raw) {
+              final m = Map<String, dynamic>.from(raw);
+              return ShiftReportExpense(
+                name: (m['name'] ?? '').toString(),
+                direction: m['direction']?.toString(),
+                amount: _toDouble(m['amount']),
+              );
+            })
+            .toList(),
+        expensesTotal: _toDouble(map['expenses_total']),
+        note: map['note']?.toString(),
+        isClosed: map['is_closed'] != false,
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<Uint8List> exportShiftReport(
+    String shiftId, {
+    required String format,
+  }) async {
+    try {
+      final ext = format == 'xlsx' ? 'xlsx' : 'pdf';
+      final response = await _dio.get<List<int>>(
+        '/cash/shifts/$shiftId/report.$ext',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? const <int>[]);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 

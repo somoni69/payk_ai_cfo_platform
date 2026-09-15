@@ -9,7 +9,11 @@ Widget _buildBreakEvenTab(
   final textStyles = context.textStyles;
   final languageCubit = context.read<LanguageCubit>();
 
-  if (report == null) {
+  final blocState = context.watch<DashboardBloc>().state;
+  final isLoading =
+      blocState is DashboardLoaded &&
+      blocState.loadingSections.contains(DashboardSection.breakEven);
+  if (report == null || isLoading) {
     return const DashboardSectionShimmer(kind: DashboardShimmerKind.breakEven);
   }
 
@@ -103,13 +107,14 @@ Widget _buildBreakEvenTab(
             ),
             const Divider(),
             _buildReportRow(
+              languageCubit.translate('dashboard_variable_ratio'),
+              '${formatLocalizedNumber(context, report.variableRatio * 100, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+              textStyles.bodySans,
+            ),
+            const Divider(),
+            _buildReportRow(
               languageCubit.translate('dashboard_contribution_margin_ratio'),
-              formatLocalizedNumber(
-                context,
-                1 - report.variableRatio,
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              ),
+              '${formatLocalizedNumber(context, (1 - report.variableRatio) * 100, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
               textStyles.bodySans,
             ),
           ],

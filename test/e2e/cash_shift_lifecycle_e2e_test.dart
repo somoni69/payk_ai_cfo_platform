@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/cash/bloc/cash_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/cash/bloc/cash_event.dart';
@@ -71,7 +73,28 @@ class E2ECashRepository implements CashRepository {
     double endingBalance, {
     String? shiftId,
     String? note,
+    List<ShiftTerminalFact> terminalFacts = const [],
+    int? collectorId,
+    int? chiefCashierId,
+    int? auditorId,
   }) => closeShift(endingBalance, note: note);
+
+  @override
+  Future<List<ShiftClosingLine>> getClosingForm(String shiftId) async =>
+      const [];
+
+  @override
+  Future<List<ShiftPersonOption>> lookupShiftPeople() async => const [];
+
+  @override
+  Future<CashShiftReport> getShiftReport(String shiftId) async =>
+      CashShiftReport(shiftId: shiftId);
+
+  @override
+  Future<Uint8List> exportShiftReport(
+    String shiftId, {
+    required String format,
+  }) async => Uint8List(0);
 
   @override
   Future<List<CashSummary>> getSummary() async {
