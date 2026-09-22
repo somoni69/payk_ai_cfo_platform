@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/network/user_facing_error.dart';
@@ -10,13 +11,13 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
   final TasksRepository _repository;
 
   TasksBloc(this._repository) : super(TasksLoading()) {
-    on<LoadTasks>(_onLoadTasks);
+    on<LoadTasks>(_onLoadTasks, transformer: droppable());
     on<LoadTaskAnalytics>(_onLoadTaskAnalytics);
     on<UpdateTaskStatusRequested>(_onUpdateTaskStatusRequested);
     on<CreateTaskRequested>(_onCreateTaskRequested);
     on<UpdateTaskRequested>(_onUpdateTaskRequested);
     on<DeleteTaskRequested>(_onDeleteTaskRequested);
-    on<LoadMyTasks>(_onLoadMyTasks);
+    on<LoadMyTasks>(_onLoadMyTasks, transformer: droppable());
     on<CreatePersonalTaskRequested>(_onCreatePersonalTask);
     on<UpdatePersonalTaskRequested>(_onUpdatePersonalTask);
     on<DeletePersonalTaskRequested>(_onDeletePersonalTask);
@@ -248,6 +249,7 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
   ) async {
     if (state is! TasksLoaded) return;
     final current = state as TasksLoaded;
+    if (current.myTasksLoaded) return;
     emit(current.copyWith(isMyTasksLoading: true));
 
     try {

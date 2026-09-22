@@ -49,6 +49,15 @@ enum PaymentMethod {
       _ => PaymentMethod.cash,
     };
   }
+
+  /// Новая продажа / операция. ОСМС из ввода убран — остаётся в истории и фильтре.
+  static const List<PaymentMethod> inputValues = [
+    PaymentMethod.cash,
+    PaymentMethod.card,
+    PaymentMethod.alif,
+    PaymentMethod.dushanbeCity,
+    PaymentMethod.mixed,
+  ];
 }
 
 /// Товар для продажи без штрих-кода (`GET /cash/sale-products`).
@@ -348,10 +357,14 @@ class CashShiftReport {
   final double expensesTotal;
   final String? note;
   final bool isClosed;
+  final String? branchName;
+  final double cashShare;
+  final double cardShare;
 
   const CashShiftReport({
     required this.shiftId,
     this.storeName,
+    this.branchName,
     this.registerName,
     this.cashierName,
     this.collectorName,
@@ -367,6 +380,8 @@ class CashShiftReport {
     this.expensesTotal = 0,
     this.note,
     this.isClosed = true,
+    this.cashShare = 0,
+    this.cardShare = 0,
   });
 }
 

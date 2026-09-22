@@ -489,7 +489,7 @@ extension _CashSheetBuilders on _CashViewMixin {
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
-                  children: PaymentMethod.values.map((pm) {
+                  children: PaymentMethod.inputValues.map((pm) {
                     final isSelected = selectedPaymentMethod == pm;
 
                     // Фирменные цвета согласно запросу
@@ -516,7 +516,10 @@ extension _CashSheetBuilders on _CashViewMixin {
                       ),
                       onSelected: (val) {
                         if (val) {
-                          setSheetState(() => selectedPaymentMethod = pm);
+                          setSheetState(() {
+                            selectedPaymentMethod = pm;
+                            selectedBankId = _defaultBankIdFor(pm, banks);
+                          });
                         }
                       },
                     );
@@ -1802,6 +1805,16 @@ class _ShiftReportSheetContentState extends State<_ShiftReportSheetContent> {
           report.registerName ?? language.translate('cash_default_register'),
           style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
         ),
+        if (report.branchName != null && report.branchName!.isNotEmpty)
+          Text(
+            '${language.translate('cash_shift_report_direction')}: ${report.branchName}',
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+        if (report.storeName != null && report.storeName!.isNotEmpty)
+          Text(
+            report.storeName!,
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
         if (report.cashierName != null)
           Text(
             report.cashierName!,
@@ -1844,6 +1857,22 @@ class _ShiftReportSheetContentState extends State<_ShiftReportSheetContent> {
           ),
           const SizedBox(height: 8),
         ],
+        if (report.cashShare > 0 || report.cardShare > 0) ...[
+          moneyRow(
+            language.translate('cash_shift_report_cash_share'),
+            '${formatLocalizedNumber(context, report.cashShare, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+          ),
+          moneyRow(
+            language.translate('cash_shift_report_card_share'),
+            '${formatLocalizedNumber(context, report.cardShare, minimumFractionDigits: 1, maximumFractionDigits: 1)}%',
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (report.note != null && report.note!.trim().isNotEmpty)
+          moneyRow(
+            language.translate('cash_close_shift_note'),
+            report.note!.trim(),
+          ),
         if (report.expenses.isNotEmpty) ...[
           Text(
             language.translate('cash_shift_report_expenses'),
@@ -1851,7 +1880,11 @@ class _ShiftReportSheetContentState extends State<_ShiftReportSheetContent> {
           ),
           for (final exp in report.expenses)
             moneyRow(
-              exp.name,
+              [
+                exp.name,
+                if (exp.direction != null && exp.direction!.isNotEmpty)
+                  exp.direction!,
+              ].join(' · '),
               '${formatLocalizedNumber(context, exp.amount)} TJS',
             ),
         ],

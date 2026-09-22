@@ -84,14 +84,19 @@ class ShellScreen extends StatelessWidget {
                 ..add(const LoadDashboardData()),
         ),
         BlocProvider<CashBloc>(
-          create: (context) => CashBloc(context.read<CashRepository>()),
+          create: (context) =>
+              CashBloc(context.read<CashRepository>())
+                ..add(const LoadCashData()),
         ),
         BlocProvider<TasksBloc>(
-          create: (context) => TasksBloc(context.read<TasksRepository>()),
+          create: (context) => TasksBloc(context.read<TasksRepository>())
+            ..add(const LoadTasks())
+            ..add(const LoadMyTasks()),
         ),
         BlocProvider<WarehouseBloc>(
           create: (context) =>
-              WarehouseBloc(context.read<WarehouseRepository>()),
+              WarehouseBloc(context.read<WarehouseRepository>())
+                ..add(const LoadWarehouseData()),
         ),
       ],
       child: _ShellScaffold(navigationShell: navigationShell),

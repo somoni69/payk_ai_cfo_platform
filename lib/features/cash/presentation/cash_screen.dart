@@ -43,6 +43,23 @@ part 'cash_pos.dart';
 
 enum CashSection { operations, shifts, summary, pos, onec, edits }
 
+/// Банк, который подставить сразу после выбора Alif / Dushanbe City.
+String? _defaultBankIdFor(PaymentMethod method, List<BankAccount> banks) {
+  final pattern = switch (method) {
+    PaymentMethod.alif => RegExp(r'alif|алиф', caseSensitive: false),
+    PaymentMethod.dushanbeCity => RegExp(
+      r'(^|\b)dc(\b|$)|dushanbe|душанбе',
+      caseSensitive: false,
+    ),
+    _ => null,
+  };
+  if (pattern == null) return null;
+  for (final bank in banks) {
+    if (pattern.hasMatch(bank.bankName)) return bank.id;
+  }
+  return null;
+}
+
 String _cashSectionTitle(LanguageCubit language, CashSection section) {
   return language.translate(switch (section) {
     CashSection.operations => 'cash_tab_operations',

@@ -133,73 +133,80 @@ class LedgerBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final sheetHeight = (maxHeight - keyboard).clamp(160.0, maxHeight);
 
-    return Theme(
-      data: LedgerButtons.modalOverlay(context),
-      child: Material(
-        color: colors.surface,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                button: true,
-                label: MaterialLocalizations.of(
-                  context,
-                ).modalBarrierDismissLabel,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.of(context).maybePop(),
-                  child: SizedBox(
-                    height: 28,
-                    width: double.infinity,
-                    child: Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: colors.textSecondary.withValues(alpha: 0.28),
-                          borderRadius: BorderRadius.circular(2),
+    return Padding(
+      padding: EdgeInsets.only(bottom: keyboard),
+      child: Theme(
+        data: LedgerButtons.modalOverlay(context),
+        child: Material(
+          color: colors.surface,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: sheetHeight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  button: true,
+                  label: MaterialLocalizations.of(
+                    context,
+                  ).modalBarrierDismissLabel,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: SizedBox(
+                      height: 20,
+                      width: double.infinity,
+                      child: Center(
+                        child: Container(
+                          width: 36,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: colors.textSecondary.withValues(alpha: 0.28),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  title,
-                  style: textStyles.h2Sans.copyWith(
-                    fontWeight: FontWeight.w500,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    title,
+                    style: textStyles.h2Sans.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const Divider(height: 16),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.fromLTRB(
-                    20,
-                    4,
-                    20,
-                    footer == null ? 20 : 8,
-                  ),
-                  children: [child],
-                ),
-              ),
-              if (footer != null) ...[
                 const Divider(height: 1),
-                BottomActionWrapper(
-                  backgroundColor: colors.surface,
-                  child: footer!,
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      12,
+                      16,
+                      footer == null ? 16 : 8,
+                    ),
+                    child: child,
+                  ),
                 ),
+                if (footer != null) ...[
+                  const Divider(height: 1),
+                  BottomActionWrapper(
+                    backgroundColor: colors.surface,
+                    child: footer!,
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

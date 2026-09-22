@@ -657,6 +657,7 @@ class ApiCashRepository implements CashRepository {
       return CashShiftReport(
         shiftId: (map['shift_id'] ?? shiftId).toString(),
         storeName: map['store_name']?.toString(),
+        branchName: map['branch_name']?.toString(),
         registerName: map['register_name']?.toString(),
         cashierName: map['cashier_name']?.toString(),
         collectorName: map['collector_name']?.toString(),
@@ -697,6 +698,8 @@ class ApiCashRepository implements CashRepository {
             })
             .toList(),
         expensesTotal: _toDouble(map['expenses_total']),
+        cashShare: _toDouble(map['cash_share']),
+        cardShare: _toDouble(map['card_share']),
         note: map['note']?.toString(),
         isClosed: map['is_closed'] != false,
       );

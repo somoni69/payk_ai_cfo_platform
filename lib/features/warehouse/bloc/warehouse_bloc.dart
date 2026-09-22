@@ -1,3 +1,4 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/models/ui_feedback.dart';
@@ -11,7 +12,7 @@ class WarehouseBloc extends Bloc<WarehouseEvent, WarehouseState> {
   final WarehouseRepository _repository;
 
   WarehouseBloc(this._repository) : super(WarehouseLoading()) {
-    on<LoadWarehouseData>(_onLoadWarehouseData);
+    on<LoadWarehouseData>(_onLoadWarehouseData, transformer: droppable());
     on<CreateProductRequested>(_onCreateProductRequested);
     on<CreateMovementRequested>(_onCreateMovementRequested);
     on<UpdateProductRequested>(_onUpdateProductRequested);

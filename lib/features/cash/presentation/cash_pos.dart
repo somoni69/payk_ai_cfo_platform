@@ -719,7 +719,11 @@ class _CashPosViewState extends State<CashPosView> {
       ),
       side: BorderSide(color: isSelected ? selectedColor : colors.border),
       onSelected: (selected) {
-        if (selected) setState(() => _method = method);
+        if (!selected) return;
+        setState(() {
+          _method = method;
+          _bankId = _defaultBankIdFor(method, _banks);
+        });
       },
     );
   }
@@ -730,17 +734,6 @@ class _CashPosViewState extends State<CashPosView> {
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
     final registers = widget.state.registers;
-    final filtered = _scanController.text.trim().isEmpty
-        ? _products.take(12).toList()
-        : _products
-              .where((p) {
-                final q = _scanController.text.trim().toLowerCase();
-                return p.name.toLowerCase().contains(q) ||
-                    (p.sku?.toLowerCase().contains(q) ?? false) ||
-                    (p.barcode?.contains(_scanController.text.trim()) ?? false);
-              })
-              .take(12)
-              .toList();
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24 + kLiquidNavClearance),
@@ -791,7 +784,6 @@ class _CashPosViewState extends State<CashPosView> {
           autofocus: true,
           textInputAction: TextInputAction.search,
           onSubmitted: (_) => _handleScan(),
-          onChanged: (_) => setState(() {}),
           decoration: InputDecoration(
             labelText: language.translate('cash_pos_scan_hint'),
             prefixIcon: Icon(TablerIcons.barcode, color: colors.brand),
@@ -896,53 +888,78 @@ class _CashPosViewState extends State<CashPosView> {
         if (_loadingProducts)
           const CashPosShimmer(catalogOnly: true)
         else
-          ...filtered.map(
-            (p) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Material(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  onTap: () => _pickProduct(p),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: colors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                p.name,
-                                style: textStyles.bodySans.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
+          ListenableBuilder(
+            listenable: _scanController,
+            builder: (context, _) {
+              final query = _scanController.text.trim().toLowerCase();
+              final filtered = query.isEmpty
+                  ? _products.take(12).toList()
+                  : _products
+                        .where((p) {
+                          return p.name.toLowerCase().contains(query) ||
+                              (p.sku?.toLowerCase().contains(query) ?? false) ||
+                              (p.barcode?.toLowerCase().contains(query) ??
+                                  false);
+                        })
+                        .take(12)
+                        .toList();
+              return Column(
+                children: [
+                  for (final p in filtered)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Material(
+                        color: colors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        child: InkWell(
+                          onTap: () => _pickProduct(p),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: colors.border),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        p.name,
+                                        style: textStyles.bodySans.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${formatLocalizedNumber(context, p.price)} • ${formatLocalizedNumber(context, p.stockQty)} ${p.unit}',
+                                        style: textStyles.captionSans.copyWith(
+                                          color: colors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${formatLocalizedNumber(context, p.price)} • ${formatLocalizedNumber(context, p.stockQty)} ${p.unit}',
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
+                                Icon(
+                                  TablerIcons.plus,
+                                  color: colors.brand,
+                                  size: 18,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                        Icon(TablerIcons.plus, color: colors.brand, size: 18),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-            ),
+                ],
+              );
+            },
           ),
         const SizedBox(height: 8),
         Text(
@@ -1043,7 +1060,7 @@ class _CashPosViewState extends State<CashPosView> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final method in PaymentMethod.values)
+            for (final method in PaymentMethod.inputValues)
               _buildPaymentChip(context, method),
           ],
         ),

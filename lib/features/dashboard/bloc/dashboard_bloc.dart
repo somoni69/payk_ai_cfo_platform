@@ -68,6 +68,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
           ),
         );
       }
+      await _warmReports(emit);
     } catch (e) {
       final msg = userFacingError(e, fallback: ErrorKeys.loadFailed);
       if (currentLoaded != null && !event.clearCache) {
@@ -76,6 +77,122 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         emit(DashboardError(msg));
       }
     }
+  }
+
+  Future<T?> _soft<T>(Future<T> future) async {
+    try {
+      return await future;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _monthKey(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    return '${date.year}-$month';
+  }
+
+  /// Подгружает все отчёты панели сразу после обзора, чтобы экраны
+  /// открывались из памяти, а не ждали новый запрос.
+  Future<void> _warmReports(Emitter<DashboardState> emit) async {
+    if (state is! DashboardLoaded) return;
+    final current = state as DashboardLoaded;
+    if (_sectionHasData(current, DashboardSection.pnl) &&
+        _sectionHasData(current, DashboardSection.planFact) &&
+        _sectionHasData(current, DashboardSection.breakEven) &&
+        _sectionHasData(current, DashboardSection.abc) &&
+        _sectionHasData(current, DashboardSection.accountsRates) &&
+        _sectionHasData(current, DashboardSection.clients) &&
+        _sectionHasData(current, DashboardSection.aiInsights) &&
+        _sectionHasData(current, DashboardSection.onec)) {
+      return;
+    }
+
+    final from = current.reportDateFrom;
+    final to = current.reportDateTo;
+    final period = current.planPeriod ?? _monthKey(DateTime.now());
+    final results = await Future.wait<Object?>([
+      _soft(_repository.getPnlReport(dateFrom: from, dateTo: to)),
+      _soft(_repository.getPlanFactReport(period: period)),
+      _soft(_repository.getBreakEvenAnalysis(dateFrom: from, dateTo: to)),
+      _soft(
+        _repository.getAbcAnalysis(
+          AbcDimensions.toApi(AbcDimensions.category),
+          dateFrom: from,
+          dateTo: to,
+        ),
+      ),
+      _soft(_repository.getBankAccounts()),
+      _soft(_repository.getExchangeRates()),
+      _soft(_repository.getClientAnalysis()),
+      _soft(_repository.getAiInsights()),
+      _soft(_repository.getOneCReconcile()),
+      _soft(_repository.getOneCTargets()),
+    ]);
+    if (state is! DashboardLoaded) return;
+    final latest = state as DashboardLoaded;
+
+    final pnl = results[0] as PnlReport?;
+    final planFact = results[1] as PlanFactReport?;
+    final breakEven = results[2] as BreakEvenAnalysis?;
+    final abc = results[3] as AbcAnalysis?;
+    final accounts = results[4] as BankAccountsReport?;
+    final rates = results[5] as ExchangeRatesReport?;
+    final clients = results[6] as ClientAnalysisReport?;
+    final ai = results[7] as AiInsightsReport?;
+    final onec = results[8] as OneCReconcileReport?;
+    final targets = results[9] as List<OneCTarget>?;
+
+    final errors = Map<DashboardSection, String>.from(latest.sectionErrors);
+    void mark(DashboardSection section, bool ok) {
+      if (ok) {
+        errors.remove(section);
+      } else if (!_sectionHasData(latest, section)) {
+        errors[section] = ErrorKeys.loadFailed;
+      }
+    }
+
+    mark(DashboardSection.pnl, pnl != null || latest.pnl != null);
+    mark(
+      DashboardSection.planFact,
+      planFact != null || latest.planFact != null,
+    );
+    mark(
+      DashboardSection.breakEven,
+      breakEven != null || latest.breakEven != null,
+    );
+    mark(DashboardSection.abc, abc != null || latest.abc != null);
+    mark(
+      DashboardSection.accountsRates,
+      (accounts != null && rates != null) ||
+          (latest.bankAccounts != null && latest.rates != null),
+    );
+    mark(DashboardSection.clients, clients != null || latest.clients != null);
+    mark(DashboardSection.aiInsights, ai != null || latest.aiInsights != null);
+    mark(
+      DashboardSection.onec,
+      (onec != null && targets != null) ||
+          (latest.onec != null && latest.onecTargets != null),
+    );
+
+    emit(
+      _applyLoadedCurrency(
+        latest.copyWith(
+          pnl: pnl ?? latest.pnl,
+          planFact: planFact ?? latest.planFact,
+          breakEven: breakEven ?? latest.breakEven,
+          abc: abc ?? latest.abc,
+          bankAccounts: accounts ?? latest.bankAccounts,
+          rates: rates ?? latest.rates,
+          clients: clients ?? latest.clients,
+          aiInsights: ai ?? latest.aiInsights,
+          onec: onec ?? latest.onec,
+          onecTargets: targets ?? latest.onecTargets,
+          planPeriod: latest.planPeriod ?? period,
+          sectionErrors: errors,
+        ),
+      ),
+    );
   }
 
   Future<void> _onLoadDashboardSection(

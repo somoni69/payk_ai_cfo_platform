@@ -77,12 +77,12 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {}
   }
 
-  String _getBiometricLabel(LanguageCubit language) {
+  String _getBiometricTitle(LanguageCubit language) {
     return switch (_biometricKind) {
-      BiometricKind.faceId => 'Face ID',
-      BiometricKind.touchId => 'Touch ID',
-      BiometricKind.fingerprint => language.translate('biometric_fingerprint'),
-      BiometricKind.faceUnlock => language.translate('biometric_face'),
+      BiometricKind.faceId => language.translate('login_with_face_id'),
+      BiometricKind.touchId => language.translate('login_with_touch_id'),
+      BiometricKind.fingerprint => language.translate('login_with_fingerprint'),
+      BiometricKind.faceUnlock => language.translate('login_with_face'),
       _ => language.translate('login_biometric'),
     };
   }
@@ -328,23 +328,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          '${language.translate('login_biometric_action')} ${_getBiometricLabel(language)}',
+                                          _getBiometricTitle(language),
                                           style: textStyles.bodySans.copyWith(
                                             fontWeight: FontWeight.w600,
                                             color: colors.textPrimary,
                                             fontSize: 14,
                                           ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          language.translate(
-                                            'login_security_note',
-                                          ),
-                                          style: textStyles.captionSans
-                                              .copyWith(
-                                                color: colors.textSecondary,
-                                                fontSize: 11,
-                                              ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ),
@@ -376,11 +367,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: colors.textSecondary,
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              language.translate('login_security_note'),
-                              style: textStyles.smallSans.copyWith(
-                                color: colors.textSecondary,
-                                fontSize: 11.5,
+                            Flexible(
+                              child: Text(
+                                language.translate('login_security_note'),
+                                style: textStyles.smallSans.copyWith(
+                                  color: colors.textSecondary,
+                                  fontSize: 11.5,
+                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
                           ],
@@ -516,7 +510,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 18),
 
           Text(
-            '${language.translate('login_tap_biometric')} ${_getBiometricLabel(language)}',
+            _getBiometricTitle(language),
             style: textStyles.bodySans.copyWith(
               fontWeight: FontWeight.w600,
               fontSize: 15,
@@ -526,7 +520,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            language.translate('login_security_note'),
+            language.translate('login_tap_biometric'),
             style: textStyles.captionSans.copyWith(
               color: colors.textSecondary,
               fontSize: 12,
@@ -593,6 +587,14 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             if (_stores.isNotEmpty) ...[
               const SizedBox(height: 16),
+              Text(
+                language.translate('login_store_label'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 6),
               ExpansibleWidget<int?>.selection(
                 cardPadding: EdgeInsets.zero,
                 tilePadding: const EdgeInsets.symmetric(
@@ -617,7 +619,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         (s) =>
                                             s.location != null &&
                                                 s.location!.isNotEmpty
-                                            ? '${s.name} (${s.location})'
+                                            ? '${s.name} · ${s.location}'
                                             : s.name,
                                       )
                                       .firstOrNull ??
@@ -625,16 +627,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: textStyles.bodySans.copyWith(
                           fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
-                ),
-                subtitle: Text(
-                  language.translate('login_store_label'),
-                  style: textStyles.captionSans.copyWith(
-                    color: context.colors.textSecondary,
-                  ),
                 ),
                 items: [null, ..._stores.map((s) => s.id)],
                 selectedValue: _selectedStoreId,

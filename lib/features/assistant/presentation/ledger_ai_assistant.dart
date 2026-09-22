@@ -220,6 +220,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
       child: Material(
         color: colors.surface,
         child: SafeArea(
+          top: false,
           bottom: true,
           child: Padding(
             padding: EdgeInsets.only(bottom: keyboardInset),
@@ -242,7 +243,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                         behavior: HitTestBehavior.opaque,
                         onTap: widget.onClose,
                         child: SizedBox(
-                          height: 28,
+                          height: 20,
                           width: double.infinity,
                           child: Center(
                             child: Container(
@@ -260,10 +261,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(color: colors.border),
@@ -298,6 +296,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                             tooltip: language.translate(
                               'assistant_clear_title',
                             ),
+                            visualDensity: VisualDensity.compact,
                             icon: Icon(
                               TablerIcons.trash,
                               size: 18,
@@ -306,6 +305,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                             onPressed: messages.isEmpty ? null : _clear,
                           ),
                           IconButton(
+                            visualDensity: VisualDensity.compact,
                             icon: Icon(
                               TablerIcons.x,
                               size: 20,
@@ -350,20 +350,50 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                             )
                           : ListView(
                               controller: _scrollController,
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                               children: [
-                                if (messages.isEmpty && !sending)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    child: Text(
-                                      language.translate('assistant_empty'),
-                                      style: textStyles.captionSans.copyWith(
-                                        color: colors.textSecondary,
-                                      ),
+                                if (messages.isEmpty && !sending) ...[
+                                  Text(
+                                    language.translate('assistant_empty'),
+                                    style: textStyles.captionSans.copyWith(
+                                      color: colors.textSecondary,
                                     ),
                                   ),
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final n in const [1, 2, 3])
+                                        ActionChip(
+                                          label: Text(
+                                            _presetQuestion(
+                                              language,
+                                              _module,
+                                              n,
+                                            ),
+                                            style: textStyles.smallSans
+                                                .copyWith(
+                                                  color: colors.textPrimary,
+                                                ),
+                                          ),
+                                          backgroundColor: colors.surfaceNested,
+                                          side: BorderSide(
+                                            color: colors.border,
+                                          ),
+                                          onPressed: sending
+                                              ? null
+                                              : () => _send(
+                                                  _presetQuestion(
+                                                    language,
+                                                    _module,
+                                                    n,
+                                                  ),
+                                                ),
+                                        ),
+                                    ],
+                                  ),
+                                ],
                                 for (final m in messages) _bubble(context, m),
                                 if (sending)
                                   Padding(
@@ -388,32 +418,6 @@ class _AssistantPanelState extends State<_AssistantPanel> {
                               ],
                             ),
                     ),
-                    if (!loadingHistory && messages.isEmpty && !sending)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final n in const [1, 2, 3])
-                              ActionChip(
-                                label: Text(
-                                  _presetQuestion(language, _module, n),
-                                  style: textStyles.smallSans.copyWith(
-                                    color: colors.textPrimary,
-                                  ),
-                                ),
-                                backgroundColor: colors.surfaceNested,
-                                side: BorderSide(color: colors.border),
-                                onPressed: sending
-                                    ? null
-                                    : () => _send(
-                                        _presetQuestion(language, _module, n),
-                                      ),
-                              ),
-                          ],
-                        ),
-                      ),
                     Container(
                       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                       decoration: BoxDecoration(

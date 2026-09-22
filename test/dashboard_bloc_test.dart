@@ -347,7 +347,9 @@ void main() {
       'latest ABC dimension wins when responses finish out of order',
       () async {
         bloc.add(const LoadDashboardData());
-        await bloc.stream.firstWhere((state) => state is DashboardLoaded);
+        await bloc.stream.firstWhere(
+          (state) => state is DashboardLoaded && state.abc != null,
+        );
 
         final categoryGate = Completer<AbcAnalysis>();
         final clientGate = Completer<AbcAnalysis>();
@@ -357,26 +359,17 @@ void main() {
           ..abcRequestsStarted[AbcDimensions.category] = Completer<void>()
           ..abcRequestsStarted[AbcDimensions.counterparty] = Completer<void>();
 
-        bloc.add(const ChangeAbcDimension(AbcDimensions.category));
-        await repository.abcRequestsStarted[AbcDimensions.category]!.future;
         bloc.add(const ChangeAbcDimension(AbcDimensions.counterparty));
         await repository.abcRequestsStarted[AbcDimensions.counterparty]!.future;
+        bloc.add(const ChangeAbcDimension(AbcDimensions.category));
+        await repository.abcRequestsStarted[AbcDimensions.category]!.future;
 
-        final clientLoaded = bloc.stream.firstWhere(
+        final categoryLoaded = bloc.stream.firstWhere(
           (state) =>
               state is DashboardLoaded &&
-              state.abc?.dimension == AbcDimensions.counterparty &&
+              state.abc?.dimension == AbcDimensions.category &&
               !state.loadingSections.contains(DashboardSection.abc),
         );
-        clientGate.complete(
-          const AbcAnalysis(
-            dimension: AbcDimensions.counterparty,
-            rows: [],
-            total: 20,
-          ),
-        );
-        await clientLoaded;
-
         categoryGate.complete(
           const AbcAnalysis(
             dimension: AbcDimensions.category,
@@ -384,11 +377,20 @@ void main() {
             total: 10,
           ),
         );
+        await categoryLoaded;
+
+        clientGate.complete(
+          const AbcAnalysis(
+            dimension: AbcDimensions.counterparty,
+            rows: [],
+            total: 20,
+          ),
+        );
         await Future<void>.delayed(Duration.zero);
 
         final state = bloc.state as DashboardLoaded;
-        expect(state.abc?.dimension, AbcDimensions.counterparty);
-        expect(state.abc?.total, 20);
+        expect(state.abc?.dimension, AbcDimensions.category);
+        expect(state.abc?.total, 10);
         expect(state.loadingSections, isNot(contains(DashboardSection.abc)));
       },
     );

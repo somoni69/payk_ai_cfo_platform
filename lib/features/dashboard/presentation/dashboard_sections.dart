@@ -669,22 +669,24 @@ Widget _buildChart(
               child: Semantics(
                 image: true,
                 label: chartSemanticsLabel,
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: CashFlowChartPainter(
-                    points: points,
-                    greenColor: colors.accentGreen,
-                    redColor: colors.accentRed,
-                    gridColor: colors.border,
-                    surfaceColor: colors.surface,
-                    textStyle: textStyles.smallMono.copyWith(
-                      color: colors.textTooltip,
-                      fontSize: 10,
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    size: Size.infinite,
+                    painter: CashFlowChartPainter(
+                      points: points,
+                      greenColor: colors.accentGreen,
+                      redColor: colors.accentRed,
+                      gridColor: colors.border,
+                      surfaceColor: colors.surface,
+                      textStyle: textStyles.smallMono.copyWith(
+                        color: colors.textTooltip,
+                        fontSize: 10,
+                      ),
+                      thousandSuffix: languageCubit.translate(
+                        'dashboard_thousands_short',
+                      ),
+                      locale: Localizations.localeOf(context),
                     ),
-                    thousandSuffix: languageCubit.translate(
-                      'dashboard_thousands_short',
-                    ),
-                    locale: Localizations.localeOf(context),
                   ),
                 ),
               ),
