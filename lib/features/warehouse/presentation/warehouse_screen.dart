@@ -20,6 +20,7 @@ import '../../../features/warehouse/domain/warehouse_models.dart';
 import '../../../features/warehouse/domain/warehouse_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_barcode_scanner.dart';
+import '../../../presentation/widgets/ledger_scan_capture.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
@@ -2323,7 +2324,15 @@ Future<void> _showAddBatchDialog(BuildContext context) async {
 Future<void> _showAddProductDialog(BuildContext context) async {
   final language = context.read<LanguageCubit>();
   final nameController = TextEditingController();
+  final barcodeController = TextEditingController();
   final skuController = TextEditingController();
+  final nameFocus = FocusNode();
+  final barcodeFocus = FocusNode();
+  final skuFocus = FocusNode();
+  final unitFocus = FocusNode();
+  final priceFocus = FocusNode();
+  final costFocus = FocusNode();
+  final stockFocus = FocusNode();
   final unitController = TextEditingController(
     text: language.translate('warehouse_unit_pieces_short'),
   );
@@ -2339,8 +2348,45 @@ Future<void> _showAddProductDialog(BuildContext context) async {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            LedgerScanCapture(
+              barcode: barcodeController,
+              barcodeFocus: barcodeFocus,
+              name: nameController,
+              nameFocus: nameFocus,
+              anywhere: true,
+              focusBarcodeOnStart: true,
+              fields: [
+                ScanField(barcodeFocus, barcodeController),
+                ScanField(nameFocus, nameController),
+                ScanField(skuFocus, skuController),
+                ScanField(unitFocus, unitController),
+                ScanField(priceFocus, priceController),
+                ScanField(costFocus, costController),
+                ScanField(stockFocus, stockController),
+              ],
+            ),
+            TextField(
+              controller: barcodeController,
+              focusNode: barcodeFocus,
+              textInputAction: TextInputAction.next,
+              decoration: InputDecoration(
+                labelText: language.translate('warehouse_barcode_label'),
+                suffixIcon: IconButton(
+                  tooltip: language.translate('scan_barcode_title'),
+                  onPressed: () async {
+                    final code = await LedgerBarcodeScanner.open(context);
+                    if (code == null || code.isEmpty) return;
+                    barcodeController.text = code;
+                    nameFocus.requestFocus();
+                  },
+                  icon: Icon(TablerIcons.barcode, color: context.colors.brand),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: nameController,
+              focusNode: nameFocus,
               decoration: InputDecoration(
                 labelText: language.translate('warehouse_product_name'),
               ),
@@ -2348,6 +2394,7 @@ Future<void> _showAddProductDialog(BuildContext context) async {
             const SizedBox(height: 12),
             TextField(
               controller: skuController,
+              focusNode: skuFocus,
               decoration: InputDecoration(
                 labelText: language.translate('warehouse_product_sku_label'),
               ),
@@ -2358,6 +2405,7 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                 Expanded(
                   child: TextField(
                     controller: unitController,
+                    focusNode: unitFocus,
                     decoration: InputDecoration(
                       labelText: language.translate('warehouse_unit_label'),
                     ),
@@ -2367,6 +2415,7 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                 Expanded(
                   child: TextField(
                     controller: priceController,
+                    focusNode: priceFocus,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
@@ -2380,6 +2429,7 @@ Future<void> _showAddProductDialog(BuildContext context) async {
             const SizedBox(height: 12),
             TextField(
               controller: costController,
+              focusNode: costFocus,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -2391,6 +2441,7 @@ Future<void> _showAddProductDialog(BuildContext context) async {
             const SizedBox(height: 12),
             TextField(
               controller: stockController,
+              focusNode: stockFocus,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -2419,6 +2470,9 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                   id: '',
                   name: name,
                   sku: skuController.text.trim(),
+                  barcode: barcodeController.text.trim().isEmpty
+                      ? null
+                      : barcodeController.text.trim(),
                   unit: unitController.text.trim(),
                   price: price,
                   costPrice: cost,
@@ -2434,11 +2488,19 @@ Future<void> _showAddProductDialog(BuildContext context) async {
     );
   } finally {
     nameController.dispose();
+    barcodeController.dispose();
     skuController.dispose();
     unitController.dispose();
     priceController.dispose();
     costController.dispose();
     stockController.dispose();
+    nameFocus.dispose();
+    barcodeFocus.dispose();
+    skuFocus.dispose();
+    unitFocus.dispose();
+    priceFocus.dispose();
+    costFocus.dispose();
+    stockFocus.dispose();
   }
 }
 
@@ -2455,7 +2517,10 @@ Future<void> _showEditProductSheet(
       authState.role.canManage(AppCapability.warehouse);
 
   final nameController = TextEditingController(text: product.name);
+  final barcodeController = TextEditingController(text: product.barcode ?? '');
   final skuController = TextEditingController(text: product.sku ?? '');
+  final nameFocus = FocusNode();
+  final barcodeFocus = FocusNode();
   final unitController = TextEditingController(text: product.unit);
   final priceController = TextEditingController(
     text: formatLocalizedNumber(context, product.price),
@@ -2474,8 +2539,30 @@ Future<void> _showEditProductSheet(
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            LedgerScanCapture(
+              barcode: barcodeController,
+              barcodeFocus: barcodeFocus,
+              name: nameController,
+              nameFocus: nameFocus,
+              anywhere: false,
+              fields: [
+                ScanField(barcodeFocus, barcodeController),
+                ScanField(nameFocus, nameController),
+              ],
+            ),
+            TextField(
+              controller: barcodeController,
+              focusNode: barcodeFocus,
+              textInputAction: TextInputAction.next,
+              style: textStyles.bodySans,
+              decoration: InputDecoration(
+                labelText: language.translate('warehouse_barcode_label'),
+              ),
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: nameController,
+              focusNode: nameFocus,
               style: textStyles.bodySans,
               decoration: InputDecoration(
                 labelText: language.translate('warehouse_product_name'),
@@ -2610,6 +2697,10 @@ Future<void> _showEditProductSheet(
                   sku: skuController.text.trim().isEmpty
                       ? null
                       : skuController.text.trim(),
+                  barcode: barcodeController.text.trim().isEmpty
+                      ? null
+                      : barcodeController.text.trim(),
+                  clearBarcode: barcodeController.text.trim().isEmpty,
                   unit: unitController.text.trim().isEmpty
                       ? product.unit
                       : unitController.text.trim(),
@@ -2629,10 +2720,13 @@ Future<void> _showEditProductSheet(
     );
   } finally {
     nameController.dispose();
+    barcodeController.dispose();
     skuController.dispose();
     unitController.dispose();
     priceController.dispose();
     costController.dispose();
+    nameFocus.dispose();
+    barcodeFocus.dispose();
   }
 }
 

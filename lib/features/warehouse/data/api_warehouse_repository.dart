@@ -101,6 +101,8 @@ class ApiWarehouseRepository implements WarehouseRepository {
       final payload = {
         'name': product.name,
         'sku': product.sku,
+        if (product.barcode != null && product.barcode!.isNotEmpty)
+          'barcode': product.barcode,
         'unit': product.unit,
         'price': product.price,
         if (product.costPrice != null) 'cost_price': product.costPrice,
@@ -117,6 +119,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
         id: (map['id'] ?? '').toString(),
         name: map['name'] ?? '',
         sku: map['sku']?.toString(),
+        barcode: map['barcode']?.toString(),
         unit: map['unit'] ?? 'шт',
         price: _toDouble(map['price']),
         costPrice: map['cost_price'] == null && map['costPrice'] == null
@@ -138,6 +141,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         data: {
           'name': product.name,
           'sku': product.sku,
+          'barcode': (product.barcode == null || product.barcode!.isEmpty)
+              ? null
+              : product.barcode,
           'unit': product.unit,
           'price': product.price,
           if (product.costPrice != null) 'cost_price': product.costPrice,
@@ -149,6 +155,7 @@ class ApiWarehouseRepository implements WarehouseRepository {
         id: (map['id'] ?? product.id).toString(),
         name: map['name'] ?? product.name,
         sku: map['sku']?.toString(),
+        barcode: map['barcode']?.toString() ?? product.barcode,
         unit: map['unit'] ?? product.unit,
         price: _toDouble(map['price']),
         costPrice: map['cost_price'] == null && map['costPrice'] == null

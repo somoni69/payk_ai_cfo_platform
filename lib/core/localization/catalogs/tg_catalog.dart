@@ -1019,6 +1019,7 @@ const Map<String, String> kTajikCatalog = {
   'warehouse_unit_pieces_short': 'дона',
   'warehouse_product_name': 'Номи мол',
   'warehouse_product_sku_label': 'SKU (рамзи мол)',
+  'warehouse_barcode_label': 'Штрих-код',
   'warehouse_unit_label': 'Воҳиди ченак',
   'warehouse_price_label': 'Нарх (TJS)',
   'warehouse_initial_stock': 'Бақияи ибтидоӣ',

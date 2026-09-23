@@ -1020,6 +1020,7 @@ const Map<String, String> kRussianCatalog = {
   'warehouse_unit_pieces_short': 'шт',
   'warehouse_product_name': 'Название товара',
   'warehouse_product_sku_label': 'SKU (Артикул)',
+  'warehouse_barcode_label': 'Штрих-код',
   'warehouse_unit_label': 'Ед. измерения',
   'warehouse_price_label': 'Цена (TJS)',
   'warehouse_initial_stock': 'Начальный остаток',
