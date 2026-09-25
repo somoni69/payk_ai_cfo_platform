@@ -5,6 +5,13 @@ abstract class WarehouseRepository {
   /// Получить каталог товаров с остатками
   Future<List<WarehouseProduct>> getProducts();
 
+  Future<List<ProductCategory>> getCategories();
+
+  Future<ProductCategory> createCategory(String name);
+
+  /// Загрузка фото. Возвращает относительный путь `files/…`.
+  Future<String> uploadImage(String filePath, String filename);
+
   /// Получить историю движений товаров (приход/расход)
   Future<List<WarehouseMovement>> getMovements();
 

@@ -9,6 +9,7 @@ import '../../../core/theme/theme_extensions.dart';
 import '../../audit/presentation/entity_history_sheet.dart';
 import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
+import 'bank_logo.dart';
 
 /// Modern fintech transaction card with visual category icon and clean detail drawer.
 class CashTransactionTile extends StatefulWidget {
@@ -165,13 +166,27 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
                             ),
                             const SizedBox(width: 6),
                             Expanded(
-                              child: Text(
-                                '${language.translateMessage(tx.category)} • ${language.translate(tx.paymentMethod.labelKey)}',
-                                style: textStyles.captionSans.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: Row(
+                                children: [
+                                  if (paymentLogoKey(
+                                        tx.paymentMethod,
+                                        bankName: tx.bankName,
+                                      )
+                                      case final logo?) ...[
+                                    BankLogo(logo: logo, height: 14),
+                                    const SizedBox(width: 4),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      '${language.translateMessage(tx.category)} • ${language.translate(tx.paymentMethod.labelKey)}',
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -224,6 +239,10 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
                       _DetailRow(
                         label: language.translate('cash_detail_payment'),
                         value: language.translate(tx.paymentMethod.labelKey),
+                        logo: paymentLogoKey(
+                          tx.paymentMethod,
+                          bankName: tx.bankName,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       _DetailRow(
@@ -254,6 +273,7 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
                         _DetailRow(
                           label: language.translate('cash_bank'),
                           value: tx.bankName!,
+                          logo: bankLogoKeyForName(tx.bankName),
                         ),
                       ],
                       if (tx.description != null &&
@@ -326,15 +346,20 @@ class _CashTransactionTileState extends State<CashTransactionTile> {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value});
+  const _DetailRow({required this.label, required this.value, this.logo});
 
   final String label;
   final String value;
+  final BankLogoKey? logo;
 
   @override
   Widget build(BuildContext context) {
     final textStyles = context.textStyles;
     final colors = context.colors;
+    final valueStyle = textStyles.captionSans.copyWith(
+      color: colors.textPrimary,
+      fontWeight: FontWeight.w500,
+    );
     return Row(
       children: [
         Expanded(
@@ -344,13 +369,22 @@ class _DetailRow extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: textStyles.captionSans.copyWith(
-              color: colors.textPrimary,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (logo != null) ...[
+                BankLogo(logo: logo!, height: 14),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  value,
+                  textAlign: TextAlign.end,
+                  overflow: TextOverflow.ellipsis,
+                  style: valueStyle,
+                ),
+              ),
+            ],
           ),
         ),
       ],

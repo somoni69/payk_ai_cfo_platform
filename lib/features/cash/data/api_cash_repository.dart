@@ -337,6 +337,7 @@ class ApiCashRepository implements CashRepository {
           unit: (map['unit'] ?? '').toString(),
           price: _toDouble(map['price']),
           stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+          imageUrl: map['image_url']?.toString(),
         );
       }).toList();
     } catch (e) {
@@ -365,6 +366,7 @@ class ApiCashRepository implements CashRepository {
         unit: (map['unit'] ?? '').toString(),
         price: _toDouble(map['price']),
         stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
+        imageUrl: map['image_url']?.toString(),
       );
     } on DioException catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));

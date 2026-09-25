@@ -351,17 +351,39 @@ extension _CashTabBuilders on _CashViewMixin {
             ),
             const SizedBox(height: 8),
             ExpansibleWidget<String>.selection(
-              title: Text(
-                _selectedPaymentMethod == 'all'
-                    ? language.translate('cash_filter_all_payment_methods')
-                    : language.translate('cash_pm_$_selectedPaymentMethod'),
-                style: textStyles.bodySans,
-              ),
+              title: () {
+                final style = textStyles.bodySans;
+                if (_selectedPaymentMethod == 'all') {
+                  return Text(
+                    language.translate('cash_filter_all_payment_methods'),
+                    style: style,
+                  );
+                }
+                final label = language.translate(
+                  'cash_pm_$_selectedPaymentMethod',
+                );
+                final leading = paymentMethodLeading(_selectedPaymentMethod);
+                final text = Text(
+                  label,
+                  style: style,
+                  overflow: TextOverflow.ellipsis,
+                );
+                if (leading == null) return text;
+                return Row(
+                  children: [
+                    leading,
+                    const SizedBox(width: 8),
+                    Flexible(child: text),
+                  ],
+                );
+              }(),
               items: ['all', ...PaymentMethod.values.map((pm) => pm.name)],
               selectedValue: _selectedPaymentMethod,
               itemLabelBuilder: (item) => item == 'all'
                   ? language.translate('cash_filter_all_payment_methods')
                   : language.translate('cash_pm_$item'),
+              itemLeadingBuilder: (item) =>
+                  item == 'all' ? null : paymentMethodLeading(item),
               onSelected: (val) {
                 setSheetState(() => _selectedPaymentMethod = val);
                 _rebuild();

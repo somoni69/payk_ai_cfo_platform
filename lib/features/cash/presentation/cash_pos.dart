@@ -95,7 +95,7 @@ class _CashPosViewState extends State<CashPosView> {
     try {
       final list = await context.read<FinOpsRepository>().getBankAccounts();
       if (!mounted) return;
-      setState(() => _banks = list);
+      setState(() => _banks = list.where((b) => b.isActive).toList());
     } catch (_) {}
   }
 
@@ -707,24 +707,28 @@ class _CashPosViewState extends State<CashPosView> {
       _ => colors.brand,
     };
 
-    return ChoiceChip(
-      label: Text(language.translate(method.labelKey)),
-      selected: isSelected,
-      selectedColor: selectedColor,
-      backgroundColor: colors.surface,
-      checkmarkColor: Colors.white,
-      labelStyle: textStyles.captionSans.copyWith(
-        color: isSelected ? Colors.white : colors.textPrimary,
-        fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+    final label = language.translate(method.labelKey);
+    return Tooltip(
+      message: label,
+      child: ChoiceChip(
+        label: paymentChipLabel(label, method),
+        selected: isSelected,
+        selectedColor: selectedColor,
+        backgroundColor: colors.surface,
+        checkmarkColor: Colors.white,
+        labelStyle: textStyles.captionSans.copyWith(
+          color: isSelected ? Colors.white : colors.textPrimary,
+          fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+        ),
+        side: BorderSide(color: isSelected ? selectedColor : colors.border),
+        onSelected: (selected) {
+          if (!selected) return;
+          setState(() {
+            _method = method;
+            _bankId = _defaultBankIdFor(method, _banks);
+          });
+        },
       ),
-      side: BorderSide(color: isSelected ? selectedColor : colors.border),
-      onSelected: (selected) {
-        if (!selected) return;
-        setState(() {
-          _method = method;
-          _bankId = _defaultBankIdFor(method, _banks);
-        });
-      },
     );
   }
 
@@ -861,6 +865,21 @@ class _CashPosViewState extends State<CashPosView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (p.imageUrl != null && p.imageUrl!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  ApiClient().mediaUrl(p.imageUrl),
+                                  height: 64,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      const SizedBox.shrink(),
+                                ),
+                              ),
+                            ),
                           Text(
                             p.name,
                             maxLines: 2,
@@ -985,6 +1004,20 @@ class _CashPosViewState extends State<CashPosView> {
                 for (final line in _lines) ...[
                   Row(
                     children: [
+                      if (line.product.imageUrl case final url?
+                          when url.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            ApiClient().mediaUrl(url),
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: Text(
                           line.product.name,
@@ -1103,18 +1136,21 @@ class _CashPosViewState extends State<CashPosView> {
               horizontal: 12,
               vertical: 4,
             ),
-            title: Text(
-              _bankId == null
-                  ? language.translate('cash_bank_optional')
-                  : _banks
+            title: _bankId == null
+                ? Text(
+                    language.translate('cash_bank_optional'),
+                    style: textStyles.bodySans,
+                  )
+                : BankNameLabel(
+                    name: _banks
                         .firstWhere(
                           (b) => b.id == _bankId,
                           orElse: () =>
                               BankAccount(id: _bankId!, bankName: _bankId!),
                         )
                         .bankName,
-              style: textStyles.bodySans,
-            ),
+                    style: textStyles.bodySans,
+                  ),
             items: _banks.map((b) => b.id).toList(),
             selectedValue: _bankId,
             itemLabelBuilder: (id) => _banks
@@ -1123,6 +1159,17 @@ class _CashPosViewState extends State<CashPosView> {
                   orElse: () => BankAccount(id: id, bankName: id),
                 )
                 .bankName,
+            itemLeadingBuilder: (id) {
+              final name = _banks
+                  .firstWhere(
+                    (b) => b.id == id,
+                    orElse: () => BankAccount(id: id, bankName: id),
+                  )
+                  .bankName;
+              final logo = bankLogoKeyForName(name);
+              if (logo == null) return null;
+              return BankLogo(logo: logo, height: 18);
+            },
             onSelected: (id) => setState(() => _bankId = id),
           ),
         ],

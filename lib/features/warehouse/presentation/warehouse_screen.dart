@@ -1,10 +1,12 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -943,6 +945,47 @@ class _WarehouseProductsTab extends StatefulWidget {
 
 class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
   final _search = TextEditingController();
+  var _categories = <ProductCategory>[];
+  var _categoryFilter = '';
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadCategories();
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _WarehouseProductsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state.products != widget.state.products) {
+      _loadCategories();
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    List<ProductCategory> list;
+    try {
+      list = await context.read<WarehouseRepository>().getCategories();
+    } catch (_) {
+      final seen = <String>{};
+      list = [
+        for (final product in widget.state.products)
+          if (product.categoryId != null &&
+              product.categoryId!.isNotEmpty &&
+              product.categoryName != null &&
+              product.categoryName!.isNotEmpty &&
+              seen.add(product.categoryId!))
+            ProductCategory(
+              id: product.categoryId!,
+              name: product.categoryName!,
+            ),
+      ];
+    }
+    if (!mounted) return;
+    setState(() => _categories = list);
+  }
 
   @override
   void dispose() {
@@ -950,14 +993,42 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
     super.dispose();
   }
 
+  bool _matchesCategory(WarehouseProduct product) {
+    return switch (_categoryFilter) {
+      '' => true,
+      'none' => product.categoryId == null || product.categoryId!.isEmpty,
+      _ => product.categoryId == _categoryFilter,
+    };
+  }
+
   List<WarehouseProduct> get _filtered {
     final q = _search.text.trim().toLowerCase();
-    if (q.isEmpty) return widget.state.products;
     return widget.state.products.where((p) {
-      return p.name.toLowerCase().contains(q) ||
+      final matchesQuery =
+          q.isEmpty ||
+          p.name.toLowerCase().contains(q) ||
           (p.sku?.toLowerCase().contains(q) ?? false) ||
           (p.barcode?.toLowerCase().contains(q) ?? false);
+      return matchesQuery && _matchesCategory(p);
     }).toList();
+  }
+
+  String _categoryFilterLabel(LanguageCubit language) {
+    return switch (_categoryFilter) {
+      '' => language.translate('warehouse_filter_all_categories'),
+      'none' => language.translate('warehouse_filter_no_category'),
+      _ =>
+        _categories
+                .where((c) => c.id == _categoryFilter)
+                .map((c) => c.name)
+                .firstOrNull ??
+            widget.state.products
+                .where((p) => p.categoryId == _categoryFilter)
+                .map((p) => p.categoryName)
+                .whereType<String>()
+                .firstOrNull ??
+            language.translate('warehouse_filter_all_categories'),
+    };
   }
 
   @override
@@ -970,7 +1041,10 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
     final filtered = _filtered;
 
     return RefreshIndicator(
-      onRefresh: () => _refreshWarehouse(context),
+      onRefresh: () async {
+        await _refreshWarehouse(context);
+        await _loadCategories();
+      },
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(
@@ -984,26 +1058,74 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
             SizedBox(height: index == 0 ? 16 : 12),
         itemBuilder: (context, index) {
           if (index == 1) {
-            return TextField(
-              controller: _search,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: localeCubit.translate('warehouse_search_hint'),
-                prefixIcon: Icon(
-                  TablerIcons.search,
-                  size: 18,
-                  color: colors.textSecondary,
+            final showCategoryFilter =
+                _categories.isNotEmpty ||
+                state.products.any(
+                  (p) => p.categoryId != null && p.categoryId!.isNotEmpty,
+                );
+            final categoryItems = <String>[
+              '',
+              if (state.products.any(
+                (p) => p.categoryId == null || p.categoryId!.isEmpty,
+              ))
+                'none',
+              ..._categories.map((c) => c.id),
+            ];
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _search,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: localeCubit.translate('warehouse_search_hint'),
+                    prefixIcon: Icon(
+                      TablerIcons.search,
+                      size: 18,
+                      color: colors.textSecondary,
+                    ),
+                    suffixIcon: IconButton(
+                      tooltip: localeCubit.translate('scan_barcode_title'),
+                      onPressed: () async {
+                        final code = await LedgerBarcodeScanner.open(context);
+                        if (code == null || !mounted) return;
+                        setState(() => _search.text = code);
+                      },
+                      icon: Icon(TablerIcons.camera, color: colors.brand),
+                    ),
+                  ),
                 ),
-                suffixIcon: IconButton(
-                  tooltip: localeCubit.translate('scan_barcode_title'),
-                  onPressed: () async {
-                    final code = await LedgerBarcodeScanner.open(context);
-                    if (code == null || !mounted) return;
-                    setState(() => _search.text = code);
-                  },
-                  icon: Icon(TablerIcons.camera, color: colors.brand),
-                ),
-              ),
+                if (showCategoryFilter) ...[
+                  const SizedBox(height: 8),
+                  ExpansibleWidget<String>.selection(
+                    cardPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
+                    title: Text(
+                      _categoryFilterLabel(localeCubit),
+                      style: textStyles.bodySans,
+                    ),
+                    items: categoryItems,
+                    selectedValue: _categoryFilter,
+                    itemLabelBuilder: (id) => switch (id) {
+                      '' => localeCubit.translate(
+                        'warehouse_filter_all_categories',
+                      ),
+                      'none' => localeCubit.translate(
+                        'warehouse_filter_no_category',
+                      ),
+                      _ =>
+                        _categories
+                                .where((c) => c.id == id)
+                                .map((c) => c.name)
+                                .firstOrNull ??
+                            id,
+                    },
+                    onSelected: (id) => setState(() => _categoryFilter = id),
+                  ),
+                ],
+              ],
             );
           }
           if (index == 0) {
@@ -1114,7 +1236,9 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
               auth.role.canWrite(AppCapability.warehouse);
 
           final isOutOfStock = product.stockQty <= 0;
-          final isLowStock = !isOutOfStock && product.stockQty <= 5;
+          final isLowStock = product.minStock != null
+              ? product.stockQty <= product.minStock!
+              : !isOutOfStock && product.stockQty <= 5;
 
           final stockStatusColor = isOutOfStock
               ? colors.accentRed
@@ -1136,21 +1260,7 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
                 ),
                 child: Row(
                   children: [
-                    // Product icon container
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: colors.brand.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        TablerIcons.box,
-                        size: 22,
-                        color: colors.brand,
-                      ),
-                    ),
+                    _ProductThumb(product: product),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -1165,6 +1275,19 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
+                          if (product.categoryName != null &&
+                              product.categoryName!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              product.categoryName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: textStyles.captionSans.copyWith(
+                                color: colors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Row(
                             children: [
@@ -1262,6 +1385,19 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
                             ),
                           ),
                         ),
+                        if (isLowStock) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            localeCubit.translate('warehouse_low_stock'),
+                            style: textStyles.captionSans.copyWith(
+                              color: isOutOfStock
+                                  ? colors.accentRed
+                                  : colors.accentAmber,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         Text(
                           localeCubit.translate(
@@ -2333,14 +2469,25 @@ Future<void> _showAddProductDialog(BuildContext context) async {
   final priceFocus = FocusNode();
   final costFocus = FocusNode();
   final stockFocus = FocusNode();
+  final minStockFocus = FocusNode();
+  final categoryNameFocus = FocusNode();
   final unitController = TextEditingController(
     text: language.translate('warehouse_unit_pieces_short'),
   );
   final priceController = TextEditingController();
   final costController = TextEditingController();
   final stockController = TextEditingController(text: '0');
+  final minStockController = TextEditingController();
+  final categoryNameController = TextEditingController();
+  var categories = <ProductCategory>[];
+  String? categoryId;
+  String? imageUrl;
 
   try {
+    try {
+      categories = await context.read<WarehouseRepository>().getCategories();
+    } catch (_) {}
+    if (!context.mounted) return;
     await LedgerBottomSheet.show(
       context: context,
       title: language.translate('warehouse_add_product_title'),
@@ -2363,6 +2510,8 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                 ScanField(priceFocus, priceController),
                 ScanField(costFocus, costController),
                 ScanField(stockFocus, stockController),
+                ScanField(minStockFocus, minStockController),
+                ScanField(categoryNameFocus, categoryNameController),
               ],
             ),
             TextField(
@@ -2390,6 +2539,17 @@ Future<void> _showAddProductDialog(BuildContext context) async {
               decoration: InputDecoration(
                 labelText: language.translate('warehouse_product_name'),
               ),
+            ),
+            const SizedBox(height: 12),
+            _CategoryEditor(
+              categories: categories,
+              categoryId: categoryId,
+              nameController: categoryNameController,
+              nameFocus: categoryNameFocus,
+              onChanged: (next, id) => setSheetState(() {
+                categories = next;
+                categoryId = id;
+              }),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -2449,6 +2609,13 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                 labelText: language.translate('warehouse_initial_stock'),
               ),
             ),
+            const SizedBox(height: 12),
+            _MinStockPhoto(
+              minStock: minStockController,
+              minStockFocus: minStockFocus,
+              imageUrl: imageUrl,
+              onImage: (url) => setSheetState(() => imageUrl = url),
+            ),
           ],
         );
       },
@@ -2463,6 +2630,10 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                 parseLocalizedNumber(context, stockController.text) ?? 0.0;
 
             if (name.isEmpty) return;
+            final minStock = _readOptionalMinStock(context, minStockController);
+            if (minStock == null && minStockController.text.trim().isNotEmpty) {
+              return;
+            }
 
             context.read<WarehouseBloc>().add(
               CreateProductRequested(
@@ -2473,6 +2644,13 @@ Future<void> _showAddProductDialog(BuildContext context) async {
                   barcode: barcodeController.text.trim().isEmpty
                       ? null
                       : barcodeController.text.trim(),
+                  categoryId: categoryId,
+                  categoryName: categories
+                      .where((c) => c.id == categoryId)
+                      .map((c) => c.name)
+                      .firstOrNull,
+                  minStock: minStock,
+                  imageUrl: imageUrl,
                   unit: unitController.text.trim(),
                   price: price,
                   costPrice: cost,
@@ -2494,6 +2672,8 @@ Future<void> _showAddProductDialog(BuildContext context) async {
     priceController.dispose();
     costController.dispose();
     stockController.dispose();
+    minStockController.dispose();
+    categoryNameController.dispose();
     nameFocus.dispose();
     barcodeFocus.dispose();
     skuFocus.dispose();
@@ -2501,6 +2681,8 @@ Future<void> _showAddProductDialog(BuildContext context) async {
     priceFocus.dispose();
     costFocus.dispose();
     stockFocus.dispose();
+    minStockFocus.dispose();
+    categoryNameFocus.dispose();
   }
 }
 
@@ -2530,8 +2712,23 @@ Future<void> _showEditProductSheet(
         ? ''
         : formatLocalizedNumber(context, product.costPrice!),
   );
+  final minStockController = TextEditingController(
+    text: product.minStock == null
+        ? ''
+        : formatLocalizedNumber(context, product.minStock!),
+  );
+  final categoryNameController = TextEditingController();
+  final minStockFocus = FocusNode();
+  final categoryNameFocus = FocusNode();
+  var categories = <ProductCategory>[];
+  var categoryId = product.categoryId;
+  var imageUrl = product.imageUrl;
 
   try {
+    try {
+      categories = await context.read<WarehouseRepository>().getCategories();
+    } catch (_) {}
+    if (!context.mounted) return;
     await LedgerBottomSheet.show(
       context: context,
       title: language.translate('warehouse_edit_product_title'),
@@ -2548,6 +2745,8 @@ Future<void> _showEditProductSheet(
               fields: [
                 ScanField(barcodeFocus, barcodeController),
                 ScanField(nameFocus, nameController),
+                ScanField(minStockFocus, minStockController),
+                ScanField(categoryNameFocus, categoryNameController),
               ],
             ),
             TextField(
@@ -2557,6 +2756,16 @@ Future<void> _showEditProductSheet(
               style: textStyles.bodySans,
               decoration: InputDecoration(
                 labelText: language.translate('warehouse_barcode_label'),
+                suffixIcon: IconButton(
+                  tooltip: language.translate('scan_barcode_title'),
+                  onPressed: () async {
+                    final code = await LedgerBarcodeScanner.open(context);
+                    if (code == null || code.isEmpty) return;
+                    barcodeController.text = code;
+                    nameFocus.requestFocus();
+                  },
+                  icon: Icon(TablerIcons.barcode, color: context.colors.brand),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -2567,6 +2776,18 @@ Future<void> _showEditProductSheet(
               decoration: InputDecoration(
                 labelText: language.translate('warehouse_product_name'),
               ),
+            ),
+            const SizedBox(height: 12),
+            _CategoryEditor(
+              categories: categories,
+              categoryId: categoryId,
+              selectedName: product.categoryName,
+              nameController: categoryNameController,
+              nameFocus: categoryNameFocus,
+              onChanged: (next, id) => setSheetState(() {
+                categories = next;
+                categoryId = id;
+              }),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -2606,6 +2827,13 @@ Future<void> _showEditProductSheet(
                 labelText: language.translate('warehouse_cost_price_label'),
                 hintText: language.translate('warehouse_cost_price_hint'),
               ),
+            ),
+            const SizedBox(height: 12),
+            _MinStockPhoto(
+              minStock: minStockController,
+              minStockFocus: minStockFocus,
+              imageUrl: imageUrl,
+              onImage: (url) => setSheetState(() => imageUrl = url),
             ),
             const SizedBox(height: 20),
             if (canManage &&
@@ -2690,6 +2918,17 @@ Future<void> _showEditProductSheet(
                   priceController.text.trim(),
                 ) ??
                 product.price;
+            final minStock = _readOptionalMinStock(
+              sheetContext,
+              minStockController,
+            );
+            if (minStock == null && minStockController.text.trim().isNotEmpty) {
+              return;
+            }
+            final categoryName = categories
+                .where((c) => c.id == categoryId)
+                .map((c) => c.name)
+                .firstOrNull;
             context.read<WarehouseBloc>().add(
               UpdateProductRequested(
                 product.copyWith(
@@ -2701,6 +2940,13 @@ Future<void> _showEditProductSheet(
                       ? null
                       : barcodeController.text.trim(),
                   clearBarcode: barcodeController.text.trim().isEmpty,
+                  categoryId: categoryId,
+                  categoryName: categoryName ?? product.categoryName,
+                  clearCategory: categoryId == null,
+                  minStock: minStock,
+                  clearMinStock: minStock == null,
+                  imageUrl: imageUrl,
+                  clearImage: imageUrl == null || imageUrl!.isEmpty,
                   unit: unitController.text.trim().isEmpty
                       ? product.unit
                       : unitController.text.trim(),
@@ -2727,6 +2973,10 @@ Future<void> _showEditProductSheet(
     costController.dispose();
     nameFocus.dispose();
     barcodeFocus.dispose();
+    minStockController.dispose();
+    categoryNameController.dispose();
+    minStockFocus.dispose();
+    categoryNameFocus.dispose();
   }
 }
 
@@ -3298,4 +3548,299 @@ void _showPrintLabelsBottomSheet(
       );
     },
   );
+}
+
+double? _readOptionalMinStock(
+  BuildContext context,
+  TextEditingController controller,
+) {
+  final raw = controller.text.trim();
+  if (raw.isEmpty) return null;
+  final value = parseLocalizedNumber(context, raw);
+  if (value == null || value < 0) return null;
+  return value;
+}
+
+class _ProductThumb extends StatelessWidget {
+  const _ProductThumb({required this.product});
+
+  final WarehouseProduct product;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    final fallback = Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: colors.brand.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      alignment: Alignment.center,
+      child: Icon(TablerIcons.box, size: 22, color: colors.brand),
+    );
+    final url = product.imageUrl;
+    if (url == null || url.isEmpty) return fallback;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(10),
+      child: Image.network(
+        ApiClient().mediaUrl(url),
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => fallback,
+      ),
+    );
+  }
+}
+
+class _CategoryEditor extends StatefulWidget {
+  const _CategoryEditor({
+    required this.categories,
+    required this.categoryId,
+    required this.nameController,
+    required this.nameFocus,
+    required this.onChanged,
+    this.selectedName,
+  });
+
+  final List<ProductCategory> categories;
+  final String? categoryId;
+  final String? selectedName;
+  final TextEditingController nameController;
+  final FocusNode nameFocus;
+  final void Function(List<ProductCategory> categories, String? categoryId)
+  onChanged;
+
+  @override
+  State<_CategoryEditor> createState() => _CategoryEditorState();
+}
+
+class _CategoryEditorState extends State<_CategoryEditor> {
+  var _busy = false;
+
+  Future<void> _add() async {
+    final raw = widget.nameController.text.trim();
+    if (raw.isEmpty || _busy) return;
+    setState(() => _busy = true);
+    try {
+      final created = await context.read<WarehouseRepository>().createCategory(
+        raw,
+      );
+      if (!mounted) return;
+      widget.nameController.clear();
+      widget.onChanged([...widget.categories, created], created.id);
+    } catch (_) {
+      if (!mounted) return;
+      final language = context.read<LanguageCubit>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(language.translate('warehouse_category_error'))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final language = context.watch<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final selected = widget.categoryId == null
+        ? language.translate('warehouse_category_none')
+        : widget.categories
+                  .where((c) => c.id == widget.categoryId)
+                  .map((c) => c.name)
+                  .firstOrNull ??
+              widget.selectedName ??
+              language.translate('warehouse_category_none');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          language.translate('warehouse_category'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        ExpansibleWidget<String>.selection(
+          cardPadding: EdgeInsets.zero,
+          title: Text(selected, style: textStyles.bodySans),
+          items: ['', ...widget.categories.map((c) => c.id)],
+          selectedValue: widget.categoryId ?? '',
+          itemLabelBuilder: (id) => id.isEmpty
+              ? language.translate('warehouse_category_none')
+              : widget.categories
+                        .where((c) => c.id == id)
+                        .map((c) => c.name)
+                        .firstOrNull ??
+                    id,
+          onSelected: (id) =>
+              widget.onChanged(widget.categories, id.isEmpty ? null : id),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: widget.nameController,
+                focusNode: widget.nameFocus,
+                decoration: InputDecoration(
+                  labelText: widget.categories.isEmpty
+                      ? language.translate('warehouse_category_empty')
+                      : language.translate('warehouse_category_add'),
+                ),
+                onSubmitted: (_) => _add(),
+              ),
+            ),
+            IconButton(
+              onPressed: _busy ? null : _add,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(TablerIcons.plus, color: context.colors.brand),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _MinStockPhoto extends StatefulWidget {
+  const _MinStockPhoto({
+    required this.minStock,
+    required this.minStockFocus,
+    required this.imageUrl,
+    required this.onImage,
+  });
+
+  final TextEditingController minStock;
+  final FocusNode minStockFocus;
+  final String? imageUrl;
+  final ValueChanged<String?> onImage;
+
+  @override
+  State<_MinStockPhoto> createState() => _MinStockPhotoState();
+}
+
+class _MinStockPhotoState extends State<_MinStockPhoto> {
+  var _uploading = false;
+
+  Future<void> _pick() async {
+    if (_uploading) return;
+    final picked = await FilePicker.platform.pickFiles(type: FileType.image);
+    final path = picked?.files.single.path;
+    if (path == null || !mounted) return;
+    setState(() => _uploading = true);
+    try {
+      final url = await context.read<WarehouseRepository>().uploadImage(
+        path,
+        picked!.files.single.name,
+      );
+      if (!mounted) return;
+      if (url.isNotEmpty) widget.onImage(url);
+    } catch (_) {
+      if (!mounted) return;
+      final language = context.read<LanguageCubit>();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(language.translate('warehouse_photo_error'))),
+      );
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final language = context.watch<LanguageCubit>();
+    final textStyles = context.textStyles;
+    final colors = context.colors;
+    final imageUrl = widget.imageUrl;
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: widget.minStock,
+          focusNode: widget.minStockFocus,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: language.translate('warehouse_min_stock'),
+            hintText: language.translate('warehouse_min_stock_hint'),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          language.translate('warehouse_photo'),
+          style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: hasImage
+                  ? Image.network(
+                      ApiClient().mediaUrl(imageUrl),
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _photoPlaceholder(context),
+                    )
+                  : _photoPlaceholder(context),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _uploading ? null : _pick,
+                    icon: _uploading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(TablerIcons.upload, size: 18),
+                    label: Text(
+                      hasImage
+                          ? language.translate('warehouse_photo_replace')
+                          : language.translate('warehouse_photo_upload'),
+                    ),
+                  ),
+                  if (hasImage)
+                    TextButton(
+                      onPressed: () => widget.onImage(null),
+                      child: Text(language.translate('common_delete')),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          language.translate('warehouse_photo_hint'),
+          style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _photoPlaceholder(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.border),
+      ),
+      alignment: Alignment.center,
+      child: Icon(TablerIcons.photo, color: colors.textSecondary),
+    );
+  }
 }

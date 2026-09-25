@@ -69,6 +69,7 @@ class SaleProduct {
   final String unit;
   final double price;
   final double stockQty;
+  final String? imageUrl;
 
   const SaleProduct({
     required this.id,
@@ -78,6 +79,7 @@ class SaleProduct {
     required this.unit,
     required this.price,
     required this.stockQty,
+    this.imageUrl,
   });
 }
 

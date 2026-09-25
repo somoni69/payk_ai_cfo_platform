@@ -22,30 +22,130 @@ class ApiWarehouseRepository implements WarehouseRepository {
     return double.tryParse(val.toString()) ?? 0.0;
   }
 
+  WarehouseProduct _productFromMap(
+    Map<String, dynamic> map, {
+    WarehouseProduct? fallback,
+    Map<String, String> categoryNames = const {},
+  }) {
+    final rawCategory = map.containsKey('category_id')
+        ? map['category_id']
+        : fallback?.categoryId;
+    final categoryId = rawCategory == null || '$rawCategory'.isEmpty
+        ? null
+        : '$rawCategory';
+    final imageRaw = map.containsKey('image_url')
+        ? map['image_url']?.toString()
+        : fallback?.imageUrl;
+    final imageUrl = (imageRaw == null || imageRaw.isEmpty) ? null : imageRaw;
+    final double? minStock;
+    if (map.containsKey('min_stock')) {
+      minStock = map['min_stock'] == null ? null : _toDouble(map['min_stock']);
+    } else {
+      minStock = fallback?.minStock;
+    }
+    return WarehouseProduct(
+      id: (map['id'] ?? fallback?.id ?? '').toString(),
+      name: (map['name'] ?? fallback?.name ?? '').toString(),
+      sku: map.containsKey('sku') ? map['sku']?.toString() : fallback?.sku,
+      barcode: map.containsKey('barcode')
+          ? map['barcode']?.toString()
+          : fallback?.barcode,
+      categoryId: categoryId,
+      categoryName: categoryId == null
+          ? null
+          : (categoryNames[categoryId] ?? fallback?.categoryName),
+      minStock: minStock,
+      imageUrl: imageUrl,
+      unit: (map['unit'] ?? fallback?.unit ?? 'шт').toString(),
+      price: map.containsKey('price')
+          ? _toDouble(map['price'])
+          : (fallback?.price ?? 0),
+      costPrice: map.containsKey('cost_price') || map.containsKey('costPrice')
+          ? (map['cost_price'] == null && map['costPrice'] == null
+                ? null
+                : _toDouble(map['cost_price'] ?? map['costPrice']))
+          : fallback?.costPrice,
+      stockQty: map.containsKey('stock_qty') || map.containsKey('stockQty')
+          ? _toDouble(map['stock_qty'] ?? map['stockQty'])
+          : (fallback?.stockQty ?? 0),
+      externalId: map.containsKey('external_id')
+          ? map['external_id']?.toString()
+          : fallback?.externalId,
+    );
+  }
+
   @override
   Future<List<WarehouseProduct>> getProducts() async {
     try {
       final response = await _apiClient.dio.get('/warehouse/products');
       final list = response.data as List<dynamic>;
 
-      return list.map((item) {
-        final map = item as Map<String, dynamic>;
-        return WarehouseProduct(
+      final categories = await getCategories().catchError(
+        (_) => <ProductCategory>[],
+      );
+      final names = {for (final c in categories) c.id: c.name};
+      return list
+          .map(
+            (item) => _productFromMap(
+              Map<String, dynamic>.from(item as Map),
+              categoryNames: names,
+            ),
+          )
+          .toList();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<ProductCategory>> getCategories() async {
+    try {
+      final response = await _apiClient.dio.get('/warehouse/categories');
+      final list = response.data as List<dynamic>? ?? const [];
+      return list.whereType<Map>().map((raw) {
+        final map = Map<String, dynamic>.from(raw);
+        return ProductCategory(
           id: (map['id'] ?? '').toString(),
-          name: map['name'] ?? '',
-          sku: map['sku']?.toString(),
-          barcode: map['barcode']?.toString(),
-          unit: map['unit'] ?? 'шт',
-          price: _toDouble(map['price']),
-          costPrice: map['cost_price'] == null && map['costPrice'] == null
-              ? null
-              : _toDouble(map['cost_price'] ?? map['costPrice']),
-          stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
-          externalId: map['external_id']?.toString(),
+          name: (map['name'] ?? '').toString(),
         );
       }).toList();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<ProductCategory> createCategory(String name) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/warehouse/categories',
+        data: {'name': name},
+      );
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return ProductCategory(
+        id: (map['id'] ?? '').toString(),
+        name: (map['name'] ?? name).toString(),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<String> uploadImage(String filePath, String filename) async {
+    try {
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: filename),
+      });
+      final response = await _apiClient.dio.post(
+        '/files/upload',
+        data: form,
+        queryParameters: const {'images_only': true},
+      );
+      final map = Map<String, dynamic>.from(response.data as Map);
+      return (map['url'] ?? '').toString();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 
@@ -103,6 +203,11 @@ class ApiWarehouseRepository implements WarehouseRepository {
         'sku': product.sku,
         if (product.barcode != null && product.barcode!.isNotEmpty)
           'barcode': product.barcode,
+        if (product.categoryId != null)
+          'category_id': int.tryParse(product.categoryId!),
+        if (product.minStock != null) 'min_stock': product.minStock,
+        if (product.imageUrl != null && product.imageUrl!.isNotEmpty)
+          'image_url': product.imageUrl,
         'unit': product.unit,
         'price': product.price,
         if (product.costPrice != null) 'cost_price': product.costPrice,
@@ -113,20 +218,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         '/warehouse/products',
         data: payload,
       );
-      final map = response.data as Map<String, dynamic>;
-
-      return WarehouseProduct(
-        id: (map['id'] ?? '').toString(),
-        name: map['name'] ?? '',
-        sku: map['sku']?.toString(),
-        barcode: map['barcode']?.toString(),
-        unit: map['unit'] ?? 'шт',
-        price: _toDouble(map['price']),
-        costPrice: map['cost_price'] == null && map['costPrice'] == null
-            ? null
-            : _toDouble(map['cost_price'] ?? map['costPrice']),
-        stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
-        externalId: map['external_id']?.toString(),
+      return _productFromMap(
+        Map<String, dynamic>.from(response.data as Map),
+        fallback: product,
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
@@ -144,25 +238,20 @@ class ApiWarehouseRepository implements WarehouseRepository {
           'barcode': (product.barcode == null || product.barcode!.isEmpty)
               ? null
               : product.barcode,
+          'category_id': int.tryParse(product.categoryId ?? ''),
+          'min_stock': product.minStock,
+          'image_url': (product.imageUrl == null || product.imageUrl!.isEmpty)
+              ? null
+              : product.imageUrl,
           'unit': product.unit,
           'price': product.price,
           if (product.costPrice != null) 'cost_price': product.costPrice,
           'stock_qty': product.stockQty,
         },
       );
-      final map = response.data as Map<String, dynamic>;
-      return WarehouseProduct(
-        id: (map['id'] ?? product.id).toString(),
-        name: map['name'] ?? product.name,
-        sku: map['sku']?.toString(),
-        barcode: map['barcode']?.toString() ?? product.barcode,
-        unit: map['unit'] ?? product.unit,
-        price: _toDouble(map['price']),
-        costPrice: map['cost_price'] == null && map['costPrice'] == null
-            ? product.costPrice
-            : _toDouble(map['cost_price'] ?? map['costPrice']),
-        stockQty: _toDouble(map['stock_qty'] ?? map['stockQty']),
-        externalId: map['external_id']?.toString(),
+      return _productFromMap(
+        Map<String, dynamic>.from(response.data as Map),
+        fallback: product,
       );
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));

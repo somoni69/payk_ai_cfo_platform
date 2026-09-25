@@ -68,7 +68,9 @@ extension _CashSheetBuilders on _CashViewMixin {
                   .read<FinOpsRepository>()
                   .getBankAccounts()
                   .then((list) {
-                    setSheetState(() => banks = list);
+                    setSheetState(
+                      () => banks = list.where((b) => b.isActive).toList(),
+                    );
                   })
                   .catchError((_) {});
             } catch (_) {}
@@ -499,29 +501,33 @@ extension _CashSheetBuilders on _CashViewMixin {
                       _ => colors.brand,
                     };
 
-                    return ChoiceChip(
-                      label: Text(language.translate(pm.labelKey)),
-                      selected: isSelected,
-                      selectedColor: selectedColor,
-                      backgroundColor: colors.surface,
-                      checkmarkColor: Colors.white,
-                      labelStyle: textStyles.captionSans.copyWith(
-                        color: isSelected ? Colors.white : colors.textPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.w500
-                            : FontWeight.w400,
+                    final label = language.translate(pm.labelKey);
+                    return Tooltip(
+                      message: label,
+                      child: ChoiceChip(
+                        label: paymentChipLabel(label, pm),
+                        selected: isSelected,
+                        selectedColor: selectedColor,
+                        backgroundColor: colors.surface,
+                        checkmarkColor: Colors.white,
+                        labelStyle: textStyles.captionSans.copyWith(
+                          color: isSelected ? Colors.white : colors.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.w500
+                              : FontWeight.w400,
+                        ),
+                        side: BorderSide(
+                          color: isSelected ? selectedColor : colors.border,
+                        ),
+                        onSelected: (val) {
+                          if (val) {
+                            setSheetState(() {
+                              selectedPaymentMethod = pm;
+                              selectedBankId = _defaultBankIdFor(pm, banks);
+                            });
+                          }
+                        },
                       ),
-                      side: BorderSide(
-                        color: isSelected ? selectedColor : colors.border,
-                      ),
-                      onSelected: (val) {
-                        if (val) {
-                          setSheetState(() {
-                            selectedPaymentMethod = pm;
-                            selectedBankId = _defaultBankIdFor(pm, banks);
-                          });
-                        }
-                      },
                     );
                   }).toList(),
                 ),
@@ -575,10 +581,13 @@ extension _CashSheetBuilders on _CashViewMixin {
                       vertical: 2,
                     ),
                     tilePadding: EdgeInsets.zero,
-                    title: Text(
-                      selectedBankId == null
-                          ? language.translate('cash_bank_optional')
-                          : banks
+                    title: selectedBankId == null
+                        ? Text(
+                            language.translate('cash_bank_optional'),
+                            style: textStyles.bodySans,
+                          )
+                        : BankNameLabel(
+                            name: banks
                                 .firstWhere(
                                   (b) => b.id == selectedBankId,
                                   orElse: () => BankAccount(
@@ -587,8 +596,8 @@ extension _CashSheetBuilders on _CashViewMixin {
                                   ),
                                 )
                                 .bankName,
-                      style: textStyles.bodySans,
-                    ),
+                            style: textStyles.bodySans,
+                          ),
                     items: banks.map((b) => b.id).toList(),
                     selectedValue: selectedBankId,
                     itemLabelBuilder: (id) => banks
@@ -597,6 +606,17 @@ extension _CashSheetBuilders on _CashViewMixin {
                           orElse: () => BankAccount(id: id, bankName: id),
                         )
                         .bankName,
+                    itemLeadingBuilder: (id) {
+                      final name = banks
+                          .firstWhere(
+                            (b) => b.id == id,
+                            orElse: () => BankAccount(id: id, bankName: id),
+                          )
+                          .bankName;
+                      final logo = bankLogoKeyForName(name);
+                      if (logo == null) return null;
+                      return BankLogo(logo: logo, height: 18);
+                    },
                     onSelected: (val) =>
                         setSheetState(() => selectedBankId = val),
                   ),
@@ -1020,24 +1040,28 @@ extension _CashSheetBuilders on _CashViewMixin {
                       _ => colors.brand,
                     };
 
-                    return ChoiceChip(
-                      label: Text(language.translate(pm.labelKey)),
-                      selected: isSelected,
-                      selectedColor: selectedColor,
-                      backgroundColor: colors.surface,
-                      checkmarkColor: Colors.white,
-                      labelStyle: textStyles.captionSans.copyWith(
-                        color: isSelected ? Colors.white : colors.textPrimary,
-                        fontWeight: isSelected
-                            ? FontWeight.w500
-                            : FontWeight.w400,
+                    final label = language.translate(pm.labelKey);
+                    return Tooltip(
+                      message: label,
+                      child: ChoiceChip(
+                        label: paymentChipLabel(label, pm),
+                        selected: isSelected,
+                        selectedColor: selectedColor,
+                        backgroundColor: colors.surface,
+                        checkmarkColor: Colors.white,
+                        labelStyle: textStyles.captionSans.copyWith(
+                          color: isSelected ? Colors.white : colors.textPrimary,
+                          fontWeight: isSelected
+                              ? FontWeight.w500
+                              : FontWeight.w400,
+                        ),
+                        side: BorderSide(
+                          color: isSelected ? selectedColor : colors.border,
+                        ),
+                        onSelected: (v) {
+                          if (v) setSheetState(() => method = pm);
+                        },
                       ),
-                      side: BorderSide(
-                        color: isSelected ? selectedColor : colors.border,
-                      ),
-                      onSelected: (v) {
-                        if (v) setSheetState(() => method = pm);
-                      },
                     );
                   }).toList(),
                 ),

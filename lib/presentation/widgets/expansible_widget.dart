@@ -10,6 +10,7 @@ class ExpansibleWidget<T> extends StatefulWidget {
   final List<T>? items;
   final T? selectedValue;
   final String Function(T)? itemLabelBuilder;
+  final Widget? Function(T item)? itemLeadingBuilder;
   final ValueChanged<T>? onSelected;
   final EdgeInsetsGeometry cardPadding;
   final EdgeInsetsGeometry tilePadding;
@@ -30,6 +31,7 @@ class ExpansibleWidget<T> extends StatefulWidget {
   }) : items = null,
        selectedValue = null,
        itemLabelBuilder = null,
+       itemLeadingBuilder = null,
        onSelected = null;
 
   const ExpansibleWidget.selection({
@@ -38,6 +40,7 @@ class ExpansibleWidget<T> extends StatefulWidget {
     required this.items,
     required this.selectedValue,
     required this.itemLabelBuilder,
+    this.itemLeadingBuilder,
     required this.onSelected,
     this.subtitle,
     this.cardPadding = const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
@@ -152,6 +155,7 @@ class _ExpansibleWidgetState<T> extends State<ExpansibleWidget<T>> {
         items: items,
         selectedValue: widget.selectedValue,
         itemLabelBuilder: itemLabelBuilder,
+        itemLeadingBuilder: widget.itemLeadingBuilder,
         onSelected: _handleOptionSelected,
         searchable: items.length > _selectionSearchThreshold,
         tilePadding: widget.tilePadding,
@@ -217,6 +221,7 @@ class _SelectionOptions<T> extends StatefulWidget {
   final List<T> items;
   final T? selectedValue;
   final String Function(T) itemLabelBuilder;
+  final Widget? Function(T item)? itemLeadingBuilder;
   final ValueChanged<T> onSelected;
   final bool searchable;
   final EdgeInsetsGeometry tilePadding;
@@ -225,6 +230,7 @@ class _SelectionOptions<T> extends StatefulWidget {
     required this.items,
     required this.selectedValue,
     required this.itemLabelBuilder,
+    required this.itemLeadingBuilder,
     required this.onSelected,
     required this.searchable,
     required this.tilePadding,
@@ -304,14 +310,17 @@ class _SelectionOptionsState<T> extends State<_SelectionOptions<T>> {
     final textStyles = context.textStyles;
     final isSelected = item == widget.selectedValue;
 
+    final leading = widget.itemLeadingBuilder?.call(item);
     return ListTile(
       dense: true,
+      minLeadingWidth: 18,
       contentPadding: widget.tilePadding,
       splashColor: Colors.transparent,
       focusColor: Colors.transparent,
       hoverColor: Colors.transparent,
       tileColor: Colors.transparent,
       selectedTileColor: Colors.transparent,
+      leading: leading,
       title: Text(
         widget.itemLabelBuilder(item),
         style: textStyles.bodySans.copyWith(

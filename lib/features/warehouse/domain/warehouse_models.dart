@@ -4,6 +4,10 @@ class WarehouseProduct {
   final String name;
   final String? sku;
   final String? barcode;
+  final String? categoryId;
+  final String? categoryName;
+  final double? minStock;
+  final String? imageUrl;
   final String unit;
   final double price;
   final double? costPrice;
@@ -15,6 +19,10 @@ class WarehouseProduct {
     required this.name,
     this.sku,
     this.barcode,
+    this.categoryId,
+    this.categoryName,
+    this.minStock,
+    this.imageUrl,
     required this.unit,
     required this.price,
     this.costPrice,
@@ -28,6 +36,13 @@ class WarehouseProduct {
     String? sku,
     String? barcode,
     bool clearBarcode = false,
+    String? categoryId,
+    bool clearCategory = false,
+    String? categoryName,
+    double? minStock,
+    bool clearMinStock = false,
+    String? imageUrl,
+    bool clearImage = false,
     String? unit,
     double? price,
     double? costPrice,
@@ -39,6 +54,10 @@ class WarehouseProduct {
       name: name ?? this.name,
       sku: sku ?? this.sku,
       barcode: clearBarcode ? null : (barcode ?? this.barcode),
+      categoryId: clearCategory ? null : (categoryId ?? this.categoryId),
+      categoryName: clearCategory ? null : (categoryName ?? this.categoryName),
+      minStock: clearMinStock ? null : (minStock ?? this.minStock),
+      imageUrl: clearImage ? null : (imageUrl ?? this.imageUrl),
       unit: unit ?? this.unit,
       price: price ?? this.price,
       costPrice: costPrice ?? this.costPrice,
@@ -49,6 +68,13 @@ class WarehouseProduct {
 }
 
 /// Модель складской операции перемещения товара (приход/расход).
+class ProductCategory {
+  final String id;
+  final String name;
+
+  const ProductCategory({required this.id, required this.name});
+}
+
 class WarehouseMovement {
   final String id;
   final String productId;

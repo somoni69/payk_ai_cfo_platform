@@ -31,6 +31,17 @@ class MockWarehouseRepository implements WarehouseRepository {
   }
 
   @override
+  Future<List<ProductCategory>> getCategories() async => const [];
+
+  @override
+  Future<ProductCategory> createCategory(String name) async =>
+      ProductCategory(id: '1', name: name);
+
+  @override
+  Future<String> uploadImage(String filePath, String filename) async =>
+      'files/$filename';
+
+  @override
   Future<List<WarehouseMovement>> getMovements() async {
     movementReads++;
     final gate = loadGate;
