@@ -10,6 +10,8 @@
 	<string>Доступ к галерее необходим для прикрепления финансовых чеков и накладных.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Разрешение требуется для сохранения экспортированных финансовых отчетов в фотопленку.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Местоположение используется только для добавления места съёмки в метаданные фотографии чека или документа, если эта функция включена.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
