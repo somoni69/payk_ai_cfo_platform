@@ -476,8 +476,9 @@ class _OrderSheetState extends State<_OrderSheet> {
   }
 
   String _registerName() {
-    if (_registerId == null)
+    if (_registerId == null) {
       return widget.language.translate('playroom_order_register');
+    }
     return _nameOfRegister(_registerId!);
   }
 
