@@ -289,8 +289,7 @@ int? _asInt(dynamic value) {
 double _asDouble(dynamic value) {
   if (value is num) return value.toDouble();
   if (value is String) {
-    return double.tryParse(value.replaceAll(' ', '').replaceAll(',', '.')) ??
-        0;
+    return double.tryParse(value.replaceAll(' ', '').replaceAll(',', '.')) ?? 0;
   }
   return 0;
 }

@@ -20,12 +20,8 @@ Future<bool?> showLeadSheet(
   final language = context.read<LanguageCubit>();
   return showLedgerModalSheet<bool>(
     context: context,
-    builder: (sheetContext) => _LeadSheet(
-      repo: repo,
-      language: language,
-      leadId: leadId,
-      bank: bank,
-    ),
+    builder: (sheetContext) =>
+        _LeadSheet(repo: repo, language: language, leadId: leadId, bank: bank),
   );
 }
 
@@ -157,7 +153,9 @@ class _LeadSheetState extends State<_LeadSheet> {
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -334,10 +332,7 @@ class _LeadBody extends StatelessWidget {
           lead.overallLevel == null ? '—' : '${lead.overallLevel}/100',
           valueColor: _levelColor(colors, lead.overallLevel),
         ),
-        _Line(
-          language.translate('leads_card_modules'),
-          '${lead.modulesDone}',
-        ),
+        _Line(language.translate('leads_card_modules'), '${lead.modulesDone}'),
         const SizedBox(height: 12),
         Text(
           language.translate('leads_card_work'),
@@ -472,7 +467,8 @@ class _AnswerLine extends StatelessWidget {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final option = answer.option;
-    final chosen = option != null && option >= 0 && option < question.options.length
+    final chosen =
+        option != null && option >= 0 && option < question.options.length
         ? question.options[option].of(lang)
         : option == null
         ? null
@@ -537,7 +533,9 @@ class _Line extends StatelessWidget {
             flex: 2,
             child: Text(
               label,
-              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: 8),

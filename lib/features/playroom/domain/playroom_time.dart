@@ -39,7 +39,8 @@ StoreClock storeParts([DateTime? value]) {
   return StoreClock(
     date: '${wall.year}-$month-$day',
     minute: hour * 60 + minute,
-    hhmm: '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
+    hhmm:
+        '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}',
   );
 }
 

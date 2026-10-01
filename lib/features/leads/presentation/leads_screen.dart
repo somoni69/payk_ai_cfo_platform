@@ -105,7 +105,9 @@ class _LeadsScreenState extends State<LeadsScreen> {
 
   void _snack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -233,12 +235,17 @@ class _LeadsScreenState extends State<LeadsScreen> {
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
                               const SizedBox(height: 48),
-                              Icon(TablerIcons.inbox, color: colors.textSecondary),
+                              Icon(
+                                TablerIcons.inbox,
+                                color: colors.textSecondary,
+                              ),
                               const SizedBox(height: 8),
                               Text(
                                 _query.isEmpty && _status == null
                                     ? language.translate('leads_empty')
-                                    : language.translate('leads_empty_filtered'),
+                                    : language.translate(
+                                        'leads_empty_filtered',
+                                      ),
                                 textAlign: TextAlign.center,
                                 style: textStyles.bodySans,
                               ),
@@ -481,7 +488,9 @@ class _LeadCard extends StatelessWidget {
                     'leads_repeats',
                     params: {'n': '${row.repeats}'},
                   ),
-                  style: textStyles.captionSans.copyWith(color: colors.accentAmber),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.accentAmber,
+                  ),
                 ),
             ],
           ),

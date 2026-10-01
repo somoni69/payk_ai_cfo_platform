@@ -469,15 +469,12 @@ class _MoreScreenState extends State<MoreScreen> {
           .toList();
 
       if (group.titleKey == 'more_group_system' && role == UserRole.owner) {
-        allowedModules.insert(
-          0,
-          (
-            capability: AppCapability.network,
-            icon: TablerIcons.inbox,
-            titleKey: 'leads_title',
-            route: '/leads',
-          ),
-        );
+        allowedModules.insert(0, (
+          capability: AppCapability.network,
+          icon: TablerIcons.inbox,
+          titleKey: 'leads_title',
+          route: '/leads',
+        ));
       }
 
       if (allowedModules.isEmpty) continue;

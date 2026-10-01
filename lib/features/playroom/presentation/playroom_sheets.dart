@@ -155,8 +155,7 @@ class _OrderSheetState extends State<_OrderSheet> {
         _banks = banks;
         _noShift = isCashier && mine == null;
         _registerId =
-            mine?.registerId ??
-            (registers.isEmpty ? null : registers.first.id);
+            mine?.registerId ?? (registers.isEmpty ? null : registers.first.id);
         _ready = true;
       });
     } catch (error) {
@@ -221,7 +220,9 @@ class _OrderSheetState extends State<_OrderSheet> {
           customerName: name.isEmpty ? null : name,
           customerPhone: phone.isEmpty ? null : phone,
           paymentMethod: _method.apiValue,
-          bankId: _method == PaymentMethod.cash ? null : int.tryParse(_bankId ?? ''),
+          bankId: _method == PaymentMethod.cash
+              ? null
+              : int.tryParse(_bankId ?? ''),
         ),
       );
       if (!mounted) return;
@@ -254,7 +255,8 @@ class _OrderSheetState extends State<_OrderSheet> {
         ? playroomPrice(_people, rate, _minutes)
         : 0.0;
     final problem = _ready ? _problem(rate, stepOk, fits) : null;
-    final needsBank = _method != PaymentMethod.cash && (_bankId == null || _bankId!.isEmpty);
+    final needsBank =
+        _method != PaymentMethod.cash && (_bankId == null || _bankId!.isEmpty);
     final endText = start == null ? '--:--' : endClock(start, _minutes);
     final startText = _startMode == 'now' ? _today.hhmm : _startTime;
 
@@ -307,7 +309,9 @@ class _OrderSheetState extends State<_OrderSheet> {
                 child: Text(
                   '$_people',
                   textAlign: TextAlign.center,
-                  style: textStyles.h2Sans.copyWith(fontWeight: FontWeight.w700),
+                  style: textStyles.h2Sans.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               _StepButton(
@@ -472,7 +476,8 @@ class _OrderSheetState extends State<_OrderSheet> {
   }
 
   String _registerName() {
-    if (_registerId == null) return widget.language.translate('playroom_order_register');
+    if (_registerId == null)
+      return widget.language.translate('playroom_order_register');
     return _nameOfRegister(_registerId!);
   }
 
@@ -647,7 +652,8 @@ class _ExtendSheetState extends State<_ExtendSheet> {
               'playroom_extend_about',
               params: {
                 'people': '${order.people}',
-                'time': '${storeTime(order.startAt)} — ${storeTime(order.endAt)}',
+                'time':
+                    '${storeTime(order.startAt)} — ${storeTime(order.endAt)}',
               },
             ),
             style: textStyles.bodySans.copyWith(
@@ -742,9 +748,7 @@ class _TicketSheetState extends State<_TicketSheet> {
       final file = File('${dir.path}/$name');
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path, mimeType: 'application/pdf')],
-        ),
+        ShareParams(files: [XFile(file.path, mimeType: 'application/pdf')]),
       );
     } catch (_) {
       if (mounted) {
@@ -803,7 +807,9 @@ class _TicketCard extends StatelessWidget {
     final unitsH = language.translate('playroom_unit_h');
     final unitsM = language.translate('playroom_unit_min');
     final stamp = switch (order.status) {
-      PlayroomStatus.cancelled => language.translate('playroom_status_cancelled'),
+      PlayroomStatus.cancelled => language.translate(
+        'playroom_status_cancelled',
+      ),
       PlayroomStatus.closed => language.translate('playroom_status_closed'),
       PlayroomStatus.active => null,
     };
@@ -1198,7 +1204,10 @@ class _PaymentField extends StatelessWidget {
           ExpansibleWidget<String>.selection(
             title: selected == null
                 ? Text(language.translate('playroom_order_bank'))
-                : BankNameLabel(name: selected.bankName, style: textStyles.bodySans),
+                : BankNameLabel(
+                    name: selected.bankName,
+                    style: textStyles.bodySans,
+                  ),
             items: [for (final bank in banks) bank.id],
             selectedValue: selected?.id,
             itemLabelBuilder: (id) {
@@ -1374,7 +1383,9 @@ class _Row extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: 8),

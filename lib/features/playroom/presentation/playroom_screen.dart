@@ -212,7 +212,9 @@ class _PlayroomScreenState extends State<PlayroomScreen>
 
   void _toast(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<bool> _confirm({
@@ -428,14 +430,8 @@ class _Stats extends StatelessWidget {
       crossAxisSpacing: 8,
       childAspectRatio: 2.1,
       children: [
-        _Stat(
-          language.translate('playroom_stats_orders'),
-          '${stats.orders}',
-        ),
-        _Stat(
-          language.translate('playroom_stats_people'),
-          '${stats.people}',
-        ),
+        _Stat(language.translate('playroom_stats_orders'), '${stats.orders}'),
+        _Stat(language.translate('playroom_stats_people'), '${stats.people}'),
         _Stat(
           language.translate('playroom_stats_revenue'),
           formatSomoni(stats.revenue),
@@ -458,7 +454,13 @@ class _Stats extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value, {this.hint, this.accent = false, this.warn = false});
+  const _Stat(
+    this.label,
+    this.value, {
+    this.hint,
+    this.accent = false,
+    this.warn = false,
+  });
 
   final String label;
   final String value;
@@ -724,7 +726,10 @@ class _TicketsTab extends StatelessWidget {
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       const SizedBox(height: 48),
-                      Icon(TablerIcons.device_gamepad_2, color: colors.textSecondary),
+                      Icon(
+                        TablerIcons.device_gamepad_2,
+                        color: colors.textSecondary,
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         query.isEmpty
@@ -834,10 +839,7 @@ class _OrderCard extends StatelessWidget {
                   color: colors.textSecondary,
                 ),
               ),
-            Text(
-              order.customerName ?? '—',
-              style: textStyles.bodySans,
-            ),
+            Text(order.customerName ?? '—', style: textStyles.bodySans),
             if (order.customerPhone != null)
               Text(
                 order.customerPhone!,
@@ -925,9 +927,10 @@ class _TicketTile extends StatelessWidget {
     final soon = running && !expired && left <= 10 * 60;
     final startMs = order.startAt.millisecondsSinceEpoch;
     final endMs = order.endAt.millisecondsSinceEpoch;
-    final progress = ((now.millisecondsSinceEpoch - startMs) /
-            (endMs - startMs == 0 ? 1 : endMs - startMs))
-        .clamp(0.0, 1.0);
+    final progress =
+        ((now.millisecondsSinceEpoch - startMs) /
+                (endMs - startMs == 0 ? 1 : endMs - startMs))
+            .clamp(0.0, 1.0);
     final unitsH = language.translate('playroom_unit_h');
     final unitsM = language.translate('playroom_unit_min');
     final leftMinutes = (left.abs() / 60).ceil();
@@ -937,13 +940,15 @@ class _TicketTile extends StatelessWidget {
           ? language.translate('playroom_status_closed')
           : language.translate('playroom_status_cancelled');
     } else if (upcoming) {
-      final wait = ((order.startAt.millisecondsSinceEpoch -
-                  now.millisecondsSinceEpoch) /
-              60000)
-          .ceil();
+      final wait =
+          ((order.startAt.millisecondsSinceEpoch - now.millisecondsSinceEpoch) /
+                  60000)
+              .ceil();
       line = language.translate(
         'playroom_starts_in',
-        params: {'d': fmtMinutes(wait < 0 ? 0 : wait, hours: unitsH, minutes: unitsM)},
+        params: {
+          'd': fmtMinutes(wait < 0 ? 0 : wait, hours: unitsH, minutes: unitsM),
+        },
       );
     } else if (expired) {
       line = language.translate(
@@ -965,7 +970,9 @@ class _TicketTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: expired ? colors.accentRed.withValues(alpha: 0.08) : colors.surface,
+        color: expired
+            ? colors.accentRed.withValues(alpha: 0.08)
+            : colors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: expired
@@ -1058,10 +1065,7 @@ class _StatusBadge extends StatelessWidget {
         'playroom_status_cancelled',
         colors.textSecondary,
       ),
-      PlayroomStatus.closed => (
-        'playroom_status_closed',
-        colors.textSecondary,
-      ),
+      PlayroomStatus.closed => ('playroom_status_closed', colors.textSecondary),
       PlayroomStatus.active when secondsLeft(order.endAt, now) <= 0 => (
         'playroom_status_expired',
         colors.accentRed,

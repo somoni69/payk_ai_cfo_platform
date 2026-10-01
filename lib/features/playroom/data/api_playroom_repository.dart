@@ -109,10 +109,7 @@ class ApiPlayroomRepository implements PlayroomRepository {
   }
 
   @override
-  Future<List<int>> downloadTicketPdf(
-    int id, {
-    required String format,
-  }) async {
+  Future<List<int>> downloadTicketPdf(int id, {required String format}) async {
     try {
       final response = await _dio.get<List<int>>(
         '/playroom/orders/$id/ticket.pdf',
