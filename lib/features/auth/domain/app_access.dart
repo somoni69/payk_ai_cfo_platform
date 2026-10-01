@@ -18,6 +18,7 @@ enum AppCapability {
   users,
   branches,
   checklists,
+  playroom,
   finOps,
   reports,
   audit,
@@ -47,6 +48,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.marketing,
       AppCapability.branches,
       AppCapability.checklists,
+      AppCapability.playroom,
       AppCapability.finOps,
       AppCapability.reports,
     },
@@ -54,6 +56,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.network,
       AppCapability.dashboard,
       AppCapability.cash,
+      AppCapability.playroom,
       AppCapability.finOps,
       AppCapability.reports,
     },
@@ -61,6 +64,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.network,
       AppCapability.cash,
       AppCapability.checklists,
+      AppCapability.playroom,
       AppCapability.reports,
     },
     UserRole.hr => const <AppCapability>{
@@ -92,6 +96,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.marketing,
       AppCapability.branches,
       AppCapability.checklists,
+      AppCapability.playroom,
       AppCapability.finOps,
       AppCapability.reports,
     },
@@ -112,7 +117,8 @@ extension UserRoleAccess on UserRole {
       UserRole.cashier =>
         capability == AppCapability.cash ||
             capability == AppCapability.reports ||
-            capability == AppCapability.checklists,
+            capability == AppCapability.checklists ||
+            capability == AppCapability.playroom,
       UserRole.hr =>
         capability == AppCapability.tasks || capability == AppCapability.hr,
       UserRole.marketer =>
@@ -166,6 +172,7 @@ abstract final class AppAccess {
     '/users': AppCapability.users,
     '/branches': AppCapability.branches,
     '/checklists': AppCapability.checklists,
+    '/playroom': AppCapability.playroom,
     '/fin-ops': AppCapability.finOps,
     '/reports': AppCapability.reports,
     '/audit': AppCapability.audit,
@@ -182,7 +189,13 @@ abstract final class AppAccess {
     return null;
   }
 
+  static bool _isLeads(String location) {
+    final path = Uri.tryParse(location)?.path ?? location;
+    return path == '/leads' || path.startsWith('/leads/');
+  }
+
   static bool canOpen(UserRole role, String location) {
+    if (_isLeads(location)) return role == UserRole.owner;
     final capability = capabilityForLocation(location);
     return capability == null || role.can(capability);
   }
@@ -193,6 +206,7 @@ abstract final class AppAccess {
     String location, {
     MyPermissions? effective,
   }) {
+    if (_isLeads(location)) return role == UserRole.owner;
     final capability = capabilityForLocation(location);
     if (capability == null) return true;
     if (capability == AppCapability.notifications ||

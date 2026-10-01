@@ -27,10 +27,14 @@ import '../../features/hr/data/api_hr_repository.dart';
 import '../../features/hr/domain/hr_repository.dart';
 import '../../features/integrations/data/api_integrations_repository.dart';
 import '../../features/integrations/domain/integrations_repository.dart';
+import '../../features/leads/data/api_leads_repository.dart';
+import '../../features/leads/domain/leads_repository.dart';
 import '../../features/legal/data/api_legal_repository.dart';
 import '../../features/legal/domain/legal_repository.dart';
 import '../../features/marketing/data/api_marketing_repository.dart';
 import '../../features/marketing/domain/marketing_repository.dart';
+import '../../features/playroom/data/api_playroom_repository.dart';
+import '../../features/playroom/domain/playroom_repository.dart';
 import '../../features/notifications/data/api_notifications_repository.dart';
 import '../../features/notifications/domain/notifications_repository.dart';
 import '../../features/reports/data/api_reports_repository.dart';
@@ -97,6 +101,10 @@ abstract final class AppRepositories {
       create: (_) => ApiPermissionsRepository(),
     ),
     RepositoryProvider<SystemRepository>(create: (_) => ApiSystemRepository()),
+    RepositoryProvider<PlayroomRepository>(
+      create: (_) => ApiPlayroomRepository(),
+    ),
+    RepositoryProvider<LeadsRepository>(create: (_) => ApiLeadsRepository()),
   ];
 
   /// Wraps [child] with the production repository graph.

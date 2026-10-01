@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_state.dart';
 import 'package:payk_ai_cfo_platform/features/auth/domain/app_access.dart';
+import 'package:payk_ai_cfo_platform/features/permissions/domain/my_permissions.dart';
 
 void main() {
   test('every role has an accessible landing route', () {
@@ -55,7 +56,33 @@ void main() {
     }
 
     expect(UserRole.cashier.canManage(AppCapability.cash), isTrue);
+    expect(UserRole.cashier.canManage(AppCapability.playroom), isTrue);
     expect(UserRole.cashier.canManage(AppCapability.dashboard), isFalse);
+    expect(UserRole.accountant.can(AppCapability.playroom), isTrue);
+    expect(UserRole.accountant.canManage(AppCapability.playroom), isFalse);
+    expect(UserRole.viewer.can(AppCapability.playroom), isTrue);
+    expect(UserRole.hr.can(AppCapability.playroom), isFalse);
+    expect(UserRole.marketer.can(AppCapability.playroom), isFalse);
+    expect(AppAccess.canOpen(UserRole.owner, '/leads'), isTrue);
+    expect(AppAccess.canOpen(UserRole.director, '/leads'), isFalse);
+    expect(AppAccess.canOpen(UserRole.cashier, '/playroom'), isTrue);
+    expect(AppAccess.canOpen(UserRole.hr, '/playroom'), isFalse);
+    expect(
+      AppAccess.canOpenEffective(
+        UserRole.director,
+        '/leads',
+        effective: const MyPermissions(role: 'director', isDirector: true),
+      ),
+      isFalse,
+    );
+    expect(
+      AppAccess.canOpenEffective(
+        UserRole.owner,
+        '/leads',
+        effective: const MyPermissions(role: 'owner', isDirector: true),
+      ),
+      isTrue,
+    );
     expect(UserRole.accountant.canManage(AppCapability.cash), isTrue);
     expect(UserRole.hr.canManage(AppCapability.tasks), isTrue);
     expect(UserRole.hr.canManage(AppCapability.hr), isTrue);

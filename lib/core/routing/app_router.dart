@@ -14,11 +14,13 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/fin_ops/presentation/fin_ops_screen.dart';
 import '../../features/hr/presentation/hr_screen.dart';
 import '../../features/integrations/presentation/integrations_screen.dart';
+import '../../features/leads/presentation/leads_screen.dart';
 import '../../features/legal/presentation/legal_screen.dart';
 import '../../features/marketing/presentation/marketing_screen.dart';
 import '../../features/meta/presentation/meta_screen.dart';
 import '../../features/network/presentation/network_screen.dart';
 import '../../features/notifications/presentation/inbox_screen.dart';
+import '../../features/playroom/presentation/playroom_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/shell/presentation/more_screen.dart';
@@ -204,6 +206,18 @@ GoRouter createRouter(
         path: '/checklists',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const ChecklistsScreen(),
+      ),
+
+      GoRoute(
+        path: '/playroom',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const PlayroomScreen(),
+      ),
+
+      GoRoute(
+        path: '/leads',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LeadsScreen(),
       ),
 
       // Финансовые операции

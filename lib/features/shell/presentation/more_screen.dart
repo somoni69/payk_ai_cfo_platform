@@ -334,6 +334,12 @@ class _MoreScreenState extends State<MoreScreen> {
         titleKey: 'more_group_business',
         modules: [
           (
+            capability: AppCapability.playroom,
+            icon: TablerIcons.device_gamepad_2,
+            titleKey: 'playroom_title',
+            route: '/playroom',
+          ),
+          (
             capability: AppCapability.hr,
             icon: TablerIcons.briefcase,
             titleKey: 'hr_menu',
@@ -461,6 +467,18 @@ class _MoreScreenState extends State<MoreScreen> {
             ),
           )
           .toList();
+
+      if (group.titleKey == 'more_group_system' && role == UserRole.owner) {
+        allowedModules.insert(
+          0,
+          (
+            capability: AppCapability.network,
+            icon: TablerIcons.inbox,
+            titleKey: 'leads_title',
+            route: '/leads',
+          ),
+        );
+      }
 
       if (allowedModules.isEmpty) continue;
 

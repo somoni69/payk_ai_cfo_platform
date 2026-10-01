@@ -141,6 +141,7 @@ abstract final class PermissionModules {
     AppCapability.users => 'users',
     AppCapability.branches => 'branches',
     AppCapability.checklists => 'checklists',
+    AppCapability.playroom => 'playroom',
     AppCapability.finOps => 'finance-ops',
     AppCapability.reports => 'reports',
     AppCapability.audit => 'audit',
