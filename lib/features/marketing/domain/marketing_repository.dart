@@ -31,6 +31,10 @@ abstract class MarketingRepository {
 
   Future<String> generateAiText(String prompt);
 
+  Future<MarketingPromptMedia> generateAiImage(String prompt);
+
+  Future<MarketingPromptMedia> generateAiVideo(String prompt);
+
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false});
 
   Future<BrandGuide> updateBrandGuide(BrandGuide brandGuide);

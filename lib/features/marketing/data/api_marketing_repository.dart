@@ -14,6 +14,8 @@ class ApiMarketingRepository
   final _postsCache = ExpiringRequestCache<List<SocialPost>>();
   CancelToken? _ideasCancelToken;
   CancelToken? _textCancelToken;
+  CancelToken? _imageCancelToken;
+  CancelToken? _videoCancelToken;
 
   @override
   Future<List<MarketingCampaign>> getCampaigns({bool forceRefresh = false}) =>
@@ -267,6 +269,58 @@ class ApiMarketingRepository
   }
 
   @override
+  Future<MarketingPromptMedia> generateAiImage(String prompt) {
+    return _generatePromptMedia(
+      path: '/marketing/ai-image',
+      prompt: prompt,
+      receiveTimeout: const Duration(seconds: 150),
+      current: () => _imageCancelToken,
+      adopt: (token) => _imageCancelToken = token,
+    );
+  }
+
+  @override
+  Future<MarketingPromptMedia> generateAiVideo(String prompt) {
+    return _generatePromptMedia(
+      path: '/marketing/ai-video',
+      prompt: prompt,
+      receiveTimeout: const Duration(minutes: 7),
+      current: () => _videoCancelToken,
+      adopt: (token) => _videoCancelToken = token,
+    );
+  }
+
+  Future<MarketingPromptMedia> _generatePromptMedia({
+    required String path,
+    required String prompt,
+    required Duration receiveTimeout,
+    required CancelToken? Function() current,
+    required void Function(CancelToken?) adopt,
+  }) async {
+    current()?.cancel('Запрос заменён новым');
+    final cancelToken = CancelToken();
+    adopt(cancelToken);
+    try {
+      final response = await _apiClient.dio.post(
+        path,
+        data: {'prompt': prompt},
+        options: ApiClient.longRunningOptions(receiveTimeout: receiveTimeout),
+        cancelToken: cancelToken,
+      );
+      final data = response.data;
+      if (data is Map) {
+        return MarketingPromptMedia.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw Exception(ErrorKeys.loadFailed);
+    } catch (error) {
+      if (error is DioException && CancelToken.isCancel(error)) rethrow;
+      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+    } finally {
+      if (identical(current(), cancelToken)) adopt(null);
+    }
+  }
+
+  @override
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
     try {
       final response = await _apiClient.dio.get('/marketing/ai/brand');
@@ -515,7 +569,11 @@ class ApiMarketingRepository
   void cancelPendingRequests() {
     _ideasCancelToken?.cancel('Экран закрыт');
     _textCancelToken?.cancel('Экран закрыт');
+    _imageCancelToken?.cancel('Экран закрыт');
+    _videoCancelToken?.cancel('Экран закрыт');
     _ideasCancelToken = null;
     _textCancelToken = null;
+    _imageCancelToken = null;
+    _videoCancelToken = null;
   }
 }

@@ -1,12 +1,16 @@
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/ledger_buttons.dart';
@@ -23,10 +27,11 @@ import 'marketing_ai_studio_screen.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_fab.dart';
-import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 
 enum MarketingSection { aiStudio, aiWriter, campaigns, posts, brandGuide }
+
+enum _WriterKind { ideas, post, image, video }
 
 String _marketingSectionTitle(
   LanguageCubit language,
@@ -689,7 +694,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
   final TextEditingController _forbiddenController = TextEditingController();
   final TextEditingController _videoLimitController = TextEditingController();
   bool _brandInitialized = false;
-  bool _generatePostTextMode = false;
+  _WriterKind _writerKind = _WriterKind.ideas;
   final int _visibleCampaigns = 40;
   final int _visiblePosts = 40;
 
@@ -815,12 +820,30 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final localeCubit = context.read<LanguageCubit>();
+    final actionKey = switch (_writerKind) {
+      _WriterKind.image => 'marketing_generate_image',
+      _WriterKind.video => 'marketing_generate_video',
+      _ => 'marketing_create_content',
+    };
+    final hintKey = switch (_writerKind) {
+      _WriterKind.post => 'marketing_post_prompt_hint',
+      _WriterKind.image => 'marketing_image_prompt_hint',
+      _WriterKind.video => 'marketing_video_prompt_hint',
+      _WriterKind.ideas => 'marketing_ideas_prompt_hint',
+    };
+    final subtitleKey = switch (_writerKind) {
+      _WriterKind.image => 'marketing_image_subtitle',
+      _WriterKind.video => 'marketing_video_subtitle',
+      _ => null,
+    };
 
     return BlocBuilder<MarketingBloc, MarketingState>(
       buildWhen: (previous, current) =>
           previous.isGenerating != current.isGenerating ||
           previous.generatedIdeas != current.generatedIdeas ||
-          previous.generatedText != current.generatedText,
+          previous.generatedText != current.generatedText ||
+          previous.generatedImage != current.generatedImage ||
+          previous.generatedVideo != current.generatedVideo,
       builder: (context, state) {
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -833,193 +856,348 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
               ),
             ),
             const SizedBox(height: 12),
-
-            LedgerSegmentedControl<bool>(
-              height: 36,
-              selectedValue: _generatePostTextMode,
-              onValueChanged: (value) {
-                setState(() => _generatePostTextMode = value);
-              },
-              segments: [
-                LedgerSegmentItem(
-                  value: false,
-                  label: localeCubit.translate('marketing_mode_ad_ideas'),
-                ),
-                LedgerSegmentItem(
-                  value: true,
-                  label: localeCubit.translate('marketing_mode_ready_post'),
-                ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final kind in _WriterKind.values)
+                  ChoiceChip(
+                    label: Text(
+                      localeCubit.translate(switch (kind) {
+                        _WriterKind.ideas => 'marketing_mode_ad_ideas',
+                        _WriterKind.post => 'marketing_mode_ready_post',
+                        _WriterKind.image => 'marketing_mode_image',
+                        _WriterKind.video => 'marketing_mode_video',
+                      }),
+                    ),
+                    selected: _writerKind == kind,
+                    onSelected: state.isGenerating
+                        ? null
+                        : (selected) {
+                            if (selected) {
+                              setState(() => _writerKind = kind);
+                            }
+                          },
+                  ),
               ],
             ),
+            if (subtitleKey != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                localeCubit.translate(subtitleKey),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 13.5,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
-
-            // Ввод промпта
             TextField(
               controller: _promptController,
               maxLines: 3,
               decoration: InputDecoration(
-                hintText: _generatePostTextMode
-                    ? localeCubit.translate('marketing_post_prompt_hint')
-                    : localeCubit.translate('marketing_ideas_prompt_hint'),
+                hintText: localeCubit.translate(hintKey),
                 fillColor: colors.surface,
                 filled: true,
               ),
             ),
             const SizedBox(height: 12),
-
             ElevatedButton.icon(
               onPressed: state.isGenerating || !_canManageMarketing(context)
                   ? null
                   : () {
                       final prompt = _promptController.text.trim();
                       if (prompt.isEmpty) return;
-
-                      if (_generatePostTextMode) {
-                        context.read<MarketingBloc>().add(
-                          GenerateTextRequested(prompt),
-                        );
-                      } else {
-                        context.read<MarketingBloc>().add(
-                          GenerateIdeasRequested(prompt),
-                        );
+                      final bloc = context.read<MarketingBloc>();
+                      switch (_writerKind) {
+                        case _WriterKind.post:
+                          bloc.add(GenerateTextRequested(prompt));
+                        case _WriterKind.image:
+                          bloc.add(GenerateImageRequested(prompt));
+                        case _WriterKind.video:
+                          bloc.add(GenerateVideoRequested(prompt));
+                        case _WriterKind.ideas:
+                          bloc.add(GenerateIdeasRequested(prompt));
                       }
                     },
               icon: const Icon(TablerIcons.plus),
               label: Text(
                 localeCubit.translate(
-                  state.isGenerating
-                      ? 'marketing_ai_thinking'
-                      : 'marketing_create_content',
+                  state.isGenerating ? 'marketing_ai_thinking' : actionKey,
                 ),
               ),
             ),
+            if (_writerKind == _WriterKind.video) ...[
+              const SizedBox(height: 8),
+              Text(
+                localeCubit.translate('marketing_video_wait'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                  fontSize: 12.5,
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
-
             if (state.isGenerating)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
                 child: LedgerNamedListShimmer(itemCount: 3),
               )
-            else ...[
-              if (!_generatePostTextMode &&
-                  state.generatedIdeas.isNotEmpty) ...[
-                Text(
-                  localeCubit.translate('marketing_generated_ideas'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.brand),
-                  ),
-                  child: Column(
-                    children: state.generatedIdeas
-                        .map(
-                          (idea) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  TablerIcons.bulb,
-                                  color: colors.brand,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(idea, style: textStyles.bodySans),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ] else if (_generatePostTextMode &&
-                  state.generatedText != null) ...[
-                Text(
-                  localeCubit.translate('marketing_publication_text'),
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: colors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        localeCubit.translateMessage(state.generatedText!),
-                        style: textStyles.bodySans,
-                      ),
-                      const Divider(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            icon: const Icon(TablerIcons.copy),
-                            tooltip: localeCubit.translate('common_copy'),
-                            onPressed: () {
-                              Clipboard.setData(
-                                ClipboardData(text: state.generatedText!),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    localeCubit.translate('marketing_copied'),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(TablerIcons.file_plus),
-                            tooltip: localeCubit.translate(
-                              'marketing_save_draft',
-                            ),
-                            onPressed: !_canManageMarketing(context)
-                                ? null
-                                : () {
-                                    context.read<MarketingBloc>().add(
-                                      CreatePostRequested(
-                                        text: state.generatedText!,
-                                        channel: 'telegram',
-                                      ),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          localeCubit.translate(
-                                            'marketing_post_saved_draft',
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+            else
+              _buildWriterResult(context, state),
           ],
         );
       },
     );
+  }
+
+  Widget _buildWriterResult(BuildContext context, MarketingState state) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+
+    switch (_writerKind) {
+      case _WriterKind.ideas:
+        if (state.generatedIdeas.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              localeCubit.translate('marketing_generated_ideas'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.brand),
+              ),
+              child: Column(
+                children: [
+                  for (final idea in state.generatedIdeas)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(TablerIcons.bulb, color: colors.brand, size: 18),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(idea, style: textStyles.bodySans),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      case _WriterKind.post:
+        final text = state.generatedText;
+        if (text == null) {
+          return const SizedBox.shrink();
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              localeCubit.translate('marketing_publication_text'),
+              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    localeCubit.translateMessage(text),
+                    style: textStyles.bodySans,
+                  ),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        icon: const Icon(TablerIcons.copy),
+                        tooltip: localeCubit.translate('common_copy'),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: text));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                localeCubit.translate('marketing_copied'),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(TablerIcons.file_plus),
+                        tooltip: localeCubit.translate('marketing_save_draft'),
+                        onPressed: !_canManageMarketing(context)
+                            ? null
+                            : () {
+                                context.read<MarketingBloc>().add(
+                                  CreatePostRequested(
+                                    text: text,
+                                    channel: 'telegram',
+                                  ),
+                                );
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      localeCubit.translate(
+                                        'marketing_post_saved_draft',
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      case _WriterKind.image:
+        return _buildMediaResult(
+          context,
+          media: state.generatedImage,
+          unavailableKey: 'marketing_image_unavailable',
+          childBuilder: (url) => ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              ApiClient().mediaUrl(url),
+              fit: BoxFit.contain,
+              semanticLabel: localeCubit.translate('marketing_image_alt'),
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              },
+              errorBuilder: (_, _, _) => Text(
+                localeCubit.translate('marketing_image_unavailable'),
+                style: textStyles.bodySans.copyWith(color: colors.brand),
+              ),
+            ),
+          ),
+        );
+      case _WriterKind.video:
+        return _buildMediaResult(
+          context,
+          media: state.generatedVideo,
+          unavailableKey: 'marketing_video_unavailable',
+          childBuilder: (url) => Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _openGeneratedVideo(context, url),
+              icon: const Icon(TablerIcons.player_play, size: 18),
+              label: Text(localeCubit.translate('marketing_open_video')),
+            ),
+          ),
+        );
+    }
+  }
+
+  Widget _buildMediaResult(
+    BuildContext context, {
+    required MarketingPromptMedia? media,
+    required String unavailableKey,
+    required Widget Function(String url) childBuilder,
+  }) {
+    if (media == null) return const SizedBox.shrink();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final localeCubit = context.read<LanguageCubit>();
+    final url = media.url;
+    if (media.ok && url != null) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border),
+        ),
+        child: childBuilder(url),
+      );
+    }
+    final note = media.note;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.brand),
+      ),
+      child: Text(
+        note == null
+            ? localeCubit.translate(unavailableKey)
+            : localeCubit.translateMessage(note),
+        style: textStyles.bodySans.copyWith(color: colors.brand),
+      ),
+    );
+  }
+
+  Future<void> _openGeneratedVideo(BuildContext context, String url) async {
+    final language = context.read<LanguageCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    final trimmed = url.trim();
+    final remote =
+        trimmed.startsWith('http://') || trimmed.startsWith('https://');
+    if (remote) {
+      final uri = Uri.tryParse(ApiClient().mediaUrl(trimmed));
+      if (uri != null &&
+          await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+        return;
+      }
+    }
+    try {
+      final path = remote
+          ? trimmed
+          : (trimmed.startsWith('/') ? trimmed : '/$trimmed');
+      final response = await ApiClient().dio.get<List<int>>(
+        path,
+        options: Options(
+          responseType: ResponseType.bytes,
+          receiveTimeout: const Duration(minutes: 2),
+        ),
+      );
+      final bytes = response.data;
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception('marketing_video_unavailable');
+      }
+      final dir = await getTemporaryDirectory();
+      final file = File(
+        '${dir.path}/marketing_video_${DateTime.now().millisecondsSinceEpoch}.mp4',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+    } catch (error) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            language.resolveMessage(
+              userFacingError(error, fallback: 'marketing_video_unavailable'),
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildCampaignsTab(BuildContext context) {

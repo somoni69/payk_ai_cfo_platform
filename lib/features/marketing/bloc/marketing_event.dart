@@ -103,6 +103,24 @@ class GenerateTextRequested extends MarketingEvent {
   List<Object?> get props => [prompt];
 }
 
+class GenerateImageRequested extends MarketingEvent {
+  final String prompt;
+
+  const GenerateImageRequested(this.prompt);
+
+  @override
+  List<Object?> get props => [prompt];
+}
+
+class GenerateVideoRequested extends MarketingEvent {
+  final String prompt;
+
+  const GenerateVideoRequested(this.prompt);
+
+  @override
+  List<Object?> get props => [prompt];
+}
+
 class UpdateBrandGuideRequested extends MarketingEvent {
   final BrandGuide brandGuide;
 

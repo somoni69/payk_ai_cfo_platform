@@ -1396,11 +1396,29 @@ const Map<String, String> kTajikCatalog = {
       'Бо ёрии ИИ шиорҳои ҷолиби фурӯшӣ, ғояҳои интишороти таблиғотӣ ё матни омода барои шабакаҳои иҷтимоии ширкат эҷод кунед.',
   'marketing_mode_ad_ideas': 'Ғояҳои таблиғотӣ',
   'marketing_mode_ready_post': 'Интишори омода',
+  'marketing_mode_image': 'Тасвир',
+  'marketing_mode_video': 'Видео',
   'marketing_post_prompt_hint':
       'Дар бораи тахфифи хишт матни таблиғотӣ навис...',
   'marketing_ideas_prompt_hint': 'Шиорҳо барои корхонаи семент...',
+  'marketing_image_prompt_hint':
+      'Масалан: қаҳвахонаи бароҳат субҳ, нури гарм, минимализм',
+  'marketing_video_prompt_hint':
+      'Масалан: видеои 10-сонияӣ дар бораи расонидан дар 30 дақиқа',
+  'marketing_image_subtitle': 'Барои пост тасвир эҷод кунед',
+  'marketing_video_subtitle': 'Барои пост видеои кӯтоҳ эҷод кунед',
+  'marketing_video_wait':
+      'Видео метавонад чанд дақиқа омода шавад. Экранро набандед.',
   'marketing_ai_thinking': 'ИИ фикр карда истодааст...',
   'marketing_create_content': 'Эҷоди муҳтаво',
+  'marketing_generate_image': 'Тасвир эҷод кардан',
+  'marketing_generate_video': 'Видео эҷод кардан',
+  'marketing_image_unavailable':
+      'Эҷоди тасвир бидуни калиди Фармоишгар дастрас нест',
+  'marketing_video_unavailable':
+      'Эҷоди видео бидуни калиди Фармоишгар дастрас нест',
+  'marketing_open_video': 'Кушодани видео',
+  'marketing_image_alt': 'Тасвири эҷодшуда',
   'marketing_generated_ideas': 'ҒОЯҲОИ ЭҶОДШУДА',
   'marketing_publication_text': 'МАТНИ ИНТИШОР',
   'marketing_copied': 'Ба ҳофизаи муваққатӣ нусхабардорӣ шуд',

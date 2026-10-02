@@ -1391,10 +1391,28 @@ const Map<String, String> kRussianCatalog = {
       'Сгенерируйте продающие слоганы, идеи рекламных постов или готовый текстовый контент для соцсетей компании с помощью ИИ.',
   'marketing_mode_ad_ideas': 'Идеи рекламы',
   'marketing_mode_ready_post': 'Готовый пост',
+  'marketing_mode_image': 'Картинка',
+  'marketing_mode_video': 'Видео',
   'marketing_post_prompt_hint': 'Напиши рекламный пост о скидках на кирпичи...',
   'marketing_ideas_prompt_hint': 'Слоганы для цементного завода...',
+  'marketing_image_prompt_hint':
+      'Например: уютная кофейня утром, тёплый свет, минимализм',
+  'marketing_video_prompt_hint':
+      'Например: 10-секундный ролик о доставке за 30 минут',
+  'marketing_image_subtitle': 'Сгенерируйте изображение для поста',
+  'marketing_video_subtitle': 'Сгенерируйте короткое видео для поста',
+  'marketing_video_wait':
+      'Ролик может готовиться несколько минут. Не закрывайте экран.',
   'marketing_ai_thinking': 'ИИ думает...',
   'marketing_create_content': 'Создать контент',
+  'marketing_generate_image': 'Сгенерировать картинку',
+  'marketing_generate_video': 'Сгенерировать видео',
+  'marketing_image_unavailable':
+      'Генерация картинок недоступна без ключа Заказчика',
+  'marketing_video_unavailable':
+      'Генерация видео недоступна без ключа Заказчика',
+  'marketing_open_video': 'Открыть видео',
+  'marketing_image_alt': 'Сгенерированная картинка',
   'marketing_generated_ideas': 'СГЕНЕРИРОВАННЫЕ ИДЕИ',
   'marketing_publication_text': 'ТЕКСТ ПУБЛИКАЦИИ',
   'marketing_copied': 'Скопировано в буфер обмена',

@@ -12,6 +12,8 @@ class MarketingState extends Equatable {
   final bool isGenerating;
   final List<String> generatedIdeas;
   final String? generatedText;
+  final MarketingPromptMedia? generatedImage;
+  final MarketingPromptMedia? generatedVideo;
   final BrandGuide? brandGuide;
   final bool isBrandLoading;
   final bool isSavingBrand;
@@ -38,6 +40,8 @@ class MarketingState extends Equatable {
     this.isGenerating = false,
     this.generatedIdeas = const [],
     this.generatedText,
+    this.generatedImage,
+    this.generatedVideo,
     this.brandGuide,
     this.isBrandLoading = false,
     this.isSavingBrand = false,
@@ -63,6 +67,8 @@ class MarketingState extends Equatable {
     bool? isGenerating,
     List<String>? generatedIdeas,
     String? generatedText,
+    MarketingPromptMedia? generatedImage,
+    MarketingPromptMedia? generatedVideo,
     BrandGuide? brandGuide,
     bool? isBrandLoading,
     bool? isSavingBrand,
@@ -93,6 +99,8 @@ class MarketingState extends Equatable {
       isGenerating: isGenerating ?? this.isGenerating,
       generatedIdeas: generatedIdeas ?? this.generatedIdeas,
       generatedText: generatedText ?? this.generatedText,
+      generatedImage: generatedImage ?? this.generatedImage,
+      generatedVideo: generatedVideo ?? this.generatedVideo,
       brandGuide: brandGuide ?? this.brandGuide,
       isBrandLoading: isBrandLoading ?? this.isBrandLoading,
       isSavingBrand: isSavingBrand ?? this.isSavingBrand,
@@ -126,6 +134,8 @@ class MarketingState extends Equatable {
     isGenerating,
     generatedIdeas,
     generatedText,
+    generatedImage,
+    generatedVideo,
     brandGuide,
     isBrandLoading,
     isSavingBrand,

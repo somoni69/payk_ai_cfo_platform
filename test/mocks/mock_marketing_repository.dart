@@ -151,6 +151,22 @@ class MockMarketingRepository implements MarketingRepository {
     return '🔥 Спецпредложение от PAYK! Только в этом месяце при заказе от 50 кубов бетона — бесплатная лабораторная проверка прочности на сжатие. Заказывайте прямо сейчас! 📞 +992 93 123 4567';
   }
 
+  @override
+  Future<MarketingPromptMedia> generateAiImage(String prompt) async {
+    return const MarketingPromptMedia(
+      ok: true,
+      url: 'https://example.com/image.png',
+    );
+  }
+
+  @override
+  Future<MarketingPromptMedia> generateAiVideo(String prompt) async {
+    return const MarketingPromptMedia(
+      ok: true,
+      url: 'https://example.com/video.mp4',
+    );
+  }
+
   BrandGuide _brandGuide = const BrandGuide(
     brandName: 'PAYK Shop',
     tone: 'Дружелюбный, профессиональный, надежный',

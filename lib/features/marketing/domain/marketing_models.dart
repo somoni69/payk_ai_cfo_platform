@@ -97,3 +97,22 @@ class BrandGuide {
     };
   }
 }
+
+/// Ответ `POST /marketing/ai-image` и `POST /marketing/ai-video`.
+class MarketingPromptMedia {
+  final bool ok;
+  final String? url;
+  final String? note;
+
+  const MarketingPromptMedia({required this.ok, this.url, this.note});
+
+  factory MarketingPromptMedia.fromJson(Map<String, dynamic> json) {
+    final url = json['url']?.toString();
+    final note = json['note']?.toString();
+    return MarketingPromptMedia(
+      ok: json['ok'] == true,
+      url: url == null || url.isEmpty ? null : url,
+      note: note == null || note.isEmpty ? null : note,
+    );
+  }
+}

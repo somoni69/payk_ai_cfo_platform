@@ -20,6 +20,8 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     on<DeletePostRequested>(_onDeletePostRequested);
     on<GenerateIdeasRequested>(_onGenerateIdeasRequested);
     on<GenerateTextRequested>(_onGenerateTextRequested);
+    on<GenerateImageRequested>(_onGenerateImageRequested);
+    on<GenerateVideoRequested>(_onGenerateVideoRequested);
     on<UpdateBrandGuideRequested>(_onUpdateBrandGuideRequested);
     on<LoadAiStudioDataRequested>(_onLoadAiStudioDataRequested);
     on<GenerateAiStudioIdeasRequested>(_onGenerateAiStudioIdeasRequested);
@@ -278,6 +280,52 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           errorMessage: userFacingError(
             error,
             fallback: 'Не удалось сгенерировать текст. Повторите попытку.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateImageRequested(
+    GenerateImageRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isGenerating: true, clearError: true));
+    try {
+      final generatedImage = await _repository.generateAiImage(event.prompt);
+      if (emit.isDone) return;
+      emit(state.copyWith(isGenerating: false, generatedImage: generatedImage));
+    } catch (error) {
+      if (_isCancelled(error) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isGenerating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось сгенерировать картинку. Повторите попытку.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onGenerateVideoRequested(
+    GenerateVideoRequested event,
+    Emitter<MarketingState> emit,
+  ) async {
+    emit(state.copyWith(isGenerating: true, clearError: true));
+    try {
+      final generatedVideo = await _repository.generateAiVideo(event.prompt);
+      if (emit.isDone) return;
+      emit(state.copyWith(isGenerating: false, generatedVideo: generatedVideo));
+    } catch (error) {
+      if (_isCancelled(error) || emit.isDone) return;
+      emit(
+        state.copyWith(
+          isGenerating: false,
+          errorMessage: userFacingError(
+            error,
+            fallback: 'Не удалось сгенерировать видео. Повторите попытку.',
           ),
         ),
       );

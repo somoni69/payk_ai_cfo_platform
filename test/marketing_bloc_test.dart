@@ -122,6 +122,24 @@ class MockMarketingTestRepository implements MarketingRepository {
     return 'Copied Copy text';
   }
 
+  @override
+  Future<MarketingPromptMedia> generateAiImage(String prompt) async {
+    if (shouldFail) throw Exception('AI Image failed');
+    return const MarketingPromptMedia(
+      ok: true,
+      url: 'https://example.com/image.png',
+    );
+  }
+
+  @override
+  Future<MarketingPromptMedia> generateAiVideo(String prompt) async {
+    if (shouldFail) throw Exception('AI Video failed');
+    return const MarketingPromptMedia(
+      ok: true,
+      url: 'https://example.com/video.mp4',
+    );
+  }
+
   BrandGuide brandGuide = const BrandGuide(
     brandName: 'Test Brand',
     tone: 'Friendly',
