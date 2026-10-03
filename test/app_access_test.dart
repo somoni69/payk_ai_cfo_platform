@@ -83,6 +83,25 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/cash'),
+      '/network',
+    );
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/dashboard'),
+      '/network',
+    );
+    expect(AppAccess.ownerRootRedirect(UserRole.owner, null, '/leads'), isNull);
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/network'),
+      isNull,
+    );
+    expect(AppAccess.ownerRootRedirect(UserRole.owner, null, '/more'), isNull);
+    expect(AppAccess.ownerRootRedirect(UserRole.owner, 4, '/cash'), isNull);
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.director, null, '/cash'),
+      isNull,
+    );
     expect(UserRole.accountant.canManage(AppCapability.cash), isTrue);
     expect(UserRole.hr.canManage(AppCapability.tasks), isTrue);
     expect(UserRole.hr.canManage(AppCapability.hr), isTrue);

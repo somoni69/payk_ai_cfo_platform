@@ -190,8 +190,38 @@ abstract final class AppAccess {
   }
 
   static bool _isLeads(String location) {
-    final path = Uri.tryParse(location)?.path ?? location;
+    final path = _pathOf(location);
     return path == '/leads' || path.startsWith('/leads/');
+  }
+
+  static String _pathOf(String location) {
+    return Uri.tryParse(location)?.path ?? location;
+  }
+
+  /// «Сеть», «Заявки» и «Ещё» работают без выбранного магазина.
+  /// «Ещё» остаётся, потому что там язык, выход и эти два раздела.
+  static bool isOwnerNetworkPath(String location) {
+    final path = _pathOf(location);
+    return path == '/network' ||
+        path.startsWith('/network/') ||
+        path == '/leads' ||
+        path.startsWith('/leads/') ||
+        path == '/more' ||
+        path.startsWith('/more/');
+  }
+
+  /// Владелец в корне сети: разделы магазина пустые, возвращаем на «Сеть».
+  static String? ownerRootRedirect(
+    UserRole role,
+    int? storeId,
+    String location,
+  ) {
+    if (role != UserRole.owner || storeId != null) return null;
+    final path = _pathOf(location);
+    if (path == '/login' || path == '/splash' || isOwnerNetworkPath(location)) {
+      return null;
+    }
+    return '/network';
   }
 
   static bool canOpen(UserRole role, String location) {

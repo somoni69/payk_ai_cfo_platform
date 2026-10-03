@@ -25,13 +25,35 @@ import '../bloc/network_state.dart';
 import '../data/api_network_repository.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
+import 'owner_network_arrival.dart';
 
-class NetworkScreen extends StatelessWidget {
+class NetworkScreen extends StatefulWidget {
   const NetworkScreen({super.key});
+
+  @override
+  State<NetworkScreen> createState() => _NetworkScreenState();
+}
+
+class _NetworkScreenState extends State<NetworkScreen> {
+  var _scopeReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await leaveOwnerStoreOnNetworkArrival(context);
+      if (!mounted) return;
+      setState(() => _scopeReady = true);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
+    if (!_scopeReady) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     NetworkRepository repo;
     try {
       repo = context.read<NetworkRepository>();
@@ -88,6 +110,19 @@ class _NetworkViewState extends State<_NetworkView> {
             color: colors.textPrimary,
           ),
         ),
+        actions: [
+          if (isOwner)
+            IconButton(
+              tooltip: language.translate('leads_title'),
+              onPressed: () => context.push('/leads'),
+              icon: const Icon(TablerIcons.inbox),
+            ),
+          IconButton(
+            tooltip: language.translate('more_title'),
+            onPressed: () => context.push('/more'),
+            icon: const Icon(TablerIcons.menu_2),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: colors.border),
@@ -256,7 +291,6 @@ class _NetworkViewState extends State<_NetworkView> {
               if (!context.mounted) return;
               ExpiringRequestCache.invalidateAll();
               context.read<AuthBloc>().add(const ActingStoreUpdated());
-              context.go('/dashboard');
             },
             child: Text(language.translate('network_leave_store')),
           ),

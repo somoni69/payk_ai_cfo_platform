@@ -169,11 +169,17 @@ class _ShellNavOverlay extends StatelessWidget {
       final state = bloc.state;
       return state is AuthAuthenticated ? state.role : UserRole.viewer;
     });
+    final storeId = context.select<AuthBloc, int?>((bloc) {
+      final state = bloc.state;
+      return state is AuthAuthenticated ? state.storeId : null;
+    });
+    final ownerAtRoot = userRole == UserRole.owner && storeId == null;
     final permissions = context.watch<PermissionsCubit>();
 
     final visibleTabs = _allTabs
         .where((tab) {
           final capability = tab.capability;
+          if (ownerAtRoot && capability != null) return false;
           if (capability == null) return true;
           return permissions.can(
             capability,

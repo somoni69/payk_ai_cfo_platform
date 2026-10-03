@@ -11,6 +11,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../network/presentation/owner_network_arrival.dart';
 import '../domain/lead_models.dart';
 import '../domain/leads_repository.dart';
 import 'lead_sheet.dart';
@@ -36,6 +37,10 @@ class _LeadsScreenState extends State<LeadsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      leaveOwnerStoreOnNetworkArrival(context);
+    });
     _load();
   }
 

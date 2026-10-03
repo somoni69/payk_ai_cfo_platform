@@ -91,6 +91,13 @@ GoRouter createRouter(
           return landingLocation;
         }
 
+        final rootRedirect = AppAccess.ownerRootRedirect(
+          authState.role,
+          authState.storeId,
+          location,
+        );
+        if (rootRedirect != null) return rootRedirect;
+
         final effective = permissions?.state.data;
         if (!AppAccess.canOpenEffective(
           authState.role,

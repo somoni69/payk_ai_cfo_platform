@@ -329,12 +329,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (user.role == UserRole.owner) {
       try {
         final acting = await _networkRepository.getActingStore();
-        if (storeId == null) {
-          if (acting != null) await _networkRepository.clearActingStore();
-        } else if (acting != null && acting.id == storeId) {
-          if (storeName == null || storeName.isEmpty) {
-            storeName = acting.name;
-          }
+        final stale =
+            acting != null && (storeId == null || acting.id != storeId);
+        if (stale) {
+          await _networkRepository.clearActingStore();
+        } else if (acting != null &&
+            acting.id == storeId &&
+            (storeName == null || storeName.isEmpty)) {
+          storeName = acting.name;
         }
       } catch (_) {}
     }

@@ -468,13 +468,24 @@ class _MoreScreenState extends State<MoreScreen> {
           )
           .toList();
 
+      final ownerAtRoot = _ownerAtNetworkRoot();
+      if (ownerAtRoot && group.titleKey != 'more_group_system') continue;
+      if (ownerAtRoot) {
+        allowedModules.retainWhere((module) => module.route == '/network');
+      }
+
       if (group.titleKey == 'more_group_system' && role == UserRole.owner) {
-        allowedModules.insert(0, (
+        final leadsTile = (
           capability: AppCapability.network,
           icon: TablerIcons.inbox,
           titleKey: 'leads_title',
           route: '/leads',
-        ));
+        );
+        if (ownerAtRoot) {
+          allowedModules.add(leadsTile);
+        } else {
+          allowedModules.insert(0, leadsTile);
+        }
       }
 
       if (allowedModules.isEmpty) continue;
@@ -686,6 +697,13 @@ class _MoreScreenState extends State<MoreScreen> {
         ],
       ),
     );
+  }
+
+  bool _ownerAtNetworkRoot() {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated &&
+        authState.role == UserRole.owner &&
+        authState.storeId == null;
   }
 
   String _roleTranslationKey(UserRole role) {
