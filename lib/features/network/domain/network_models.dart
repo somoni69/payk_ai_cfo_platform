@@ -43,6 +43,9 @@ class NetworkStore extends Equatable {
   /// Backend deactivates such stores instead of deleting them.
   final bool hasData;
 
+  /// Модули, подключённые магазину.
+  final List<ModuleBrief> modules;
+
   const NetworkStore({
     required this.id,
     required this.name,
@@ -51,6 +54,7 @@ class NetworkStore extends Equatable {
     this.usersCount = 0,
     this.operationsCount = 0,
     this.hasData = false,
+    this.modules = const [],
   });
 
   factory NetworkStore.fromJson(Map<String, dynamic> json) {
@@ -69,6 +73,10 @@ class NetworkStore extends Equatable {
           : int.tryParse('${json['users_count']}') ?? 0,
       operationsCount: ops,
       hasData: json['has_data'] as bool? ?? ops > 0,
+      modules: (json['modules'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => ModuleBrief.fromJson(Map<String, dynamic>.from(item)))
+          .toList(growable: false),
     );
   }
 
@@ -80,6 +88,7 @@ class NetworkStore extends Equatable {
     'users_count': usersCount,
     'operations_count': operationsCount,
     'has_data': hasData,
+    'modules': modules.map((item) => item.toJson()).toList(),
   };
 
   NetworkStore copyWith({
@@ -90,6 +99,7 @@ class NetworkStore extends Equatable {
     int? usersCount,
     int? operationsCount,
     bool? hasData,
+    List<ModuleBrief>? modules,
   }) {
     return NetworkStore(
       id: id ?? this.id,
@@ -99,6 +109,7 @@ class NetworkStore extends Equatable {
       usersCount: usersCount ?? this.usersCount,
       operationsCount: operationsCount ?? this.operationsCount,
       hasData: hasData ?? this.hasData,
+      modules: modules ?? this.modules,
     );
   }
 
@@ -111,7 +122,118 @@ class NetworkStore extends Equatable {
     usersCount,
     operationsCount,
     hasData,
+    modules,
   ];
+}
+
+class ModuleBrief extends Equatable {
+  final int id;
+  final String name;
+
+  const ModuleBrief({required this.id, required this.name});
+
+  factory ModuleBrief.fromJson(Map<String, dynamic> json) {
+    return ModuleBrief(
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
+      name: (json['name'] as String?)?.trim() ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+
+  @override
+  List<Object?> get props => [id, name];
+}
+
+/// Набор разделов меню, который владелец подключает клиенту.
+class ClientModule extends Equatable {
+  final int id;
+  final String name;
+  final String? description;
+  final List<String> sections;
+  final List<ModuleBrief> stores;
+
+  const ClientModule({
+    required this.id,
+    required this.name,
+    this.description,
+    this.sections = const [],
+    this.stores = const [],
+  });
+
+  factory ClientModule.fromJson(Map<String, dynamic> json) {
+    return ClientModule(
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
+      name: (json['name'] as String?)?.trim() ?? '',
+      description: (json['description'] as String?)?.trim(),
+      sections: (json['sections'] as List? ?? const [])
+          .map((item) => item.toString())
+          .toList(growable: false),
+      stores: (json['stores'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => ModuleBrief.fromJson(Map<String, dynamic>.from(item)))
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, name, description, sections, stores];
+}
+
+/// Каталог разделов, из которых собирается модуль.
+class ModuleCatalog extends Equatable {
+  final List<String> sections;
+  final Map<String, String> requires;
+
+  const ModuleCatalog({required this.sections, this.requires = const {}});
+
+  factory ModuleCatalog.fromJson(Map<String, dynamic> json) {
+    final rawRequires = json['requires'];
+    final requires = <String, String>{};
+    if (rawRequires is Map) {
+      rawRequires.forEach((key, value) {
+        if (value != null) requires[key.toString()] = value.toString();
+      });
+    }
+    return ModuleCatalog(
+      sections: (json['sections'] as List? ?? const [])
+          .map((item) => item.toString())
+          .toList(growable: false),
+      requires: requires,
+    );
+  }
+
+  static const fallback = ModuleCatalog(
+    sections: [
+      'dashboard',
+      'cash',
+      'reports',
+      'finance-ops',
+      'finance',
+      'warehouse',
+      'playroom',
+      'crm',
+      'meta',
+      'hr',
+      'tasks',
+      'my-tasks',
+      'checklists',
+      'audit',
+      'legal',
+      'marketing',
+      'strategy',
+      'integrations',
+      'branches',
+    ],
+    requires: {'meta': 'crm', 'playroom': 'cash'},
+  );
+
+  @override
+  List<Object?> get props => [sections, requires];
 }
 
 /// Сводная строка финансовых показателей магазина.
@@ -181,6 +303,7 @@ class StoreCreateInput {
   final String? directorUsername;
   final String? directorPassword;
   final String? directorFullName;
+  final List<int> moduleIds;
 
   const StoreCreateInput({
     required this.name,
@@ -188,10 +311,12 @@ class StoreCreateInput {
     this.directorUsername,
     this.directorPassword,
     this.directorFullName,
+    this.moduleIds = const [],
   });
 
   Map<String, dynamic> toJson() => {
     'name': name.trim(),
+    'module_ids': moduleIds,
     if (location != null && location!.trim().isNotEmpty)
       'location': location!.trim(),
     if (directorUsername != null && directorUsername!.trim().isNotEmpty)

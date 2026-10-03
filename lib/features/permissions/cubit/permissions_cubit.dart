@@ -70,6 +70,7 @@ class PermissionsCubit extends Cubit<PermissionsState> {
         PermAction.delete => fallbackRole.canDelete(capability),
       };
     }
+    if (!data.capabilitySectionOn(capability)) return false;
     if (data.isDirector) return true;
     if (capability == AppCapability.users) return data.isDirector;
     if (capability == AppCapability.backups) return data.isDirector;

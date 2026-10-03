@@ -50,16 +50,18 @@ class UpdateStoreRequested extends NetworkEvent {
   final String? name;
   final String? location;
   final bool? isActive;
+  final List<int>? moduleIds;
 
   const UpdateStoreRequested({
     required this.storeId,
     this.name,
     this.location,
     this.isActive,
+    this.moduleIds,
   });
 
   @override
-  List<Object?> get props => [storeId, name, location, isActive];
+  List<Object?> get props => [storeId, name, location, isActive, moduleIds];
 }
 
 class DeleteStoreRequested extends NetworkEvent {

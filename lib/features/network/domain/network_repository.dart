@@ -22,7 +22,21 @@ abstract class NetworkRepository {
     String? name,
     String? location,
     bool? isActive,
+    List<int>? moduleIds,
   });
+
+  Future<ModuleCatalog> fetchModuleCatalog();
+
+  Future<List<ClientModule>> fetchModules();
+
+  Future<ClientModule> saveModule({
+    int? id,
+    required String name,
+    String? description,
+    required List<String> sections,
+  });
+
+  Future<void> deleteModule(int id);
 
   /// Удаление магазина (физическое для пустых, деактивация для магазинов с данными).
   Future<StoreDeleteResult> deleteStore(int id);

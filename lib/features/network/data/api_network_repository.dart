@@ -105,6 +105,7 @@ class ApiNetworkRepository implements NetworkRepository {
     String? name,
     String? location,
     bool? isActive,
+    List<int>? moduleIds,
   }) async {
     try {
       final response = await _apiClient.dio.patch<dynamic>(
@@ -113,6 +114,7 @@ class ApiNetworkRepository implements NetworkRepository {
           'name': ?name?.trim(),
           'location': ?location?.trim(),
           'is_active': ?isActive,
+          'module_ids': ?moduleIds,
         },
       );
       final data = response.data is Map
@@ -136,6 +138,84 @@ class ApiNetworkRepository implements NetworkRepository {
           ? Map<String, dynamic>.from(response.data as Map)
           : <String, dynamic>{};
       return StoreDeleteResult.fromJson(data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
+  Future<ModuleCatalog> fetchModuleCatalog() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/network/modules/catalog',
+      );
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final catalog = ModuleCatalog.fromJson(data);
+      return catalog.sections.isEmpty ? ModuleCatalog.fallback : catalog;
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<List<ClientModule>> fetchModules() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/network/modules');
+      final list = response.data is List ? response.data as List : const [];
+      return list
+          .whereType<Map>()
+          .map((item) => ClientModule.fromJson(Map<String, dynamic>.from(item)))
+          .toList(growable: false);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<ClientModule> saveModule({
+    int? id,
+    required String name,
+    String? description,
+    required List<String> sections,
+  }) async {
+    try {
+      final payload = {
+        'name': name.trim(),
+        'description': description?.trim(),
+        'sections': sections,
+      };
+      final response = id == null
+          ? await _apiClient.dio.post<dynamic>(
+              '/network/modules',
+              data: payload,
+            )
+          : await _apiClient.dio.patch<dynamic>(
+              '/network/modules/$id',
+              data: payload,
+            );
+      final data = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      return ClientModule.fromJson(data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
+  Future<void> deleteModule(int id) async {
+    try {
+      await _apiClient.dio.delete<dynamic>('/network/modules/$id');
     } on DioException catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     } catch (_) {

@@ -82,6 +82,7 @@ class FakeNetworkRepository implements NetworkRepository {
     String? name,
     String? location,
     bool? isActive,
+    List<int>? moduleIds,
   }) async {
     final index = stores.indexWhere((s) => s.id == id);
     if (index == -1) throw Exception('Store not found');
@@ -108,6 +109,25 @@ class FakeNetworkRepository implements NetworkRepository {
       message: 'Магазин «${removed.name}» удален',
     );
   }
+
+  @override
+  Future<ModuleCatalog> fetchModuleCatalog() async => ModuleCatalog.fallback;
+
+  @override
+  Future<List<ClientModule>> fetchModules() async => const [];
+
+  @override
+  Future<ClientModule> saveModule({
+    int? id,
+    required String name,
+    String? description,
+    required List<String> sections,
+  }) async {
+    return ClientModule(id: id ?? 1, name: name, sections: sections);
+  }
+
+  @override
+  Future<void> deleteModule(int id) async {}
 
   @override
   Future<void> resetDirectorPassword(
@@ -158,6 +178,7 @@ void main() {
         'users_count': 8,
         'operations_count': 12,
         'has_data': true,
+        'modules': <Map<String, dynamic>>[],
       };
       final store = NetworkStore.fromJson(json);
 

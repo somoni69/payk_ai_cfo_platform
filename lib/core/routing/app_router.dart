@@ -15,6 +15,7 @@ import '../../features/fin_ops/presentation/fin_ops_screen.dart';
 import '../../features/hr/presentation/hr_screen.dart';
 import '../../features/integrations/presentation/integrations_screen.dart';
 import '../../features/leads/presentation/leads_screen.dart';
+import '../../features/network/presentation/modules_screen.dart';
 import '../../features/legal/presentation/legal_screen.dart';
 import '../../features/marketing/presentation/marketing_screen.dart';
 import '../../features/meta/presentation/meta_screen.dart';
@@ -104,7 +105,7 @@ GoRouter createRouter(
           location,
           effective: effective,
         )) {
-          return landingLocation;
+          return AppAccess.deniedTarget(authState.role, effective);
         }
       }
 
@@ -225,6 +226,12 @@ GoRouter createRouter(
         path: '/leads',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const LeadsScreen(),
+      ),
+
+      GoRoute(
+        path: '/modules',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ModulesScreen(),
       ),
 
       // Финансовые операции

@@ -64,6 +64,8 @@ void main() {
     expect(UserRole.hr.can(AppCapability.playroom), isFalse);
     expect(UserRole.marketer.can(AppCapability.playroom), isFalse);
     expect(AppAccess.canOpen(UserRole.owner, '/leads'), isTrue);
+    expect(AppAccess.canOpen(UserRole.owner, '/modules'), isTrue);
+    expect(AppAccess.canOpen(UserRole.director, '/modules'), isFalse);
     expect(AppAccess.canOpen(UserRole.director, '/leads'), isFalse);
     expect(AppAccess.canOpen(UserRole.cashier, '/playroom'), isTrue);
     expect(AppAccess.canOpen(UserRole.hr, '/playroom'), isFalse);
@@ -102,6 +104,32 @@ void main() {
       AppAccess.ownerRootRedirect(UserRole.director, null, '/cash'),
       isNull,
     );
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/modules'),
+      isNull,
+    );
+    const cashOnly = MyPermissions(
+      role: 'director',
+      isDirector: true,
+      sections: ['cash'],
+    );
+    expect(
+      AppAccess.canOpenEffective(UserRole.director, '/hr', effective: cashOnly),
+      isFalse,
+    );
+    expect(
+      AppAccess.canOpenEffective(UserRole.owner, '/cash', effective: cashOnly),
+      isTrue,
+    );
+    expect(
+      AppAccess.canOpenEffective(
+        UserRole.director,
+        '/meta',
+        effective: cashOnly,
+      ),
+      isFalse,
+    );
+    expect(AppAccess.deniedTarget(UserRole.director, cashOnly), '/cash');
     expect(UserRole.accountant.canManage(AppCapability.cash), isTrue);
     expect(UserRole.hr.canManage(AppCapability.tasks), isTrue);
     expect(UserRole.hr.canManage(AppCapability.hr), isTrue);

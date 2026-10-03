@@ -194,6 +194,11 @@ abstract final class AppAccess {
     return path == '/leads' || path.startsWith('/leads/');
   }
 
+  static bool _isModules(String location) {
+    final path = _pathOf(location);
+    return path == '/modules' || path.startsWith('/modules/');
+  }
+
   static String _pathOf(String location) {
     return Uri.tryParse(location)?.path ?? location;
   }
@@ -206,8 +211,45 @@ abstract final class AppAccess {
         path.startsWith('/network/') ||
         path == '/leads' ||
         path.startsWith('/leads/') ||
+        path == '/modules' ||
+        path.startsWith('/modules/') ||
         path == '/more' ||
         path.startsWith('/more/');
+  }
+
+  /// Куда увести, если текущий раздел магазину не подключён.
+  static String deniedTarget(UserRole role, MyPermissions? effective) {
+    const order = ['/dashboard', '/cash', '/tasks', '/warehouse', '/more'];
+    for (final path in order) {
+      if (canOpenEffective(role, path, effective: effective)) return path;
+    }
+    return '/more';
+  }
+
+  static bool _sectionAllows(
+    MyPermissions effective,
+    String location,
+    AppCapability? capability,
+  ) {
+    final sections = effective.sections;
+    if (sections == null) return true;
+    final path = _pathOf(location);
+    if (path == '/tasks' || path.startsWith('/tasks/')) {
+      return sections.contains('tasks') || sections.contains('my-tasks');
+    }
+    if (path == '/meta' || path.startsWith('/meta/')) {
+      return sections.contains('meta');
+    }
+    if (capability == null ||
+        capability == AppCapability.users ||
+        capability == AppCapability.notifications ||
+        capability == AppCapability.network ||
+        capability == AppCapability.backups) {
+      return true;
+    }
+    final key = PermissionModules.keyFor(capability);
+    if (key == null || key == 'users') return true;
+    return sections.contains(key);
   }
 
   /// Владелец в корне сети: разделы магазина пустые, возвращаем на «Сеть».
@@ -225,7 +267,9 @@ abstract final class AppAccess {
   }
 
   static bool canOpen(UserRole role, String location) {
-    if (_isLeads(location)) return role == UserRole.owner;
+    if (_isLeads(location) || _isModules(location)) {
+      return role == UserRole.owner;
+    }
     final capability = capabilityForLocation(location);
     return capability == null || role.can(capability);
   }
@@ -236,8 +280,13 @@ abstract final class AppAccess {
     String location, {
     MyPermissions? effective,
   }) {
-    if (_isLeads(location)) return role == UserRole.owner;
+    if (_isLeads(location) || _isModules(location)) {
+      return role == UserRole.owner;
+    }
     final capability = capabilityForLocation(location);
+    if (effective != null && !_sectionAllows(effective, location, capability)) {
+      return false;
+    }
     if (capability == null) return true;
     if (capability == AppCapability.notifications ||
         capability == AppCapability.network) {

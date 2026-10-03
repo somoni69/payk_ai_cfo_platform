@@ -186,6 +186,7 @@ class NetworkBloc extends Bloc<NetworkEvent, NetworkState> {
         name: event.name,
         location: event.location,
         isActive: event.isActive,
+        moduleIds: event.moduleIds,
       );
 
       if (current != null) {

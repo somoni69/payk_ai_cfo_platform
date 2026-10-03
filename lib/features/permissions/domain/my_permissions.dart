@@ -58,11 +58,15 @@ class MyPermissions {
   final bool hidesMoney;
   final Map<String, ModulePerm> modules;
 
+  /// Разделы, подключённые магазину. null — ограничений нет.
+  final List<String>? sections;
+
   const MyPermissions({
     required this.role,
     required this.isDirector,
     this.hidesMoney = false,
     this.modules = const {},
+    this.sections,
   });
 
   factory MyPermissions.fromJson(Map<String, dynamic> json) {
@@ -77,12 +81,32 @@ class MyPermissions {
         }
       });
     }
+    final rawSections = json['sections'];
     return MyPermissions(
       role: (json['role'] ?? '').toString(),
       isDirector: json['is_director'] == true || json['isDirector'] == true,
       hidesMoney: json['hides_money'] == true || json['hidesMoney'] == true,
       modules: modules,
+      sections: rawSections is List
+          ? rawSections.map((item) => item.toString()).toList(growable: false)
+          : null,
     );
+  }
+
+  bool sectionOn(String? section) {
+    if (sections == null || section == null) return true;
+    return sections!.contains(section);
+  }
+
+  /// Раздел пункта меню подключён магазину. «Пользователи» есть всегда.
+  bool capabilitySectionOn(AppCapability capability) {
+    if (sections == null) return true;
+    if (capability == AppCapability.tasks) {
+      return sections!.contains('tasks') || sections!.contains('my-tasks');
+    }
+    final key = PermissionModules.keyFor(capability);
+    if (key == null || key == 'users') return true;
+    return sections!.contains(key);
   }
 
   @override
@@ -91,8 +115,16 @@ class MyPermissions {
     if (role != other.role ||
         isDirector != other.isDirector ||
         hidesMoney != other.hidesMoney ||
+        sections?.length != other.sections?.length ||
         modules.length != other.modules.length) {
       return false;
+    }
+    final mine = sections;
+    final theirs = other.sections;
+    if (mine != null && theirs != null) {
+      for (final section in mine) {
+        if (!theirs.contains(section)) return false;
+      }
     }
     for (final entry in modules.entries) {
       if (other.modules[entry.key] != entry.value) return false;
@@ -105,6 +137,7 @@ class MyPermissions {
     role,
     isDirector,
     hidesMoney,
+    Object.hashAll(sections ?? const []),
     Object.hashAll(
       modules.entries.map((entry) => Object.hash(entry.key, entry.value)),
     ),

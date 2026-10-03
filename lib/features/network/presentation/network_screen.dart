@@ -26,6 +26,7 @@ import '../data/api_network_repository.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
 import 'owner_network_arrival.dart';
+import 'store_module_picker.dart';
 
 class NetworkScreen extends StatefulWidget {
   const NetworkScreen({super.key});
@@ -111,12 +112,18 @@ class _NetworkViewState extends State<_NetworkView> {
           ),
         ),
         actions: [
-          if (isOwner)
+          if (isOwner) ...[
             IconButton(
               tooltip: language.translate('leads_title'),
               onPressed: () => context.push('/leads'),
               icon: const Icon(TablerIcons.inbox),
             ),
+            IconButton(
+              tooltip: language.translate('modules_title'),
+              onPressed: () => context.push('/modules'),
+              icon: const Icon(TablerIcons.box),
+            ),
+          ],
           IconButton(
             tooltip: language.translate('more_title'),
             onPressed: () => context.push('/more'),
@@ -638,6 +645,18 @@ class _NetworkViewState extends State<_NetworkView> {
                           ),
                       ],
                     ),
+                    if (store.modules.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        store.modules.map((item) => item.name).join(', '),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.brand,
+                          fontSize: 12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -1087,6 +1106,7 @@ class _NetworkViewState extends State<_NetworkView> {
     final dirUserCtrl = TextEditingController();
     final dirPassCtrl = TextEditingController();
     final dirNameCtrl = TextEditingController();
+    final moduleIds = <int>[];
 
     LedgerBottomSheet.show(
       context: context,
@@ -1151,6 +1171,15 @@ class _NetworkViewState extends State<_NetworkView> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 16),
+                StoreModulePicker(
+                  initialIds: const [],
+                  onChanged: (ids) {
+                    moduleIds
+                      ..clear()
+                      ..addAll(ids);
+                  },
+                ),
                 const SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () async {
@@ -1175,6 +1204,16 @@ class _NetworkViewState extends State<_NetworkView> {
                       );
                       return;
                     }
+                    if (moduleIds.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            language.translate('modules_pick_required'),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
                     bloc.add(
                       CreateStoreRequested(
                         input: StoreCreateInput(
@@ -1191,6 +1230,7 @@ class _NetworkViewState extends State<_NetworkView> {
                           directorPassword: dirPassCtrl.text.trim().isNotEmpty
                               ? dirPassCtrl.text.trim()
                               : null,
+                          moduleIds: moduleIds.toList(),
                         ),
                       ),
                     );
@@ -1214,6 +1254,7 @@ class _NetworkViewState extends State<_NetworkView> {
     final nameCtrl = TextEditingController(text: store.name);
     final locCtrl = TextEditingController(text: store.location ?? '');
     var isActive = store.isActive;
+    final moduleIds = store.modules.map((item) => item.id).toList();
 
     LedgerBottomSheet.show(
       context: context,
@@ -1221,60 +1262,84 @@ class _NetworkViewState extends State<_NetworkView> {
       builder: (sheetContext, setSheetState) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  labelText: language.translate('network_store_name_label'),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: language.translate('network_store_name_label'),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: locCtrl,
-                decoration: InputDecoration(
-                  labelText: language.translate('network_store_location_label'),
-                ),
-              ),
-              const SizedBox(height: 16),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                value: isActive,
-                title: Text(
-                  language.translate('network_store_status_active'),
-                  style: const TextStyle(fontWeight: FontWeight.w500),
-                ),
-                subtitle: Text(
-                  language.translate('network_store_status_hint'),
-                  style: const TextStyle(fontSize: 12),
-                ),
-                onChanged: (val) {
-                  setSheetState(() => isActive = val);
-                },
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  bloc.add(
-                    UpdateStoreRequested(
-                      storeId: store.id,
-                      name: nameCtrl.text.trim(),
-                      location: locCtrl.text.trim().isNotEmpty
-                          ? locCtrl.text.trim()
-                          : null,
-                      isActive: isActive,
+                const SizedBox(height: 12),
+                TextField(
+                  controller: locCtrl,
+                  decoration: InputDecoration(
+                    labelText: language.translate(
+                      'network_store_location_label',
                     ),
-                  );
-                  if (sheetContext.mounted) {
-                    Navigator.of(sheetContext).pop();
-                  }
-                },
-                child: Text(language.translate('common_save')),
-              ),
-            ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: isActive,
+                  title: Text(
+                    language.translate('network_store_status_active'),
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  subtitle: Text(
+                    language.translate('network_store_status_hint'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  onChanged: (val) {
+                    setSheetState(() => isActive = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                StoreModulePicker(
+                  initialIds: moduleIds,
+                  onChanged: (ids) {
+                    moduleIds
+                      ..clear()
+                      ..addAll(ids);
+                  },
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameCtrl.text.trim().isEmpty) return;
+                    if (moduleIds.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            language.translate('modules_pick_required'),
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    bloc.add(
+                      UpdateStoreRequested(
+                        storeId: store.id,
+                        name: nameCtrl.text.trim(),
+                        location: locCtrl.text.trim().isNotEmpty
+                            ? locCtrl.text.trim()
+                            : null,
+                        isActive: isActive,
+                        moduleIds: moduleIds.toList(),
+                      ),
+                    );
+                    if (sheetContext.mounted) {
+                      Navigator.of(sheetContext).pop();
+                    }
+                  },
+                  child: Text(language.translate('common_save')),
+                ),
+              ],
+            ),
           ),
         );
       },

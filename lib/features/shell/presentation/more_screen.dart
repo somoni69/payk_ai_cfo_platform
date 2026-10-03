@@ -458,15 +458,22 @@ class _MoreScreenState extends State<MoreScreen> {
 
     for (final group in groups) {
       final permissions = context.read<PermissionsCubit>();
-      final allowedModules = group.modules
-          .where(
-            (m) => permissions.can(
-              m.capability,
-              action: PermAction.view,
-              fallbackRole: role,
-            ),
-          )
-          .toList();
+      final sections = permissions.state.data?.sections;
+      final allowedModules = group.modules.where((m) {
+        if (!permissions.can(
+          m.capability,
+          action: PermAction.view,
+          fallbackRole: role,
+        )) {
+          return false;
+        }
+        if (m.route == '/meta' &&
+            sections != null &&
+            !sections.contains('meta')) {
+          return false;
+        }
+        return true;
+      }).toList();
 
       final ownerAtRoot = _ownerAtNetworkRoot();
       if (ownerAtRoot && group.titleKey != 'more_group_system') continue;
@@ -481,10 +488,24 @@ class _MoreScreenState extends State<MoreScreen> {
           titleKey: 'leads_title',
           route: '/leads',
         );
+        final modulesTile = (
+          capability: AppCapability.network,
+          icon: TablerIcons.box,
+          titleKey: 'modules_title',
+          route: '/modules',
+        );
         if (ownerAtRoot) {
           allowedModules.add(leadsTile);
+          allowedModules.add(modulesTile);
         } else {
           allowedModules.insert(0, leadsTile);
+          final networkIndex = allowedModules.indexWhere(
+            (module) => module.route == '/network',
+          );
+          allowedModules.insert(
+            networkIndex < 0 ? allowedModules.length : networkIndex + 1,
+            modulesTile,
+          );
         }
       }
 
