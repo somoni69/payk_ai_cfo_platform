@@ -212,6 +212,107 @@ class ApiNetworkRepository implements NetworkRepository {
     }
   }
 
+  StoreChannels _channelsFrom(dynamic raw) {
+    final data = raw is Map
+        ? Map<String, dynamic>.from(raw)
+        : <String, dynamic>{};
+    return StoreChannels.fromJson(data);
+  }
+
+  @override
+  Future<StoreChannels> fetchStoreChannels(int storeId) async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/network/stores/$storeId/channels',
+      );
+      return _channelsFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<StoreChannels> connectFacebookChannel(
+    int storeId,
+    String token,
+  ) async {
+    return _putChannel(storeId, 'facebook', {'token': token.trim()});
+  }
+
+  @override
+  Future<StoreChannels> connectInstagramChannel(
+    int storeId, {
+    String? token,
+  }) async {
+    final trimmed = token?.trim();
+    return _putChannel(storeId, 'instagram', {
+      'token': trimmed == null || trimmed.isEmpty ? null : trimmed,
+    });
+  }
+
+  @override
+  Future<StoreChannels> connectWhatsAppChannel(
+    int storeId, {
+    required String phoneId,
+    required String token,
+    String? businessId,
+  }) async {
+    final business = businessId?.trim();
+    return _putChannel(storeId, 'whatsapp', {
+      'phone_id': phoneId.trim(),
+      'token': token.trim(),
+      'business_id': business == null || business.isEmpty ? null : business,
+    });
+  }
+
+  Future<StoreChannels> _putChannel(
+    int storeId,
+    String kind,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final response = await _apiClient.dio.put<dynamic>(
+        '/network/stores/$storeId/channels/$kind',
+        data: data,
+      );
+      return _channelsFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
+  Future<StoreChannels> checkStoreChannel(int storeId, String kind) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/network/stores/$storeId/channels/$kind/check',
+      );
+      return _channelsFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<StoreChannels> disconnectStoreChannel(int storeId, String kind) async {
+    try {
+      final response = await _apiClient.dio.delete<dynamic>(
+        '/network/stores/$storeId/channels/$kind',
+      );
+      return _channelsFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
   @override
   Future<void> deleteModule(int id) async {
     try {

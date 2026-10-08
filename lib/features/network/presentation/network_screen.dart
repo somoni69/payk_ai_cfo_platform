@@ -26,6 +26,7 @@ import '../data/api_network_repository.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
 import 'owner_network_arrival.dart';
+import 'channels_sheet.dart';
 import 'store_module_picker.dart';
 
 class NetworkScreen extends StatefulWidget {
@@ -657,6 +658,23 @@ class _NetworkViewState extends State<_NetworkView> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
+                    if (store.channels.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        store.channels
+                            .map(
+                              (kind) =>
+                                  language.translate('meta_channel_$kind'),
+                            )
+                            .join(' · '),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -705,7 +723,9 @@ class _NetworkViewState extends State<_NetworkView> {
                     side: BorderSide(color: colors.border),
                   ),
                   onSelected: (val) {
-                    if (val == 'edit') {
+                    if (val == 'channels') {
+                      showStoreChannelsSheet(context, store);
+                    } else if (val == 'edit') {
                       _showEditStoreDialog(context, store);
                     } else if (val == 'reset_pwd') {
                       _showResetDirectorPasswordDialog(context, store);
@@ -714,6 +734,23 @@ class _NetworkViewState extends State<_NetworkView> {
                     }
                   },
                   itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'channels',
+                      child: Row(
+                        children: [
+                          Icon(
+                            TablerIcons.messages,
+                            size: 16,
+                            color: colors.brand,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            language.translate('channels_button'),
+                            style: textStyles.bodySans.copyWith(fontSize: 13.5),
+                          ),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem(
                       value: 'edit',
                       child: Row(

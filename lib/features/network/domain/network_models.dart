@@ -46,6 +46,9 @@ class NetworkStore extends Equatable {
   /// Модули, подключённые магазину.
   final List<ModuleBrief> modules;
 
+  /// Подключённые каналы Meta: facebook, instagram, whatsapp.
+  final List<String> channels;
+
   const NetworkStore({
     required this.id,
     required this.name,
@@ -55,6 +58,7 @@ class NetworkStore extends Equatable {
     this.operationsCount = 0,
     this.hasData = false,
     this.modules = const [],
+    this.channels = const [],
   });
 
   factory NetworkStore.fromJson(Map<String, dynamic> json) {
@@ -77,6 +81,9 @@ class NetworkStore extends Equatable {
           .whereType<Map>()
           .map((item) => ModuleBrief.fromJson(Map<String, dynamic>.from(item)))
           .toList(growable: false),
+      channels: (json['channels'] as List? ?? const [])
+          .map((item) => item.toString())
+          .toList(growable: false),
     );
   }
 
@@ -89,6 +96,7 @@ class NetworkStore extends Equatable {
     'operations_count': operationsCount,
     'has_data': hasData,
     'modules': modules.map((item) => item.toJson()).toList(),
+    'channels': channels,
   };
 
   NetworkStore copyWith({
@@ -100,6 +108,7 @@ class NetworkStore extends Equatable {
     int? operationsCount,
     bool? hasData,
     List<ModuleBrief>? modules,
+    List<String>? channels,
   }) {
     return NetworkStore(
       id: id ?? this.id,
@@ -110,6 +119,7 @@ class NetworkStore extends Equatable {
       operationsCount: operationsCount ?? this.operationsCount,
       hasData: hasData ?? this.hasData,
       modules: modules ?? this.modules,
+      channels: channels ?? this.channels,
     );
   }
 
@@ -123,6 +133,7 @@ class NetworkStore extends Equatable {
     operationsCount,
     hasData,
     modules,
+    channels,
   ];
 }
 
@@ -372,4 +383,119 @@ class StoreDeleteResult extends Equatable {
 
   @override
   List<Object?> get props => [deleted, deactivated, message];
+}
+
+class StoreChannel extends Equatable {
+  final String kind;
+  final bool connected;
+  final String? via;
+  final String? name;
+  final String? accountId;
+  final String? businessId;
+  final String? pageName;
+  final bool? subscribed;
+  final DateTime? lastInboundAt;
+  final DateTime? tokenExpiresAt;
+  final String? error;
+
+  const StoreChannel({
+    required this.kind,
+    this.connected = false,
+    this.via,
+    this.name,
+    this.accountId,
+    this.businessId,
+    this.pageName,
+    this.subscribed,
+    this.lastInboundAt,
+    this.tokenExpiresAt,
+    this.error,
+  });
+
+  factory StoreChannel.fromJson(Map<String, dynamic> json) {
+    DateTime? time(Object? raw) =>
+        raw is String ? DateTime.tryParse(raw) : null;
+    final subscribed = json['subscribed'];
+    return StoreChannel(
+      kind: (json['kind'] ?? '').toString(),
+      connected: json['connected'] == true,
+      via: json['via']?.toString(),
+      name: json['name']?.toString(),
+      accountId: json['account_id']?.toString(),
+      businessId: json['business_id']?.toString(),
+      pageName: json['page_name']?.toString(),
+      subscribed: subscribed is bool ? subscribed : null,
+      lastInboundAt: time(json['last_inbound_at']),
+      tokenExpiresAt: time(json['token_expires_at']),
+      error: json['error']?.toString(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    kind,
+    connected,
+    via,
+    name,
+    accountId,
+    businessId,
+    pageName,
+    subscribed,
+    lastInboundAt,
+    tokenExpiresAt,
+    error,
+  ];
+}
+
+class StoreChannels extends Equatable {
+  final int storeId;
+  final String storeName;
+  final bool hasChats;
+  final List<StoreChannel> channels;
+  final String webhookUrl;
+  final bool appSecretSet;
+  final bool verifyTokenSet;
+
+  const StoreChannels({
+    required this.storeId,
+    required this.storeName,
+    required this.hasChats,
+    required this.channels,
+    required this.webhookUrl,
+    required this.appSecretSet,
+    required this.verifyTokenSet,
+  });
+
+  bool get serverReady => appSecretSet && verifyTokenSet;
+
+  factory StoreChannels.fromJson(Map<String, dynamic> json) {
+    final setup = json['setup'] is Map
+        ? Map<String, dynamic>.from(json['setup'] as Map)
+        : <String, dynamic>{};
+    return StoreChannels(
+      storeId: json['store_id'] is int
+          ? json['store_id'] as int
+          : int.tryParse('${json['store_id']}') ?? 0,
+      storeName: (json['store_name'] as String?)?.trim() ?? '',
+      hasChats: json['has_chats'] == true,
+      channels: (json['channels'] as List? ?? const [])
+          .whereType<Map>()
+          .map((item) => StoreChannel.fromJson(Map<String, dynamic>.from(item)))
+          .toList(growable: false),
+      webhookUrl: (setup['webhook_url'] ?? '').toString(),
+      appSecretSet: setup['app_secret_set'] == true,
+      verifyTokenSet: setup['verify_token_set'] == true,
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    storeId,
+    storeName,
+    hasChats,
+    channels,
+    webhookUrl,
+    appSecretSet,
+    verifyTokenSet,
+  ];
 }

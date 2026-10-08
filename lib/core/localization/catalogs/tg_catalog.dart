@@ -112,7 +112,14 @@ const Map<String, String> kTajikCatalog = {
   'assistant_q3': 'Ба чӣ диққат диҳем?',
   'more_meta': 'Чатҳои Meta',
   'meta_title': 'Чатҳои Meta',
-  'meta_not_connected': 'Meta пайваст нест. Интегратсияҳоро дар сервер санҷед.',
+  'meta_not_connected':
+      'Каналҳо пайваст нестанд: аз ин ҷо ҳоло ба мизоҷ навиштан мумкин нест. Онҳоро соҳиби шабака дар бахши «Шабака» пайваст мекунад.',
+  'meta_broken': '{channel} ҳоло кор намекунад. {error}',
+  'meta_delete': 'Мукотибаро нест кардан',
+  'meta_delete_title': 'Мукотиба бо {peer}-ро нест кунем?',
+  'meta_delete_msg':
+      'Ҳамаи паёмҳои ин мукотиба бе имкони барқарорсозӣ нест мешаванд. Ҳамин тавр хоҳиши одам дар бораи нест кардани маълумоташ иҷро мешавад.',
+  'meta_deleted': 'Мукотиба нест карда шуд',
   'meta_channel_all': 'Ҳама',
   'meta_channel_facebook': 'Facebook',
   'meta_channel_instagram': 'Instagram',
@@ -1814,6 +1821,64 @@ const Map<String, String> kTajikCatalog = {
   'modules_pick': 'Модулҳои мизоҷ',
   'modules_pick_required': 'Ҳадди ақал як модулро интихоб кунед',
   'modules_none_yet': 'Аввал дар саҳифаи «Модулҳо» модул созед.',
+  'channels_button': 'Каналҳо',
+  'channels_title': 'Каналҳо — {store}',
+  'channels_intro':
+      'Паёмҳо аз каналҳои пайвастшуда ба бахши «Чатҳо»-и ин мизоҷ меоянд ва аз ҳамон ҷо ҷавоб дода мешавад.',
+  'channels_no_chats':
+      'Ба мизоҷ бахши «Чатҳо» пайваст нашудааст: паёмҳо ҷамъ мешаванд, вале ӯ онҳоро намебинад. Бахшро ба модулҳои ӯ илова кунед.',
+  'channels_server_not_ready':
+      'Сервер ҳоло паёмҳоро аз Meta қабул намекунад: калидҳои барнома дар он танзим нашудаанд. Каналро пайваст кардан мумкин аст, вале паёмҳои воридотӣ танҳо пас аз ин меоянд.',
+  'channels_webhook_title': 'Суроға барои кабинети Meta',
+  'channels_webhook_hint':
+      'Онро дар кабинети таҳиягари Meta ба майдони «URL обратного вызова» (Callback URL) гузоред.',
+  'channels_copy': 'Нусха гирифтан',
+  'channels_copied': 'Суроға нусха шуд',
+  'channels_kind_facebook': 'Facebook Messenger',
+  'channels_kind_instagram': 'Instagram',
+  'channels_kind_whatsapp': 'WhatsApp Business',
+  'channels_connected': 'Пайваст аст',
+  'channels_not_connected': 'Пайваст нест',
+  'channels_via_page': 'Тавассути саҳифаи Facebook «{page}»',
+  'channels_via_token': 'Бо токени алоҳидаи Instagram',
+  'channels_last_inbound': 'Охирин паёми воридотӣ: {when}',
+  'channels_no_inbound': 'Ҳоло паёми воридотӣ набуд',
+  'channels_token_expires':
+      'Токен то {when} амал мекунад ва худаш тамдид мешавад',
+  'channels_subscription_unknown':
+      'Обуна ба паёмҳои воридотӣ тафтиш нашудааст. Идентификатори ҳисоби WhatsApp Business-ро нишон диҳед — ё майдони messages-ро дар кабинети Meta фаъол кунед.',
+  'channels_check': 'Тафтиш кардан',
+  'channels_replace': 'Иваз кардани токен',
+  'channels_disconnect': 'Ҷудо кардан',
+  'channels_connect': 'Пайваст кардан',
+  'channels_fb_token': 'Токени саҳифа',
+  'channels_fb_hint':
+      'Кабинети Meta → Messenger → «Создать токен» дар рӯ ба рӯи саҳифаи лозима.',
+  'channels_ig_token': 'Токени Instagram',
+  'channels_ig_hint':
+      'Кабинети Meta → Instagram → «Создать токен» барои ҳисоби лозима.',
+  'channels_ig_via_facebook': 'Тавассути саҳифаи Facebook',
+  'channels_ig_via_facebook_hint':
+      'Агар ҳисоби Instagram ба саҳифаи «{page}» пайваст бошад, токен лозим нест.',
+  'channels_or': 'ё',
+  'channels_wa_phone': 'Идентификатори рақами телефон',
+  'channels_wa_phone_hint':
+      'Адад аз бахши WhatsApp → «Настройка API». Ин худи рақам нест.',
+  'channels_wa_token': 'Токени дастрасӣ',
+  'channels_wa_business': 'Идентификатори ҳисоби WhatsApp Business',
+  'channels_wa_business_hint':
+      'Ихтиёрӣ. Бо он PAYK худаш ба паёмҳои воридотӣ обуна мешавад.',
+  'channels_toast_connected': 'Канал пайваст шуд',
+  'channels_connected_warn':
+      'Канал пайваст шуд, вале эзоҳ ҳаст — он дар корт нишон дода шудааст',
+  'channels_checked_ok': 'Тафтиш гузашт: канал кор мекунад',
+  'channels_checked_bad': 'Тафтиш мушкилӣ ёфт — он дар корт нишон дода шудааст',
+  'channels_disconnected': 'Канал ҷудо шуд',
+  'channels_confirm_title': '{channel}-ро ҷудо мекунед?',
+  'channels_confirm_message':
+      'Мукотиба дар чатҳо мемонад, вале паёмҳои нав дигар намеоянд. Каналро ҳар вақт дубора пайваст кардан мумкин аст.',
+  'channels_err_token': 'Токенро гузоред',
+  'channels_err_phone': 'Идентификатори рақами телефонро нишон диҳед',
   'nav_network': 'Шабака',
   'network_title': 'Шабакаи мағозаҳои «Пайк»',
   'network_description': 'Даромади умумии шабака ва идоракунии мағозаҳо',

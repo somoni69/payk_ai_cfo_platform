@@ -1,11 +1,21 @@
+class MetaAccount {
+  final String channel;
+  final String? name;
+  final String? error;
+
+  const MetaAccount({required this.channel, this.name, this.error});
+}
+
 class MetaStatus {
   final bool connected;
   final List<String> channels;
+  final List<MetaAccount> accounts;
   final String? note;
 
   const MetaStatus({
     required this.connected,
     this.channels = const [],
+    this.accounts = const [],
     this.note,
   });
 }

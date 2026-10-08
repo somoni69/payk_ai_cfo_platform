@@ -15,6 +15,8 @@ import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_segmented_control.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 import '../../crm/domain/crm_models.dart';
 import '../../crm/domain/crm_repository.dart';
 import '../cubit/meta_cubit.dart';
@@ -212,6 +214,47 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
     return '$base/meta/webhook';
   }
 
+  bool _canDeleteThread(BuildContext context) {
+    final auth = context.read<AuthBloc>().state;
+    return auth is AuthAuthenticated &&
+        (auth.role == UserRole.owner || auth.role == UserRole.director);
+  }
+
+  Future<void> _confirmDeleteThread(
+    BuildContext context,
+    MetaThread thread,
+  ) async {
+    final language = context.read<LanguageCubit>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          language.translate(
+            'meta_delete_title',
+            params: {'peer': thread.displayName},
+          ),
+        ),
+        content: Text(language.translate('meta_delete_msg')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(language.translate('common_cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(language.translate('common_delete')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    final deleted = await context.read<MetaCubit>().deleteThread();
+    if (!context.mounted || !deleted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(language.translate('meta_deleted'))));
+  }
+
   Future<void> _copyWebhookUrl() async {
     await Clipboard.setData(ClipboardData(text: _webhookUrl));
     if (!mounted) return;
@@ -266,6 +309,16 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
             ),
             actions: [
               if (selected != null) ...[
+                if (_canDeleteThread(context))
+                  IconButton(
+                    tooltip: language.translate('meta_delete'),
+                    onPressed: () => _confirmDeleteThread(context, selected),
+                    icon: Icon(
+                      TablerIcons.trash,
+                      size: 20,
+                      color: colors.accentRed,
+                    ),
+                  ),
                 IconButton(
                   tooltip: language.translate('meta_link_client'),
                   onPressed: () => _showLinkClientSheet(context, selected),
@@ -363,6 +416,22 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               style: textStyles.captionSans.copyWith(color: tone),
             ),
           ],
+          for (final account in status?.accounts ?? const <MetaAccount>[])
+            if (account.error != null && account.error!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                language.translate(
+                  'meta_broken',
+                  params: {
+                    'channel': language.translate(
+                      'meta_channel_${account.channel}',
+                    ),
+                    'error': account.error!,
+                  },
+                ),
+                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              ),
+            ],
           const SizedBox(height: 10),
           Text(
             language.translate('meta_webhook_url'),

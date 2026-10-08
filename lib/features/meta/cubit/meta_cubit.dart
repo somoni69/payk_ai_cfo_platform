@@ -145,6 +145,36 @@ class MetaCubit extends Cubit<MetaState> {
     }
   }
 
+  Future<bool> deleteThread() async {
+    final selected = state.selectedThread;
+    if (selected == null || state.isSending) return false;
+    emit(state.copyWith(isSending: true, clearError: true));
+    try {
+      await _repository.deleteThread(selected.id);
+      if (isClosed) return true;
+      emit(
+        state.copyWith(
+          isSending: false,
+          clearSelectedThread: true,
+          messages: const [],
+          threads: state.threads
+              .where((item) => item.id != selected.id)
+              .toList(),
+        ),
+      );
+      return true;
+    } catch (e) {
+      if (isClosed) return false;
+      emit(
+        state.copyWith(
+          isSending: false,
+          error: userFacingError(e, fallback: ErrorKeys.saveFailed),
+        ),
+      );
+      return false;
+    }
+  }
+
   Future<void> linkClient(int clientId) async {
     final selected = state.selectedThread;
     if (selected == null) return;

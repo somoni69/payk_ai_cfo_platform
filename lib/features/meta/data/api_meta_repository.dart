@@ -20,9 +20,21 @@ class ApiMetaRepository implements MetaRepository {
       final channels = channelsRaw is List
           ? channelsRaw.map((e) => e.toString()).toList()
           : const <String>[];
+      final accountsRaw = map['accounts'];
+      final accounts = accountsRaw is List
+          ? accountsRaw.whereType<Map>().map((item) {
+              final account = Map<String, dynamic>.from(item);
+              return MetaAccount(
+                channel: (account['channel'] ?? '').toString(),
+                name: account['name']?.toString(),
+                error: account['error']?.toString(),
+              );
+            }).toList()
+          : const <MetaAccount>[];
       return MetaStatus(
         connected: map['connected'] == true,
         channels: channels,
+        accounts: accounts,
         note: map['note']?.toString(),
       );
     } catch (e) {
@@ -93,6 +105,15 @@ class ApiMetaRepository implements MetaRepository {
       return suggestion.trim();
     } catch (e) {
       throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+    }
+  }
+
+  @override
+  Future<void> deleteThread(int threadId) async {
+    try {
+      await _apiClient.dio.delete<dynamic>('/meta/threads/$threadId');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
 

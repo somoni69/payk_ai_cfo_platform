@@ -115,7 +115,14 @@ const Map<String, String> kRussianCatalog = {
   'assistant_q3': 'На что обратить внимание?',
   'more_meta': 'Чаты Meta',
   'meta_title': 'Чаты Meta',
-  'meta_not_connected': 'Meta не подключена. Проверьте интеграции на сервере.',
+  'meta_not_connected':
+      'Каналы не подключены: писать клиентам отсюда пока нельзя. Их подключает владелец сети в разделе «Сеть».',
+  'meta_broken': '{channel} сейчас не работает. {error}',
+  'meta_delete': 'Удалить переписку',
+  'meta_delete_title': 'Удалить переписку с {peer}?',
+  'meta_delete_msg':
+      'Все сообщения этого диалога будут удалены без возможности восстановления. Так выполняют просьбу человека удалить его данные.',
+  'meta_deleted': 'Переписка удалена',
   'meta_channel_all': 'Все',
   'meta_channel_facebook': 'Facebook',
   'meta_channel_instagram': 'Instagram',
@@ -1804,6 +1811,63 @@ const Map<String, String> kRussianCatalog = {
   'modules_pick': 'Модули клиента',
   'modules_pick_required': 'Выберите хотя бы один модуль',
   'modules_none_yet': 'Сначала создайте модуль на странице «Модули».',
+  'channels_button': 'Каналы',
+  'channels_title': 'Каналы — {store}',
+  'channels_intro':
+      'Сообщения из подключённых каналов приходят в раздел «Чаты» этого клиента, оттуда же на них отвечают.',
+  'channels_no_chats':
+      'Клиенту не подключён раздел «Чаты»: сообщения будут копиться, но он их не увидит. Добавьте раздел в его модули.',
+  'channels_server_not_ready':
+      'Сервер пока не принимает сообщения от Meta: на нём не заданы ключи приложения. Канал подключить можно, но входящие пойдут только после этого.',
+  'channels_webhook_title': 'Адрес для кабинета Meta',
+  'channels_webhook_hint':
+      'Вставьте его в кабинете разработчика Meta в поле «URL обратного вызова» (Callback URL).',
+  'channels_copy': 'Скопировать',
+  'channels_copied': 'Адрес скопирован',
+  'channels_kind_facebook': 'Facebook Messenger',
+  'channels_kind_instagram': 'Instagram',
+  'channels_kind_whatsapp': 'WhatsApp Business',
+  'channels_connected': 'Подключён',
+  'channels_not_connected': 'Не подключён',
+  'channels_via_page': 'Через страницу Facebook «{page}»',
+  'channels_via_token': 'Отдельным токеном Instagram',
+  'channels_last_inbound': 'Последнее входящее: {when}',
+  'channels_no_inbound': 'Входящих сообщений ещё не было',
+  'channels_token_expires': 'Токен действует до {when} и продлевается сам',
+  'channels_subscription_unknown':
+      'Подписка на входящие не проверялась. Укажите идентификатор аккаунта WhatsApp Business — или включите поле messages в кабинете Meta.',
+  'channels_check': 'Проверить',
+  'channels_replace': 'Заменить токен',
+  'channels_disconnect': 'Отключить',
+  'channels_connect': 'Подключить',
+  'channels_fb_token': 'Токен страницы',
+  'channels_fb_hint':
+      'Кабинет Meta → Messenger → «Создать токен» напротив нужной страницы.',
+  'channels_ig_token': 'Токен Instagram',
+  'channels_ig_hint':
+      'Кабинет Meta → Instagram → «Создать токен» для нужного аккаунта.',
+  'channels_ig_via_facebook': 'Через страницу Facebook',
+  'channels_ig_via_facebook_hint':
+      'Если аккаунт Instagram привязан к странице «{page}», токен не нужен.',
+  'channels_or': 'или',
+  'channels_wa_phone': 'Идентификатор номера телефона',
+  'channels_wa_phone_hint':
+      'Число из раздела WhatsApp → «Настройка API». Это не сам номер.',
+  'channels_wa_token': 'Токен доступа',
+  'channels_wa_business': 'Идентификатор аккаунта WhatsApp Business',
+  'channels_wa_business_hint':
+      'Необязательно. С ним PAYK сам подпишется на входящие сообщения.',
+  'channels_toast_connected': 'Канал подключён',
+  'channels_connected_warn':
+      'Канал подключён, но есть замечание — оно показано в карточке',
+  'channels_checked_ok': 'Проверка пройдена: канал работает',
+  'channels_checked_bad': 'Проверка нашла проблему — она показана в карточке',
+  'channels_disconnected': 'Канал отключён',
+  'channels_confirm_title': 'Отключить {channel}?',
+  'channels_confirm_message':
+      'Переписка останется в чатах, но новые сообщения приходить перестанут. Подключить канал можно снова в любой момент.',
+  'channels_err_token': 'Вставьте токен',
+  'channels_err_phone': 'Укажите идентификатор номера телефона',
   'nav_network': 'Сеть',
   'network_title': 'Сеть магазинов «Пайк»',
   'network_description': 'Сводный доход по сети и управление магазинами',

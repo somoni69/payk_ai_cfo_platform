@@ -130,6 +130,43 @@ class FakeNetworkRepository implements NetworkRepository {
   Future<void> deleteModule(int id) async {}
 
   @override
+  Future<StoreChannels> fetchStoreChannels(int storeId) async {
+    return StoreChannels(
+      storeId: storeId,
+      storeName: 'Store',
+      hasChats: true,
+      channels: const [],
+      webhookUrl: 'https://example.com/api/meta/webhook',
+      appSecretSet: true,
+      verifyTokenSet: true,
+    );
+  }
+
+  @override
+  Future<StoreChannels> connectFacebookChannel(int storeId, String token) =>
+      fetchStoreChannels(storeId);
+
+  @override
+  Future<StoreChannels> connectInstagramChannel(int storeId, {String? token}) =>
+      fetchStoreChannels(storeId);
+
+  @override
+  Future<StoreChannels> connectWhatsAppChannel(
+    int storeId, {
+    required String phoneId,
+    required String token,
+    String? businessId,
+  }) => fetchStoreChannels(storeId);
+
+  @override
+  Future<StoreChannels> checkStoreChannel(int storeId, String kind) =>
+      fetchStoreChannels(storeId);
+
+  @override
+  Future<StoreChannels> disconnectStoreChannel(int storeId, String kind) =>
+      fetchStoreChannels(storeId);
+
+  @override
   Future<void> resetDirectorPassword(
     int id, {
     String? username,
@@ -179,6 +216,7 @@ void main() {
         'operations_count': 12,
         'has_data': true,
         'modules': <Map<String, dynamic>>[],
+        'channels': <String>[],
       };
       final store = NetworkStore.fromJson(json);
 

@@ -38,6 +38,23 @@ abstract class NetworkRepository {
 
   Future<void> deleteModule(int id);
 
+  Future<StoreChannels> fetchStoreChannels(int storeId);
+
+  Future<StoreChannels> connectFacebookChannel(int storeId, String token);
+
+  Future<StoreChannels> connectInstagramChannel(int storeId, {String? token});
+
+  Future<StoreChannels> connectWhatsAppChannel(
+    int storeId, {
+    required String phoneId,
+    required String token,
+    String? businessId,
+  });
+
+  Future<StoreChannels> checkStoreChannel(int storeId, String kind);
+
+  Future<StoreChannels> disconnectStoreChannel(int storeId, String kind);
+
   /// Удаление магазина (физическое для пустых, деактивация для магазинов с данными).
   Future<StoreDeleteResult> deleteStore(int id);
 
