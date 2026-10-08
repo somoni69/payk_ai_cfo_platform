@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -49,6 +51,7 @@ class _ChannelsBodyState extends State<_ChannelsBody> {
   var _loading = true;
   String? _error;
   StoreChannels? _data;
+  UmnicoState? _umnico;
 
   @override
   void initState() {
@@ -58,12 +61,16 @@ class _ChannelsBodyState extends State<_ChannelsBody> {
 
   Future<void> _load() async {
     try {
-      final data = await context.read<NetworkRepository>().fetchStoreChannels(
-        widget.storeId,
-      );
+      final repo = context.read<NetworkRepository>();
+      final data = await repo.fetchStoreChannels(widget.storeId);
+      UmnicoState? umnico;
+      try {
+        umnico = await repo.fetchUmnico();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _data = data;
+        _umnico = umnico;
         _loading = false;
         _error = null;
       });
@@ -76,8 +83,17 @@ class _ChannelsBodyState extends State<_ChannelsBody> {
     }
   }
 
+  Future<void> _refreshUmnico() async {
+    try {
+      final umnico = await context.read<NetworkRepository>().fetchUmnico();
+      if (!mounted) return;
+      setState(() => _umnico = umnico);
+    } catch (_) {}
+  }
+
   void _apply(StoreChannels next) {
     setState(() => _data = next);
+    unawaited(_refreshUmnico());
     final bloc = context.read<NetworkBloc>();
     final period = bloc.state is NetworkLoaded
         ? (bloc.state as NetworkLoaded).period
@@ -141,9 +157,18 @@ class _ChannelsBodyState extends State<_ChannelsBody> {
             storeId: data.storeId,
             channel: channel,
             facebookPage: facebook?.name,
+            umnico: _umnico,
             onChanged: _apply,
           ),
         ],
+        const SizedBox(height: 16),
+        _UmnicoBlock(
+          state: _umnico,
+          onChanged: (next) {
+            setState(() => _umnico = next);
+            unawaited(_load());
+          },
+        ),
         const SizedBox(height: 16),
         Text(
           language.translate('channels_webhook_title'),
@@ -210,12 +235,14 @@ class _ChannelCard extends StatefulWidget {
     required this.storeId,
     required this.channel,
     required this.facebookPage,
+    required this.umnico,
     required this.onChanged,
   });
 
   final int storeId;
   final StoreChannel channel;
   final String? facebookPage;
+  final UmnicoState? umnico;
   final ValueChanged<StoreChannels> onChanged;
 
   @override
@@ -388,13 +415,96 @@ class _ChannelCardState extends State<_ChannelCard> {
     }
   }
 
+  Widget _umnicoButton(
+    BuildContext context,
+    LanguageCubit language,
+    UmnicoIntegration item,
+  ) {
+    final taken = item.storeId != null && item.storeId != widget.storeId;
+    final takenLabel = language.translate(
+      'channels_umnico_taken',
+      params: {'store': item.storeName ?? ''},
+    );
+    final title = language.translate(
+      'channels_umnico_use',
+      params: {'login': item.login.isEmpty ? item.id : item.login},
+    );
+    return OutlinedButton(
+      onPressed: taken || _busy ? null : () => _useUmnico(language, item),
+      child: Text(taken ? '$title — $takenLabel' : title),
+    );
+  }
+
+  Future<void> _useUmnico(
+    LanguageCubit language,
+    UmnicoIntegration item,
+  ) async {
+    final channel = widget.channel;
+    if (channel.connected && channel.via != 'umnico') {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            language.translate(
+              'channels_umnico_switch_title',
+              params: {'channel': _kindTitle(language)},
+            ),
+          ),
+          content: Text(language.translate('channels_umnico_switch_message')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(language.translate('common_cancel')),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(language.translate('channels_umnico_via')),
+            ),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
+    setState(() => _busy = true);
+    try {
+      final next = await context
+          .read<NetworkRepository>()
+          .connectChannelViaUmnico(widget.storeId, channel.kind, item.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(language.translate('channels_umnico_toast_switched')),
+        ),
+      );
+      setState(() {
+        _busy = false;
+        _editing = false;
+      });
+      widget.onChanged(next);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(language.resolveMessage(userFacingError(error))),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final language = context.watch<LanguageCubit>();
     final colors = context.colors;
     final textStyles = context.textStyles;
     final channel = widget.channel;
-    final showForm = !channel.connected || _editing;
+    final viaUmnico = channel.via == 'umnico';
+    final showForm = (!channel.connected || _editing) && !viaUmnico;
+    final umnicoOptions = widget.umnico?.connected == true
+        ? widget.umnico!.integrations
+              .where((item) => item.kind == channel.kind)
+              .toList()
+        : const <UmnicoIntegration>[];
     final tone = !channel.connected
         ? colors.textSecondary
         : (channel.error != null ? colors.accentRed : colors.accentGreen);
@@ -435,7 +545,15 @@ class _ChannelCardState extends State<_ChannelCard> {
               const SizedBox(height: 6),
               Text(channel.name!, style: textStyles.bodySans),
             ],
-            if (channel.kind == 'instagram') ...[
+            if (viaUmnico) ...[
+              const SizedBox(height: 4),
+              Text(
+                language.translate('channels_umnico_via'),
+                style: textStyles.captionSans.copyWith(
+                  color: colors.textSecondary,
+                ),
+              ),
+            ] else if (channel.kind == 'instagram') ...[
               const SizedBox(height: 4),
               Text(
                 channel.via == 'instagram'
@@ -503,6 +621,17 @@ class _ChannelCardState extends State<_ChannelCard> {
                 style: textStyles.captionSans.copyWith(color: colors.accentRed),
               ),
             ],
+          ],
+          if (umnicoOptions.isNotEmpty && !viaUmnico) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final item in umnicoOptions)
+                  _umnicoButton(context, language, item),
+              ],
+            ),
           ],
           if (showForm) ...[
             const SizedBox(height: 12),
@@ -604,20 +733,21 @@ class _ChannelCardState extends State<_ChannelCard> {
                   onPressed: _busy ? null : _check,
                   child: Text(language.translate('channels_check')),
                 ),
-                OutlinedButton(
-                  onPressed: _busy
-                      ? null
-                      : () {
-                          _phoneId.text = channel.accountId ?? '';
-                          _businessId.text = channel.businessId ?? '';
-                          _token.clear();
-                          setState(() {
-                            _editing = true;
-                            _error = null;
-                          });
-                        },
-                  child: Text(language.translate('channels_replace')),
-                ),
+                if (!viaUmnico)
+                  OutlinedButton(
+                    onPressed: _busy
+                        ? null
+                        : () {
+                            _phoneId.text = channel.accountId ?? '';
+                            _businessId.text = channel.businessId ?? '';
+                            _token.clear();
+                            setState(() {
+                              _editing = true;
+                              _error = null;
+                            });
+                          },
+                    child: Text(language.translate('channels_replace')),
+                  ),
                 TextButton(
                   onPressed: _busy ? null : _disconnect,
                   child: Text(
@@ -625,6 +755,265 @@ class _ChannelCardState extends State<_ChannelCard> {
                     style: TextStyle(color: colors.accentRed),
                   ),
                 ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UmnicoBlock extends StatefulWidget {
+  const _UmnicoBlock({required this.state, required this.onChanged});
+
+  final UmnicoState? state;
+  final ValueChanged<UmnicoState> onChanged;
+
+  @override
+  State<_UmnicoBlock> createState() => _UmnicoBlockState();
+}
+
+class _UmnicoBlockState extends State<_UmnicoBlock> {
+  final _login = TextEditingController();
+  final _password = TextEditingController();
+  var _busy = false;
+  var _relogin = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _login.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _connect() async {
+    final language = context.read<LanguageCubit>();
+    if (_login.text.trim().isEmpty || _password.text.isEmpty) {
+      setState(() => _error = language.translate('channels_umnico_err_login'));
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final next = await context.read<NetworkRepository>().connectUmnico(
+        login: _login.text,
+        password: _password.text,
+      );
+      if (!mounted) return;
+      _password.clear();
+      setState(() {
+        _busy = false;
+        _relogin = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(language.translate('channels_umnico_toast_connected')),
+        ),
+      );
+      widget.onChanged(next);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = language.resolveMessage(userFacingError(error));
+      });
+    }
+  }
+
+  Future<void> _disconnect() async {
+    final language = context.read<LanguageCubit>();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(language.translate('channels_umnico_disconnect_title')),
+        content: Text(language.translate('channels_umnico_disconnect_message')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(language.translate('common_cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(language.translate('channels_umnico_disconnect')),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      final next = await context.read<NetworkRepository>().disconnectUmnico();
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            language.translate('channels_umnico_toast_disconnected'),
+          ),
+        ),
+      );
+      widget.onChanged(next);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(language.resolveMessage(userFacingError(error))),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final language = context.watch<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final state = widget.state;
+    final connected = state?.connected == true && !_relogin;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            language.translate('channels_umnico_title'),
+            style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            language.translate('channels_umnico_intro'),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+          ),
+          if (connected && state != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              language.translate(
+                'channels_umnico_connected_as',
+                params: {'login': state.login ?? ''},
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              state.polledAt == null
+                  ? language.translate('channels_umnico_polling_soon')
+                  : language.translate(
+                      'channels_umnico_polling',
+                      params: {
+                        'every': '${state.pollEverySeconds}',
+                        'when': formatLocalizedDateTime(
+                          context,
+                          state.polledAt!,
+                          style: LocalizedDateTimeStyle.dateTime,
+                        ),
+                      },
+                    ),
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              language.translate(
+                state.webhookOk
+                    ? 'channels_umnico_webhook_ok'
+                    : 'channels_umnico_webhook_missing',
+              ),
+              style: textStyles.captionSans.copyWith(
+                color: state.webhookOk
+                    ? colors.textSecondary
+                    : colors.accentRed,
+              ),
+            ),
+            if (state.error != null && state.error!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                state.error!,
+                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              ),
+            ],
+            if (state.integrationsError != null &&
+                state.integrationsError!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                state.integrationsError!,
+                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton(
+                  onPressed: _busy
+                      ? null
+                      : () {
+                          _login.text = state.login ?? '';
+                          _password.clear();
+                          setState(() {
+                            _relogin = true;
+                            _error = null;
+                          });
+                        },
+                  child: Text(language.translate('channels_umnico_relogin')),
+                ),
+                TextButton(
+                  onPressed: _busy ? null : _disconnect,
+                  child: Text(
+                    language.translate('channels_umnico_disconnect'),
+                    style: TextStyle(color: colors.accentRed),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _login,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: language.translate('channels_umnico_login'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _password,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: language.translate('channels_umnico_password'),
+              ),
+              onSubmitted: (_) => _connect(),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                ElevatedButton(
+                  onPressed: _busy ? null : _connect,
+                  child: Text(language.translate('channels_umnico_connect')),
+                ),
+                if (_relogin)
+                  TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _relogin = false),
+                    child: Text(language.translate('common_cancel')),
+                  ),
               ],
             ),
           ],

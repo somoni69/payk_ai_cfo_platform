@@ -1885,6 +1885,36 @@ const Map<String, String> kTajikCatalog = {
       'Мукотиба дар чатҳо мемонад, вале паёмҳои нав дигар намеоянд. Каналро ҳар вақт дубора пайваст кардан мумкин аст.',
   'channels_err_token': 'Токенро гузоред',
   'channels_err_phone': 'Идентификатори рақами телефонро нишон диҳед',
+  'channels_umnico_title': 'Пули Umnico',
+  'channels_umnico_intro':
+      'То он даме, ки барномаи Meta аз санҷиш нагузаштааст, он паёмҳоро танҳо аз шахсони дорои нақш дар барнома мегирад. Umnico санҷишро гузаштааст: тавассути он мукотиба бо ҳамаи мизоҷон меояд. Канал ё мустақим кор мекунад, ё тавассути Umnico.',
+  'channels_umnico_login': 'Почтаи ҳисоби Umnico',
+  'channels_umnico_password': 'Рамзи Umnico',
+  'channels_umnico_connect': 'Пайвасти Umnico',
+  'channels_umnico_connected_as': 'Пайваст аст: {login}',
+  'channels_umnico_polling':
+      'PAYK худаш паёмҳои навро дар Umnico ҳар {every} сония месанҷад. Санҷиши охирин: {when}',
+  'channels_umnico_polling_soon':
+      'PAYK дар давоми як дақиқа санҷиши паёмҳои навро дар Umnico оғоз мекунад',
+  'channels_umnico_webhook_ok':
+      'Webhook дар Umnico сабт шудааст: агар Umnico онро даъват кунад, паёмҳо фавран меоянд',
+  'channels_umnico_webhook_missing':
+      'Webhook дар Umnico сабт нашудааст — «Пайвасти Umnico»-ро боз пахш кунед. Паёмҳо ба ҳар ҳол бо санҷиш меоянд',
+  'channels_umnico_disconnect': 'Ҷудо кардани Umnico',
+  'channels_umnico_relogin': 'Навсозии вуруд',
+  'channels_umnico_disconnect_title': 'Umnico ҷудо карда шавад?',
+  'channels_umnico_disconnect_message':
+      'Паёмҳо тавассути Umnico дигар намеоянд. Каналҳои мизоҷон, ки тавассути он пайвастанд, пешакӣ ҷудо карда шаванд.',
+  'channels_umnico_via': 'Тавассути Umnico',
+  'channels_umnico_use': 'Тавассути Umnico: {login}',
+  'channels_umnico_switch_title': '{channel} ба Umnico гузаронида шавад?',
+  'channels_umnico_switch_message':
+      'Пайвасти мустақим ба Meta ҷудо мешавад, паёмҳо тавассути Umnico мераванд. Мукотиба нигоҳ дошта мешавад.',
+  'channels_umnico_taken': 'банди мизоҷи «{store}»',
+  'channels_umnico_toast_connected': 'Umnico пайваст шуд',
+  'channels_umnico_toast_disconnected': 'Umnico ҷудо шуд',
+  'channels_umnico_toast_switched': 'Канал ба Umnico гузаронида шуд',
+  'channels_umnico_err_login': 'Почта ва рамзи ҳисоби Umnico-ро ворид кунед',
   'nav_network': 'Шабака',
   'network_title': 'Шабакаи мағозаҳои «Пайк»',
   'network_description': 'Даромади умумии шабака ва идоракунии мағозаҳо',

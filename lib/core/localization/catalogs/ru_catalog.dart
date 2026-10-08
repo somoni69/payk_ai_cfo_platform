@@ -1874,6 +1874,36 @@ const Map<String, String> kRussianCatalog = {
       'Переписка останется в чатах, но новые сообщения приходить перестанут. Подключить канал можно снова в любой момент.',
   'channels_err_token': 'Вставьте токен',
   'channels_err_phone': 'Укажите идентификатор номера телефона',
+  'channels_umnico_title': 'Мост Umnico',
+  'channels_umnico_intro':
+      'Пока приложение Meta не прошло проверку, оно получает сообщения только от людей с ролью в приложении. Umnico проверку прошёл: через него приходит переписка со всеми клиентами. Канал работает либо напрямую, либо через Umnico.',
+  'channels_umnico_login': 'Почта аккаунта Umnico',
+  'channels_umnico_password': 'Пароль Umnico',
+  'channels_umnico_connect': 'Подключить Umnico',
+  'channels_umnico_connected_as': 'Подключён: {login}',
+  'channels_umnico_polling':
+      'PAYK сам проверяет новые сообщения в Umnico каждые {every} с. Последняя проверка: {when}',
+  'channels_umnico_polling_soon':
+      'PAYK начнёт проверять новые сообщения в Umnico в течение минуты',
+  'channels_umnico_webhook_ok':
+      'Вебхук в Umnico зарегистрирован: если Umnico его вызывает, сообщения приходят мгновенно',
+  'channels_umnico_webhook_missing':
+      'Вебхук в Umnico не зарегистрирован — нажмите «Подключить Umnico» ещё раз. Сообщения всё равно приходят опросом',
+  'channels_umnico_disconnect': 'Отключить Umnico',
+  'channels_umnico_relogin': 'Обновить вход',
+  'channels_umnico_disconnect_title': 'Отключить Umnico?',
+  'channels_umnico_disconnect_message':
+      'Сообщения через Umnico перестанут приходить. Каналы клиентов, подключённые через него, нужно отключить заранее.',
+  'channels_umnico_via': 'Через Umnico',
+  'channels_umnico_use': 'Через Umnico: {login}',
+  'channels_umnico_switch_title': 'Переключить {channel} на Umnico?',
+  'channels_umnico_switch_message':
+      'Прямое подключение к Meta будет отключено, сообщения пойдут через Umnico. Переписка сохранится.',
+  'channels_umnico_taken': 'занят клиентом «{store}»',
+  'channels_umnico_toast_connected': 'Umnico подключён',
+  'channels_umnico_toast_disconnected': 'Umnico отключён',
+  'channels_umnico_toast_switched': 'Канал переключён на Umnico',
+  'channels_umnico_err_login': 'Введите почту и пароль аккаунта Umnico',
   'nav_network': 'Сеть',
   'network_title': 'Сеть магазинов «Пайк»',
   'network_description': 'Сводный доход по сети и управление магазинами',

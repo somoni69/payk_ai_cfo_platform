@@ -299,6 +299,74 @@ class ApiNetworkRepository implements NetworkRepository {
     }
   }
 
+  UmnicoState _umnicoFrom(dynamic raw) {
+    final data = raw is Map
+        ? Map<String, dynamic>.from(raw)
+        : <String, dynamic>{};
+    return UmnicoState.fromJson(data);
+  }
+
+  @override
+  Future<UmnicoState> fetchUmnico() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/network/umnico');
+      return _umnicoFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.loadFailed);
+    }
+  }
+
+  @override
+  Future<UmnicoState> connectUmnico({
+    required String login,
+    required String password,
+  }) async {
+    try {
+      final response = await _apiClient.dio.put<dynamic>(
+        '/network/umnico',
+        data: {'login': login.trim(), 'password': password},
+      );
+      return _umnicoFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
+  Future<UmnicoState> disconnectUmnico() async {
+    try {
+      final response = await _apiClient.dio.delete<dynamic>('/network/umnico');
+      return _umnicoFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
+  @override
+  Future<StoreChannels> connectChannelViaUmnico(
+    int storeId,
+    String kind,
+    String integrationId,
+  ) async {
+    try {
+      final response = await _apiClient.dio.put<dynamic>(
+        '/network/stores/$storeId/channels/$kind/umnico',
+        data: {'integration_id': integrationId},
+      );
+      return _channelsFrom(response.data);
+    } on DioException catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    } catch (_) {
+      throw Exception(ErrorKeys.saveFailed);
+    }
+  }
+
   @override
   Future<StoreChannels> disconnectStoreChannel(int storeId, String kind) async {
     try {

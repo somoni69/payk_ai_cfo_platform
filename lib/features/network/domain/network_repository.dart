@@ -55,6 +55,21 @@ abstract class NetworkRepository {
 
   Future<StoreChannels> disconnectStoreChannel(int storeId, String kind);
 
+  Future<UmnicoState> fetchUmnico();
+
+  Future<UmnicoState> connectUmnico({
+    required String login,
+    required String password,
+  });
+
+  Future<UmnicoState> disconnectUmnico();
+
+  Future<StoreChannels> connectChannelViaUmnico(
+    int storeId,
+    String kind,
+    String integrationId,
+  );
+
   /// Удаление магазина (физическое для пустых, деактивация для магазинов с данными).
   Future<StoreDeleteResult> deleteStore(int id);
 

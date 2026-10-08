@@ -167,6 +167,25 @@ class FakeNetworkRepository implements NetworkRepository {
       fetchStoreChannels(storeId);
 
   @override
+  Future<UmnicoState> fetchUmnico() async => const UmnicoState();
+
+  @override
+  Future<UmnicoState> connectUmnico({
+    required String login,
+    required String password,
+  }) async => UmnicoState(connected: true, login: login, webhookOk: true);
+
+  @override
+  Future<UmnicoState> disconnectUmnico() async => const UmnicoState();
+
+  @override
+  Future<StoreChannels> connectChannelViaUmnico(
+    int storeId,
+    String kind,
+    String integrationId,
+  ) => fetchStoreChannels(storeId);
+
+  @override
   Future<void> resetDirectorPassword(
     int id, {
     String? username,

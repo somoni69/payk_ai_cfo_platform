@@ -499,3 +499,111 @@ class StoreChannels extends Equatable {
     verifyTokenSet,
   ];
 }
+
+class UmnicoIntegration extends Equatable {
+  final String id;
+  final String kind;
+  final String type;
+  final String login;
+  final String status;
+  final int? storeId;
+  final String? storeName;
+
+  const UmnicoIntegration({
+    required this.id,
+    required this.kind,
+    this.type = '',
+    this.login = '',
+    this.status = '',
+    this.storeId,
+    this.storeName,
+  });
+
+  factory UmnicoIntegration.fromJson(Map<String, dynamic> json) {
+    final storeRaw = json['store_id'];
+    return UmnicoIntegration(
+      id: (json['id'] ?? '').toString(),
+      kind: (json['kind'] ?? '').toString(),
+      type: (json['type'] ?? '').toString(),
+      login: (json['login'] ?? '').toString(),
+      status: (json['status'] ?? '').toString(),
+      storeId: switch (storeRaw) {
+        int value => value,
+        num value => value.toInt(),
+        String value => int.tryParse(value),
+        _ => null,
+      },
+      storeName: json['store_name']?.toString(),
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    id,
+    kind,
+    type,
+    login,
+    status,
+    storeId,
+    storeName,
+  ];
+}
+
+class UmnicoState extends Equatable {
+  final bool connected;
+  final String? login;
+  final bool webhookOk;
+  final String? error;
+  final String? integrationsError;
+  final List<UmnicoIntegration> integrations;
+  final DateTime? polledAt;
+  final int pollEverySeconds;
+
+  const UmnicoState({
+    this.connected = false,
+    this.login,
+    this.webhookOk = false,
+    this.error,
+    this.integrationsError,
+    this.integrations = const [],
+    this.polledAt,
+    this.pollEverySeconds = 30,
+  });
+
+  factory UmnicoState.fromJson(Map<String, dynamic> json) {
+    final polledRaw = json['polled_at'];
+    final everyRaw = json['poll_every_s'];
+    return UmnicoState(
+      connected: json['connected'] == true,
+      login: json['login']?.toString(),
+      webhookOk: json['webhook_ok'] == true,
+      error: json['error']?.toString(),
+      integrationsError: json['integrations_error']?.toString(),
+      polledAt: polledRaw is String ? DateTime.tryParse(polledRaw) : null,
+      pollEverySeconds: switch (everyRaw) {
+        int value when value > 0 => value,
+        num value when value > 0 => value.toInt(),
+        _ => 30,
+      },
+      integrations: (json['integrations'] as List? ?? const [])
+          .whereType<Map>()
+          .map(
+            (item) =>
+                UmnicoIntegration.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+    connected,
+    login,
+    webhookOk,
+    error,
+    integrationsError,
+    integrations,
+    polledAt,
+    pollEverySeconds,
+  ];
+}
