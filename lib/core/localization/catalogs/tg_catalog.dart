@@ -120,6 +120,12 @@ const Map<String, String> kTajikCatalog = {
   'meta_delete_msg':
       'Ҳамаи паёмҳои ин мукотиба бе имкони барқарорсозӣ нест мешаванд. Ҳамин тавр хоҳиши одам дар бораи нест кардани маълумоташ иҷро мешавад.',
   'meta_deleted': 'Мукотиба нест карда шуд',
+  'meta_attach_loading': 'Файл бор мешавад…',
+  'meta_attach_failed': 'Файл бор нашуд',
+  'meta_attach_open_map': 'Дар харита кушодан',
+  'meta_attach_photo': 'Акс',
+  'meta_attach_file': 'Файл',
+  'meta_attach_play': 'Пахш кардан',
   'meta_channel_all': 'Ҳама',
   'meta_channel_facebook': 'Facebook',
   'meta_channel_instagram': 'Instagram',

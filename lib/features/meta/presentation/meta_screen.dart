@@ -22,6 +22,7 @@ import '../../crm/domain/crm_repository.dart';
 import '../cubit/meta_cubit.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
+import 'meta_attachments.dart';
 
 /// Meta chats (Facebook / Instagram / WhatsApp) — Grounded Enterprise design.
 class MetaScreen extends StatelessWidget {
@@ -722,7 +723,14 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(m.text, style: textStyles.captionSans),
+                            if (metaTextWithoutLabels(m.text, m.attachments)
+                                case final visibleText
+                                when visibleText.isNotEmpty)
+                              Text(visibleText, style: textStyles.captionSans),
+                            MetaAttachments(
+                              items: m.attachments,
+                              outgoing: m.outgoing,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               formatLocalizedDateTime(

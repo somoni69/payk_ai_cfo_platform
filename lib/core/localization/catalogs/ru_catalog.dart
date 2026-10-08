@@ -123,6 +123,12 @@ const Map<String, String> kRussianCatalog = {
   'meta_delete_msg':
       'Все сообщения этого диалога будут удалены без возможности восстановления. Так выполняют просьбу человека удалить его данные.',
   'meta_deleted': 'Переписка удалена',
+  'meta_attach_loading': 'Файл загружается…',
+  'meta_attach_failed': 'Файл не загрузился',
+  'meta_attach_open_map': 'Открыть на карте',
+  'meta_attach_photo': 'Фото',
+  'meta_attach_file': 'Файл',
+  'meta_attach_play': 'Воспроизвести',
   'meta_channel_all': 'Все',
   'meta_channel_facebook': 'Facebook',
   'meta_channel_instagram': 'Instagram',

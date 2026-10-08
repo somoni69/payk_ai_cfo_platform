@@ -184,6 +184,16 @@ class ApiMetaRepository implements MetaRepository {
       _ => 0,
     };
     final createdRaw = map['created_at'] ?? map['createdAt'];
+    final attachmentsRaw = map['attachments'];
+    final attachments = attachmentsRaw is List
+        ? attachmentsRaw
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    MetaAttachment.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList(growable: false)
+        : const <MetaAttachment>[];
     return MetaMessage(
       id: id,
       outgoing: map['outgoing'] == true,
@@ -191,6 +201,7 @@ class ApiMetaRepository implements MetaRepository {
       createdAt: createdRaw is String
           ? (DateTime.tryParse(createdRaw) ?? DateTime.now())
           : DateTime.now(),
+      attachments: attachments,
     );
   }
 }
