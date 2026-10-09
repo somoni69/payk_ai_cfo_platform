@@ -217,8 +217,8 @@ abstract final class AppAccess {
     return path;
   }
 
-  /// «Сеть», «Заявки» и «Ещё» работают без выбранного магазина.
-  /// «Ещё» остаётся, потому что там язык, выход и эти два раздела.
+  /// «Сеть», «Заявки», «Модули» и настройки работают без выбранного магазина.
+  /// Вкладка «Ещё» в корне сети не раздел: язык и выход открываются с «Настроек».
   static bool isOwnerNetworkPath(String location) {
     final path = _screenPath(location);
     return path == '/network' ||
@@ -227,7 +227,8 @@ abstract final class AppAccess {
         path.startsWith('/leads/') ||
         path == '/modules' ||
         path.startsWith('/modules/') ||
-        path == '/more' ||
+        path == '/settings' ||
+        path.startsWith('/settings/') ||
         path.startsWith('/more/');
   }
 

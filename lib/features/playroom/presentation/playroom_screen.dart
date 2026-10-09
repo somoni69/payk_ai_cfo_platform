@@ -8,6 +8,7 @@ import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../presentation/widgets/ledger_barcode_scanner.dart';
+import '../../../presentation/widgets/ledger_fab.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../auth/domain/app_access.dart';
@@ -306,19 +307,18 @@ class _PlayroomScreenState extends State<PlayroomScreen>
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          if (canCreate)
-            IconButton(
-              tooltip: language.translate('playroom_new_order'),
-              onPressed: _newOrder,
-              icon: const Icon(TablerIcons.plus),
-            ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: colors.border),
         ),
       ),
+      floatingActionButton: canCreate
+          ? LedgerFab(
+              heroTag: 'playroom_new_order',
+              onPressed: _newOrder,
+              label: language.translate('playroom_new_order'),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -631,7 +631,7 @@ class _OrdersTab extends StatelessWidget {
                   )
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                     itemCount: orders.length + 1,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {
@@ -756,7 +756,7 @@ class _TicketsTab extends StatelessWidget {
                   )
                 : ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
                     itemCount: tickets.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (context, index) {

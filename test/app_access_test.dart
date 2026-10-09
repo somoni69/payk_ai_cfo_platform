@@ -104,7 +104,14 @@ void main() {
       AppAccess.ownerRootRedirect(UserRole.owner, null, '/network'),
       isNull,
     );
-    expect(AppAccess.ownerRootRedirect(UserRole.owner, null, '/more'), isNull);
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/more'),
+      '/network',
+    );
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/settings'),
+      isNull,
+    );
     expect(AppAccess.ownerRootRedirect(UserRole.owner, 4, '/cash'), isNull);
     expect(
       AppAccess.ownerRootRedirect(UserRole.director, null, '/cash'),

@@ -209,6 +209,7 @@ class LeadRow {
   final String company;
   final String? role;
   final List<String> spheres;
+  final String? sphereOther;
   final int? years;
   final String lang;
   final String? points;
@@ -222,6 +223,8 @@ class LeadRow {
   final String? comment;
   final String? ref;
   final bool notified;
+  final bool wantsContact;
+  final DateTime? wantsContactAt;
   final int repeats;
 
   const LeadRow({
@@ -233,6 +236,7 @@ class LeadRow {
     this.company = '',
     this.role,
     this.spheres = const [],
+    this.sphereOther,
     this.years,
     this.lang = 'ru',
     this.points,
@@ -246,6 +250,8 @@ class LeadRow {
     this.comment,
     this.ref,
     this.notified = false,
+    this.wantsContact = false,
+    this.wantsContactAt,
     this.repeats = 0,
   });
 
@@ -259,6 +265,7 @@ class LeadRow {
       company: (json['company'] ?? '').toString(),
       role: _asString(json['role']),
       spheres: _strings(json['spheres']),
+      sphereOther: _asString(json['sphere_other']),
       years: _asInt(json['years']),
       lang: (json['lang'] ?? 'ru').toString(),
       points: _asString(json['points']),
@@ -272,6 +279,8 @@ class LeadRow {
       comment: _asString(json['comment']),
       ref: _asString(json['ref']),
       notified: json['notified'] == true,
+      wantsContact: json['wants_contact'] == true,
+      wantsContactAt: _asDate(json['wants_contact_at']),
       repeats: _asInt(json['repeats']) ?? 0,
     );
   }
@@ -289,6 +298,7 @@ class LeadDetail extends LeadRow {
     super.company,
     super.role,
     super.spheres,
+    super.sphereOther,
     super.years,
     super.lang,
     super.points,
@@ -302,6 +312,8 @@ class LeadDetail extends LeadRow {
     super.comment,
     super.ref,
     super.notified,
+    super.wantsContact,
+    super.wantsContactAt,
     super.repeats,
     this.answers = const {},
   });
@@ -328,6 +340,7 @@ class LeadDetail extends LeadRow {
       company: row.company,
       role: row.role,
       spheres: row.spheres,
+      sphereOther: row.sphereOther,
       years: row.years,
       lang: row.lang,
       points: row.points,
@@ -341,6 +354,8 @@ class LeadDetail extends LeadRow {
       comment: row.comment,
       ref: row.ref,
       notified: row.notified,
+      wantsContact: row.wantsContact,
+      wantsContactAt: row.wantsContactAt,
       repeats: row.repeats,
       answers: answers,
     );
@@ -395,6 +410,17 @@ String formatLeadYears(int? years, String lang, String lessYear) {
   if (last == 1) return '$years год';
   if (last >= 2 && last <= 4) return '$years года';
   return '$years лет';
+}
+
+/// Сфера «Другое» показывается своими словами, если клиент их вписал.
+String formatLeadSpheres(LeadRow row, DemoBank bank, String lang) {
+  if (row.spheres.isEmpty) return '';
+  return [
+    for (final key in row.spheres)
+      key == 'other' && (row.sphereOther?.trim().isNotEmpty ?? false)
+          ? row.sphereOther!.trim()
+          : bank.labelOf(bank.spheres, key, lang),
+  ].join(', ');
 }
 
 String formatLeadDate(DateTime value) {

@@ -131,15 +131,40 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
     if (mounted) setState(fn ?? () {});
   }
 
+  void _adoptLoadedFilters() {
+    final state = context.read<CashBloc>().state;
+    if (state is! CashLoaded) return;
+    _selectedType = state.filterType;
+    _selectedPaymentMethod = state.paymentMethod;
+    _selectedRegister = state.registerId;
+    _selectedCashier = state.cashierId;
+    _dateFrom = state.dateFrom;
+    _dateTo = state.dateTo;
+    if (_searchController.text != state.query) {
+      _searchController.text = state.query;
+    }
+    _rebuild();
+  }
+
+  void _clearFilters(BuildContext context) {
+    _selectedType = 'all';
+    _selectedPaymentMethod = 'all';
+    _selectedRegister = 'all';
+    _selectedCashier = 'all';
+    _dateFrom = null;
+    _dateTo = null;
+    _searchController.clear();
+    _rebuild();
+    context.read<CashBloc>().add(_filterEvent(query: ''));
+  }
+
   CashOperationFilters _exportFilters() {
     final registerId = int.tryParse(_selectedRegister);
     final cashierId = int.tryParse(_selectedCashier);
     return CashOperationFilters(
       registerId: _selectedRegister == 'all' ? null : registerId,
       type: _selectedType == 'all' ? null : _selectedType,
-      paymentMethod: _selectedPaymentMethod == 'all'
-          ? null
-          : _selectedPaymentMethod,
+      paymentMethod: PaymentMethod.apiFilterValue(_selectedPaymentMethod),
       cashierId: _selectedCashier == 'all' ? null : cashierId,
       dateFrom: _dateFrom,
       dateTo: _dateTo,
@@ -363,6 +388,8 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
       final bloc = context.read<CashBloc>();
       if (bloc.state is! CashLoaded) {
         bloc.add(const LoadCashData());
+      } else {
+        _adoptLoadedFilters();
       }
     });
   }
@@ -788,10 +815,15 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
                 ),
                 child: Center(
                   child: Text(
-                    language.translate('cash_operations_empty'),
+                    language.translate(
+                      _hasActiveFilters
+                          ? 'cash_operations_filtered_empty'
+                          : 'cash_operations_empty',
+                    ),
                     style: textStyles.captionSans.copyWith(
                       color: colors.textSecondary,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               )
@@ -889,6 +921,15 @@ class CashSectionScreen extends StatefulWidget {
 
 class _CashSectionScreenState extends State<CashSectionScreen>
     with _CashViewMixin {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _adoptLoadedFilters();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;

@@ -25,6 +25,7 @@ import '../../features/playroom/presentation/playroom_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/shell/presentation/more_screen.dart';
+import '../../features/shell/presentation/owner_root_shell.dart';
 import '../../features/shell/presentation/shell_screen.dart';
 import '../../features/strategy/presentation/strategy_screen.dart';
 import '../../features/system/presentation/backups_screen.dart';
@@ -120,20 +121,42 @@ GoRouter createRouter(
       // Вход в систему (MOB-05)
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
 
-      GoRoute(
-        path: '/network',
+      StatefulShellRoute.indexedStack(
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const NetworkScreen(),
+        builder: (context, state, navigationShell) {
+          return OwnerRootShell(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/network',
+                builder: (context, state) => const NetworkScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/leads',
+                builder: (context, state) => const LeadsScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/modules',
+                builder: (context, state) => const ModulesScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
       GoRoute(
-        path: '/leads',
+        path: '/settings',
         parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const LeadsScreen(),
-      ),
-      GoRoute(
-        path: '/modules',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ModulesScreen(),
+        builder: (context, state) => const MoreScreen(settingsOnly: true),
       ),
 
       // Предупреждения / Инфо (MOB-04)

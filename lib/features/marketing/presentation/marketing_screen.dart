@@ -13,6 +13,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
@@ -1892,8 +1894,8 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
   Widget _buildStatColumn(
     String label,
     String value,
-    dynamic textStyles,
-    dynamic colors,
+    LedgerTextStyles textStyles,
+    LedgerColors colors,
   ) {
     return Expanded(
       child: Column(

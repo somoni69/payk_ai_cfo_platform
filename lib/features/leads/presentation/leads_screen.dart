@@ -131,51 +131,34 @@ class _LeadsScreenState extends State<LeadsScreen> {
     final lang = language.state.languageCode;
 
     return PaykBackScope(
-      fallback: '/more',
+      fallback: '/network',
       child: Scaffold(
         backgroundColor: colors.background,
-        appBar: AppBar(
-          backgroundColor: colors.surface,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          leading: const PaykBackButton(fallback: '/more'),
-          title: Text(
-            language.translate('leads_title'),
-            style: textStyles.h2Sans.copyWith(
-              fontSize: 19,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            IconButton(
-              tooltip: language.translate('leads_copy_link'),
-              onPressed: _copyLink,
-              icon: const Icon(TablerIcons.link),
-            ),
-            IconButton(
-              tooltip: language.translate('leads_export'),
-              onPressed: _export,
-              icon: const Icon(TablerIcons.file_spreadsheet),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: colors.border),
-          ),
-        ),
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  language.translate('leads_description'),
-                  style: textStyles.captionSans.copyWith(
-                    color: colors.textSecondary,
+              padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      language.translate('leads_description'),
+                      style: textStyles.captionSans.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
                   ),
-                ),
+                  IconButton(
+                    tooltip: language.translate('leads_copy_link'),
+                    onPressed: _copyLink,
+                    icon: const Icon(TablerIcons.link),
+                  ),
+                  IconButton(
+                    tooltip: language.translate('leads_export'),
+                    onPressed: _export,
+                    icon: const Icon(TablerIcons.file_spreadsheet),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -442,9 +425,7 @@ class _LeadCard extends StatelessWidget {
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
     final price = formatLeadPrice(row.price);
-    final spheres = [
-      for (final key in row.spheres) bank.labelOf(bank.spheres, key, lang),
-    ].join(', ');
+    final spheres = formatLeadSpheres(row, bank, lang);
     return Material(
       color: colors.surface,
       borderRadius: BorderRadius.circular(12),
@@ -519,6 +500,14 @@ class _LeadCard extends StatelessWidget {
                   ],
                 ],
               ),
+              if (row.wantsContact)
+                Text(
+                  language.translate('leads_wants_contact'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.accentGreen,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               if (row.repeats > 0)
                 Text(
                   language.translate(

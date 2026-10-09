@@ -141,9 +141,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
               ? null
               : int.tryParse(event.registerId),
           type: event.filterType == 'all' ? null : event.filterType,
-          paymentMethod: event.paymentMethod == 'all'
-              ? null
-              : event.paymentMethod,
+          paymentMethod: PaymentMethod.apiFilterValue(event.paymentMethod),
           cashierId: event.cashierId == 'all'
               ? null
               : int.tryParse(event.cashierId),
@@ -477,7 +475,7 @@ class CashBloc extends Bloc<CashEvent, CashState> {
           ? null
           : int.tryParse(state.registerId),
       type: state.filterType == 'all' ? null : state.filterType,
-      paymentMethod: state.paymentMethod == 'all' ? null : state.paymentMethod,
+      paymentMethod: PaymentMethod.apiFilterValue(state.paymentMethod),
       cashierId: state.cashierId == 'all'
           ? null
           : int.tryParse(state.cashierId),

@@ -110,38 +110,7 @@ class ApiCashRepository implements CashRepository {
           .map((item) => _mapOperation(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      return [
-        Transaction(
-          id: 'tx-1',
-          title: 'Daler',
-          category: 'cash_category_salary',
-          amount: 1110.0,
-          isIncome: false,
-          paymentMethod: PaymentMethod.cash,
-          dateTime: DateTime(2026, 7, 31, 17, 0),
-          cashierName: 'role_director',
-        ),
-        Transaction(
-          id: 'tx-2',
-          title: 'Администратор',
-          category: 'cash_category_salary',
-          amount: 1550.0,
-          isIncome: false,
-          paymentMethod: PaymentMethod.cash,
-          dateTime: DateTime(2026, 7, 31, 17, 0),
-          cashierName: 'role_director',
-        ),
-        Transaction(
-          id: 'tx-3',
-          title: 'Башорат',
-          category: 'cash_category_salary',
-          amount: 2350.0,
-          isIncome: false,
-          paymentMethod: PaymentMethod.cash,
-          dateTime: DateTime(2026, 7, 31, 17, 0),
-          cashierName: 'role_director',
-        ),
-      ];
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 

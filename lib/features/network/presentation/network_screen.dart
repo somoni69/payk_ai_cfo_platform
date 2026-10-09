@@ -43,6 +43,15 @@ class _NetworkScreenState extends State<NetworkScreen> {
   @override
   void initState() {
     super.initState();
+    final auth = context.read<AuthBloc>().state;
+    final alreadyRoot =
+        auth is! AuthAuthenticated ||
+        auth.role != UserRole.owner ||
+        auth.storeId == null;
+    if (alreadyRoot) {
+      _scopeReady = true;
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await leaveOwnerStoreOnNetworkArrival(context);
@@ -102,43 +111,27 @@ class _NetworkViewState extends State<_NetworkView> {
     return PaykBackScope(
       child: Scaffold(
         backgroundColor: colors.background,
-        appBar: AppBar(
-          backgroundColor: colors.surface,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Text(
-            language.translate('network_title'),
-            style: textStyles.h2Sans.copyWith(
-              fontSize: 19,
-              fontWeight: FontWeight.w600,
-              color: colors.textPrimary,
-            ),
-          ),
-          actions: [
-            if (isOwner) ...[
-              IconButton(
-                tooltip: language.translate('leads_title'),
-                onPressed: () => context.push('/leads'),
-                icon: const Icon(TablerIcons.inbox),
+        appBar: isOwner
+            ? null
+            : AppBar(
+                backgroundColor: colors.surface,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                automaticallyImplyLeading: false,
+                leading: const PaykBackButton(fallback: '/more'),
+                title: Text(
+                  language.translate('network_title'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(1),
+                  child: Container(height: 1, color: colors.border),
+                ),
               ),
-              IconButton(
-                tooltip: language.translate('modules_title'),
-                onPressed: () => context.push('/modules'),
-                icon: const Icon(TablerIcons.box),
-              ),
-            ],
-            IconButton(
-              tooltip: language.translate('more_title'),
-              onPressed: () => context.push('/more'),
-              icon: const Icon(TablerIcons.menu_2),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: colors.border),
-          ),
-        ),
         floatingActionButton: isOwner
             ? LedgerFab(
                 heroTag: null,
@@ -191,6 +184,13 @@ class _NetworkViewState extends State<_NetworkView> {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
+                      Text(
+                        language.translate('network_description'),
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       if (state is NetworkLoading) ...[
                         const NetworkOverviewShimmer(),
                       ] else if (state is NetworkError) ...[

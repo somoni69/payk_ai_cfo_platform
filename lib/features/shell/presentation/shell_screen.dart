@@ -144,7 +144,15 @@ class _ShellScaffold extends StatelessWidget {
         child: Builder(
           builder: (context) {
             final path = GoRouterState.of(context).uri.path;
-            final showBar = path == '/more' || !path.startsWith('/more/');
+            final auth = context.watch<AuthBloc>().state;
+            final ownerAtRoot =
+                auth is AuthAuthenticated &&
+                auth.role == UserRole.owner &&
+                auth.storeId == null;
+            // В корне сети «Ещё» — меню настроек, а не вкладка.
+            final showBar =
+                !ownerAtRoot &&
+                (path == '/more' || !path.startsWith('/more/'));
             return Scaffold(
               extendBody: true,
               body: RepaintBoundary(child: navigationShell),
@@ -210,14 +218,6 @@ class _ShellNavOverlay extends StatelessWidget {
       onTap: (index) {
         HapticFeedback.selectionClick();
         final targetTab = visibleTabs[index];
-        final path = GoRouterState.of(context).uri.path;
-        final onMoreMenu = path == '/more' || path.startsWith('/more/');
-        if (ownerAtRoot &&
-            targetTab.branchIndex == navigationShell.currentIndex &&
-            onMoreMenu) {
-          context.go('/network');
-          return;
-        }
         navigationShell.goBranch(
           targetTab.branchIndex,
           initialLocation:

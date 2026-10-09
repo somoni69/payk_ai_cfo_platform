@@ -30,6 +30,15 @@ enum PaymentMethod {
     PaymentMethod.mixed => 'mixed',
   };
 
+  /// Значение фильтра для API. В списке хранится имя enum (`dushanbeCity`).
+  static String? apiFilterValue(String raw) {
+    if (raw == 'all') return null;
+    for (final method in PaymentMethod.values) {
+      if (method.name == raw || method.apiValue == raw) return method.apiValue;
+    }
+    return raw;
+  }
+
   static PaymentMethod fromLabel(String label) {
     final normalized = label.trim().toLowerCase();
     return switch (normalized) {

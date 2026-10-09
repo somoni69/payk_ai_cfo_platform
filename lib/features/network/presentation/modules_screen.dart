@@ -149,27 +149,9 @@ class _ModulesScreenState extends State<ModulesScreen> {
     final language = context.watch<LanguageCubit>();
 
     return PaykBackScope(
-      fallback: '/more',
+      fallback: '/network',
       child: Scaffold(
         backgroundColor: colors.background,
-        appBar: AppBar(
-          backgroundColor: colors.surface,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          leading: const PaykBackButton(fallback: '/more'),
-          title: Text(
-            language.translate('modules_title'),
-            style: textStyles.h2Sans.copyWith(
-              fontSize: 19,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(1),
-            child: Container(height: 1, color: colors.border),
-          ),
-        ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: _loading ? null : () => _openEditor(),
           icon: const Icon(TablerIcons.plus),

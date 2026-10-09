@@ -233,6 +233,7 @@ class _LeadBody extends StatelessWidget {
     final textStyles = context.textStyles;
     final lang = language.state.languageCode;
     final price = formatLeadPrice(lead.price);
+    final spheres = formatLeadSpheres(lead, bank, lang);
     final software = [
       for (final key in lead.software) bank.labelOf(bank.software, key, lang),
       if (lead.softwareOther != null) lead.softwareOther!,
@@ -277,13 +278,16 @@ class _LeadBody extends StatelessWidget {
         ),
         _Line(
           language.translate('leads_card_spheres'),
-          lead.spheres.isEmpty
-              ? '—'
-              : [
-                  for (final key in lead.spheres)
-                    bank.labelOf(bank.spheres, key, lang),
-                ].join(', '),
+          spheres.isEmpty ? '—' : spheres,
         ),
+        if (lead.wantsContact)
+          _Line(
+            language.translate('leads_card_wants_contact'),
+            lead.wantsContactAt == null
+                ? language.translate('common_yes')
+                : formatLeadDate(lead.wantsContactAt!),
+            valueColor: colors.accentGreen,
+          ),
         _Line(
           language.translate('leads_card_years'),
           formatLeadYears(

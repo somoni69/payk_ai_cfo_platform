@@ -64,18 +64,7 @@ extension _CashTabBuilders on _CashViewMixin {
             );
           }
           if (isEmpty) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              child: Center(
-                child: Text(
-                  language.translate('cash_operations_empty'),
-                  style: textStyles.bodySans.copyWith(
-                    color: colors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
+            return _buildFilteredEmpty(context, state);
           }
           final item = grouped[index - 2];
           if (item.$1 != null) {
@@ -163,6 +152,53 @@ extension _CashTabBuilders on _CashViewMixin {
       context,
       day,
       style: LocalizedDateTimeStyle.date,
+    );
+  }
+
+  Widget _buildFilteredEmpty(BuildContext context, CashLoaded state) {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    final filtered =
+        state.filterType != 'all' ||
+        state.paymentMethod != 'all' ||
+        state.registerId != 'all' ||
+        state.cashierId != 'all' ||
+        state.dateFrom != null ||
+        state.dateTo != null ||
+        state.query.trim().isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 16),
+      child: Column(
+        children: [
+          Text(
+            language.translate(
+              filtered
+                  ? 'cash_operations_filtered_empty'
+                  : 'cash_operations_empty',
+            ),
+            style: textStyles.bodySans.copyWith(color: colors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            language.translate(
+              filtered
+                  ? 'cash_operations_filtered_hint'
+                  : 'cash_operations_empty_hint',
+            ),
+            style: textStyles.captionSans.copyWith(color: colors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          if (filtered) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => _clearFilters(context),
+              child: Text(language.translate('cash_filters_reset')),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -309,6 +345,8 @@ extension _CashTabBuilders on _CashViewMixin {
     final colors = context.colors;
     final registerIds = ['all', ...state.registers.map((r) => r.id)];
     final repo = context.read<CashRepository>();
+    // Лист открывается на корневом навигаторе, вне BlocProvider кассы.
+    final bloc = context.read<CashBloc>();
     if (_cashiers.isEmpty) {
       repo.lookupCashiers().then((list) {
         if (!mounted) return;
@@ -346,7 +384,7 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedType = val);
                 _rebuild();
-                context.read<CashBloc>().add(_filterEvent());
+                bloc.add(_filterEvent());
               },
             ),
             const SizedBox(height: 8),
@@ -387,7 +425,7 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedPaymentMethod = val);
                 _rebuild();
-                context.read<CashBloc>().add(_filterEvent());
+                bloc.add(_filterEvent());
               },
             ),
             const SizedBox(height: 8),
@@ -417,7 +455,7 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedRegister = val);
                 _rebuild();
-                context.read<CashBloc>().add(_filterEvent());
+                bloc.add(_filterEvent());
               },
             ),
             const SizedBox(height: 8),
@@ -447,7 +485,7 @@ extension _CashTabBuilders on _CashViewMixin {
               onSelected: (val) {
                 setSheetState(() => _selectedCashier = val);
                 _rebuild();
-                context.read<CashBloc>().add(_filterEvent());
+                bloc.add(_filterEvent());
               },
             ),
             const SizedBox(height: 12),
@@ -463,7 +501,7 @@ extension _CashTabBuilders on _CashViewMixin {
                 setSheetState(() => _dateFrom = picked);
                 _rebuild();
                 if (context.mounted) {
-                  context.read<CashBloc>().add(_filterEvent());
+                  bloc.add(_filterEvent());
                 }
               },
               icon: Icon(
@@ -490,7 +528,7 @@ extension _CashTabBuilders on _CashViewMixin {
                 setSheetState(() => _dateTo = picked);
                 _rebuild();
                 if (context.mounted) {
-                  context.read<CashBloc>().add(_filterEvent());
+                  bloc.add(_filterEvent());
                 }
               },
               icon: Icon(
@@ -903,6 +941,8 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
   OneCKkmOverview? _data;
   String? _error;
   var _loading = true;
+  var _refreshing = false;
+  var _epoch = 0;
   final Set<String> _expanded = {};
   DateTime _dateFrom = DateTime(
     DateTime.now().year,
@@ -929,13 +969,29 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _openPeriod();
   }
 
-  Future<void> _load({bool refresh = true}) async {
+  /// Как на вебе: сначала сохранённые смены, затем живой запрос в 1С
+  /// не прячет уже показанный список.
+  Future<void> _openPeriod() async {
+    final epoch = ++_epoch;
+    await _load(refresh: false, epoch: epoch);
+    if (!mounted || epoch != _epoch) return;
+    await _load(refresh: true, keepVisible: true, epoch: epoch);
+  }
+
+  Future<void> _load({
+    required bool refresh,
+    bool keepVisible = false,
+    int? epoch,
+  }) async {
+    final token = epoch ?? ++_epoch;
+    final showSkeleton = !keepVisible && _data == null;
     setState(() {
-      _loading = true;
-      _error = null;
+      _loading = showSkeleton;
+      _refreshing = refresh && !showSkeleton;
+      if (!keepVisible) _error = null;
     });
     try {
       final data = await context.read<CashRepository>().getOneCKkmShifts(
@@ -943,16 +999,19 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
         dateTo: _dateTo,
         refresh: refresh,
       );
-      if (!mounted) return;
+      if (!mounted || token != _epoch) return;
       setState(() {
         _data = data;
         _loading = false;
+        _refreshing = false;
+        _error = null;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || token != _epoch) return;
       setState(() {
         _loading = false;
-        _error = userFacingError(e);
+        _refreshing = false;
+        if (_data == null) _error = userFacingError(e);
       });
     }
   }
@@ -973,7 +1032,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
         _dateTo = picked;
       }
     });
-    await _load(refresh: true);
+    await _openPeriod();
   }
 
   Future<void> _link({
@@ -993,7 +1052,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
       messenger.showSnackBar(
         SnackBar(content: Text(language.translate('cash_onec_linked'))),
       );
-      await _load(refresh: true);
+      await _openPeriod();
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -1037,6 +1096,19 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
               ),
             ),
           ),
+          IconButton(
+            tooltip: language.translate('cash_onec_refresh'),
+            onPressed: _refreshing
+                ? null
+                : () => _load(refresh: true, keepVisible: true),
+            icon: _refreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(TablerIcons.refresh, color: colors.brand),
+          ),
         ],
       ),
     );
@@ -1063,7 +1135,7 @@ class _CashOneCKkmViewState extends State<CashOneCKkmView> {
                     Text(language.translateMessage(_error!)),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: _load,
+                      onPressed: _openPeriod,
                       child: Text(language.translate('common_retry')),
                     ),
                   ],

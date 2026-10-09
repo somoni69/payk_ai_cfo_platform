@@ -37,10 +37,21 @@ class CashOperationFilters {
       q['cashier_id'] = cId;
     }
     if (dateFrom case final from?) {
-      q['date_from'] = from.toUtc().toIso8601String();
+      q['date_from'] = DateTime(
+        from.year,
+        from.month,
+        from.day,
+      ).toIso8601String();
     }
     if (dateTo case final to?) {
-      q['date_to'] = to.toUtc().toIso8601String();
+      q['date_to'] = DateTime(
+        to.year,
+        to.month,
+        to.day,
+        23,
+        59,
+        59,
+      ).toIso8601String();
     }
     if (query?.trim() case final qText? when qText.isNotEmpty) {
       q['q'] = qText;

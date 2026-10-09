@@ -6,12 +6,13 @@ extension _CashSheetBuilders on _CashViewMixin {
     List<CashRegister> registers,
   ) {
     final language = context.read<LanguageCubit>();
+    final bloc = context.read<CashBloc>();
 
     LedgerBottomSheet.show(
       context: context,
       title: language.translate('cash_open_shift_title'),
       builder: (context, setSheetState) =>
-          _OpenShiftSheetContent(registers: registers),
+          _OpenShiftSheetContent(registers: registers, bloc: bloc),
     );
   }
 
@@ -24,6 +25,7 @@ extension _CashSheetBuilders on _CashViewMixin {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
+    final bloc = context.read<CashBloc>();
     final formKey = GlobalKey<FormState>();
 
     bool isIncome = true; // По умолчанию выбран "Приход" как на скриншоте
@@ -806,7 +808,6 @@ extension _CashSheetBuilders on _CashViewMixin {
                       submitting = true;
                       itemsError = null;
                     });
-                    final bloc = context.read<CashBloc>();
                     bloc.add(AddTransactionRequested(tx));
                     final nextState = await bloc.stream.firstWhere(
                       (s) => s is CashLoaded && !s.isSubmitting,
@@ -847,11 +848,12 @@ extension _CashSheetBuilders on _CashViewMixin {
     CashShift shift,
   ) async {
     final language = context.read<LanguageCubit>();
+    final bloc = context.read<CashBloc>();
     final closedId = await LedgerBottomSheet.show<String>(
       context: context,
       title: language.translate('cash_close_shift_title'),
       builder: (context, setSheetState) =>
-          _CloseShiftSheetContent(shift: shift),
+          _CloseShiftSheetContent(shift: shift, bloc: bloc),
     );
     if (closedId != null && context.mounted) {
       await _showShiftReportSheet(context, closedId);
@@ -875,6 +877,7 @@ extension _CashSheetBuilders on _CashViewMixin {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.read<LanguageCubit>();
+    final bloc = context.read<CashBloc>();
     final formKey = GlobalKey<FormState>();
     var isIncome = transaction.isIncome;
     final amountController = TextEditingController(
@@ -1186,7 +1189,6 @@ extension _CashSheetBuilders on _CashViewMixin {
                       submitting = true;
                       error = null;
                     });
-                    final bloc = context.read<CashBloc>();
                     bloc.add(
                       UpdateTransactionRequested(
                         transaction.copyWith(
@@ -1252,7 +1254,8 @@ double _saleLinesTotal(BuildContext context, List<_CashSaleLine> lines) {
 
 class _OpenShiftSheetContent extends StatefulWidget {
   final List<CashRegister> registers;
-  const _OpenShiftSheetContent({required this.registers});
+  final CashBloc bloc;
+  const _OpenShiftSheetContent({required this.registers, required this.bloc});
 
   @override
   State<_OpenShiftSheetContent> createState() => _OpenShiftSheetContentState();
@@ -1357,7 +1360,7 @@ class _OpenShiftSheetContentState extends State<_OpenShiftSheetContent> {
             onPressed: () {
               final bal = parseLocalizedNumber(context, _controller.text);
               if (bal != null && bal >= 0) {
-                context.read<CashBloc>().add(
+                widget.bloc.add(
                   OpenShiftRequested(bal, registerId: _selectedRegisterId),
                 );
                 Navigator.pop(context);
@@ -1373,7 +1376,8 @@ class _OpenShiftSheetContentState extends State<_OpenShiftSheetContent> {
 
 class _CloseShiftSheetContent extends StatefulWidget {
   final CashShift shift;
-  const _CloseShiftSheetContent({required this.shift});
+  final CashBloc bloc;
+  const _CloseShiftSheetContent({required this.shift, required this.bloc});
 
   @override
   State<_CloseShiftSheetContent> createState() =>
@@ -1461,8 +1465,7 @@ class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
       _submitting = true;
       _error = null;
     });
-    final bloc = context.read<CashBloc>();
-    bloc.add(
+    widget.bloc.add(
       CloseShiftRequested(
         bal,
         shiftId: widget.shift.id,
@@ -1473,7 +1476,7 @@ class _CloseShiftSheetContentState extends State<_CloseShiftSheetContent> {
         auditorId: int.tryParse(_auditorId ?? ''),
       ),
     );
-    final next = await bloc.stream.firstWhere(
+    final next = await widget.bloc.stream.firstWhere(
       (s) => s is CashLoaded && !s.isSubmitting,
     );
     if (!mounted) return;

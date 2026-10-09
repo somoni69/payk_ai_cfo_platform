@@ -28,7 +28,11 @@ import '../../warehouse/bloc/warehouse_bloc.dart';
 import '../../warehouse/bloc/warehouse_event.dart';
 
 class MoreScreen extends StatefulWidget {
-  const MoreScreen({super.key});
+  const MoreScreen({super.key, this.settingsOnly = false});
+
+  /// Язык, биометрия и выход. Без плиток разделов: в корне сети
+  /// «Сеть», «Заявки» и «Модули» переключаются нижней панелью.
+  final bool settingsOnly;
 
   @override
   State<MoreScreen> createState() => _MoreScreenState();
@@ -209,10 +213,14 @@ class _MoreScreenState extends State<MoreScreen> {
         authState.role == UserRole.owner &&
         authState.storeId == null;
     return PaykBackScope(
-      nested: true,
-      fallback: ownerAtRoot ? '/network' : null,
+      nested: !widget.settingsOnly,
+      fallback: ownerAtRoot
+          ? '/network'
+          : (widget.settingsOnly ? '/more' : null),
       child: Scaffold(
-        floatingActionButtonLocation: kLedgerShellFabLocation,
+        floatingActionButtonLocation: widget.settingsOnly || ownerAtRoot
+            ? FloatingActionButtonLocation.endFloat
+            : kLedgerShellFabLocation,
         floatingActionButton: const LedgerAiFloatingButton(),
         body: RefreshIndicator(
           onRefresh: _handleRefresh,
@@ -224,8 +232,23 @@ class _MoreScreenState extends State<MoreScreen> {
                 backgroundColor: colors.surface,
                 surfaceTintColor: Colors.transparent,
                 elevation: 0,
+                automaticallyImplyLeading: false,
+                leading: widget.settingsOnly || ownerAtRoot
+                    ? IconButton(
+                        tooltip: MaterialLocalizations.of(
+                          context,
+                        ).backButtonTooltip,
+                        onPressed: () => paykBack(
+                          context,
+                          fallback: ownerAtRoot ? '/network' : '/more',
+                        ),
+                        icon: const BackButtonIcon(),
+                      )
+                    : null,
                 title: Text(
-                  context.translate('more_title'),
+                  context.translate(
+                    widget.settingsOnly ? 'settings_title' : 'more_title',
+                  ),
                   style: textStyles.h2Sans.copyWith(
                     fontSize: 19,
                     fontWeight: FontWeight.w600,
@@ -310,7 +333,8 @@ class _MoreScreenState extends State<MoreScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    if (role != null) ..._buildGroupedModules(role),
+                    if (!widget.settingsOnly && role != null)
+                      ..._buildGroupedModules(role),
 
                     OutlinedButton(
                       onPressed: () {
@@ -527,6 +551,23 @@ class _MoreScreenState extends State<MoreScreen> {
         ),
       );
       widgets.add(const SizedBox(height: 6));
+      if (ownerAtRoot) {
+        for (final module in allowedModules) {
+          widgets.add(
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _buildOwnerSectionRow(
+                icon: module.icon,
+                title: context.translate(module.titleKey),
+                subtitle: context.translate(_ownerSectionHint(module.route)),
+                onTap: () => _openSection(module.route),
+              ),
+            ),
+          );
+        }
+        widgets.add(const SizedBox(height: 8));
+        continue;
+      }
       for (var i = 0; i < allowedModules.length; i += 2) {
         widgets.add(
           Padding(
@@ -541,8 +582,7 @@ class _MoreScreenState extends State<MoreScreen> {
                     child: _buildModuleTile(
                       icon: allowedModules[i].icon,
                       title: context.translate(allowedModules[i].titleKey),
-                      onTap: () =>
-                          GoRouter.of(context).push(allowedModules[i].route),
+                      onTap: () => _openSection(allowedModules[i].route),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -553,9 +593,8 @@ class _MoreScreenState extends State<MoreScreen> {
                             title: context.translate(
                               allowedModules[i + 1].titleKey,
                             ),
-                            onTap: () => GoRouter.of(
-                              context,
-                            ).push(allowedModules[i + 1].route),
+                            onTap: () =>
+                                _openSection(allowedModules[i + 1].route),
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -569,6 +608,64 @@ class _MoreScreenState extends State<MoreScreen> {
     }
 
     return widgets;
+  }
+
+  String _ownerSectionHint(String route) {
+    return switch (route) {
+      '/leads' => 'leads_description',
+      '/modules' => 'modules_description',
+      _ => 'network_description',
+    };
+  }
+
+  Widget _buildOwnerSectionRow({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: colors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colors.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 22, color: colors.brand),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: textStyles.bodySans.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: textStyles.captionSans.copyWith(
+                      color: colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildModuleTile({
@@ -727,6 +824,17 @@ class _MoreScreenState extends State<MoreScreen> {
         ],
       ),
     );
+  }
+
+  void _openSection(String route) {
+    final auth = context.read<AuthBloc>().state;
+    final owner = auth is AuthAuthenticated && auth.role == UserRole.owner;
+    const sections = {'/network', '/leads', '/modules'};
+    if (owner && sections.contains(route)) {
+      GoRouter.of(context).go(route);
+      return;
+    }
+    GoRouter.of(context).push(route);
   }
 
   bool _ownerAtNetworkRoot() {
