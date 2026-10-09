@@ -151,8 +151,7 @@ class _ShellScaffold extends StatelessWidget {
                 auth.storeId == null;
             // В корне сети «Ещё» — меню настроек, а не вкладка.
             final showBar =
-                !ownerAtRoot &&
-                (path == '/more' || !path.startsWith('/more/'));
+                !ownerAtRoot && (path == '/more' || !path.startsWith('/more/'));
             return Scaffold(
               extendBody: true,
               body: RepaintBoundary(child: navigationShell),
