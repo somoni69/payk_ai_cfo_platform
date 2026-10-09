@@ -180,7 +180,7 @@ abstract final class AppAccess {
   };
 
   static AppCapability? capabilityForLocation(String location) {
-    final path = Uri.tryParse(location)?.path ?? location;
+    final path = _screenPath(location);
     for (final entry in _pathCapabilities.entries) {
       if (path == entry.key || path.startsWith('${entry.key}/')) {
         return entry.value;
@@ -190,12 +190,12 @@ abstract final class AppAccess {
   }
 
   static bool _isLeads(String location) {
-    final path = _pathOf(location);
+    final path = _screenPath(location);
     return path == '/leads' || path.startsWith('/leads/');
   }
 
   static bool _isModules(String location) {
-    final path = _pathOf(location);
+    final path = _screenPath(location);
     return path == '/modules' || path.startsWith('/modules/');
   }
 
@@ -203,10 +203,24 @@ abstract final class AppAccess {
     return Uri.tryParse(location)?.path ?? location;
   }
 
+  /// «Ещё» держит сеть, заявки и модули своими дочерними экранами,
+  /// чтобы жест назад возвращал в меню, а не закрывал приложение.
+  static String _screenPath(String location) {
+    final path = _pathOf(location);
+    const names = ['network', 'leads', 'modules'];
+    for (final name in names) {
+      final prefix = '/more/$name';
+      if (path == prefix || path.startsWith('$prefix/')) {
+        return '/$name${path.substring(prefix.length)}';
+      }
+    }
+    return path;
+  }
+
   /// «Сеть», «Заявки» и «Ещё» работают без выбранного магазина.
   /// «Ещё» остаётся, потому что там язык, выход и эти два раздела.
   static bool isOwnerNetworkPath(String location) {
-    final path = _pathOf(location);
+    final path = _screenPath(location);
     return path == '/network' ||
         path.startsWith('/network/') ||
         path == '/leads' ||
@@ -233,7 +247,7 @@ abstract final class AppAccess {
   ) {
     final sections = effective.sections;
     if (sections == null) return true;
-    final path = _pathOf(location);
+    final path = _screenPath(location);
     if (path == '/tasks' || path.startsWith('/tasks/')) {
       return sections.contains('tasks') || sections.contains('my-tasks');
     }

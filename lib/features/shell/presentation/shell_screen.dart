@@ -141,17 +141,27 @@ class _ShellScaffold extends StatelessWidget {
         } catch (_) {}
       },
       child: LedgerAiAssistantHost(
-        child: Scaffold(
-          extendBody: true,
-          body: RepaintBoundary(child: navigationShell),
-          bottomNavigationBar: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: SafeArea(
-              top: false,
-              minimum: const EdgeInsets.only(bottom: 8),
-              child: _ShellNavOverlay(navigationShell: navigationShell),
-            ),
-          ),
+        child: Builder(
+          builder: (context) {
+            final path = GoRouterState.of(context).uri.path;
+            final showBar = path == '/more' || !path.startsWith('/more/');
+            return Scaffold(
+              extendBody: true,
+              body: RepaintBoundary(child: navigationShell),
+              bottomNavigationBar: showBar
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: SafeArea(
+                        top: false,
+                        minimum: const EdgeInsets.only(bottom: 8),
+                        child: _ShellNavOverlay(
+                          navigationShell: navigationShell,
+                        ),
+                      ),
+                    )
+                  : null,
+            );
+          },
         ),
       ),
     );
@@ -200,6 +210,14 @@ class _ShellNavOverlay extends StatelessWidget {
       onTap: (index) {
         HapticFeedback.selectionClick();
         final targetTab = visibleTabs[index];
+        final path = GoRouterState.of(context).uri.path;
+        final onMoreMenu = path == '/more' || path.startsWith('/more/');
+        if (ownerAtRoot &&
+            targetTab.branchIndex == navigationShell.currentIndex &&
+            onMoreMenu) {
+          context.go('/network');
+          return;
+        }
         navigationShell.goBranch(
           targetTab.branchIndex,
           initialLocation:

@@ -7,6 +7,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/routing/payk_back.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../../../core/network/user_facing_error.dart';
@@ -98,142 +99,146 @@ class _NetworkViewState extends State<_NetworkView> {
     final isOwner =
         authState is AuthAuthenticated && authState.role == UserRole.owner;
 
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          language.translate('network_title'),
-          style: textStyles.h2Sans.copyWith(
-            fontSize: 19,
-            fontWeight: FontWeight.w600,
-            color: colors.textPrimary,
-          ),
-        ),
-        actions: [
-          if (isOwner) ...[
-            IconButton(
-              tooltip: language.translate('leads_title'),
-              onPressed: () => context.push('/leads'),
-              icon: const Icon(TablerIcons.inbox),
+    return PaykBackScope(
+      child: Scaffold(
+        backgroundColor: colors.background,
+        appBar: AppBar(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          title: Text(
+            language.translate('network_title'),
+            style: textStyles.h2Sans.copyWith(
+              fontSize: 19,
+              fontWeight: FontWeight.w600,
+              color: colors.textPrimary,
             ),
-            IconButton(
-              tooltip: language.translate('modules_title'),
-              onPressed: () => context.push('/modules'),
-              icon: const Icon(TablerIcons.box),
-            ),
-          ],
-          IconButton(
-            tooltip: language.translate('more_title'),
-            onPressed: () => context.push('/more'),
-            icon: const Icon(TablerIcons.menu_2),
           ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: colors.border),
-        ),
-      ),
-      floatingActionButton: isOwner
-          ? LedgerFab(
-              heroTag: null,
-              onPressed: () => _showCreateStoreDialog(context),
-              icon: TablerIcons.plus,
-              label: language.translate('network_new_store'),
-            )
-          : null,
-      body: BlocConsumer<NetworkBloc, NetworkState>(
-        listener: (context, state) {
-          if (state is NetworkLoaded && state.actionMessage != null) {
-            final msg = state.actionMessage!;
-            final text = msg.startsWith('network_') || msg.startsWith('error_')
-                ? language.translate(msg)
-                : language.translateMessage(msg);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(text),
-                backgroundColor: _isNetworkSuccess(msg)
-                    ? colors.accentGreen
-                    : colors.accentRed,
+          actions: [
+            if (isOwner) ...[
+              IconButton(
+                tooltip: language.translate('leads_title'),
+                onPressed: () => context.push('/leads'),
+                icon: const Icon(TablerIcons.inbox),
               ),
-            );
-          }
-        },
-        builder: (context, state) {
-          return CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              CupertinoSliverRefreshControl(
-                onRefresh: () async {
-                  final bloc = context.read<NetworkBloc>();
-                  bloc.add(
-                    LoadNetworkData(
-                      period: state is NetworkLoaded
-                          ? state.period
-                          : NetworkPeriod.month,
-                      forceRefresh: true,
-                    ),
-                  );
-                  await bloc.stream.firstWhere(
-                    (s) =>
-                        s is NetworkError ||
-                        (s is NetworkLoaded && !s.isSummaryLoading),
-                  );
-                },
-              ),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    if (state is NetworkLoading) ...[
-                      const NetworkOverviewShimmer(),
-                    ] else if (state is NetworkError) ...[
-                      _buildErrorState(context, state.message),
-                    ] else if (state is NetworkLoaded) ...[
-                      if (state.actingStore != null) ...[
-                        _buildActingStoreBanner(context, state.actingStore!),
-                        const SizedBox(height: 12),
-                      ],
-                      _buildSummaryCard(context, state),
-                      const SizedBox(height: 20),
-                      Text(
-                        language.translate('network_stores_list'),
-                        style: textStyles.h2Sans.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: colors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      if (state.stores.isEmpty)
-                        _buildEmptyStores(context, isOwner: isOwner)
-                      else
-                        for (final store in state.stores) ...[
-                          _buildStoreCard(
-                            context,
-                            store,
-                            state.summary.firstWhere(
-                              (s) => s.storeId == store.id,
-                              orElse: () => StoreSummaryRow(
-                                storeId: store.id,
-                                storeName: store.name,
-                                isActive: store.isActive,
-                              ),
-                            ),
-                            isCurrent: store.id == state.actingStore?.id,
-                            summaryLoading: state.isSummaryLoading,
-                          ),
-                          const SizedBox(height: 10),
-                        ],
-                    ],
-                  ]),
-                ),
+              IconButton(
+                tooltip: language.translate('modules_title'),
+                onPressed: () => context.push('/modules'),
+                icon: const Icon(TablerIcons.box),
               ),
             ],
-          );
-        },
+            IconButton(
+              tooltip: language.translate('more_title'),
+              onPressed: () => context.push('/more'),
+              icon: const Icon(TablerIcons.menu_2),
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: colors.border),
+          ),
+        ),
+        floatingActionButton: isOwner
+            ? LedgerFab(
+                heroTag: null,
+                onPressed: () => _showCreateStoreDialog(context),
+                icon: TablerIcons.plus,
+                label: language.translate('network_new_store'),
+              )
+            : null,
+        body: BlocConsumer<NetworkBloc, NetworkState>(
+          listener: (context, state) {
+            if (state is NetworkLoaded && state.actionMessage != null) {
+              final msg = state.actionMessage!;
+              final text =
+                  msg.startsWith('network_') || msg.startsWith('error_')
+                  ? language.translate(msg)
+                  : language.translateMessage(msg);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(text),
+                  backgroundColor: _isNetworkSuccess(msg)
+                      ? colors.accentGreen
+                      : colors.accentRed,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                CupertinoSliverRefreshControl(
+                  onRefresh: () async {
+                    final bloc = context.read<NetworkBloc>();
+                    bloc.add(
+                      LoadNetworkData(
+                        period: state is NetworkLoaded
+                            ? state.period
+                            : NetworkPeriod.month,
+                        forceRefresh: true,
+                      ),
+                    );
+                    await bloc.stream.firstWhere(
+                      (s) =>
+                          s is NetworkError ||
+                          (s is NetworkLoaded && !s.isSummaryLoading),
+                    );
+                  },
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      if (state is NetworkLoading) ...[
+                        const NetworkOverviewShimmer(),
+                      ] else if (state is NetworkError) ...[
+                        _buildErrorState(context, state.message),
+                      ] else if (state is NetworkLoaded) ...[
+                        if (state.actingStore != null) ...[
+                          _buildActingStoreBanner(context, state.actingStore!),
+                          const SizedBox(height: 12),
+                        ],
+                        _buildSummaryCard(context, state),
+                        const SizedBox(height: 20),
+                        Text(
+                          language.translate('network_stores_list'),
+                          style: textStyles.h2Sans.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: colors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        if (state.stores.isEmpty)
+                          _buildEmptyStores(context, isOwner: isOwner)
+                        else
+                          for (final store in state.stores) ...[
+                            _buildStoreCard(
+                              context,
+                              store,
+                              state.summary.firstWhere(
+                                (s) => s.storeId == store.id,
+                                orElse: () => StoreSummaryRow(
+                                  storeId: store.id,
+                                  storeName: store.name,
+                                  isActive: store.isActive,
+                                ),
+                              ),
+                              isCurrent: store.id == state.actingStore?.id,
+                              summaryLoading: state.isSummaryLoading,
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                      ],
+                    ]),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

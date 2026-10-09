@@ -9,7 +9,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/routing/payk_back.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../../network/presentation/owner_network_arrival.dart';
 import '../domain/lead_models.dart';
@@ -54,6 +56,12 @@ class _LeadsScreenState extends State<LeadsScreen> {
   LeadsRepository get _repo => context.read<LeadsRepository>();
 
   Future<void> _load() async {
+    if (mounted && !_loading) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final summary = await _repo.getSummary();
       final rows = await _repo.listLeads(query: _query, status: _status);
@@ -122,187 +130,203 @@ class _LeadsScreenState extends State<LeadsScreen> {
     final language = context.watch<LanguageCubit>();
     final lang = language.state.languageCode;
 
-    return Scaffold(
-      backgroundColor: colors.background,
-      appBar: AppBar(
-        backgroundColor: colors.surface,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          language.translate('leads_title'),
-          style: textStyles.h2Sans.copyWith(
-            fontSize: 19,
-            fontWeight: FontWeight.w600,
+    return PaykBackScope(
+      fallback: '/more',
+      child: Scaffold(
+        backgroundColor: colors.background,
+        appBar: AppBar(
+          backgroundColor: colors.surface,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          leading: const PaykBackButton(fallback: '/more'),
+          title: Text(
+            language.translate('leads_title'),
+            style: textStyles.h2Sans.copyWith(
+              fontSize: 19,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          actions: [
+            IconButton(
+              tooltip: language.translate('leads_copy_link'),
+              onPressed: _copyLink,
+              icon: const Icon(TablerIcons.link),
+            ),
+            IconButton(
+              tooltip: language.translate('leads_export'),
+              onPressed: _export,
+              icon: const Icon(TablerIcons.file_spreadsheet),
+            ),
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(1),
+            child: Container(height: 1, color: colors.border),
           ),
         ),
-        actions: [
-          IconButton(
-            tooltip: language.translate('leads_copy_link'),
-            onPressed: _copyLink,
-            icon: const Icon(TablerIcons.link),
-          ),
-          IconButton(
-            tooltip: language.translate('leads_export'),
-            onPressed: _export,
-            icon: const Icon(TablerIcons.file_spreadsheet),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: colors.border),
-        ),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                language.translate('leads_description'),
-                style: textStyles.captionSans.copyWith(
-                  color: colors.textSecondary,
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: _LeadStats(summary: _summary, language: language),
-          ),
-          SizedBox(
-            height: 48,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              children: [
-                _StatusChip(
-                  label: language.translate('leads_all'),
-                  selected: _status == null,
-                  onTap: () {
-                    setState(() => _status = null);
-                    _load();
-                  },
-                ),
-                for (final status in LeadStatus.valuesInOrder)
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: _StatusChip(
-                      label:
-                          '${language.translate(status.labelKey)} ${_summary.countOf(status)}',
-                      selected: _status == status.apiValue,
-                      onTap: () {
-                        setState(() => _status = status.apiValue);
-                        _load();
-                      },
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: TextField(
-              controller: _search,
-              onChanged: (value) {
-                _debounce?.cancel();
-                _debounce = Timer(const Duration(milliseconds: 300), () {
-                  if (!mounted) return;
-                  setState(() => _query = value.trim());
-                  _load();
-                });
-              },
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: language.translate('leads_search'),
-                prefixIcon: const Icon(TablerIcons.search, size: 18),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-          if (_error != null)
+        body: Column(
+          children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                _error!,
-                style: textStyles.captionSans.copyWith(color: colors.accentRed),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  language.translate('leads_description'),
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.textSecondary,
+                  ),
+                ),
               ),
             ),
-          Expanded(
-            child: _loading && _rows.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    child: _rows.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            children: [
-                              const SizedBox(height: 48),
-                              Icon(
-                                TablerIcons.inbox,
-                                color: colors.textSecondary,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                _query.isEmpty && _status == null
-                                    ? language.translate('leads_empty')
-                                    : language.translate(
-                                        'leads_empty_filtered',
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: _LeadStats(
+                summary: _summary,
+                language: language,
+                loading: _loading,
+              ),
+            ),
+            SizedBox(
+              height: 48,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                children: [
+                  _StatusChip(
+                    label: language.translate('leads_all'),
+                    selected: _status == null,
+                    onTap: () {
+                      setState(() => _status = null);
+                      _load();
+                    },
+                  ),
+                  for (final status in LeadStatus.valuesInOrder)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: _StatusChip(
+                        label:
+                            '${language.translate(status.labelKey)} ${_summary.countOf(status)}',
+                        selected: _status == status.apiValue,
+                        onTap: () {
+                          setState(() => _status = status.apiValue);
+                          _load();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: TextField(
+                controller: _search,
+                onChanged: (value) {
+                  _debounce?.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    if (!mounted) return;
+                    setState(() => _query = value.trim());
+                    _load();
+                  });
+                },
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: language.translate('leads_search'),
+                  prefixIcon: const Icon(TablerIcons.search, size: 18),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  _error!,
+                  style: textStyles.captionSans.copyWith(
+                    color: colors.accentRed,
+                  ),
+                ),
+              ),
+            Expanded(
+              child: _loading
+                  ? const LedgerNamedListShimmer(itemCount: 4)
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: _rows.isEmpty
+                          ? ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              children: [
+                                const SizedBox(height: 48),
+                                Icon(
+                                  TablerIcons.inbox,
+                                  color: colors.textSecondary,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _query.isEmpty && _status == null
+                                      ? language.translate('leads_empty')
+                                      : language.translate(
+                                          'leads_empty_filtered',
+                                        ),
+                                  textAlign: TextAlign.center,
+                                  style: textStyles.bodySans,
+                                ),
+                                if (_query.isEmpty && _status == null)
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(
+                                      language.translate('leads_empty_hint'),
+                                      textAlign: TextAlign.center,
+                                      style: textStyles.captionSans.copyWith(
+                                        color: colors.textSecondary,
                                       ),
-                                textAlign: TextAlign.center,
-                                style: textStyles.bodySans,
-                              ),
-                              if (_query.isEmpty && _status == null)
-                                Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Text(
-                                    language.translate('leads_empty_hint'),
-                                    textAlign: TextAlign.center,
-                                    style: textStyles.captionSans.copyWith(
-                                      color: colors.textSecondary,
                                     ),
                                   ),
-                                ),
-                            ],
-                          )
-                        : ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                            itemCount: _rows.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: 8),
-                            itemBuilder: (context, index) {
-                              final row = _rows[index];
-                              return _LeadCard(
-                                row: row,
-                                bank: _bank,
-                                lang: lang,
-                                onTap: () async {
-                                  final changed = await showLeadSheet(
-                                    context,
-                                    leadId: row.id,
-                                    bank: _bank,
-                                  );
-                                  if (changed == true) await _load();
-                                },
-                              );
-                            },
-                          ),
-                  ),
-          ),
-        ],
+                              ],
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                              itemCount: _rows.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                final row = _rows[index];
+                                return _LeadCard(
+                                  row: row,
+                                  bank: _bank,
+                                  lang: lang,
+                                  onTap: () async {
+                                    final changed = await showLeadSheet(
+                                      context,
+                                      leadId: row.id,
+                                      bank: _bank,
+                                    );
+                                    if (changed == true) await _load();
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _LeadStats extends StatelessWidget {
-  const _LeadStats({required this.summary, required this.language});
+  const _LeadStats({
+    required this.summary,
+    required this.language,
+    required this.loading,
+  });
 
   final LeadSummary summary;
   final LanguageCubit language;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -349,12 +373,20 @@ class _LeadStats extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
-                Text(
-                  item.$2,
-                  style: textStyles.bodySans.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                loading
+                    ? const LedgerShimmer(
+                        child: ShimmerBox(
+                          width: 28,
+                          height: 18,
+                          borderRadius: 4,
+                        ),
+                      )
+                    : Text(
+                        item.$2,
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ],
             ),
           ),

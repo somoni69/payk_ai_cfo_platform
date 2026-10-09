@@ -66,6 +66,12 @@ void main() {
     expect(AppAccess.canOpen(UserRole.owner, '/leads'), isTrue);
     expect(AppAccess.canOpen(UserRole.owner, '/modules'), isTrue);
     expect(AppAccess.canOpen(UserRole.director, '/modules'), isFalse);
+    expect(AppAccess.canOpen(UserRole.owner, '/more/leads'), isTrue);
+    expect(AppAccess.canOpen(UserRole.director, '/more/modules'), isFalse);
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/more/leads'),
+      isNull,
+    );
     expect(AppAccess.canOpen(UserRole.director, '/leads'), isFalse);
     expect(AppAccess.canOpen(UserRole.cashier, '/playroom'), isTrue);
     expect(AppAccess.canOpen(UserRole.hr, '/playroom'), isFalse);

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/routing/payk_back.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/security/secure_storage_provider.dart';
@@ -203,124 +204,132 @@ class _MoreScreenState extends State<MoreScreen> {
     }
     context.watch<PermissionsCubit>();
 
-    return Scaffold(
-      floatingActionButtonLocation: kLedgerShellFabLocation,
-      floatingActionButton: const LedgerAiFloatingButton(),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverAppBar(
-              pinned: true,
-              backgroundColor: colors.surface,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              title: Text(
-                context.translate('more_title'),
-                style: textStyles.h2Sans.copyWith(
-                  fontSize: 19,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
+    final ownerAtRoot =
+        authState is AuthAuthenticated &&
+        authState.role == UserRole.owner &&
+        authState.storeId == null;
+    return PaykBackScope(
+      nested: true,
+      fallback: ownerAtRoot ? '/network' : null,
+      child: Scaffold(
+        floatingActionButtonLocation: kLedgerShellFabLocation,
+        floatingActionButton: const LedgerAiFloatingButton(),
+        body: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                backgroundColor: colors.surface,
+                surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                title: Text(
+                  context.translate('more_title'),
+                  style: textStyles.h2Sans.copyWith(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w600,
+                    color: colors.textPrimary,
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(1),
+                  child: Container(height: 1, color: colors.border),
                 ),
               ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1),
-                child: Container(height: 1, color: colors.border),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Профиль пользователя
-                  _buildProfileCard(),
-                  const SizedBox(height: 16),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 88),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Профиль пользователя
+                    _buildProfileCard(),
+                    const SizedBox(height: 16),
 
-                  // Безопасность и настройки
-                  if (_biometricKind != BiometricKind.none) ...[
-                    Text(
-                      context.translate('more_access_settings'),
-                      style: textStyles.bodySans.copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                    // Безопасность и настройки
+                    if (_biometricKind != BiometricKind.none) ...[
+                      Text(
+                        context.translate('more_access_settings'),
+                        style: textStyles.bodySans.copyWith(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: colors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: colors.border),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: colors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.border),
+                        ),
+                        child: _buildSettingsToggleRow(
+                          icon: _getBiometricIcon(),
+                          title: _getBiometricTitle(context),
+                          value: _biometricEnabled,
+                          onChanged: _onBiometricToggleChanged,
+                        ),
                       ),
-                      child: _buildSettingsToggleRow(
-                        icon: _getBiometricIcon(),
-                        title: _getBiometricTitle(context),
-                        value: _biometricEnabled,
-                        onChanged: _onBiometricToggleChanged,
-                      ),
-                    ),
+                      const SizedBox(height: 12),
+                    ],
                     const SizedBox(height: 12),
-                  ],
-                  const SizedBox(height: 12),
-                  ExpansibleWidget<String>.selection(
-                    cardPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 6,
-                    ),
-                    tilePadding: EdgeInsets.zero,
-                    title: Row(
-                      children: [
-                        Icon(
-                          TablerIcons.language,
-                          color: colors.brand,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            context.translate('language'),
-                            style: textStyles.bodySans,
+                    ExpansibleWidget<String>.selection(
+                      cardPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      tilePadding: EdgeInsets.zero,
+                      title: Row(
+                        children: [
+                          Icon(
+                            TablerIcons.language,
+                            color: colors.brand,
+                            size: 20,
                           ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              context.translate('language'),
+                              style: textStyles.bodySans,
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        currentLanguageLabel,
+                        style: textStyles.captionSans.copyWith(
+                          color: colors.textSecondary,
                         ),
-                      ],
-                    ),
-                    subtitle: Text(
-                      currentLanguageLabel,
-                      style: textStyles.captionSans.copyWith(
-                        color: colors.textSecondary,
                       ),
+                      items: const ['ru', 'tg'],
+                      selectedValue: locale.languageCode,
+                      itemLabelBuilder: (code) => code == 'tg'
+                          ? context.translate('language_tajik')
+                          : context.translate('language_russian'),
+                      onSelected: (val) {
+                        context.read<LanguageCubit>().setLanguage(val);
+                      },
                     ),
-                    items: const ['ru', 'tg'],
-                    selectedValue: locale.languageCode,
-                    itemLabelBuilder: (code) => code == 'tg'
-                        ? context.translate('language_tajik')
-                        : context.translate('language_russian'),
-                    onSelected: (val) {
-                      context.read<LanguageCubit>().setLanguage(val);
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 16),
 
-                  if (role != null) ..._buildGroupedModules(role),
+                    if (role != null) ..._buildGroupedModules(role),
 
-                  OutlinedButton(
-                    onPressed: () {
-                      context.read<AuthBloc>().add(LogoutRequested());
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.accentRed,
-                      side: BorderSide(
-                        color: colors.accentRed.withValues(alpha: 0.5),
+                    OutlinedButton(
+                      onPressed: () {
+                        context.read<AuthBloc>().add(LogoutRequested());
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.accentRed,
+                        side: BorderSide(
+                          color: colors.accentRed.withValues(alpha: 0.5),
+                        ),
                       ),
+                      child: Text(context.translate('logout')),
                     ),
-                    child: Text(context.translate('logout')),
-                  ),
-                  const SizedBox(height: 8),
-                ]),
+                    const SizedBox(height: 8),
+                  ]),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

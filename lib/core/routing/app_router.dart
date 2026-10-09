@@ -120,11 +120,20 @@ GoRouter createRouter(
       // Вход в систему (MOB-05)
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
 
-      // Сеть магазинов «Пайк» (Multistore Root)
       GoRoute(
         path: '/network',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const NetworkScreen(),
+      ),
+      GoRoute(
+        path: '/leads',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LeadsScreen(),
+      ),
+      GoRoute(
+        path: '/modules',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ModulesScreen(),
       ),
 
       // Предупреждения / Инфо (MOB-04)
@@ -220,18 +229,6 @@ GoRouter createRouter(
         path: '/playroom',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const PlayroomScreen(),
-      ),
-
-      GoRoute(
-        path: '/leads',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const LeadsScreen(),
-      ),
-
-      GoRoute(
-        path: '/modules',
-        parentNavigatorKey: _rootNavigatorKey,
-        builder: (context, state) => const ModulesScreen(),
       ),
 
       // Финансовые операции
