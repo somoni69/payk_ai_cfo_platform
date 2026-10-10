@@ -15,6 +15,7 @@ import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/assistant/presentation/ledger_ai_assistant.dart';
 import '../../../features/auth/domain/app_access.dart';
 import '../../../features/permissions/cubit/permissions_cubit.dart';
+import '../../meta/cubit/chat_live_cubit.dart';
 import '../../../features/permissions/domain/my_permissions.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
@@ -57,21 +58,14 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   void _refreshAllBlocs(BuildContext ctx) {
-    try {
-      ctx.read<PermissionsCubit>().load();
-    } catch (_) {}
-    try {
-      ctx.read<DashboardBloc>().add(LoadDashboardData(forceRefresh: true));
-    } catch (_) {}
-    try {
-      ctx.read<CashBloc>().add(const LoadCashData());
-    } catch (_) {}
-    try {
-      ctx.read<WarehouseBloc>().add(LoadWarehouseData());
-    } catch (_) {}
-    try {
-      ctx.read<TasksBloc>().add(const LoadTasks(forceRefresh: true));
-    } catch (_) {}
+    ctx.read<PermissionsCubit>().load();
+    // «Настройки» (/settings) open on the root navigator, outside the store
+    // shell that provides these blocs.
+    if (widget.settingsOnly) return;
+    ctx.read<DashboardBloc>().add(LoadDashboardData(forceRefresh: true));
+    ctx.read<CashBloc>().add(const LoadCashData());
+    ctx.read<WarehouseBloc>().add(LoadWarehouseData());
+    ctx.read<TasksBloc>().add(const LoadTasks(forceRefresh: true));
   }
 
   Future<void> _loadBiometricSettings() async {
@@ -583,6 +577,7 @@ class _MoreScreenState extends State<MoreScreen> {
                       icon: allowedModules[i].icon,
                       title: context.translate(allowedModules[i].titleKey),
                       onTap: () => _openSection(allowedModules[i].route),
+                      chatBadge: allowedModules[i].route == '/meta',
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -595,6 +590,7 @@ class _MoreScreenState extends State<MoreScreen> {
                             ),
                             onTap: () =>
                                 _openSection(allowedModules[i + 1].route),
+                            chatBadge: allowedModules[i + 1].route == '/meta',
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -672,9 +668,24 @@ class _MoreScreenState extends State<MoreScreen> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    bool chatBadge = false,
   }) {
     final colors = context.colors;
     final textStyles = context.textStyles;
+    final iconRow = chatBadge
+        ? Row(
+            children: [
+              Icon(icon, size: 20, color: colors.brand),
+              const Spacer(),
+              BlocSelector<ChatLiveCubit, ChatLiveState, int>(
+                selector: (live) => live.unread,
+                builder: (context, unread) => unread > 0
+                    ? _UnreadBadge(count: unread)
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          )
+        : Icon(icon, size: 20, color: colors.brand);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -689,7 +700,7 @@ class _MoreScreenState extends State<MoreScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 20, color: colors.brand),
+            iconRow,
             const SizedBox(height: 8),
             Text(
               title,
@@ -798,7 +809,17 @@ class _MoreScreenState extends State<MoreScreen> {
               onPressed: () async {
                 try {
                   await context.read<NetworkRepository>().leaveStore();
-                } catch (_) {}
+                } catch (_) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        context.translate('more_leave_store_failed'),
+                      ),
+                    ),
+                  );
+                  return;
+                }
                 if (!mounted) return;
                 ExpiringRequestCache.invalidateAll();
                 context.read<AuthBloc>().add(const ActingStoreUpdated());
@@ -873,6 +894,35 @@ class _MoreScreenState extends State<MoreScreen> {
             activeTrackColor: colors.brand,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Unread chats on «Чаты»: solid brand pill, «99+» above 99.
+class _UnreadBadge extends StatelessWidget {
+  const _UnreadBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.colors;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: colors.brand,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        textAlign: TextAlign.center,
+        style: context.textStyles.smallSans.copyWith(
+          color: colors.surface,
+          fontWeight: FontWeight.w600,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
       ),
     );
   }

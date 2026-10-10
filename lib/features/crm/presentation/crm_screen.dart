@@ -384,7 +384,7 @@ class _CrmViewState extends State<CrmView> {
                 context,
                 icon: TablerIcons.gift,
                 title: language.translate('crm_tab_loyalty'),
-                subtitle: 'Кэшбэк и RFM',
+                subtitle: language.translate('crm_hub_loyalty_sub'),
                 onTap: () => _openCrmSection(context, CrmSection.loyalty),
               ),
               right: _buildCrmHubTile(

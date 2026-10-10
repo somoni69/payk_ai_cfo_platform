@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/observability/app_error_reporter.dart';
+import '../../../core/lifecycle/foreground_ticker.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/ledger_layout.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -80,7 +82,7 @@ class _OrderSheetState extends State<_OrderSheet> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _customCtrl = TextEditingController();
-  Timer? _clock;
+  ForegroundTicker? _clock;
   var _applyingPreset = false;
 
   var _people = 1;
@@ -105,7 +107,7 @@ class _OrderSheetState extends State<_OrderSheet> {
     final now = DateTime.now();
     _nowTick = now.millisecondsSinceEpoch;
     _startTime = storeParts(now).hhmm;
-    _clock = Timer.periodic(const Duration(seconds: 20), (_) {
+    _clock = ForegroundTicker(const Duration(seconds: 20), () {
       if (mounted) {
         setState(() => _nowTick = DateTime.now().millisecondsSinceEpoch);
       }
@@ -115,7 +117,7 @@ class _OrderSheetState extends State<_OrderSheet> {
 
   @override
   void dispose() {
-    _clock?.cancel();
+    _clock?.dispose();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _customCtrl.dispose();
@@ -136,7 +138,10 @@ class _OrderSheetState extends State<_OrderSheet> {
       List<BankAccount> banks = const [];
       try {
         banks = await widget.repo.getBanks();
-      } catch (_) {}
+      } catch (e, st) {
+        // Banks only feed the non-cash option; cash payment still works.
+        AppErrorReporter.reportOptional(e, st, context: 'playroom_banks');
+      }
       if (!mounted) return;
       final registers = loaded[1] as List<PlayroomRegister>;
       final shifts = loaded[2] as List<PlayroomOpenShift>;
@@ -534,7 +539,10 @@ class _ExtendSheetState extends State<_ExtendSheet> {
       List<BankAccount> banks = const [];
       try {
         banks = await widget.repo.getBanks();
-      } catch (_) {}
+      } catch (e, st) {
+        // Banks only feed the non-cash option; cash payment still works.
+        AppErrorReporter.reportOptional(e, st, context: 'playroom_banks');
+      }
       if (!mounted) return;
       setState(() {
         _tariff = tariff;
@@ -843,7 +851,7 @@ class _TicketCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: textStyles.captionSans.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: colors.onBrand.withValues(alpha: 0.8),
                           letterSpacing: 1.4,
                         ),
                       ),
@@ -851,7 +859,7 @@ class _TicketCard extends StatelessWidget {
                       Text(
                         language.translate('playroom_ticket_heading'),
                         style: textStyles.h2Sans.copyWith(
-                          color: Colors.white,
+                          color: colors.onBrand,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -880,7 +888,7 @@ class _TicketCard extends StatelessWidget {
                       Text(
                         '${storeTime(order.startAt)} — ${storeTime(order.endAt)}',
                         style: textStyles.h2Sans.copyWith(
-                          color: Colors.white,
+                          color: colors.onBrand,
                           fontSize: 28,
                           fontWeight: FontWeight.w800,
                         ),
@@ -888,7 +896,7 @@ class _TicketCard extends StatelessWidget {
                       Text(
                         storeDate(order.startAt),
                         style: textStyles.captionSans.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: colors.onBrand.withValues(alpha: 0.8),
                         ),
                       ),
                     ],
@@ -1016,7 +1024,7 @@ class _TicketCard extends StatelessWidget {
                           QrImageView(
                             data: order.code,
                             size: 96,
-                            backgroundColor: Colors.white,
+                            backgroundColor: colors.onBrand,
                           ),
                           const SizedBox(width: 12),
                           Expanded(

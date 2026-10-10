@@ -103,12 +103,12 @@ class _BackupsView extends StatelessWidget {
             onPressed: creating ? null : () => _create(context),
             icon: TablerIcons.plus,
             iconWidget: creating
-                ? const SizedBox(
+                ? SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: colors.onBrand,
                     ),
                   )
                 : null,

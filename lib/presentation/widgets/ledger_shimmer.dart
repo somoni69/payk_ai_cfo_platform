@@ -57,7 +57,9 @@ class _LedgerShimmerState extends State<LedgerShimmer>
             child: child,
           );
         },
-        child: widget.child,
+        // The placeholder tree is static: cache its picture so each frame only
+        // re-runs the gradient shader, not the skeleton paint.
+        child: RepaintBoundary(child: widget.child),
       ),
     );
   }

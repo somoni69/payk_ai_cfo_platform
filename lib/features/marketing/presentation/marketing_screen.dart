@@ -341,10 +341,11 @@ class _MarketingViewState extends State<MarketingView> {
                                 color: colors.brand,
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
+                              // Google model name, shown as-is in every language.
+                              child: Text(
                                 'VEO 2',
                                 style: TextStyle(
-                                  color: Colors.white,
+                                  color: colors.onBrand,
                                   fontSize: 9.5,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -395,7 +396,7 @@ class _MarketingViewState extends State<MarketingView> {
                 child: _buildHubCard(
                   context,
                   title: locale.translate('marketing_tab_ai_writer'),
-                  subtitle: 'ИИ генерация текстов',
+                  subtitle: locale.translate('marketing_hub_ai_writer_sub'),
                   icon: TablerIcons.sparkles,
                   onTap: () =>
                       _openMarketingSection(context, MarketingSection.aiWriter),
@@ -440,7 +441,7 @@ class _MarketingViewState extends State<MarketingView> {
                 child: _buildHubCard(
                   context,
                   title: locale.translate('marketing_tab_brand_guide'),
-                  subtitle: 'Tone of Voice & правила',
+                  subtitle: locale.translate('marketing_hub_brand_sub'),
                   icon: TablerIcons.palette,
                   onTap: () => _openMarketingSection(
                     context,
@@ -1587,6 +1588,8 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
         }
 
         final learnedRounds = guide?.learnedRounds ?? 0;
+        // Saving a form that never loaded would overwrite the real guide.
+        final brandReady = guide != null;
 
         return ListView(
           padding: const EdgeInsets.all(16),
@@ -1658,7 +1661,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                 children: [
                   TextField(
                     controller: _brandNameController,
-                    enabled: canManage && !state.isSavingBrand,
+                    enabled: canManage && brandReady && !state.isSavingBrand,
                     style: textStyles.bodySans,
                     decoration: InputDecoration(
                       labelText: localeCubit.translate('marketing_brand_name'),
@@ -1667,7 +1670,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _toneController,
-                    enabled: canManage && !state.isSavingBrand,
+                    enabled: canManage && brandReady && !state.isSavingBrand,
                     maxLines: 2,
                     style: textStyles.bodySans,
                     decoration: InputDecoration(
@@ -1677,7 +1680,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _audienceController,
-                    enabled: canManage && !state.isSavingBrand,
+                    enabled: canManage && brandReady && !state.isSavingBrand,
                     maxLines: 2,
                     style: textStyles.bodySans,
                     decoration: InputDecoration(
@@ -1689,7 +1692,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _forbiddenController,
-                    enabled: canManage && !state.isSavingBrand,
+                    enabled: canManage && brandReady && !state.isSavingBrand,
                     maxLines: 2,
                     style: textStyles.bodySans,
                     decoration: InputDecoration(
@@ -1701,7 +1704,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                   const SizedBox(height: 12),
                   TextField(
                     controller: _videoLimitController,
-                    enabled: canManage && !state.isSavingBrand,
+                    enabled: canManage && brandReady && !state.isSavingBrand,
                     keyboardType: TextInputType.number,
                     style: textStyles.bodySans,
                     decoration: InputDecoration(
@@ -1714,7 +1717,8 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: (!canManage || state.isSavingBrand)
+                      onPressed:
+                          (!canManage || !brandReady || state.isSavingBrand)
                           ? null
                           : () {
                               final updatedGuide = BrandGuide(

@@ -397,7 +397,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                 children: [
                   Expanded(
                     child: Text(
-                      language.translateMessage(alert.title),
+                      _alertText(language, alert.title, alert.params),
                       style: textStyles.bodySans.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colors.accentRed,
@@ -422,7 +422,7 @@ class _NotificationsViewState extends State<NotificationsView> {
               ),
               const SizedBox(height: 6),
               Text(
-                language.translateMessage(alert.description),
+                _alertText(language, alert.description, alert.params),
                 style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
                   fontSize: 13,
@@ -494,7 +494,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                 children: [
                   Expanded(
                     child: Text(
-                      language.translateMessage(alert.title),
+                      _alertText(language, alert.title, alert.params),
                       style: textStyles.bodySans.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colors.accentAmber,
@@ -519,7 +519,7 @@ class _NotificationsViewState extends State<NotificationsView> {
               ),
               const SizedBox(height: 6),
               Text(
-                language.translateMessage(alert.description),
+                _alertText(language, alert.description, alert.params),
                 style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
                   fontSize: 13,
@@ -557,7 +557,7 @@ class _NotificationsViewState extends State<NotificationsView> {
                 children: [
                   Expanded(
                     child: Text(
-                      language.translateMessage(alert.title),
+                      _alertText(language, alert.title, alert.params),
                       style: textStyles.bodySans.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colors.textPrimary,
@@ -582,7 +582,7 @@ class _NotificationsViewState extends State<NotificationsView> {
               ),
               const SizedBox(height: 6),
               Text(
-                language.translateMessage(alert.description),
+                _alertText(language, alert.description, alert.params),
                 style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
                   fontSize: 13,
@@ -625,3 +625,12 @@ class _NotificationsViewState extends State<NotificationsView> {
     );
   }
 }
+
+/// Server alerts carry ready text; derived hints carry a key and params.
+String _alertText(
+  LanguageCubit language,
+  String text,
+  Map<String, String> params,
+) => params.isEmpty
+    ? language.translateMessage(text)
+    : language.translate(text, params: params);

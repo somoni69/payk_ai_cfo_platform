@@ -338,7 +338,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             (storeName == null || storeName.isEmpty)) {
           storeName = acting.name;
         }
-      } catch (_) {}
+      } catch (_) {
+        // Acting-store name is cosmetic; the session is already valid without it.
+      }
     }
     emit(
       AuthAuthenticated(
@@ -388,7 +390,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await _authRepository.logout();
     try {
       await _networkRepository.clearActingStore();
-    } catch (_) {}
+    } catch (_) {
+      // Logout already succeeded; a stale acting-store key is cleared on next login.
+    }
     emit(AuthUnauthenticated());
   }
 }

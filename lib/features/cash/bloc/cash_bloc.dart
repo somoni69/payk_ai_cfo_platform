@@ -150,7 +150,18 @@ class CashBloc extends Bloc<CashEvent, CashState> {
           query: event.query,
         );
         transactions = await _repository.getTransactions(filters: filters);
-      } catch (_) {}
+      } catch (e) {
+        // Keep the previous filter and its rows: showing them under the new
+        // filter would invent operations that the server never returned.
+        final msg = userFacingError(e, fallback: ErrorKeys.loadFailed);
+        emit(
+          current.copyWith(
+            errorMessage: msg,
+            feedback: LocalizedFeedback(msg, isError: true),
+          ),
+        );
+        return;
+      }
     }
 
     final filtered = _filterTransactions(
@@ -317,9 +328,12 @@ class CashBloc extends Bloc<CashEvent, CashState> {
           .toList(growable: false);
 
       List<CashSummary> summaries = current.summaries;
+      String? summaryError;
       try {
         summaries = await _repository.getSummary();
-      } catch (_) {}
+      } catch (_) {
+        summaryError = 'cash_tx_deleted_summary_failed';
+      }
 
       final filtered = _filterTransactions(
         transactions: updatedList,
@@ -336,6 +350,10 @@ class CashBloc extends Bloc<CashEvent, CashState> {
           transactions: updatedList,
           filteredTransactions: filtered,
           summaries: summaries,
+          errorMessage: summaryError,
+          feedback: summaryError == null
+              ? null
+              : LocalizedFeedback(summaryError, isError: true),
         ),
       );
     } catch (e) {

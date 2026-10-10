@@ -7,6 +7,23 @@ abstract class MetaRepository {
   Future<MetaMessage> reply(int threadId, String text);
   Future<String> suggestReply(int threadId);
 
+  /// Photo, video or document (`POST /meta/threads/{id}/attachments`).
+  Future<MetaMessage> sendAttachment(
+    int threadId, {
+    required String filename,
+    required List<int> bytes,
+    String caption = '',
+  });
+
+  /// «Печатает…» for the peer (`POST /meta/threads/{id}/typing`).
+  Future<void> sendTyping(int threadId, {required bool on});
+
+  /// Unread total across the store's dialogs (`GET /meta/unread`).
+  Future<int> getUnreadTotal();
+
+  /// Location pin (`POST /meta/threads/{id}/location`).
+  Future<MetaMessage> sendLocation(int threadId, MetaPlace place);
+
   /// Link dialog to CRM client (`POST /meta/threads/{id}/link`).
   Future<MetaThread> linkClient(int threadId, int clientId);
 

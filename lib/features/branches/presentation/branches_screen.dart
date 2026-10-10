@@ -95,7 +95,7 @@ class BranchesView extends StatelessWidget {
             return const BranchesOverviewShimmer();
           }
           if (state is BranchesError) {
-            return Center(child: Text(state.message));
+            return Center(child: Text(locale.translateMessage(state.message)));
           }
           if (state is BranchesLoaded) {
             if (state.branches.isEmpty) {

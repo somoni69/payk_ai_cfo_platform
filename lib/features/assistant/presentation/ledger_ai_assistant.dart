@@ -24,7 +24,9 @@ class LedgerAiAssistantHost extends StatelessWidget {
       try {
         final path = GoRouterState.of(context).uri.path;
         module = assistantModuleForPath(path);
-      } catch (_) {}
+      } catch (_) {
+        // Outside a GoRouter subtree there is no route; the assistant stays general.
+      }
     }
 
     final repo = context.read<AssistantRepository>();
@@ -498,7 +500,7 @@ class _AssistantPanelState extends State<_AssistantPanel> {
         child: Text(
           message.text,
           style: textStyles.bodySans.copyWith(
-            color: isUser ? Colors.white : colors.textPrimary,
+            color: isUser ? colors.onBrand : colors.textPrimary,
           ),
         ),
       ),

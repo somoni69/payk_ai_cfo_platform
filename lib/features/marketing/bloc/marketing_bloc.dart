@@ -68,7 +68,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       request = Future.wait<Object>([
         _repository.getCampaigns(forceRefresh: event.forceRefresh),
         _repository.getPosts(forceRefresh: event.forceRefresh),
-        _repository.getBrandGuide(forceRefresh: event.forceRefresh),
+        _brandOrError(event.forceRefresh),
       ]);
       _dataRequest = request;
     }
@@ -76,6 +76,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     try {
       final results = await request;
       if (emit.isDone) return;
+      final brand = results[2];
       emit(
         state.copyWith(
           isCampaignsLoading: false,
@@ -83,7 +84,8 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isBrandLoading: false,
           campaigns: (results[0] as List).cast<MarketingCampaign>(),
           posts: (results[1] as List).cast<SocialPost>(),
-          brandGuide: results[2] as BrandGuide,
+          brandGuide: brand is BrandGuide ? brand : null,
+          errorMessage: brand is _BrandLoadFailed ? brand.message : null,
         ),
       );
     } catch (error) {
@@ -92,9 +94,10 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
         state.copyWith(
           isCampaignsLoading: false,
           isPostsLoading: false,
+          isBrandLoading: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось обновить маркетинг. Проверьте соединение.',
+            fallback: 'marketing_err_refresh',
           ),
         ),
       );
@@ -160,7 +163,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isCreatingPost: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось создать публикацию. Проверьте данные.',
+            fallback: 'marketing_err_create_post',
           ),
         ),
       );
@@ -186,7 +189,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
         state.copyWith(
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось удалить кампанию. Повторите попытку.',
+            fallback: 'marketing_err_delete_campaign',
           ),
         ),
       );
@@ -210,7 +213,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
         state.copyWith(
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось удалить публикацию. Повторите попытку.',
+            fallback: 'marketing_err_delete_post',
           ),
         ),
       );
@@ -233,7 +236,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
         state.copyWith(
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось опубликовать пост. Повторите попытку.',
+            fallback: 'marketing_err_publish_post',
           ),
         ),
       );
@@ -256,7 +259,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isGenerating: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось получить AI-идеи. Повторите попытку.',
+            fallback: 'marketing_err_ai_ideas',
           ),
         ),
       );
@@ -279,7 +282,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isGenerating: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось сгенерировать текст. Повторите попытку.',
+            fallback: 'marketing_err_gen_text',
           ),
         ),
       );
@@ -302,7 +305,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isGenerating: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось сгенерировать картинку. Повторите попытку.',
+            fallback: 'marketing_err_gen_image',
           ),
         ),
       );
@@ -325,7 +328,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isGenerating: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось сгенерировать видео. Повторите попытку.',
+            fallback: 'marketing_err_gen_video',
           ),
         ),
       );
@@ -348,7 +351,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isSavingBrand: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось сохранить бренд-гайд.',
+            fallback: 'marketing_err_save_brand',
           ),
         ),
       );
@@ -385,7 +388,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось загрузить данные AI-Студии.',
+            fallback: 'marketing_err_studio_load',
           ),
         ),
       );
@@ -406,10 +409,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       emit(
         state.copyWith(
           isStudioLoading: false,
-          errorMessage: userFacingError(
-            e,
-            fallback: 'Не удалось сгенерировать идеи маркетинга.',
-          ),
+          errorMessage: userFacingError(e, fallback: 'marketing_err_gen_ideas'),
         ),
       );
     }
@@ -444,7 +444,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось создать кампанию.',
+            fallback: 'marketing_err_create_campaign',
           ),
         ),
       );
@@ -489,7 +489,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось сгенерировать концепции.',
+            fallback: 'marketing_err_gen_concepts',
           ),
         ),
       );
@@ -541,7 +541,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось пересмотреть концепцию.',
+            fallback: 'marketing_err_revise_concept',
           ),
         ),
       );
@@ -589,7 +589,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось утвердить концепцию.',
+            fallback: 'marketing_err_approve_concept',
           ),
         ),
       );
@@ -619,7 +619,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось сгенерировать сценарий.',
+            fallback: 'marketing_err_gen_script',
           ),
         ),
       );
@@ -652,10 +652,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       emit(
         state.copyWith(
           isStudioLoading: false,
-          errorMessage: userFacingError(
-            e,
-            fallback: 'Не удалось сгенерировать медиафайл.',
-          ),
+          errorMessage: userFacingError(e, fallback: 'marketing_err_gen_media'),
         ),
       );
     }
@@ -704,7 +701,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           isStudioLoading: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось отклонить медиа.',
+            fallback: 'marketing_err_reject_media',
           ),
         ),
       );
@@ -725,10 +722,7 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
       emit(
         state.copyWith(
           isStudioLoading: false,
-          errorMessage: userFacingError(
-            e,
-            fallback: 'Не удалось загрузить отчёт по ROI.',
-          ),
+          errorMessage: userFacingError(e, fallback: 'marketing_err_roi'),
         ),
       );
     }
@@ -769,9 +763,22 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
           clearRefreshingPublication: true,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось обновить статистику публикации.',
+            fallback: 'marketing_err_post_stats',
           ),
         ),
+      );
+    }
+  }
+
+  /// The brand form must not open blank when the server failed: saving it
+  /// would overwrite the real guide. The failure is shown, not hidden.
+  Future<Object> _brandOrError(bool forceRefresh) async {
+    try {
+      return await _repository.getBrandGuide(forceRefresh: forceRefresh);
+    } catch (error) {
+      if (_isCancelled(error)) rethrow;
+      return _BrandLoadFailed(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
       );
     }
   }
@@ -787,4 +794,10 @@ class MarketingBloc extends Bloc<MarketingEvent, MarketingState> {
     }
     return super.close();
   }
+}
+
+/// Brand guide failed while campaigns and posts loaded; keeps them visible.
+class _BrandLoadFailed {
+  const _BrandLoadFailed(this.message);
+  final String message;
 }

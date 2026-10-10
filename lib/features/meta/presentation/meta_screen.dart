@@ -1,12 +1,12 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/localization/language_cubit.dart';
-import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/app_colors.dart';
@@ -19,10 +19,12 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../crm/domain/crm_models.dart';
 import '../../crm/domain/crm_repository.dart';
+import '../cubit/chat_live_cubit.dart';
+import '../data/chat_live_client.dart';
 import '../cubit/meta_cubit.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
-import 'meta_attachments.dart';
+import 'meta_chat_widgets.dart';
 
 /// Meta chats (Facebook / Instagram / WhatsApp) — Grounded Enterprise design.
 class MetaScreen extends StatelessWidget {
@@ -35,9 +37,13 @@ class MetaScreen extends StatelessWidget {
       return const _MetaScreenView();
     } catch (_) {
       return BlocProvider<MetaCubit>(
-        create: (ctx) => MetaCubit(ctx.read<MetaRepository>())
-          ..load()
-          ..startPolling(),
+        create: (ctx) =>
+            MetaCubit(
+                ctx.read<MetaRepository>(),
+                live: ctx.read<ChatLiveCubit>(),
+              )
+              ..load()
+              ..startPolling(),
         child: const _MetaScreenView(),
       );
     }
@@ -67,6 +73,41 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
     final cubit = context.read<MetaCubit>();
     _replyController.clear();
     await cubit.sendMessage(text);
+  }
+
+  /// Same formats the server accepts (`_OUT_KINDS` in routes/meta.py).
+  static const _attachExtensions = [
+    'jpg', 'jpeg', 'png', 'mp4', 'pdf', 'doc', 'docx', //
+    'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip',
+  ];
+
+  Future<void> _attach() async {
+    final cubit = context.read<MetaCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+    final language = context.read<LanguageCubit>();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: _attachExtensions,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(language.translate('meta_attach_empty'))),
+      );
+      return;
+    }
+    // The typed text goes as the file caption, like the web composer.
+    final caption = _replyController.text.trim();
+    _replyController.clear();
+    cubit.composerStopped();
+    await cubit.sendAttachment(
+      filename: file.name,
+      bytes: bytes,
+      caption: caption,
+    );
   }
 
   Future<void> _suggest() async {
@@ -191,12 +232,12 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               ElevatedButton(
                 onPressed: chosen == null || saving ? null : submit,
                 child: saving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: colors.onBrand,
                         ),
                       )
                     : Text(language.translate('meta_link_submit')),
@@ -243,7 +284,10 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(language.translate('common_delete')),
+            child: Text(
+              language.translate('common_delete'),
+              style: TextStyle(color: context.colors.accentRed),
+            ),
           ),
         ],
       ),
@@ -304,16 +348,25 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                           context.read<MetaCubit>().selectThread(null),
                     )
                   : null,
-              title: Text(
-                selected == null
-                    ? language.translate('meta_title')
-                    : selected.displayName,
-                style: textStyles.h2Sans.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: colors.textPrimary,
-                ),
-              ),
+              titleSpacing: selected == null ? null : 0,
+              title: selected == null
+                  ? Text(
+                      language.translate('meta_title'),
+                      style: textStyles.h2Sans.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: colors.textPrimary,
+                      ),
+                    )
+                  : BlocSelector<ChatLiveCubit, ChatLiveState, bool>(
+                      selector: (live) => live.status == ChatLiveStatus.offline,
+                      builder: (context, offline) => MetaChatTitle(
+                        name: selected.displayName,
+                        channel: selected.channel,
+                        offline: offline,
+                        channelMark: _channelMark(selected.channel, language),
+                      ),
+                    ),
               actions: [
                 if (selected == null)
                   IconButton(
@@ -322,21 +375,45 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                     icon: const Icon(TablerIcons.settings),
                   ),
                 if (selected != null) ...[
-                  if (_canDeleteThread(context))
-                    IconButton(
-                      tooltip: language.translate('meta_delete'),
-                      onPressed: () => _confirmDeleteThread(context, selected),
-                      icon: Icon(
-                        TablerIcons.trash,
-                        size: 20,
-                        color: colors.accentRed,
-                      ),
-                    ),
                   IconButton(
                     tooltip: language.translate('meta_link_client'),
                     onPressed: () => _showLinkClientSheet(context, selected),
-                    icon: const Icon(TablerIcons.link, size: 20),
+                    icon: const Icon(TablerIcons.user_plus, size: 20),
                   ),
+                  if (_canDeleteThread(context))
+                    PopupMenuButton<String>(
+                      tooltip: language.translate('meta_more_actions'),
+                      icon: const Icon(TablerIcons.dots_vertical, size: 20),
+                      color: colors.surface,
+                      surfaceTintColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: colors.border),
+                      ),
+                      onSelected: (_) =>
+                          _confirmDeleteThread(context, selected),
+                      itemBuilder: (_) => [
+                        PopupMenuItem<String>(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                TablerIcons.trash,
+                                size: 18,
+                                color: colors.accentRed,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                language.translate('meta_delete'),
+                                style: textStyles.captionSans.copyWith(
+                                  color: colors.accentRed,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(width: 4),
                 ],
               ],
@@ -673,6 +750,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
   ) {
     final messages = state.messages;
     final sending = state.isSending;
+    final peerReadAt = state.selectedThread?.peerReadAt;
 
     return Column(
       children: [
@@ -700,112 +778,38 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                     ),
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final m = messages[index];
-                    return Align(
-                      alignment: m.outgoing
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-                        ),
-                        decoration: BoxDecoration(
-                          color: m.outgoing
-                              ? colors.brand.withValues(alpha: 0.08)
-                              : colors.surfaceNested,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: m.outgoing
-                                ? colors.brand.withValues(alpha: 0.35)
-                                : colors.border,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (metaTextWithoutLabels(m.text, m.attachments)
-                                case final visibleText
-                                when visibleText.isNotEmpty)
-                              Text(visibleText, style: textStyles.captionSans),
-                            MetaAttachments(
-                              items: m.attachments,
-                              outgoing: m.outgoing,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              formatLocalizedDateTime(
-                                context,
-                                m.createdAt,
-                                style: LocalizedDateTimeStyle.dateTime,
-                              ),
-                              style: textStyles.smallSans.copyWith(
-                                color: colors.textTooltip,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+              : MetaMessageList(messages: messages, peerReadAt: peerReadAt),
         ),
-        Container(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: colors.border)),
-            color: colors.surface,
-          ),
-          padding: EdgeInsets.fromLTRB(
-            12,
-            8,
-            8,
-            8 + MediaQuery.paddingOf(context).bottom,
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                tooltip: language.translate('meta_suggest'),
-                onPressed: sending ? null : _suggest,
-                icon: Icon(TablerIcons.pencil, color: colors.brand),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _replyController,
-                  enabled: !sending,
-                  minLines: 1,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: language.translate('meta_reply_hint'),
-                    isDense: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+        BlocSelector<ChatLiveCubit, ChatLiveState, bool>(
+          selector: (live) => live.status == ChatLiveStatus.offline,
+          builder: (context, offline) => offline
+              ? Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceNested,
+                    border: Border(top: BorderSide(color: colors.border)),
+                  ),
+                  child: Text(
+                    language.translate('meta_live_offline'),
+                    style: textStyles.smallSans.copyWith(
+                      color: colors.textSecondary,
                     ),
                   ),
-                ),
-              ),
-              IconButton(
-                onPressed: sending ? null : _send,
-                icon: sending
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: colors.brand,
-                        ),
-                      )
-                    : Icon(TablerIcons.send, color: colors.brand),
-              ),
-            ],
+                )
+              : const SizedBox.shrink(),
+        ),
+        MetaComposer(
+          controller: _replyController,
+          sending: sending,
+          canSendAddress: context.select<MetaCubit, bool>(
+            (cubit) => cubit.state.status?.place != null,
           ),
+          onSend: _send,
+          onAttach: _attach,
+          onSendAddress: () => context.read<MetaCubit>().sendOurAddress(),
+          onSuggest: _suggest,
+          onChanged: context.read<MetaCubit>().composerChanged,
         ),
       ],
     );

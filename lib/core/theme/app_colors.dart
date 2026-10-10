@@ -16,6 +16,12 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
   final Color accentRed;
   final Color accentAmber;
 
+  /// Text and icons on a filled brand/accent fill (selected chips, avatars).
+  final Color onBrand;
+
+  /// Full-bleed camera screens (barcode scanner): backdrop behind the preview.
+  final Color cameraBackdrop;
+
   const LedgerColors({
     required this.background,
     required this.surface,
@@ -28,6 +34,8 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     required this.accentGreen,
     required this.accentRed,
     required this.accentAmber,
+    required this.onBrand,
+    required this.cameraBackdrop,
   });
 
   /// Светлая тема Ledger (основной режим)
@@ -43,6 +51,8 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     accentGreen: Color(0xFF17795E),
     accentRed: Color(0xFFC0392B),
     accentAmber: Color(0xFFB7791F),
+    onBrand: Color(0xFFFFFFFF),
+    cameraBackdrop: Color(0xFF000000),
   );
 
   @override
@@ -58,6 +68,8 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     Color? accentGreen,
     Color? accentRed,
     Color? accentAmber,
+    Color? onBrand,
+    Color? cameraBackdrop,
   }) {
     return LedgerColors(
       background: background ?? this.background,
@@ -71,6 +83,8 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
       accentGreen: accentGreen ?? this.accentGreen,
       accentRed: accentRed ?? this.accentRed,
       accentAmber: accentAmber ?? this.accentAmber,
+      onBrand: onBrand ?? this.onBrand,
+      cameraBackdrop: cameraBackdrop ?? this.cameraBackdrop,
     );
   }
 
@@ -92,6 +106,8 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
       accentGreen: Color.lerp(accentGreen, other.accentGreen, t)!,
       accentRed: Color.lerp(accentRed, other.accentRed, t)!,
       accentAmber: Color.lerp(accentAmber, other.accentAmber, t)!,
+      onBrand: Color.lerp(onBrand, other.onBrand, t)!,
+      cameraBackdrop: Color.lerp(cameraBackdrop, other.cameraBackdrop, t)!,
     );
   }
 }

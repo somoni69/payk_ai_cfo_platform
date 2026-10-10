@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/network/user_facing_error.dart';
 import 'package:flutter/material.dart';
 import '../../../core/localization/locale_date_time_format.dart';
@@ -57,15 +58,20 @@ class ApiNotificationsRepository implements NotificationsRepository {
       List<AppNotification> notifications = list.map((item) {
         final map = item as Map<String, dynamic>;
         final action = map['action'] ?? 'action';
-        final username = map['user_name'] ?? map['username'] ?? 'Система';
+        final username = map['user_name'] ?? map['username'] ?? '—';
         final entity = map['entity'] ?? '';
         final ip = map['ip_address'] ?? 'unknown';
 
         return AppNotification(
           id: 'audit_${map['id']}',
-          title: 'Аудит системы: $action',
-          description:
-              'Пользователь $username совершил действие "$action" для сущности "$entity". IP-адрес устройства: $ip.',
+          title: 'notif_audit_title',
+          description: 'notif_audit_desc',
+          params: {
+            'action': '$action',
+            'user': '$username',
+            'entity': '$entity',
+            'ip': '$ip',
+          },
           type: NotificationType
               .legalCalendar, // Налоговый и юр. календарь / к сведению
           severity: NotificationSeverity.info,
@@ -100,9 +106,13 @@ class ApiNotificationsRepository implements NotificationsRepository {
               notifications.add(
                 AppNotification(
                   id: 'anomaly_night_${map['id']}',
-                  title: 'Проведение операции в ночное время (AUD-05)',
-                  description:
-                      'Кассир #${map['created_by'] ?? "Система"} провел операцию на сумму $amount TJS в ночное время ($time). Рекомендуется проверить видеокамеры.',
+                  title: 'notif_night_op_title',
+                  description: 'notif_night_op_desc',
+                  params: {
+                    'cashier': '${map['created_by'] ?? '—'}',
+                    'amount': amount,
+                    'time': time,
+                  },
                   type: NotificationType.audit,
                   severity: NotificationSeverity.critical,
                   dateTime: dt,
@@ -112,7 +122,14 @@ class ApiNotificationsRepository implements NotificationsRepository {
             }
           }
         }
-      } catch (_) {}
+      } catch (e, st) {
+        // Derived night-operation hints are extra; real notifications stay.
+        AppErrorReporter.reportOptional(
+          e,
+          st,
+          context: 'notifications_night_ops',
+        );
+      }
 
       // 3. Локальный аудит на лету (Поиск просроченных задач TASK-04)
       try {
@@ -137,9 +154,9 @@ class ApiNotificationsRepository implements NotificationsRepository {
               notifications.add(
                 AppNotification(
                   id: 'anomaly_task_overdue_${map['id']}',
-                  title: 'Срыв сроков задачи (TASK-04)',
-                  description:
-                      'Задача "${map['title']}" просрочена. Дедлайн: $formattedDue. Срочно завершите ее или перенесите сроки.',
+                  title: 'notif_task_overdue_title',
+                  description: 'notif_task_overdue_desc',
+                  params: {'title': '${map['title']}', 'due': formattedDue},
                   type: NotificationType.audit,
                   severity: NotificationSeverity.critical,
                   dateTime: due,
@@ -149,7 +166,14 @@ class ApiNotificationsRepository implements NotificationsRepository {
             }
           }
         }
-      } catch (_) {}
+      } catch (e, st) {
+        // Derived overdue-task hints are extra; real notifications stay.
+        AppErrorReporter.reportOptional(
+          e,
+          st,
+          context: 'notifications_overdue',
+        );
+      }
 
       // Сортируем предупреждения по дате (самые свежие сверху)
       notifications.sort((a, b) => b.dateTime.compareTo(a.dateTime));

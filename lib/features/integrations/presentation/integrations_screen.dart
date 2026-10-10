@@ -516,12 +516,12 @@ class _IntegrationsViewState extends State<IntegrationsView> {
                               }
                             },
                       icon: state.isTestingSms
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: colors.onBrand,
                               ),
                             )
                           : const Icon(TablerIcons.send, size: 16),

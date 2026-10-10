@@ -195,7 +195,7 @@ mixin _TasksViewMixin<T extends StatefulWidget> on State<T> {
                     ? language.translate('tasks_filter_all_projects')
                     : project!.name,
                 style: textStyles.captionSans.copyWith(
-                  color: isSelected ? Colors.white : colors.textPrimary,
+                  color: isSelected ? colors.onBrand : colors.textPrimary,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   fontSize: 11.5,
                 ),

@@ -1129,6 +1129,7 @@ class _NetworkViewState extends State<_NetworkView> {
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [nameCtrl, locCtrl, dirUserCtrl, dirPassCtrl, dirNameCtrl],
       title: language.translate('network_new_store_title'),
       builder: (sheetContext, setState) {
         return Padding(
@@ -1277,6 +1278,7 @@ class _NetworkViewState extends State<_NetworkView> {
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [nameCtrl, locCtrl],
       title: language.translate('network_store_edit_title'),
       builder: (sheetContext, setSheetState) {
         return Padding(
@@ -1376,6 +1378,7 @@ class _NetworkViewState extends State<_NetworkView> {
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [passCtrl, userCtrl],
       title: language.translate('network_director_reset_pwd_title'),
       builder: (sheetContext, setSheetState) {
         return Padding(
@@ -1476,7 +1479,7 @@ class _NetworkViewState extends State<_NetworkView> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accentRed,
-                foregroundColor: Colors.white,
+                foregroundColor: colors.onBrand,
               ),
               onPressed: () async {
                 Navigator.of(dlgContext).pop();

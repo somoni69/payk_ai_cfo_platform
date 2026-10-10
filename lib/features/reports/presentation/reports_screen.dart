@@ -6,6 +6,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
@@ -71,7 +72,10 @@ class _ReportsViewState extends State<ReportsView> {
       final list = await context.read<BranchesRepository>().getBranches();
       if (!mounted) return;
       setState(() => _branches = list.where((b) => b.isActive).toList());
-    } catch (_) {}
+    } catch (e, st) {
+      // The branch filter is optional; reports load for all branches.
+      AppErrorReporter.reportOptional(e, st, context: 'reports_branches');
+    }
   }
 
   UserRole? get _role {

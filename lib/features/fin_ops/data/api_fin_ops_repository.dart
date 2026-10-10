@@ -1,169 +1,72 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/fin_ops_models.dart';
 import '../domain/fin_ops_repository.dart';
 
+/// Finance operations: `/finance-ops/*`.
+///
+/// Failures reach the bloc as error keys; nothing is invented offline.
 class ApiFinOpsRepository implements FinOpsRepository {
-  final ApiClient _client;
+  final Dio _dio;
 
-  ApiFinOpsRepository({ApiClient? client}) : _client = client ?? ApiClient();
+  ApiFinOpsRepository({ApiClient? client, Dio? dio})
+    : _dio = dio ?? (client ?? ApiClient()).dio;
 
-  final List<BankAccount> _mockBanks = [
-    const BankAccount(
-      id: 'bnk-1',
-      bankName: 'mock_bank_oriyon',
-      accountNumber: '20202810400000123456',
-      balance: 145000.0,
-    ),
-    const BankAccount(
-      id: 'bnk-2',
-      bankName: 'mock_bank_alif',
-      accountNumber: '20202810900000789012',
-      balance: 89000.0,
-    ),
-    const BankAccount(
-      id: 'bnk-3',
-      bankName: 'mock_bank_eskhata',
-      accountNumber: '20202810100000345678',
-      balance: 62000.0,
-    ),
-  ];
-
-  final List<Encashment> _mockEncashments = [
-    Encashment(
-      id: 'enc-1',
-      bankName: 'mock_bank_oriyon',
-      amount: 25000.0,
-      responsiblePerson: 'mock_person_sayfiddinov',
-      date: DateTime.now().subtract(const Duration(hours: 4)),
-    ),
-    Encashment(
-      id: 'enc-2',
-      bankName: 'mock_bank_alif',
-      amount: 15000.0,
-      responsiblePerson: 'mock_user_alisher',
-      date: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-  ];
-
-  final List<StoreTransfer> _mockTransfers = [
-    StoreTransfer(
-      id: 'tr-1',
-      fromBranch: 'mock_branch_central',
-      toBranch: 'mock_branch_somoni',
-      amount: 5000.0,
-      status: 'pending',
-      date: DateTime.now().subtract(const Duration(hours: 2)),
-    ),
-    StoreTransfer(
-      id: 'tr-2',
-      fromBranch: 'mock_branch_khujand',
-      toBranch: 'mock_branch_central',
-      amount: 12000.0,
-      status: 'received',
-      date: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-  ];
-
-  final List<FinancialAid> _mockAids = [
-    FinancialAid(
-      id: 'aid-1',
-      employeeName: 'mock_user_parviz',
-      amount: 4000.0,
-      repaidAmount: 2000.0,
-      status: 'active',
-      date: DateTime.now().subtract(const Duration(days: 10)),
-    ),
-    FinancialAid(
-      id: 'aid-2',
-      employeeName: 'mock_person_munojot',
-      amount: 1500.0,
-      repaidAmount: 1500.0,
-      status: 'repaid',
-      date: DateTime.now().subtract(const Duration(days: 25)),
-    ),
-  ];
-
-  @override
-  Future<List<BankAccount>> getBankAccounts() async {
+  Future<List<T>> _list<T>(
+    String path,
+    T Function(Map<String, dynamic>) map,
+  ) async {
     try {
-      final response = await _client.dio.get('/finance-ops/banks');
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((e) => BankAccount.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-    } catch (_) {}
-    return List.from(_mockBanks);
-  }
-
-  @override
-  Future<List<Encashment>> getEncashments() async {
-    try {
-      final response = await _client.dio.get('/finance-ops/encashments');
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((e) => Encashment.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-    } catch (_) {}
-    return List.from(_mockEncashments);
-  }
-
-  @override
-  Future<List<StoreTransfer>> getStoreTransfers() async {
-    try {
-      final response = await _client.dio.get('/finance-ops/store-transfers');
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((e) => StoreTransfer.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-    } catch (_) {}
-    return List.from(_mockTransfers);
-  }
-
-  @override
-  Future<List<FinancialAid>> getFinancialAids() async {
-    try {
-      final response = await _client.dio.get('/finance-ops/financial-aid');
-      if (response.statusCode == 200 && response.data is List) {
-        return (response.data as List)
-            .map((e) => FinancialAid.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-    } catch (_) {}
-    return List.from(_mockAids);
-  }
-
-  @override
-  Future<List<BranchBalance>> getBranchBalances() async {
-    try {
-      final response = await _client.dio.get('/finance-ops/branch-balances');
-      final list = response.data is List ? response.data as List : const [];
-      return list
+      final response = await _dio.get(path);
+      final data = response.data;
+      if (data is! List) throw Exception(ErrorKeys.invalidResponse);
+      return data
           .whereType<Map>()
-          .map((e) => BranchBalance.fromJson(Map<String, dynamic>.from(e)))
+          .map((e) => map(Map<String, dynamic>.from(e)))
           .toList();
-    } catch (_) {
-      return const [];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
     }
   }
 
-  @override
-  Future<List<ResponsibleOption>> getResponsibleOptions() async {
+  Future<T> _write<T>(Future<T> Function() action) async {
     try {
-      final response = await _client.dio.get(
-        '/finance-ops/responsible-options',
-      );
-      final list = response.data is List ? response.data as List : const [];
-      return list
-          .whereType<Map>()
-          .map((e) => ResponsibleOption.fromJson(Map<String, dynamic>.from(e)))
-          .toList();
-    } catch (_) {
-      return const [];
+      return await action();
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
+
+  static Map<String, dynamic> _map(Object? data) {
+    if (data is! Map) throw Exception(ErrorKeys.invalidResponse);
+    return Map<String, dynamic>.from(data);
+  }
+
+  @override
+  Future<List<BankAccount>> getBankAccounts() =>
+      _list('/finance-ops/banks', BankAccount.fromJson);
+
+  @override
+  Future<List<Encashment>> getEncashments() =>
+      _list('/finance-ops/encashments', Encashment.fromJson);
+
+  @override
+  Future<List<StoreTransfer>> getStoreTransfers() =>
+      _list('/finance-ops/store-transfers', StoreTransfer.fromJson);
+
+  @override
+  Future<List<FinancialAid>> getFinancialAids() =>
+      _list('/finance-ops/financial-aid', FinancialAid.fromJson);
+
+  @override
+  Future<List<BranchBalance>> getBranchBalances() =>
+      _list('/finance-ops/branch-balances', BranchBalance.fromJson);
+
+  @override
+  Future<List<ResponsibleOption>> getResponsibleOptions() =>
+      _list('/finance-ops/responsible-options', ResponsibleOption.fromJson);
 
   @override
   Future<Encashment> createEncashment({
@@ -172,8 +75,8 @@ class ApiFinOpsRepository implements FinOpsRepository {
     required double amount,
     String? bankId,
     String? note,
-  }) async {
-    final response = await _client.dio.post(
+  }) => _write(() async {
+    final response = await _dio.post(
       '/finance-ops/encashments',
       data: {
         'register_id': int.tryParse(registerId),
@@ -183,31 +86,16 @@ class ApiFinOpsRepository implements FinOpsRepository {
         if (note != null && note.isNotEmpty) 'note': note,
       },
     );
-    if (response.data is Map) {
-      final enc = Encashment.fromJson(
-        Map<String, dynamic>.from(response.data as Map),
-      );
-      _mockEncashments.insert(0, enc);
-      return enc;
-    }
-    throw Exception('error_save_failed');
-  }
+    return Encashment.fromJson(_map(response.data));
+  });
 
   @override
   Future<StoreTransfer> createStoreTransfer({
     required String fromBranch,
     required String toBranch,
     required double amount,
-  }) async {
-    final tr = StoreTransfer(
-      id: 'tr-${DateTime.now().millisecondsSinceEpoch}',
-      fromBranch: fromBranch,
-      toBranch: toBranch,
-      amount: amount,
-      status: 'pending',
-      date: DateTime.now(),
-    );
-    final response = await _client.dio.post(
+  }) => _write(() async {
+    final response = await _dio.post(
       '/finance-ops/store-transfers',
       data: {
         'from_branch_id': int.tryParse(fromBranch),
@@ -215,41 +103,16 @@ class ApiFinOpsRepository implements FinOpsRepository {
         'amount': amount,
       },
     );
-    if (response.data is Map) {
-      final created = StoreTransfer.fromJson(
-        Map<String, dynamic>.from(response.data as Map),
-      );
-      _mockTransfers.insert(0, created);
-      return created;
-    }
-    _mockTransfers.insert(0, tr);
-    return tr;
-  }
+    return StoreTransfer.fromJson(_map(response.data));
+  });
 
   @override
   Future<void> updateTransferStatus({
     required String transferId,
     required String status,
-  }) async {
-    try {
-      await _client.dio.post(
-        '/finance-ops/store-transfers/$transferId/$status',
-      );
-    } catch (_) {}
-
-    final idx = _mockTransfers.indexWhere((t) => t.id == transferId);
-    if (idx != -1) {
-      final t = _mockTransfers[idx];
-      _mockTransfers[idx] = StoreTransfer(
-        id: t.id,
-        fromBranch: t.fromBranch,
-        toBranch: t.toBranch,
-        amount: t.amount,
-        status: status,
-        date: t.date,
-      );
-    }
-  }
+  }) => _write(() async {
+    await _dio.post('/finance-ops/store-transfers/$transferId/$status');
+  });
 
   @override
   Future<FinancialAid> createFinancialAid({
@@ -258,8 +121,8 @@ class ApiFinOpsRepository implements FinOpsRepository {
     bool deductFromSalary = true,
     String? registerId,
     String? note,
-  }) async {
-    final response = await _client.dio.post(
+  }) => _write(() async {
+    final response = await _dio.post(
       '/finance-ops/financial-aid',
       data: {
         'employee_id': int.tryParse(employeeId),
@@ -269,139 +132,49 @@ class ApiFinOpsRepository implements FinOpsRepository {
         if (note != null && note.isNotEmpty) 'note': note,
       },
     );
-    if (response.data is Map) {
-      final aid = FinancialAid.fromJson(
-        Map<String, dynamic>.from(response.data as Map),
-      );
-      _mockAids.insert(0, aid);
-      return aid;
-    }
-    throw Exception('error_save_failed');
-  }
+    return FinancialAid.fromJson(_map(response.data));
+  });
 
   @override
   Future<void> repayFinancialAid({
     required String aidId,
     required double amount,
-  }) async {
-    try {
-      await _client.dio.post(
-        '/finance-ops/financial-aid/$aidId/repay',
-        data: {'amount': amount},
-      );
-    } catch (_) {}
-
-    final idx = _mockAids.indexWhere((a) => a.id == aidId);
-    if (idx != -1) {
-      final a = _mockAids[idx];
-      final newRepaid = a.repaidAmount + amount;
-      final newStatus = newRepaid >= a.amount ? 'repaid' : 'active';
-      _mockAids[idx] = FinancialAid(
-        id: a.id,
-        employeeName: a.employeeName,
-        amount: a.amount,
-        repaidAmount: newRepaid,
-        status: newStatus,
-        date: a.date,
-      );
-    }
-  }
+  }) => _write(() async {
+    await _dio.post(
+      '/finance-ops/financial-aid/$aidId/repay',
+      data: {'amount': amount},
+    );
+  });
 
   @override
-  Future<BankAccount> createBank({required String name}) async {
-    try {
-      final response = await _client.dio.post(
-        '/finance-ops/banks',
-        data: {'name': name},
-      );
-      if (response.data is Map) {
-        final bank = BankAccount.fromJson(
-          Map<String, dynamic>.from(response.data as Map),
-        );
-        _mockBanks.insert(0, bank);
-        return bank;
-      }
-    } catch (_) {}
-    final bank = BankAccount(
-      id: 'bnk-${DateTime.now().millisecondsSinceEpoch}',
-      bankName: name,
+  Future<BankAccount> createBank({required String name}) => _write(() async {
+    final response = await _dio.post(
+      '/finance-ops/banks',
+      data: {'name': name},
     );
-    _mockBanks.insert(0, bank);
-    return bank;
-  }
+    return BankAccount.fromJson(_map(response.data));
+  });
 
   @override
   Future<BankAccount> updateBank({
     required String id,
     String? name,
     bool? isActive,
-  }) async {
-    try {
-      final response = await _client.dio.patch(
-        '/finance-ops/banks/$id',
-        data: {'name': ?name, 'is_active': ?isActive},
-      );
-      if (response.data is Map) {
-        final bank = BankAccount.fromJson(
-          Map<String, dynamic>.from(response.data as Map),
-        );
-        final idx = _mockBanks.indexWhere((b) => b.id == id);
-        if (idx != -1) _mockBanks[idx] = bank;
-        return bank;
-      }
-    } catch (_) {}
-    final idx = _mockBanks.indexWhere((b) => b.id == id);
-    if (idx != -1) {
-      final old = _mockBanks[idx];
-      final bank = BankAccount(
-        id: old.id,
-        bankName: name ?? old.bankName,
-        isActive: isActive ?? old.isActive,
-        accountNumber: old.accountNumber,
-        balance: old.balance,
-        currency: old.currency,
-      );
-      _mockBanks[idx] = bank;
-      return bank;
-    }
-    throw Exception('error_no_resource');
-  }
+  }) => _write(() async {
+    final response = await _dio.patch(
+      '/finance-ops/banks/$id',
+      data: {'name': ?name, 'is_active': ?isActive},
+    );
+    return BankAccount.fromJson(_map(response.data));
+  });
 
   @override
-  Future<void> deleteBank(String id) async {
-    try {
-      await _client.dio.delete('/finance-ops/banks/$id');
-    } catch (_) {}
-    final idx = _mockBanks.indexWhere((b) => b.id == id);
-    if (idx != -1) {
-      final old = _mockBanks[idx];
-      _mockBanks[idx] = BankAccount(
-        id: old.id,
-        bankName: old.bankName,
-        isActive: false,
-        accountNumber: old.accountNumber,
-        balance: old.balance,
-        currency: old.currency,
-      );
-    }
-  }
+  Future<void> deleteBank(String id) => _write(() async {
+    await _dio.delete('/finance-ops/banks/$id');
+  });
 
   @override
-  Future<void> cancelStoreTransfer(String transferId) async {
-    try {
-      await _client.dio.post('/finance-ops/store-transfers/$transferId/cancel');
-    } catch (_) {}
-    final idx = _mockTransfers.indexWhere((t) => t.id == transferId);
-    if (idx != -1) {
-      final t = _mockTransfers[idx];
-      _mockTransfers[idx] = StoreTransfer(
-        id: t.id,
-        fromBranch: t.fromBranch,
-        toBranch: t.toBranch,
-        amount: t.amount,
-        status: 'cancelled',
-        date: t.date,
-      );
-    }
-  }
+  Future<void> cancelStoreTransfer(String transferId) => _write(() async {
+    await _dio.post('/finance-ops/store-transfers/$transferId/cancel');
+  });
 }

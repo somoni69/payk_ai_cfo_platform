@@ -260,7 +260,7 @@ void main() {
 
         expect(state.tasks, initialTasks);
         expect(state.isRefreshing, false);
-        expect(state.loadError, contains('Проверьте соединение'));
+        expect(state.loadError, 'tasks_err_load');
         expect(state.loadError, isNot(contains('private backend detail')));
       },
     );

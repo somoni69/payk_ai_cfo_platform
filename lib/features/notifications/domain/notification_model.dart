@@ -24,6 +24,9 @@ class AppNotification {
   final bool isRead;
   final String? link;
 
+  /// Placeholders when [title]/[description] are catalog keys (derived hints).
+  final Map<String, String> params;
+
   const AppNotification({
     required this.id,
     required this.title,
@@ -33,6 +36,7 @@ class AppNotification {
     required this.dateTime,
     this.isRead = false,
     this.link,
+    this.params = const {},
   });
 
   AppNotification copyWith({
@@ -44,6 +48,7 @@ class AppNotification {
     DateTime? dateTime,
     bool? isRead,
     String? link,
+    Map<String, String>? params,
   }) {
     return AppNotification(
       id: id ?? this.id,
@@ -54,6 +59,7 @@ class AppNotification {
       dateTime: dateTime ?? this.dateTime,
       isRead: isRead ?? this.isRead,
       link: link ?? this.link,
+      params: params ?? this.params,
     );
   }
 }

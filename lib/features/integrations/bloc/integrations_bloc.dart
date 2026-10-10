@@ -63,7 +63,7 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
           isLoading: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось обновить интеграции. Проверьте соединение.',
+            fallback: 'integrations_err_refresh',
           ),
         ),
       );
@@ -100,7 +100,7 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
           isSyncing: false,
           errorMessage: userFacingError(
             error,
-            fallback: 'Не удалось завершить синхронизацию. Повторите попытку.',
+            fallback: 'integrations_err_sync',
           ),
         ),
       );
@@ -125,7 +125,7 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
       emit(
         state.copyWith(
           isTestingSms: false,
-          errorMessage: userFacingError(e, fallback: 'Ошибка отправки SMS'),
+          errorMessage: userFacingError(e, fallback: 'integrations_err_sms'),
         ),
       );
     }
@@ -145,7 +145,10 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
       emit(
         state.copyWith(
           isTestingAi: false,
-          errorMessage: userFacingError(e, fallback: 'Ошибка диагностики AI'),
+          errorMessage: userFacingError(
+            e,
+            fallback: 'integrations_err_ai_diag',
+          ),
         ),
       );
     }
@@ -165,7 +168,7 @@ class IntegrationsBloc extends Bloc<IntegrationsEvent, IntegrationsState> {
           isLoadingTelegramLink: false,
           errorMessage: userFacingError(
             e,
-            fallback: 'Не удалось загрузить ссылку Telegram',
+            fallback: 'integrations_err_telegram_link',
           ),
         ),
       );

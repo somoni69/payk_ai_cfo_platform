@@ -42,6 +42,31 @@ void configureSslPinning(
   );
 }
 
+/// [HttpClient] with the same trust rules as the API client (WebSocket handshake).
+HttpClient createPinnedHttpClient({
+  bool allowInsecure = false,
+  String expectedFingerprint = const String.fromEnvironment('PAYK_SSL_SHA256'),
+}) {
+  final normalizedExpected = _normalizeFingerprint(expectedFingerprint);
+  final client = HttpClient(context: SecurityContext(withTrustedRoots: true));
+  if (normalizedExpected.isNotEmpty && !allowInsecure) {
+    client.badCertificateCallback = (cert, host, port) =>
+        _validateCertificate(cert, normalizedExpected);
+  }
+  return client;
+}
+
+/// Whether a server certificate passes the configured pin (no pin: always).
+bool acceptsPinnedCertificate(
+  X509Certificate? cert, {
+  bool allowInsecure = false,
+  String expectedFingerprint = const String.fromEnvironment('PAYK_SSL_SHA256'),
+}) {
+  final normalizedExpected = _normalizeFingerprint(expectedFingerprint);
+  if (allowInsecure || normalizedExpected.isEmpty) return true;
+  return _validateCertificate(cert, normalizedExpected);
+}
+
 bool _validateCertificate(X509Certificate? cert, String normalizedExpected) {
   if (cert == null) return false;
   final certSha256 = sha256

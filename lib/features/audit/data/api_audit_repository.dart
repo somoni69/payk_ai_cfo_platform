@@ -1,58 +1,16 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/audit_models.dart';
 import '../domain/audit_repository.dart';
 
-/// Audit repository. Offline fallbacks use localization keys (not raw RU).
+/// Audit repository: `/audit/*`. Failures reach the bloc; no offline stand-ins.
 class ApiAuditRepository implements AuditRepository {
-  final ApiClient _client;
+  final Dio _dio;
 
-  ApiAuditRepository({ApiClient? client}) : _client = client ?? ApiClient();
-
-  final List<AuditLog> _mockLogs = [
-    AuditLog(
-      id: 'log-1',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-      userName: 'mock_user_alisher',
-      action: 'mock_action_encashment_create',
-      entityType: 'Encashment',
-      details: 'mock_detail_encashment_oriyon',
-    ),
-    AuditLog(
-      id: 'log-2',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      userName: 'mock_user_zarina',
-      action: 'mock_action_shift_close',
-      entityType: 'Shift',
-      details: 'mock_detail_z_report',
-    ),
-    AuditLog(
-      id: 'log-3',
-      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
-      userName: 'mock_user_parviz',
-      action: 'mock_action_role_change',
-      entityType: 'UserRole',
-      details: 'mock_detail_cashier_role',
-    ),
-  ];
-
-  final List<AuditAlert> _mockAlerts = [
-    AuditAlert(
-      id: 'alt-1',
-      type: 'mock_alert_large_expense',
-      severity: 'high',
-      message: 'mock_msg_encashment_limit',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
-    ),
-    AuditAlert(
-      id: 'alt-2',
-      type: 'mock_alert_multi_login',
-      severity: 'medium',
-      message: 'mock_msg_parallel_login',
-      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-    ),
-  ];
+  ApiAuditRepository({ApiClient? client, Dio? dio})
+    : _dio = dio ?? (client ?? ApiClient()).dio;
 
   List<T> _parsePage<T>(dynamic data, T Function(Map<String, dynamic>) map) {
     if (data is List) {
@@ -78,7 +36,7 @@ class ApiAuditRepository implements AuditRepository {
     DateTime? dateTo,
   }) async {
     try {
-      final response = await _client.dio.get(
+      final response = await _dio.get(
         '/audit/logs',
         queryParameters: {
           if (entity != null && entity.isNotEmpty) 'entity': entity,
@@ -88,70 +46,48 @@ class ApiAuditRepository implements AuditRepository {
           'size': 100,
         },
       );
-      if (response.statusCode == 200) {
-        final parsed = _parsePage(response.data, AuditLog.fromJson);
-        if (parsed.isNotEmpty) return parsed;
-      }
-    } catch (_) {}
-    return List.from(_mockLogs);
+      return _parsePage(response.data, AuditLog.fromJson);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
   }
 
   @override
   Future<List<AuditAlert>> getAuditAlerts({bool? resolved}) async {
     try {
-      final response = await _client.dio.get(
+      final response = await _dio.get(
         '/audit/alerts',
         queryParameters: {'resolved': ?resolved, 'size': 100},
       );
-      if (response.statusCode == 200) {
-        final parsed = _parsePage(response.data, AuditAlert.fromJson);
-        if (parsed.isNotEmpty) return parsed;
-      }
-    } catch (_) {}
-    return List.from(_mockAlerts);
+      return _parsePage(response.data, AuditAlert.fromJson);
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
   }
 
   @override
   Future<List<AuditAlert>> runAnomalyDetectors() async {
     try {
-      await _client.dio.post('/audit/run-detectors');
-      return await getAuditAlerts();
-    } catch (_) {}
-    final newAlert = AuditAlert(
-      id: 'alt-${DateTime.now().millisecondsSinceEpoch}',
-      type: 'mock_alert_scan_done',
-      severity: 'low',
-      message: 'mock_msg_no_anomalies',
-      timestamp: DateTime.now(),
-    );
-    _mockAlerts.insert(0, newAlert);
-    return List.from(_mockAlerts);
+      await _dio.post('/audit/run-detectors');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+    }
+    return getAuditAlerts();
   }
 
   @override
   Future<AuditAlert> resolveAlert(String id, {bool isResolved = true}) async {
-    final response = await _client.dio.patch(
+    final response = await _dio.patch(
       '/audit/alerts/$id/resolve',
       data: {'is_resolved': isResolved},
     );
-    if (response.data is Map) {
-      return AuditAlert.fromJson(
-        Map<String, dynamic>.from(response.data as Map),
-      );
-    }
-    return AuditAlert(
-      id: id,
-      type: '',
-      severity: 'low',
-      message: '',
-      timestamp: DateTime.now(),
-      isResolved: isResolved,
-    );
+    if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+    return AuditAlert.fromJson(Map<String, dynamic>.from(response.data as Map));
   }
 
   @override
   Future<WeeklyAuditReport> getWeeklyReport({int weeksAgo = 0}) async {
-    final response = await _client.dio.get(
+    final response = await _dio.get(
       '/audit/weekly-report',
       queryParameters: {'weeks_ago': weeksAgo},
     );
@@ -186,7 +122,7 @@ class ApiAuditRepository implements AuditRepository {
     String format = 'pdf',
     int weeksAgo = 0,
   }) async {
-    final response = await _client.dio.get<List<int>>(
+    final response = await _dio.get<List<int>>(
       '/audit/weekly-report/export',
       queryParameters: {'fmt': format, 'weeks_ago': weeksAgo},
       options: Options(responseType: ResponseType.bytes),
@@ -199,7 +135,7 @@ class ApiAuditRepository implements AuditRepository {
     String entity,
     String id,
   ) async {
-    final response = await _client.dio.get('/history/$entity/$id');
+    final response = await _dio.get('/history/$entity/$id');
     return _parsePage(response.data, EntityHistoryItem.fromJson);
   }
 }

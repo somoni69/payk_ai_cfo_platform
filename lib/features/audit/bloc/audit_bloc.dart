@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/user_facing_error.dart';
+import '../../../core/observability/app_error_reporter.dart';
 import '../domain/audit_models.dart';
 import '../domain/audit_repository.dart';
 import 'audit_event.dart';
@@ -30,7 +34,10 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
       WeeklyAuditReport? weekly;
       try {
         weekly = await _repository.getWeeklyReport(weeksAgo: weeksAgo);
-      } catch (_) {}
+      } catch (e, st) {
+        // The weekly card is optional: logs and alerts still show without it.
+        unawaited(AppErrorReporter.capture(e, st, context: 'audit_weekly'));
+      }
       emit(
         AuditLoaded(
           logs: logs,
@@ -40,7 +47,7 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
         ),
       );
     } catch (e) {
-      emit(AuditError(e.toString()));
+      emit(AuditError(userFacingError(e)));
     }
   }
 
@@ -60,13 +67,13 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
           logs: logs,
           alerts: alerts,
           isRunningDetectors: false,
-          message: 'AI-проверка безопасности успешно выполнена',
+          message: 'audit_detectors_done',
           weekly: previous?.weekly,
           weeksAgo: previous?.weeksAgo ?? 0,
         ),
       );
     } catch (e) {
-      emit(AuditError(e.toString()));
+      emit(AuditError(userFacingError(e)));
     }
   }
 
@@ -89,7 +96,7 @@ class AuditBloc extends Bloc<AuditEvent, AuditState> {
         ),
       );
     } catch (e) {
-      emit(AuditError(e.toString()));
+      emit(AuditError(userFacingError(e)));
     }
   }
 

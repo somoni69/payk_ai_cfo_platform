@@ -16,6 +16,25 @@ abstract class ChecklistsRepository {
 
   Future<void> deleteTemplate(String id);
 
+  /// `PATCH /checklists/{id}`: name, regulation and branch (null = all).
+  Future<void> updateTemplate({
+    required String id,
+    required String name,
+    String? regulationText,
+    String? regulationUrl,
+    String? branchId,
+  });
+
+  /// `POST /checklists/{id}/items`.
+  Future<void> addTemplateItem({
+    required String templateId,
+    required String text,
+    required int position,
+  });
+
+  /// `DELETE /checklists/items/{id}`.
+  Future<void> deleteTemplateItem(String itemId);
+
   Future<List<ChecklistSummaryRow>> getSummary();
 
   Future<void> toggleEntry({

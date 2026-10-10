@@ -74,8 +74,18 @@ extension _CashSheetBuilders on _CashViewMixin {
                       () => banks = list.where((b) => b.isActive).toList(),
                     );
                   })
-                  .catchError((_) {});
-            } catch (_) {}
+                  .catchError((Object e, StackTrace st) {
+                    // Banks only feed the non-cash option; cash still works.
+                    AppErrorReporter.reportOptional(
+                      e,
+                      st,
+                      context: 'cash_sheet_banks',
+                    );
+                  });
+            } catch (_) {
+              // Synchronous read of an app-level repository; cannot miss in
+              // practice, kept so a sheet build never throws.
+            }
           }
           if (!saleProductsLoadStarted) {
             saleProductsLoadStarted = true;
@@ -511,9 +521,11 @@ extension _CashSheetBuilders on _CashViewMixin {
                         selected: isSelected,
                         selectedColor: selectedColor,
                         backgroundColor: colors.surface,
-                        checkmarkColor: Colors.white,
+                        checkmarkColor: colors.onBrand,
                         labelStyle: textStyles.captionSans.copyWith(
-                          color: isSelected ? Colors.white : colors.textPrimary,
+                          color: isSelected
+                              ? colors.onBrand
+                              : colors.textPrimary,
                           fontWeight: isSelected
                               ? FontWeight.w500
                               : FontWeight.w400,
@@ -1051,9 +1063,11 @@ extension _CashSheetBuilders on _CashViewMixin {
                         selected: isSelected,
                         selectedColor: selectedColor,
                         backgroundColor: colors.surface,
-                        checkmarkColor: Colors.white,
+                        checkmarkColor: colors.onBrand,
                         labelStyle: textStyles.captionSans.copyWith(
-                          color: isSelected ? Colors.white : colors.textPrimary,
+                          color: isSelected
+                              ? colors.onBrand
+                              : colors.textPrimary,
                           fontWeight: isSelected
                               ? FontWeight.w500
                               : FontWeight.w400,

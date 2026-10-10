@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/network/user_facing_error.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -14,10 +15,23 @@ Future<void> showEntityHistorySheet(
   required String id,
 }) async {
   final language = context.read<LanguageCubit>();
-  var items = const <EntityHistoryItem>[];
+  final List<EntityHistoryItem> items;
   try {
     items = await context.read<AuditRepository>().getEntityHistory(entity, id);
-  } catch (_) {}
+  } catch (e) {
+    // An empty sheet would claim there is no history; say it failed instead.
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          language.resolveMessage(
+            userFacingError(e, fallback: ErrorKeys.loadFailed),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
   if (!context.mounted) return;
   await LedgerBottomSheet.show(
     context: context,

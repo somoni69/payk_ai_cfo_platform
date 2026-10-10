@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -11,7 +12,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../presentation/widgets/image_cache_extent.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../domain/meta_models.dart';
@@ -21,10 +24,15 @@ class MetaAttachments extends StatelessWidget {
     super.key,
     required this.items,
     required this.outgoing,
+    this.text = '',
   });
 
   final List<MetaAttachment> items;
   final bool outgoing;
+
+  /// Raw message text: Instagram voice arrives as `video` with the server
+  /// marker in the text (web `VOICE_LABEL`).
+  final String text;
 
   @override
   Widget build(BuildContext context) {
@@ -37,10 +45,15 @@ class MetaAttachments extends StatelessWidget {
           for (var i = 0; i < items.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _AttachmentTile(
-                key: ValueKey('${items[i].kind}-$i-${items[i].path}'),
-                item: items[i],
-                outgoing: outgoing,
+              child: _withNote(
+                context,
+                items[i],
+                _AttachmentTile(
+                  key: ValueKey('${items[i].kind}-$i-${items[i].path}'),
+                  item: items[i],
+                  outgoing: outgoing,
+                  voice: metaIsVoice(text),
+                ),
               ),
             ),
         ],
@@ -49,15 +62,47 @@ class MetaAttachments extends StatelessWidget {
   }
 }
 
+/// Instagram context line above the attachment (web `NOTE_KEYS`).
+const _noteKeys = {
+  'story_reply': 'meta_attach_story',
+  'story_mention': 'meta_attach_story_mention',
+  'story': 'meta_attach_story',
+  'share': 'meta_attach_share',
+  'reel': 'meta_attach_reel',
+};
+
+Widget _withNote(BuildContext context, MetaAttachment item, Widget child) {
+  final key = _noteKeys[item.note];
+  if (key == null) return child;
+  final colors = context.colors;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(
+        context.read<LanguageCubit>().translate(key),
+        style: context.textStyles.smallSans.copyWith(
+          color: colors.textSecondary,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 4),
+      child,
+    ],
+  );
+}
+
 class _AttachmentTile extends StatelessWidget {
   const _AttachmentTile({
     super.key,
     required this.item,
     required this.outgoing,
+    this.voice = false,
   });
 
   final MetaAttachment item;
   final bool outgoing;
+  final bool voice;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +139,9 @@ class _AttachmentTile extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              error == null || error.isEmpty
+              item.errorCode == 'expired'
+                  ? language.translate('meta_attach_story_expired')
+                  : error == null || error.isEmpty
                   ? language.translate('meta_attach_failed')
                   : '${language.translate('meta_attach_failed')}: $error',
               style: style.copyWith(color: colors.accentRed),
@@ -103,8 +150,59 @@ class _AttachmentTile extends StatelessWidget {
         ],
       );
     }
+    final link = item.url == null ? null : Uri.tryParse(item.url!);
+    if (item.kind == 'link' &&
+        link != null &&
+        (link.scheme == 'https' || link.scheme == 'http')) {
+      final label = item.label;
+      final instagram = metaIsInstagramPost(link.toString());
+      final text = instagram
+          ? [
+              if (label != null && label.isNotEmpty) label,
+              language.translate('meta_attach_open_instagram'),
+            ].join(' · ')
+          : (label == null || label.isEmpty
+                ? language.translate('meta_attach_open_link')
+                : label);
+      return InkWell(
+        onTap: () => launchUrl(link, mode: LaunchMode.externalApplication),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: colors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                instagram
+                    ? TablerIcons.brand_instagram
+                    : TablerIcons.external_link,
+                size: 16,
+                color: colors.brand,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style.copyWith(color: colors.brand),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (item.kind == 'location' && item.lat != null && item.lng != null) {
       final label = item.label;
+      final title = label == null || label.isEmpty
+          ? language.translate('meta_attach_location')
+          : label;
       return InkWell(
         onTap: () {
           final uri = Uri.parse(
@@ -112,23 +210,54 @@ class _AttachmentTile extends StatelessWidget {
           );
           launchUrl(uri, mode: LaunchMode.externalApplication);
         },
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(TablerIcons.map_pin, size: 16, color: colors.brand),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label == null || label.isEmpty
-                    ? language.translate('meta_attach_open_map')
-                    : label,
-                style: style.copyWith(
-                  color: colors.brand,
-                  decoration: TextDecoration.underline,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: colors.border),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: colors.surfaceNested,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(TablerIcons.map_pin, size: 20, color: colors.brand),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.captionSans.copyWith(
+                        color: colors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      language.translate('meta_attach_open_map'),
+                      style: context.textStyles.smallSans.copyWith(
+                        fontSize: 12,
+                        color: colors.brand,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
@@ -148,6 +277,11 @@ class _AttachmentTile extends StatelessWidget {
                 url,
                 width: side,
                 height: side,
+                // Never wider than the bubble: decode at that size.
+                cacheWidth: imageCacheWidth(
+                  MediaQuery.devicePixelRatioOf(context),
+                  side ?? MediaQuery.sizeOf(context).width * 0.78,
+                ),
                 fit: BoxFit.contain,
                 semanticLabel:
                     item.caption ?? language.translate('meta_attach_photo'),
@@ -165,11 +299,11 @@ class _AttachmentTile extends StatelessWidget {
         ],
       );
     }
+    if (item.kind == 'audio' || (item.kind == 'video' && voice)) {
+      return _MetaAudio(path: path, url: url);
+    }
     if (item.kind == 'video') {
       return _MetaVideo(url: url, caption: item.caption);
-    }
-    if (item.kind == 'audio') {
-      return _MetaAudio(url: url);
     }
     return _MetaFile(path: path, name: item.name, size: item.size);
   }
@@ -291,8 +425,9 @@ class _MetaVideoState extends State<_MetaVideo> {
 }
 
 class _MetaAudio extends StatefulWidget {
-  const _MetaAudio({required this.url});
+  const _MetaAudio({required this.path, required this.url});
 
+  final String path;
   final String url;
 
   @override
@@ -301,7 +436,9 @@ class _MetaAudio extends StatefulWidget {
 
 class _MetaAudioState extends State<_MetaAudio> {
   final _player = AudioPlayer();
+  File? _tempFile;
   var _ready = false;
+  var _loading = false;
   var _failed = false;
 
   @override
@@ -315,32 +452,65 @@ class _MetaAudioState extends State<_MetaAudio> {
   @override
   void dispose() {
     _player.dispose();
+    final temp = _tempFile;
+    if (temp != null) {
+      unawaited(
+        temp.delete().then<void>(
+          (_) {},
+          onError: (Object e, StackTrace st) =>
+              AppErrorReporter.reportOptional(e, st, context: 'meta_audio'),
+        ),
+      );
+    }
     super.dispose();
   }
 
   Future<void> _toggle() async {
-    if (_player.playing) {
+    final completed = _player.processingState == ProcessingState.completed;
+    if (_player.playing && !completed) {
       await _player.pause();
       if (mounted) setState(() {});
       return;
     }
     try {
       if (!_ready) {
-        final token = await ApiClient().getAccessToken();
-        await _player.setUrl(
-          widget.url,
-          headers: {
-            if (token != null && token.isNotEmpty)
-              'Authorization': 'Bearer $token',
-          },
-        );
+        final file = await _download();
+        if (file != null) {
+          await _player.setFilePath(file.path);
+        } else {
+          // External CDN link: no PAYK token, no localhost header proxy.
+          await _player.setUrl(widget.url);
+        }
         _ready = true;
+      } else if (completed) {
+        await _player.seek(Duration.zero);
       }
-      await _player.play();
+      // play() resolves only when playback stops; do not hold the spinner.
+      unawaited(_player.play());
       if (mounted) setState(() {});
-    } catch (_) {
+    } catch (error, stackTrace) {
+      AppErrorReporter.reportOptional(error, stackTrace, context: 'meta_audio');
       if (mounted) setState(() => _failed = true);
     }
+  }
+
+  /// Own files go through the API client (Bearer token + SSL pinning) into a
+  /// temp file. `setUrl(headers:)` would start just_audio's proxy on
+  /// http://127.0.0.1, which Android blocks (`usesCleartextTraffic=false`).
+  Future<File?> _download() async {
+    final requestPath = metaMediaRequestPath(widget.path);
+    if (requestPath == null) return null;
+    final response = await ApiClient().dio.get<List<int>>(
+      requestPath,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = response.data;
+    if (bytes == null || bytes.isEmpty) throw Exception('meta_attach_failed');
+    final dir = await getTemporaryDirectory();
+    final file = File('${dir.path}/${metaAudioCacheName(widget.path)}');
+    await file.writeAsBytes(bytes, flush: true);
+    _tempFile = file;
+    return file;
   }
 
   @override
@@ -353,26 +523,136 @@ class _MetaAudioState extends State<_MetaAudio> {
         style: context.textStyles.captionSans.copyWith(color: colors.accentRed),
       );
     }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: language.translate('meta_attach_play'),
-          onPressed: _toggle,
-          icon: Icon(
-            _player.playing ? TablerIcons.player_pause : TablerIcons.microphone,
+    final playing = _player.playing;
+    return SizedBox(
+      width: 220,
+      child: Row(
+        children: [
+          Material(
             color: colors.brand,
+            shape: const CircleBorder(),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _loading ? null : _toggleWithLoading,
+              child: Semantics(
+                button: true,
+                label: language.translate(
+                  playing ? 'meta_attach_pause' : 'meta_attach_play',
+                ),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Center(
+                    child: _loading
+                        ? SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: colors.onBrand,
+                            ),
+                          )
+                        : Icon(
+                            playing
+                                ? TablerIcons.player_pause_filled
+                                : TablerIcons.player_play_filled,
+                            size: 18,
+                            color: colors.onBrand,
+                          ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-        Flexible(
-          child: Text(
-            language.translate('meta_attach_play'),
-            style: context.textStyles.captionSans,
+          const SizedBox(width: 10),
+          Expanded(
+            child: StreamBuilder<Duration>(
+              stream: _player.positionStream,
+              builder: (context, snapshot) {
+                final position = snapshot.data ?? Duration.zero;
+                final total = _player.duration;
+                final progress = total == null || total.inMilliseconds == 0
+                    ? 0.0
+                    : (position.inMilliseconds / total.inMilliseconds).clamp(
+                        0.0,
+                        1.0,
+                      );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 3,
+                        color: colors.brand,
+                        backgroundColor: colors.border,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      metaAudioClock(
+                        playing || position > Duration.zero ? position : total,
+                      ),
+                      style: context.textStyles.smallSans.copyWith(
+                        fontSize: 12,
+                        color: colors.textSecondary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+
+  Future<void> _toggleWithLoading() async {
+    final firstLoad = !_ready;
+    if (firstLoad) setState(() => _loading = true);
+    await _toggle();
+    if (firstLoad && mounted) setState(() => _loading = false);
+  }
+}
+
+/// Server marker for a voice message (`label_of` in integrations/meta.py).
+/// A protocol value, not UI text: it is matched, never shown.
+const _voiceMarker = '[Голосовое сообщение]';
+
+bool metaIsVoice(String text) => text.contains(_voiceMarker);
+
+/// Forwarded Reels / Instagram post link (web `IG_EMBED`). Mobile has no
+/// embedded player (no WebView package), so it opens the app or browser.
+bool metaIsInstagramPost(String url) => RegExp(
+  r'^https?://(?:www\.)?instagram\.com/(reel|reels|p)/[A-Za-z0-9_-]+',
+).hasMatch(url);
+
+/// API path for a stored attachment, or null for an external `http(s)` link
+/// (Meta CDN) that must not receive the PAYK token.
+String? metaMediaRequestPath(String path) {
+  final value = path.trim();
+  if (value.isEmpty) return null;
+  if (value.startsWith('http://') || value.startsWith('https://')) return null;
+  return value.startsWith('/') ? value : '/$value';
+}
+
+/// Temp file name that keeps the extension, so the player picks the codec
+/// (`.ogg` voice from WhatsApp, `.m4a`, `.mp3`…).
+String metaAudioCacheName(String path) {
+  final name = path.split('?').first.split('/').last;
+  final safe = name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+  return 'meta_audio_${safe.isEmpty ? 'voice' : safe}';
+}
+
+/// `m:ss` for a voice message; `0:00` until the length is known.
+String metaAudioClock(Duration? value) {
+  final d = value ?? Duration.zero;
+  final seconds = (d.inSeconds % 60).toString().padLeft(2, '0');
+  return '${d.inMinutes}:$seconds';
 }
 
 class _MetaFile extends StatelessWidget {

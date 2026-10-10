@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/network/user_facing_error.dart';
@@ -66,7 +67,10 @@ class _ChannelsBodyState extends State<_ChannelsBody> {
       UmnicoState? umnico;
       try {
         umnico = await repo.fetchUmnico();
-      } catch (_) {}
+      } catch (e, st) {
+        // Umnico is one optional row; store channels still render.
+        AppErrorReporter.reportOptional(e, st, context: 'channels_umnico');
+      }
       if (!mounted) return;
       setState(() {
         _data = data;
@@ -88,7 +92,10 @@ class _ChannelsBodyState extends State<_ChannelsBody> {
       final umnico = await context.read<NetworkRepository>().fetchUmnico();
       if (!mounted) return;
       setState(() => _umnico = umnico);
-    } catch (_) {}
+    } catch (e, st) {
+      // Refresh keeps the last Umnico state on screen.
+      AppErrorReporter.reportOptional(e, st, context: 'channels_umnico');
+    }
   }
 
   void _apply(StoreChannels next) {

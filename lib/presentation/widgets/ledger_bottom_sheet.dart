@@ -103,6 +103,9 @@ class LedgerBottomSheet extends StatelessWidget {
   /// [isDirty]: when provided, Android-back / blocked pops ask for discard.
   /// Swipe-to-dismiss is handled by first dropping the [PopScope] guard, then
   /// popping on the next frame — avoids `_dependents.isEmpty` crashes.
+  ///
+  /// [disposables]: controllers created for this sheet; disposed when the
+  /// sheet leaves the tree (after its close animation), not on pop.
   static Future<T?> show<T>({
     required BuildContext context,
     required String title,
@@ -113,6 +116,7 @@ class LedgerBottomSheet extends StatelessWidget {
     bool Function()? isDirty,
     bool isDismissible = true,
     bool enableDrag = true,
+    List<ChangeNotifier> disposables = const [],
   }) {
     return showLedgerModalSheet<T>(
       context: context,
@@ -124,6 +128,7 @@ class LedgerBottomSheet extends StatelessWidget {
           builder: builder,
           footerBuilder: footerBuilder,
           isDirty: isDirty,
+          disposables: disposables,
         );
       },
     );
@@ -300,9 +305,11 @@ class _LedgerSheetHost<T> extends StatefulWidget {
     required this.builder,
     this.footerBuilder,
     this.isDirty,
+    this.disposables = const [],
   });
 
   final String title;
+  final List<ChangeNotifier> disposables;
   final Widget Function(BuildContext context, StateSetter setSheetState)
   builder;
   final Widget Function(BuildContext context, StateSetter setSheetState)?
@@ -318,6 +325,14 @@ class _LedgerSheetHostState<T> extends State<_LedgerSheetHost<T>> {
   bool _busy = false;
 
   bool get _dirty => widget.isDirty?.call() ?? false;
+
+  @override
+  void dispose() {
+    for (final notifier in widget.disposables) {
+      notifier.dispose();
+    }
+    super.dispose();
+  }
 
   Future<void> _handlePopInvoked(bool didPop, Object? result) async {
     // If route already popped cleanly, do nothing.

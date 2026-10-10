@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/security/biometric_service.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -64,7 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _hasSavedSession = isSaved;
         _showManualForm = !isSaved;
       });
-    } catch (_) {}
+    } catch (e, st) {
+      // Without biometrics the manual form stays, which is the safe default.
+      AppErrorReporter.reportOptional(e, st, context: 'login_biometrics');
+    }
   }
 
   Future<void> _loadStores() async {
@@ -74,7 +78,10 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _stores = stores;
       });
-    } catch (_) {}
+    } catch (e, st) {
+      // The store list only pre-fills a picker; login works without it.
+      AppErrorReporter.reportOptional(e, st, context: 'login_stores');
+    }
   }
 
   String _getBiometricTitle(LanguageCubit language) {
@@ -713,15 +720,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           Text(
                             language.translate('login_submit'),
                             style: textStyles.bodySans.copyWith(
-                              color: Colors.white,
+                              color: colors.onBrand,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(
+                          Icon(
                             TablerIcons.arrow_right,
                             size: 18,
-                            color: Colors.white,
+                            color: colors.onBrand,
                           ),
                         ],
                       ),
@@ -833,15 +840,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           Text(
                             language.translate('login_2fa_submit'),
                             style: textStyles.bodySans.copyWith(
-                              color: Colors.white,
+                              color: colors.onBrand,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(
+                          Icon(
                             TablerIcons.arrow_right,
                             size: 18,
-                            color: Colors.white,
+                            color: colors.onBrand,
                           ),
                         ],
                       ),

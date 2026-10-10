@@ -188,7 +188,7 @@ extension _TasksListBuilders on _TasksViewMixin {
               Text(
                 label,
                 style: textStyles.captionSans.copyWith(
-                  color: isSelected ? Colors.white : colors.textPrimary,
+                  color: isSelected ? colors.onBrand : colors.textPrimary,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 12,
                 ),
@@ -198,14 +198,14 @@ extension _TasksListBuilders on _TasksViewMixin {
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withValues(alpha: 0.25)
+                      ? colors.onBrand.withValues(alpha: 0.25)
                       : colors.surfaceNested,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$count',
                   style: textStyles.captionSans.copyWith(
-                    color: isSelected ? Colors.white : colors.textSecondary,
+                    color: isSelected ? colors.onBrand : colors.textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -248,9 +248,9 @@ extension _TasksListBuilders on _TasksViewMixin {
           },
           selectedColor: priorityColor,
           backgroundColor: colors.surface,
-          checkmarkColor: Colors.white,
+          checkmarkColor: colors.onBrand,
           labelStyle: textStyles.captionSans.copyWith(
-            color: isSelected ? Colors.white : colors.textPrimary,
+            color: isSelected ? colors.onBrand : colors.textPrimary,
             fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
             fontSize: 12,
           ),

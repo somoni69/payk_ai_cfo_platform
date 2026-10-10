@@ -5,6 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../presentation/widgets/image_cache_extent.dart';
+import '../../../core/network/user_facing_error.dart';
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/localization/locale_date_time_format.dart';
@@ -441,7 +444,9 @@ class _WarehouseViewState extends State<WarehouseView> {
                     context,
                     icon: TablerIcons.chart_pie,
                     title: localeCubit.translate('warehouse_tab_analysis'),
-                    subtitle: 'Ликвидность и остатки',
+                    subtitle: localeCubit.translate(
+                      'warehouse_hub_analysis_sub',
+                    ),
                     onTap: () => _openWarehouseSection(
                       context,
                       WarehouseSection.analysis,
@@ -892,7 +897,16 @@ class WarehouseSectionScreen extends StatelessWidget {
                         files: [XFile(file.path, mimeType: 'application/pdf')],
                       ),
                     );
-                  } catch (_) {}
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          language.resolveMessage(userFacingError(e)),
+                        ),
+                      ),
+                    );
+                  }
                 }();
               }
             },
@@ -2486,7 +2500,10 @@ Future<void> _showAddProductDialog(BuildContext context) async {
   try {
     try {
       categories = await context.read<WarehouseRepository>().getCategories();
-    } catch (_) {}
+    } catch (e, st) {
+      // Category is optional; the product form still saves without it.
+      AppErrorReporter.reportOptional(e, st, context: 'warehouse_categories');
+    }
     if (!context.mounted) return;
     await LedgerBottomSheet.show(
       context: context,
@@ -2727,7 +2744,10 @@ Future<void> _showEditProductSheet(
   try {
     try {
       categories = await context.read<WarehouseRepository>().getCategories();
-    } catch (_) {}
+    } catch (e, st) {
+      // Category is optional; the product form still saves without it.
+      AppErrorReporter.reportOptional(e, st, context: 'warehouse_categories');
+    }
     if (!context.mounted) return;
     await LedgerBottomSheet.show(
       context: context,
@@ -3541,7 +3561,7 @@ void _showPrintLabelsBottomSheet(
         label: Text(
           language.translate('warehouse_download_labels_pdf_btn'),
           style: textStyles.bodySans.copyWith(
-            color: Colors.white,
+            color: colors.onBrand,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -3587,6 +3607,8 @@ class _ProductThumb extends StatelessWidget {
         ApiClient().mediaUrl(url),
         width: 44,
         height: 44,
+        // Decode at display size instead of the full photo.
+        cacheWidth: thumbCacheExtent(context, 44),
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => fallback,
       ),
@@ -3786,6 +3808,7 @@ class _MinStockPhotoState extends State<_MinStockPhoto> {
                       ApiClient().mediaUrl(imageUrl),
                       width: 64,
                       height: 64,
+                      cacheWidth: thumbCacheExtent(context, 64),
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => _photoPlaceholder(context),
                     )

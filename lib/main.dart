@@ -19,6 +19,9 @@ import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_event.dart';
 import 'package:payk_ai_cfo_platform/features/auth/bloc/auth_state.dart';
 import 'package:payk_ai_cfo_platform/features/auth/data/api_auth_repository.dart';
+import 'package:payk_ai_cfo_platform/features/meta/cubit/chat_live_cubit.dart';
+import 'package:payk_ai_cfo_platform/features/meta/data/api_meta_repository.dart';
+import 'package:payk_ai_cfo_platform/features/meta/data/chat_live_client.dart';
 import 'package:payk_ai_cfo_platform/features/network/data/api_network_repository.dart';
 import 'package:payk_ai_cfo_platform/core/network/api_client.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/cubit/permissions_cubit.dart';
@@ -67,9 +70,10 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final AuthBloc _authBloc;
   late final PermissionsCubit _permissionsCubit;
+  late final ChatLiveCubit _chatLive;
   late final GoRouterRefreshStream _routerRefresh;
   late final GoRouter _router;
   StreamSubscription<AuthState>? _authSub;
@@ -82,6 +86,15 @@ class _MyAppState extends State<MyApp> {
       networkRepository: ApiNetworkRepository(),
     );
     _permissionsCubit = PermissionsCubit(ApiPermissionsRepository());
+    // One chat socket for the app: «Ещё» badge and the open chat share it.
+    _chatLive = ChatLiveCubit(
+      repository: ApiMetaRepository(),
+      client: ChatLiveClient(
+        url: chatSocketUri(),
+        token: ApiClient().getAccessToken,
+      ),
+    );
+    WidgetsBinding.instance.addObserver(this);
     _routerRefresh = GoRouterRefreshStream.merge([
       _authBloc.stream,
       _permissionsCubit.stream,
@@ -95,6 +108,12 @@ class _MyAppState extends State<MyApp> {
       _authBloc.add(LogoutRequested());
     };
     _authSub = _authBloc.stream.listen((state) {
+      final storeId = state is AuthAuthenticated ? state.storeId : null;
+      if (storeId != null) {
+        _chatLive.activate(storeId);
+      } else {
+        _chatLive.deactivate();
+      }
       if (state is AuthAuthenticated) {
         unawaited(
           _permissionsCubit.load().then((_) {
@@ -112,7 +131,25 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.resumed:
+        _chatLive.setForeground(true);
+        _permissionsCubit.setForeground(true);
+      case AppLifecycleState.paused ||
+          AppLifecycleState.hidden ||
+          AppLifecycleState.detached:
+        _chatLive.setForeground(false);
+        _permissionsCubit.setForeground(false);
+      case AppLifecycleState.inactive:
+        break;
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_chatLive.close());
     ApiClient().onUnauthorized = null;
     unawaited(_authSub?.cancel() ?? Future<void>.value());
     _router.dispose();
@@ -129,6 +166,7 @@ class _MyAppState extends State<MyApp> {
         providers: [
           BlocProvider<AuthBloc>.value(value: _authBloc),
           BlocProvider<PermissionsCubit>.value(value: _permissionsCubit),
+          BlocProvider<ChatLiveCubit>.value(value: _chatLive),
           BlocProvider<LanguageCubit>(
             create: (context) => LanguageCubit(
               storage: AppSecureStorage.instance,

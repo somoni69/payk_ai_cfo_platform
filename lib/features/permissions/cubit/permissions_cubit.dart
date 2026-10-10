@@ -14,6 +14,8 @@ export 'permissions_state.dart';
 class PermissionsCubit extends Cubit<PermissionsState> {
   final PermissionsRepository _repository;
   Timer? _pollTimer;
+  Duration? _pollInterval;
+  bool _foreground = true;
 
   PermissionsCubit(this._repository) : super(PermissionsState.initial);
 
@@ -39,15 +41,39 @@ class PermissionsCubit extends Cubit<PermissionsState> {
   }
 
   void startPolling({Duration interval = const Duration(seconds: 30)}) {
+    _pollInterval = interval;
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(interval, (_) {
-      if (!isClosed) unawaited(load(silent: true));
-    });
+    _pollTimer = null;
+    if (_foreground) _schedulePoll(interval);
   }
 
   void stopPolling() {
+    _pollInterval = null;
     _pollTimer?.cancel();
     _pollTimer = null;
+  }
+
+  bool get isPolling => _pollTimer != null;
+
+  /// App lifecycle: no polling in background; on return, refresh at once.
+  void setForeground(bool foreground) {
+    if (isClosed || _foreground == foreground) return;
+    _foreground = foreground;
+    final interval = _pollInterval;
+    if (!foreground) {
+      _pollTimer?.cancel();
+      _pollTimer = null;
+      return;
+    }
+    if (interval == null) return;
+    unawaited(load(silent: true));
+    _schedulePoll(interval);
+  }
+
+  void _schedulePoll(Duration interval) {
+    _pollTimer = Timer.periodic(interval, (_) {
+      if (!isClosed) unawaited(load(silent: true));
+    });
   }
 
   void clear() {

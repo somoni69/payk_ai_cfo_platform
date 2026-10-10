@@ -121,7 +121,7 @@ class _FinOpsViewState extends State<FinOpsView> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      state.message,
+                      locale.translateMessage(state.message),
                       style: textStyles.bodySans,
                       textAlign: TextAlign.center,
                     ),
@@ -1457,6 +1457,7 @@ void _showEncashmentModal(BuildContext context, FinOpsLoaded state) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [amountCtrl],
     title: locale.translate('fin_ops_new_encashment'),
     builder: (context, setSheetState) {
       if (!loaded) {
@@ -1562,6 +1563,7 @@ void _showCreateBankSheet(BuildContext context) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [nameCtrl],
     title: locale.translate('fin_ops_new_bank'),
     builder: (context, setSheetState) => TextField(
       controller: nameCtrl,
@@ -1596,6 +1598,7 @@ void _showTransferModal(BuildContext context, List<Branch> branches) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [amountCtrl],
     title: locale.translate('fin_ops_new_transfer'),
     builder: (context, setSheetState) => Column(
       mainAxisSize: MainAxisSize.min,
@@ -1700,6 +1703,7 @@ void _showAidModal(BuildContext context, FinOpsLoaded state) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [amountCtrl],
     title: locale.translate('fin_ops_new_aid'),
     builder: (context, setSheetState) {
       if (!loaded) {

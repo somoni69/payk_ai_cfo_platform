@@ -341,7 +341,9 @@ extension _TasksFormBuilders on _TasksViewMixin {
     if (task.projectId != null) {
       try {
         selectedProject = projects.firstWhere((p) => p.id == task.projectId);
-      } catch (_) {}
+      } catch (_) {
+        // Project may be archived or hidden; the picker then starts empty.
+      }
     }
     TaskAssignee? selectedAssignee;
     if (task.assigneeId != null) {
@@ -950,7 +952,7 @@ extension _TasksFormBuilders on _TasksViewMixin {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accentRed,
-                foregroundColor: Colors.white,
+                foregroundColor: colors.onBrand,
               ),
               onPressed: () {
                 tasksBloc.add(DeleteProjectRequested(project.id));

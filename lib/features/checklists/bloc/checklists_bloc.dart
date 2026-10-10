@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../domain/checklist_models.dart';
+import '../data/api_checklists_repository.dart' show checklistItemsDiff;
 import '../domain/checklists_repository.dart';
 import 'checklists_event.dart';
 import 'checklists_state.dart';
@@ -14,6 +15,7 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
     on<DeleteEntryRequested>(_onDeleteEntryRequested);
     on<CreateTemplateRequested>(_onCreateTemplate);
     on<DeleteTemplateRequested>(_onDeleteTemplate);
+    on<UpdateTemplateRequested>(_onUpdateTemplate);
   }
 
   Future<void> _onLoadChecklists(
@@ -124,6 +126,36 @@ class ChecklistsBloc extends Bloc<ChecklistsEvent, ChecklistsState> {
     try {
       await _repository.deleteTemplate(event.id);
       await _reload(emit, msg: 'checklists_toast_template_deleted');
+    } catch (e) {
+      emit(ChecklistsError(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateTemplate(
+    UpdateTemplateRequested event,
+    Emitter<ChecklistsState> emit,
+  ) async {
+    try {
+      final id = event.template.id;
+      await _repository.updateTemplate(
+        id: id,
+        name: event.name,
+        regulationText: event.regulationText,
+        regulationUrl: event.regulationUrl,
+        branchId: event.branchId,
+      );
+      final diff = checklistItemsDiff(event.template.items, event.items);
+      for (final itemId in diff.remove) {
+        await _repository.deleteTemplateItem(itemId);
+      }
+      for (final item in diff.add) {
+        await _repository.addTemplateItem(
+          templateId: id,
+          text: item.text,
+          position: item.position,
+        );
+      }
+      await _reload(emit, msg: 'checklists_toast_template_updated');
     } catch (e) {
       emit(ChecklistsError(e.toString()));
     }

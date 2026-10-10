@@ -1484,7 +1484,21 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                                 'salary_cert_${record.employeeId}.pdf',
                               );
                             }
-                          } catch (_) {}
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  localeCubit.resolveMessage(
+                                    userFacingError(
+                                      e,
+                                      fallback: ErrorKeys.loadFailed,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
                         },
                         icon: const Icon(TablerIcons.file_text, size: 18),
                         tooltip: localeCubit.translate(
@@ -1599,7 +1613,10 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     String? selectedDeptId = emp.departmentId;
     try {
       departments = await context.read<HrRepository>().getDepartments();
-    } catch (_) {}
+    } catch (e, st) {
+      // Department is optional; the employee form still saves without it.
+      AppErrorReporter.reportOptional(e, st, context: 'hr_departments');
+    }
     if (!context.mounted) {
       nameController.dispose();
       posController.dispose();
@@ -1735,7 +1752,10 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     String? selectedDeptId;
     try {
       departments = await context.read<HrRepository>().getDepartments();
-    } catch (_) {}
+    } catch (e, st) {
+      // Department is optional; the employee form still saves without it.
+      AppErrorReporter.reportOptional(e, st, context: 'hr_departments');
+    }
     if (!context.mounted) {
       nameController.dispose();
       posController.dispose();

@@ -157,10 +157,10 @@ class LedgerTheme {
           fontWeight: FontWeight.w400,
         ),
         secondaryLabelStyle: textStyles.captionSans.copyWith(
-          color: Colors.white,
+          color: colors.onBrand,
           fontWeight: FontWeight.w500,
         ),
-        checkmarkColor: Colors.white,
+        checkmarkColor: colors.onBrand,
         showCheckmark: true,
       ),
 

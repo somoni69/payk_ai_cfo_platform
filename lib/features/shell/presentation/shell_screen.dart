@@ -122,23 +122,15 @@ class _ShellScaffold extends StatelessWidget {
       listener: (context, state) {
         // Auto-refresh all module BLoCs and permissions on branch/store switch
         ExpiringRequestCache.invalidateAll();
-        try {
-          context.read<DashboardBloc>().add(
-            const LoadDashboardData(forceRefresh: true, clearCache: true),
-          );
-        } catch (_) {}
-        try {
-          context.read<CashBloc>().add(const LoadCashData());
-        } catch (_) {}
-        try {
-          context.read<WarehouseBloc>().add(LoadWarehouseData());
-        } catch (_) {}
-        try {
-          context.read<TasksBloc>().add(const LoadTasks(forceRefresh: true));
-        } catch (_) {}
-        try {
-          context.read<PermissionsCubit>().load();
-        } catch (_) {}
+        // These blocs come from ShellScreen right above; PermissionsCubit is
+        // app-wide. Reads cannot miss, so no guards.
+        context.read<DashboardBloc>().add(
+          const LoadDashboardData(forceRefresh: true, clearCache: true),
+        );
+        context.read<CashBloc>().add(const LoadCashData());
+        context.read<WarehouseBloc>().add(LoadWarehouseData());
+        context.read<TasksBloc>().add(const LoadTasks(forceRefresh: true));
+        context.read<PermissionsCubit>().load();
       },
       child: LedgerAiAssistantHost(
         child: Builder(

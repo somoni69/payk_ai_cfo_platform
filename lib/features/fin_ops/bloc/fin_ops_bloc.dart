@@ -1,4 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../core/observability/app_error_reporter.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/fin_ops_repository.dart';
 import '../../branches/domain/branches_repository.dart';
 import 'fin_ops_event.dart';
@@ -21,6 +26,15 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
     on<CancelStoreTransferRequested>(_onCancelTransfer);
   }
 
+  Future<List<T>> _optional<T>(Future<List<T>> Function() load) async {
+    try {
+      return await load();
+    } catch (e, st) {
+      unawaited(AppErrorReporter.capture(e, st, context: 'fin_ops_optional'));
+      return const [];
+    }
+  }
+
   Future<void> _onLoadFinOpsData(
     LoadFinOpsData event,
     Emitter<FinOpsState> emit,
@@ -34,8 +48,10 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       final transfers = await _repository.getStoreTransfers();
       final aids = await _repository.getFinancialAids();
       final branches = await _branchesRepository.getBranches();
-      final balances = await _repository.getBranchBalances();
-      final responsibles = await _repository.getResponsibleOptions();
+      // Balances and the responsible list are helpers for forms; a role without
+      // them still sees its operations, so a failure there is reported only.
+      final balances = await _optional(_repository.getBranchBalances);
+      final responsibles = await _optional(_repository.getResponsibleOptions);
       emit(
         FinOpsLoaded(
           bankAccounts: banks,
@@ -48,7 +64,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
         ),
       );
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -66,7 +82,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -82,7 +98,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -97,7 +113,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -114,7 +130,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -129,7 +145,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       );
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -141,7 +157,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       await _repository.createBank(name: event.name);
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -153,7 +169,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       await _repository.deleteBank(event.id);
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 
@@ -165,7 +181,7 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
       await _repository.cancelStoreTransfer(event.transferId);
       add(const LoadFinOpsData(forceRefresh: true));
     } catch (e) {
-      emit(FinOpsError(e.toString()));
+      emit(FinOpsError(userFacingError(e)));
     }
   }
 }

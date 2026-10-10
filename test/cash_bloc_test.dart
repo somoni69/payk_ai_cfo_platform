@@ -531,6 +531,39 @@ void main() {
       },
     );
 
+    test('failed filter reload keeps the previous filter and rows', () async {
+      bloc.add(LoadCashData());
+      final loaded =
+          await bloc.stream.firstWhere((s) => s is CashLoaded) as CashLoaded;
+
+      repository.shouldFail = true;
+      bloc.add(const SearchFilterChanged(query: '', filterType: 'income'));
+      final state =
+          await bloc.stream.firstWhere(
+                (s) => s is CashLoaded && s.feedback != null,
+              )
+              as CashLoaded;
+
+      expect(state.filterType, loaded.filterType);
+      expect(state.transactions, loaded.transactions);
+      expect(state.errorMessage, isNotNull);
+    });
+
+    test('delete with failed summary refresh reports it', () async {
+      bloc.add(LoadCashData());
+      await bloc.stream.firstWhere((s) => s is CashLoaded);
+
+      repository.failSummary = true;
+      bloc.add(const DeleteTransactionRequested('1'));
+      final state =
+          await bloc.stream.firstWhere(
+                (s) => s is CashLoaded && s.transactions.isEmpty,
+              )
+              as CashLoaded;
+
+      expect(state.errorMessage, 'cash_tx_deleted_summary_failed');
+    });
+
     test(
       'SearchFilterChanged filters transactions by type and query',
       () async {

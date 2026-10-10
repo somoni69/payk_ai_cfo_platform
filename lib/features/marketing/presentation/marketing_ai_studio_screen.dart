@@ -559,7 +559,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
             children: [
               OutlinedButton(
                 onPressed: () => _openReviseModal(context, campaignId, concept),
-                child: const Text('Доработать'),
+                child: Text(locale.translate('marketing_concept_revise')),
               ),
               const SizedBox(width: 8),
               if (!concept.isApproved)
@@ -573,7 +573,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
                     backgroundColor: colors.accentGreen,
                     foregroundColor: colors.surface,
                   ),
-                  child: const Text('Утвердить'),
+                  child: Text(locale.translate('marketing_concept_approve')),
                 )
               else
                 ElevatedButton.icon(
@@ -1209,7 +1209,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: colors.accentRed,
-                foregroundColor: Colors.white,
+                foregroundColor: colors.onBrand,
               ),
               child: Text(locale.translate('marketing_reject_confirm')),
             ),

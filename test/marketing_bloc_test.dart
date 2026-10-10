@@ -10,6 +10,7 @@ import 'package:payk_ai_cfo_platform/features/marketing/domain/marketing_reposit
 
 class MockMarketingTestRepository implements MarketingRepository {
   bool shouldFail = false;
+  bool failBrand = false;
   Completer<void>? loadGate;
   int campaignReads = 0;
   int postReads = 0;
@@ -148,7 +149,7 @@ class MockMarketingTestRepository implements MarketingRepository {
 
   @override
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
-    if (shouldFail) throw Exception('Brand failed');
+    if (shouldFail || failBrand) throw Exception('Brand failed');
     return brandGuide;
   }
 
@@ -347,6 +348,20 @@ void main() {
     tearDown(() {
       bloc.close();
     });
+
+    test(
+      'brand guide failure keeps campaigns and surfaces the error',
+      () async {
+        repository.failBrand = true;
+        bloc.add(LoadMarketingData());
+        final state = await bloc.stream.firstWhere(
+          (s) => !s.isCampaignsLoading && !s.isBrandLoading,
+        );
+        expect(state.campaigns, isNotEmpty);
+        expect(state.brandGuide, isNull, reason: 'no invented default guide');
+        expect(state.errorMessage, isNotNull);
+      },
+    );
 
     test('Initial state is empty MarketingState', () {
       expect(bloc.state.campaigns, isEmpty);

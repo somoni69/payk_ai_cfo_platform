@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/network/user_facing_error.dart';
 import '../domain/branches_repository.dart';
 import 'branches_event.dart';
 import 'branches_state.dart';
@@ -24,7 +25,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
       final branches = await _repository.getBranches();
       emit(BranchesLoaded(branches: branches));
     } catch (e) {
-      emit(BranchesError(e.toString()));
+      emit(BranchesError(userFacingError(e)));
     }
   }
 
@@ -42,7 +43,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
       final branches = await _repository.getBranches();
       emit(BranchesLoaded(branches: branches, message: 'branches_created'));
     } catch (e) {
-      emit(BranchesError(e.toString()));
+      emit(BranchesError(userFacingError(e)));
     }
   }
 
@@ -62,7 +63,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
       final branches = await _repository.getBranches();
       emit(BranchesLoaded(branches: branches, message: 'branches_updated'));
     } catch (e) {
-      emit(BranchesError(e.toString()));
+      emit(BranchesError(userFacingError(e)));
     }
   }
 
@@ -75,7 +76,7 @@ class BranchesBloc extends Bloc<BranchesEvent, BranchesState> {
       final branches = await _repository.getBranches();
       emit(BranchesLoaded(branches: branches, message: 'branches_deleted'));
     } catch (e) {
-      emit(BranchesError(e.toString()));
+      emit(BranchesError(userFacingError(e)));
     }
   }
 }

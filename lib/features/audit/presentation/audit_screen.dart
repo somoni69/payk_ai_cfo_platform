@@ -106,9 +106,15 @@ class _AuditViewState extends State<AuditView> {
         },
         listener: (context, state) {
           if (state is AuditLoaded && state.message != null) {
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.message!)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  context.read<LanguageCubit>().translateMessage(
+                    state.message!,
+                  ),
+                ),
+              ),
+            );
           }
         },
         builder: (context, state) {
@@ -116,7 +122,11 @@ class _AuditViewState extends State<AuditView> {
             return const AuditOverviewShimmer();
           }
           if (state is AuditError) {
-            return Center(child: Text(state.message));
+            return Center(
+              child: Text(
+                context.read<LanguageCubit>().translateMessage(state.message),
+              ),
+            );
           }
           if (state is AuditLoaded) {
             return _buildAuditOverviewHub(context, state);
@@ -863,7 +873,7 @@ class AuditSectionScreen extends StatelessWidget {
     if (alerts.isEmpty) {
       return Center(
         child: Text(
-          language.translate('mock_msg_no_anomalies'),
+          language.translate('audit_alerts_empty'),
           style: textStyles.bodySans.copyWith(color: colors.textSecondary),
           textAlign: TextAlign.center,
         ),

@@ -132,13 +132,25 @@ class _BranchFadeState extends State<_BranchFade>
       vsync: this,
       duration: const Duration(milliseconds: 220),
     )..value = 1;
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+    _slide = _curve.drive(_offsetTween);
   }
+
+  // Built once: a CurvedAnimation per build() leaked a listener on the
+  // controller and re-created the tween chain on every rebuild.
+  late final CurvedAnimation _curve;
+  late final Animation<Offset> _slide;
+  final _offsetTween = Tween<Offset>(
+    begin: const Offset(0.04, 0),
+    end: Offset.zero,
+  );
 
   @override
   void didUpdateWidget(covariant _BranchFade oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.index == widget.index) return;
     _direction = widget.index >= oldWidget.index ? 1 : -1;
+    _offsetTween.begin = Offset(0.04 * _direction, 0);
     if (MediaQuery.disableAnimationsOf(context)) {
       _controller.value = 1;
       return;
@@ -148,25 +160,16 @@ class _BranchFadeState extends State<_BranchFade>
 
   @override
   void dispose() {
+    _curve.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    );
     return FadeTransition(
-      opacity: animation,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: Offset(0.04 * _direction, 0),
-          end: Offset.zero,
-        ).animate(animation),
-        child: widget.child,
-      ),
+      opacity: _curve,
+      child: SlideTransition(position: _slide, child: widget.child),
     );
   }
 }

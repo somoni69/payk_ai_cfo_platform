@@ -95,6 +95,60 @@ class ApiChecklistsRepository implements ChecklistsRepository {
   }
 
   @override
+  Future<void> updateTemplate({
+    required String id,
+    required String name,
+    String? regulationText,
+    String? regulationUrl,
+    String? branchId,
+  }) async {
+    try {
+      await _client.dio.patch(
+        '/checklists/${_positiveId(id)}',
+        data: checklistTemplatePatchBody(
+          name: name,
+          regulationText: regulationText,
+          regulationUrl: regulationUrl,
+          branchId: branchId,
+        ),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> addTemplateItem({
+    required String templateId,
+    required String text,
+    required int position,
+  }) async {
+    try {
+      await _client.dio.post(
+        '/checklists/${_positiveId(templateId)}/items',
+        data: {'text': text, 'position': position},
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> deleteTemplateItem(String itemId) async {
+    try {
+      await _client.dio.delete('/checklists/items/${_positiveId(itemId)}');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  int _positiveId(String id) {
+    final parsed = int.tryParse(id);
+    if (parsed == null || parsed <= 0) throw StateError(ErrorKeys.invalidId);
+    return parsed;
+  }
+
+  @override
   Future<List<ChecklistSummaryRow>> getSummary() async {
     try {
       final response = await _client.dio.get('/checklists/summary');
@@ -167,4 +221,45 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
+}
+
+/// PATCH body for a template. Empty regulation fields are sent as null so
+/// clearing them in the form clears them on the server; `branch_id: null`
+/// means «all branches», like the web form.
+Map<String, dynamic> checklistTemplatePatchBody({
+  required String name,
+  String? regulationText,
+  String? regulationUrl,
+  String? branchId,
+}) {
+  String? clean(String? v) => v == null || v.trim().isEmpty ? null : v.trim();
+  return {
+    'name': name.trim(),
+    'regulation_text': clean(regulationText),
+    'regulation_url': clean(regulationUrl),
+    'branch_id': int.tryParse(branchId ?? ''),
+  };
+}
+
+/// What to send so the server item list matches the form: ids to delete and
+/// new texts to add with their position in the edited order.
+({List<String> remove, List<({String text, int position})> add})
+checklistItemsDiff(
+  List<ChecklistTemplateItem> before,
+  List<({String? id, String text})> after,
+) {
+  final keep = {
+    for (final i in after)
+      if (i.id != null) i.id!,
+  };
+  return (
+    remove: [
+      for (final i in before)
+        if (!keep.contains(i.id)) i.id,
+    ],
+    add: [
+      for (var p = 0; p < after.length; p++)
+        if (after[p].id == null) (text: after[p].text, position: p),
+    ],
+  );
 }

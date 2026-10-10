@@ -186,7 +186,7 @@ class BirthdayRow {
   final String id;
   final String fullName;
   final String? phone;
-  final DateTime birthDate;
+  final DateTime? birthDate;
   final int daysUntil;
   final int? turning;
 
@@ -194,7 +194,7 @@ class BirthdayRow {
     required this.id,
     required this.fullName,
     this.phone,
-    required this.birthDate,
+    this.birthDate,
     required this.daysUntil,
     this.turning,
   });

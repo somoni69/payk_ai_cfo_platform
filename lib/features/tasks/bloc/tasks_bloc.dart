@@ -76,10 +76,7 @@ class TasksBloc extends Bloc<TasksEvent, TasksState> {
         ),
       );
     } catch (e) {
-      final message = userFacingError(
-        e,
-        fallback: 'Не удалось загрузить список задач. Проверьте соединение.',
-      );
+      final message = userFacingError(e, fallback: 'tasks_err_load');
       if (current != null) {
         emit(current.copyWith(isRefreshing: false, loadError: message));
       } else {

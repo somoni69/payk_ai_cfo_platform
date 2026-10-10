@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/network/user_facing_error.dart';
@@ -87,7 +88,10 @@ class _InboxScreenState extends State<InboxScreen> {
               n.id == item.id ? n.copyWith(isRead: true) : n,
           ];
         });
-      } catch (_) {}
+      } catch (e, st) {
+        // Opening the link matters more; the item simply stays unread.
+        AppErrorReporter.reportOptional(e, st, context: 'inbox_mark_read');
+      }
     }
 
     String destination = '/dashboard';

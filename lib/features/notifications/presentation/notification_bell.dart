@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/observability/app_error_reporter.dart';
+import '../../../core/lifecycle/foreground_ticker.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../domain/notifications_repository.dart';
@@ -19,13 +21,14 @@ class NotificationBell extends StatefulWidget {
 
 class _NotificationBellState extends State<NotificationBell> {
   int _unread = 0;
-  Timer? _poll;
+  bool _countFailing = false;
+  ForegroundTicker? _poll;
 
   @override
   void initState() {
     super.initState();
     _refreshCount();
-    _poll = Timer.periodic(const Duration(seconds: 30), (_) {
+    _poll = ForegroundTicker(const Duration(seconds: 30), () {
       if (!mounted || !TickerMode.valuesOf(context).enabled) return;
       _refreshCount();
     });
@@ -33,7 +36,7 @@ class _NotificationBellState extends State<NotificationBell> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
@@ -44,7 +47,14 @@ class _NotificationBellState extends State<NotificationBell> {
           .getUnreadCount();
       if (!mounted || count == _unread) return;
       setState(() => _unread = count);
-    } catch (_) {}
+      _countFailing = false;
+    } catch (e, st) {
+      // The badge keeps its last value; report once per failure streak so a
+      // phone offline for an hour does not send a report every 30 seconds.
+      if (_countFailing) return;
+      _countFailing = true;
+      AppErrorReporter.reportOptional(e, st, context: 'notification_badge');
+    }
   }
 
   Future<void> _openInbox() async {

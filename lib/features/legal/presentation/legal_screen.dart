@@ -316,7 +316,7 @@ class _LegalScreenState extends State<LegalScreen> {
                 child: _buildHubCard(
                   context,
                   title: locale.translate('legal_tab_ai_lawyer'),
-                  subtitle: 'Консультации ИИ юриста',
+                  subtitle: locale.translate('legal_hub_ai_lawyer_sub'),
                   icon: TablerIcons.robot,
                   onTap: () =>
                       _openLegalSection(context, LegalSection.aiLawyer),
@@ -940,10 +940,10 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
                         label: Text(localeCubit.translate(category.labelKey)),
                         selected: isSel,
                         labelStyle: textStyles.captionSans.copyWith(
-                          color: isSel ? Colors.white : colors.textPrimary,
+                          color: isSel ? colors.onBrand : colors.textPrimary,
                           fontWeight: isSel ? FontWeight.w500 : FontWeight.w400,
                         ),
-                        checkmarkColor: Colors.white,
+                        checkmarkColor: colors.onBrand,
                         onSelected: (val) {
                           if (val) {
                             setState(() {

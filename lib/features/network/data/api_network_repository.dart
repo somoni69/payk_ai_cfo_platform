@@ -494,6 +494,8 @@ class ApiNetworkRepository implements NetworkRepository {
   Future<void> clearActingStore() async {
     try {
       await _storage.delete(key: _actingStoreKey);
-    } catch (_) {}
+    } catch (_) {
+      // Secure storage can fail on some devices; a missing key is the goal anyway.
+    }
   }
 }

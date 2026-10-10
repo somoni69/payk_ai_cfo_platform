@@ -104,6 +104,16 @@ final class AppErrorReporter {
     return text;
   }
 
+  /// Optional data failed (a helper list, a counter); the screen still works.
+  /// Fire-and-forget so callers stay synchronous.
+  static void reportOptional(
+    Object error,
+    StackTrace stackTrace, {
+    required String context,
+  }) {
+    unawaited(capture(error, stackTrace, context: context));
+  }
+
   static Future<void> capture(
     Object error,
     StackTrace stackTrace, {

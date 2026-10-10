@@ -56,7 +56,9 @@ class _LedgerAdvicePanelViewState extends State<_LedgerAdvicePanelView> {
     if (widget.module == null) {
       try {
         path = GoRouterState.of(context).uri.path;
-      } catch (_) {}
+      } catch (_) {
+        // Outside a GoRouter subtree there is no route; advice falls back to general.
+      }
     }
     final next =
         widget.module ??

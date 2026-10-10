@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
+import '../../../core/lifecycle/foreground_ticker.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/theme/ledger_buttons.dart';
 import '../../../core/theme/theme_extensions.dart';
@@ -33,7 +34,7 @@ class _PlayroomScreenState extends State<PlayroomScreen>
   final _orderSearch = TextEditingController();
   final _ticketSearch = TextEditingController();
   Timer? _debounce;
-  Timer? _clock;
+  ForegroundTicker? _clock;
 
   var _loading = true;
   String? _error;
@@ -51,7 +52,7 @@ class _PlayroomScreenState extends State<PlayroomScreen>
     super.initState();
     _day = storeParts().date;
     _tabs = TabController(length: 2, vsync: this);
-    _clock = Timer.periodic(const Duration(seconds: 15), (_) {
+    _clock = ForegroundTicker(const Duration(seconds: 15), () {
       if (mounted) setState(() => _now = DateTime.now());
     });
     _load(initial: true);
@@ -60,7 +61,7 @@ class _PlayroomScreenState extends State<PlayroomScreen>
   @override
   void dispose() {
     _debounce?.cancel();
-    _clock?.cancel();
+    _clock?.dispose();
     _tabs.dispose();
     _orderSearch.dispose();
     _ticketSearch.dispose();

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:payk_ai_cfo_platform/core/network/user_facing_error.dart';
 import 'package:payk_ai_cfo_platform/features/audit/bloc/audit_bloc.dart';
 import 'package:payk_ai_cfo_platform/features/audit/bloc/audit_event.dart';
 import 'package:payk_ai_cfo_platform/features/audit/bloc/audit_state.dart';
@@ -264,7 +265,7 @@ void main() {
           isA<AuditError>().having(
             (s) => s.message,
             'error message',
-            contains('Ошибка детектора аномалий'),
+            ErrorKeys.generic,
           ),
         ];
 
@@ -305,7 +306,7 @@ void main() {
           isA<AuditError>().having(
             (s) => s.message,
             'error message',
-            contains('Не удалось обновить статус алерта'),
+            ErrorKeys.generic,
           ),
         ];
 

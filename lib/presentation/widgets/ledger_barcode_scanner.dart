@@ -55,16 +55,16 @@ class _LedgerBarcodeScannerState extends State<LedgerBarcodeScanner> {
     final language = context.watch<LanguageCubit>();
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: colors.cameraBackdrop,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
+        backgroundColor: colors.cameraBackdrop,
+        foregroundColor: colors.onBrand,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
           language.translate('scan_barcode_title'),
           style: textStyles.bodySans.copyWith(
-            color: Colors.white,
+            color: colors.onBrand,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -91,7 +91,7 @@ class _LedgerBarcodeScannerState extends State<LedgerBarcodeScanner> {
                       Text(
                         language.translate('scan_barcode_camera_denied'),
                         style: textStyles.bodySans.copyWith(
-                          color: Colors.white,
+                          color: colors.onBrand,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -119,7 +119,9 @@ class _LedgerBarcodeScannerState extends State<LedgerBarcodeScanner> {
             bottom: 32,
             child: Text(
               language.translate('scan_barcode_hint'),
-              style: textStyles.captionSans.copyWith(color: Colors.white70),
+              style: textStyles.captionSans.copyWith(
+                color: colors.onBrand.withValues(alpha: 0.7),
+              ),
               textAlign: TextAlign.center,
             ),
           ),

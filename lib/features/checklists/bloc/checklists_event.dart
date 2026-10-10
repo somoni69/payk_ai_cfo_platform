@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import '../domain/checklist_models.dart';
+
 abstract class ChecklistsEvent extends Equatable {
   const ChecklistsEvent();
 
@@ -85,4 +87,33 @@ class DeleteTemplateRequested extends ChecklistsEvent {
 
   @override
   List<Object?> get props => [id];
+}
+
+/// Edit an existing template: fields, removed and added items.
+class UpdateTemplateRequested extends ChecklistsEvent {
+  final ChecklistTemplate template;
+  final String name;
+  final String? regulationText;
+  final String? regulationUrl;
+  final String? branchId;
+  final List<({String? id, String text})> items;
+
+  const UpdateTemplateRequested({
+    required this.template,
+    required this.name,
+    this.regulationText,
+    this.regulationUrl,
+    this.branchId,
+    this.items = const [],
+  });
+
+  @override
+  List<Object?> get props => [
+    template,
+    name,
+    regulationText,
+    regulationUrl,
+    branchId,
+    items,
+  ];
 }

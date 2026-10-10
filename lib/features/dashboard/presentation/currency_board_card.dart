@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
+import '../../../core/lifecycle/foreground_ticker.dart';
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
@@ -32,7 +33,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
   CurrencyBoard? _board;
   var _loading = true;
   var _failed = false;
-  Timer? _poll;
+  ForegroundTicker? _poll;
 
   void _selectCurrency(String code) {
     if (code == _selectedCurrency) return;
@@ -49,7 +50,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
   void initState() {
     super.initState();
     _load();
-    _poll = Timer.periodic(const Duration(minutes: 30), (_) {
+    _poll = ForegroundTicker(const Duration(minutes: 30), () {
       if (!mounted) return;
       _load();
     });
@@ -57,7 +58,7 @@ class _CurrencyBoardCardState extends State<CurrencyBoardCard> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 

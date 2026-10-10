@@ -324,19 +324,13 @@ class ApiMarketingRepository
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
     try {
       final response = await _apiClient.dio.get('/marketing/ai/brand');
-      if (response.statusCode == 200 && response.data is Map) {
-        return BrandGuide.fromJson(
-          Map<String, dynamic>.from(response.data as Map),
-        );
-      }
-    } catch (_) {}
-    return const BrandGuide(
-      brandName: 'PAYK Shop',
-      tone: 'Дружелюбный, профессиональный',
-      audience: 'Розничные и оптовые клиенты',
-      forbidden: 'Скидки более 50%, непроверенные обещания',
-      videoLimitMonth: 10,
-    );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return BrandGuide.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (error) {
+      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+    }
   }
 
   @override
@@ -346,13 +340,13 @@ class ApiMarketingRepository
         '/marketing/ai/brand',
         data: brandGuide.toJson(),
       );
-      if (response.statusCode == 200 && response.data is Map) {
-        return BrandGuide.fromJson(
-          Map<String, dynamic>.from(response.data as Map),
-        );
-      }
-    } catch (_) {}
-    return brandGuide;
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return BrandGuide.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (error) {
+      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+    }
   }
 
   @override

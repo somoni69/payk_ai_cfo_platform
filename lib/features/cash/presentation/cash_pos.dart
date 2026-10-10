@@ -96,7 +96,10 @@ class _CashPosViewState extends State<CashPosView> {
       final list = await context.read<FinOpsRepository>().getBankAccounts();
       if (!mounted) return;
       setState(() => _banks = list.where((b) => b.isActive).toList());
-    } catch (_) {}
+    } catch (e, st) {
+      // Banks only feed the non-cash option; cash sale still works.
+      AppErrorReporter.reportOptional(e, st, context: 'cash_pos_banks');
+    }
   }
 
   Future<void> _loadPinStatus() async {
@@ -715,9 +718,9 @@ class _CashPosViewState extends State<CashPosView> {
         selected: isSelected,
         selectedColor: selectedColor,
         backgroundColor: colors.surface,
-        checkmarkColor: Colors.white,
+        checkmarkColor: colors.onBrand,
         labelStyle: textStyles.captionSans.copyWith(
-          color: isSelected ? Colors.white : colors.textPrimary,
+          color: isSelected ? colors.onBrand : colors.textPrimary,
           fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
         ),
         side: BorderSide(color: isSelected ? selectedColor : colors.border),
@@ -1012,6 +1015,7 @@ class _CashPosViewState extends State<CashPosView> {
                             ApiClient().mediaUrl(url),
                             width: 44,
                             height: 44,
+                            cacheWidth: thumbCacheExtent(context, 44),
                             fit: BoxFit.cover,
                             errorBuilder: (_, _, _) => const SizedBox.shrink(),
                           ),

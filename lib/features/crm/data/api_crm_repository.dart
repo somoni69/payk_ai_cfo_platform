@@ -1,8 +1,29 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/crm_models.dart';
 import '../domain/crm_repository.dart';
+
+/// Calendar day of a date-only API value (`birth_date`: `yyyy-MM-dd`).
+///
+/// Kept as a local date: `toUtc()` would move the day back in Asia/Dushanbe.
+@visibleForTesting
+DateTime? parseCrmDay(dynamic value) {
+  final DateTime? parsed = value is DateTime
+      ? value
+      : (value is String && value.isNotEmpty ? DateTime.tryParse(value) : null);
+  if (parsed == null) return null;
+  return DateTime(parsed.year, parsed.month, parsed.day);
+}
+
+/// `expected_close` is a picked calendar day; the backend stores a timestamp.
+///
+/// Sent as UTC midnight of that day so the same date survives the round trip.
+@visibleForTesting
+String crmExpectedCloseValue(DateTime day) =>
+    DateTime.utc(day.year, day.month, day.day).toIso8601String();
 
 /// CRM API: `/crm/*` (OpenAPI + web Payk-Ecosystem parity).
 class ApiCrmRepository implements CrmRepository {
@@ -46,7 +67,7 @@ class ApiCrmRepository implements CrmRepository {
       fullName: map['full_name']?.toString() ?? '',
       phone: map['phone']?.toString(),
       email: map['email']?.toString(),
-      birthDate: _parseDate(map['birth_date']),
+      birthDate: parseCrmDay(map['birth_date']),
       loyaltyLevel: map['loyalty_level']?.toString() ?? 'bronze',
       bonusPoints: _toDouble(map['bonus_points']),
       totalSpent: _toDouble(map['total_spent']),
@@ -313,7 +334,7 @@ class ApiCrmRepository implements CrmRepository {
         'amount': amount,
         'stage': stage,
         if (expectedClose != null)
-          'expected_close': expectedClose.toUtc().toIso8601String(),
+          'expected_close': crmExpectedCloseValue(expectedClose),
       };
       final response = await _apiClient.dio.post('/crm/deals', data: payload);
       _invalidateMutations();
@@ -340,7 +361,7 @@ class ApiCrmRepository implements CrmRepository {
       if (clearExpectedClose) {
         payload['expected_close'] = null;
       } else if (expectedClose != null) {
-        payload['expected_close'] = expectedClose.toUtc().toIso8601String();
+        payload['expected_close'] = crmExpectedCloseValue(expectedClose);
       }
       final response = await _apiClient.dio.patch(
         '/crm/deals/${_requirePositiveId(id, 'id')}',
@@ -552,7 +573,7 @@ class ApiCrmRepository implements CrmRepository {
           id: (map['id'] ?? '').toString(),
           fullName: map['full_name']?.toString() ?? '',
           phone: map['phone']?.toString(),
-          birthDate: _parseDate(map['birth_date']) ?? DateTime.now().toUtc(),
+          birthDate: parseCrmDay(map['birth_date']),
           daysUntil: map['days_until'] is int
               ? map['days_until'] as int
               : int.tryParse('${map['days_until']}') ?? 0,
