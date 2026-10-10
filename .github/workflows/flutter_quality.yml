@@ -16,7 +16,9 @@ concurrency:
 jobs:
   analyze-test-build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Холодный раннер ставит NDK и CMake внутри assembleRelease.
+    # На 30 минутах GitHub обрывает шаг, Gradle получает SIGTERM (код 143).
+    timeout-minutes: 60
 
     steps:
       - name: Check out repository
