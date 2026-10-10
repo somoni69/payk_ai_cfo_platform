@@ -31,6 +31,9 @@ class OwnerRootShell extends StatelessWidget {
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
     final index = navigationShell.currentIndex.clamp(0, _titles.length - 1);
+    final router = GoRouter.of(context);
+    final inStore = auth.storeId != null;
+    final canReturn = router.canPop() || inStore;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -39,6 +42,19 @@ class OwnerRootShell extends StatelessWidget {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
+        leading: canReturn
+            ? IconButton(
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: () {
+                  if (router.canPop()) {
+                    router.pop();
+                  } else {
+                    router.go('/more');
+                  }
+                },
+                icon: const BackButtonIcon(),
+              )
+            : null,
         title: Text(
           language.translate(_titles[index]),
           style: textStyles.h2Sans.copyWith(

@@ -285,59 +285,98 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
       builder: (context, state) {
         final selected = state.selectedThread;
 
-        return Scaffold(
-          backgroundColor: colors.background,
-          appBar: AppBar(
-            backgroundColor: colors.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            leading: selected != null
-                ? IconButton(
-                    icon: const Icon(TablerIcons.arrow_left),
-                    onPressed: () =>
-                        context.read<MetaCubit>().selectThread(null),
-                  )
-                : null,
-            title: Text(
-              selected == null
-                  ? language.translate('meta_title')
-                  : selected.displayName,
-              style: textStyles.h2Sans.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: colors.textPrimary,
+        return PopScope(
+          canPop: selected == null,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop || selected == null) return;
+            context.read<MetaCubit>().selectThread(null);
+          },
+          child: Scaffold(
+            backgroundColor: colors.background,
+            appBar: AppBar(
+              backgroundColor: colors.surface,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              leading: selected != null
+                  ? IconButton(
+                      icon: const Icon(TablerIcons.arrow_left),
+                      onPressed: () =>
+                          context.read<MetaCubit>().selectThread(null),
+                    )
+                  : null,
+              title: Text(
+                selected == null
+                    ? language.translate('meta_title')
+                    : selected.displayName,
+                style: textStyles.h2Sans.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: colors.textPrimary,
+                ),
+              ),
+              actions: [
+                if (selected == null)
+                  IconButton(
+                    tooltip: language.translate('settings_title'),
+                    onPressed: () => _showWebhookSheet(state.status),
+                    icon: const Icon(TablerIcons.settings),
+                  ),
+                if (selected != null) ...[
+                  if (_canDeleteThread(context))
+                    IconButton(
+                      tooltip: language.translate('meta_delete'),
+                      onPressed: () => _confirmDeleteThread(context, selected),
+                      icon: Icon(
+                        TablerIcons.trash,
+                        size: 20,
+                        color: colors.accentRed,
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: language.translate('meta_link_client'),
+                    onPressed: () => _showLinkClientSheet(context, selected),
+                    icon: const Icon(TablerIcons.link, size: 20),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(1),
+                child: Container(height: 1, color: colors.border),
               ),
             ),
-            actions: [
-              if (selected != null) ...[
-                if (_canDeleteThread(context))
-                  IconButton(
-                    tooltip: language.translate('meta_delete'),
-                    onPressed: () => _confirmDeleteThread(context, selected),
-                    icon: Icon(
-                      TablerIcons.trash,
-                      size: 20,
-                      color: colors.accentRed,
-                    ),
-                  ),
-                IconButton(
-                  tooltip: language.translate('meta_link_client'),
-                  onPressed: () => _showLinkClientSheet(context, selected),
-                  icon: const Icon(TablerIcons.link, size: 20),
-                ),
-                const SizedBox(width: 4),
-              ],
-            ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(1),
-              child: Container(height: 1, color: colors.border),
-            ),
+            body: selected == null
+                ? _buildThreadList(context, state, language, colors, textStyles)
+                : _buildChat(context, state, language, colors, textStyles),
           ),
-          body: selected == null
-              ? _buildThreadList(context, state, language, colors, textStyles)
-              : _buildChat(context, state, language, colors, textStyles),
         );
       },
+    );
+  }
+
+  void _showWebhookSheet(MetaStatus? status) {
+    final language = context.read<LanguageCubit>();
+    final colors = context.colors;
+    final textStyles = context.textStyles;
+    LedgerBottomSheet.show(
+      context: context,
+      title: language.translate('settings_title'),
+      builder: (context, _) =>
+          _buildWebhookCard(status, language, colors, textStyles),
+    );
+  }
+
+  Widget _channelMark(String channel, LanguageCubit language) {
+    final (icon, color) = switch (channel) {
+      'facebook' => (TablerIcons.brand_facebook, const Color(0xFF1877F2)),
+      'instagram' => (TablerIcons.brand_instagram, const Color(0xFFE4405F)),
+      'whatsapp' => (TablerIcons.brand_whatsapp, const Color(0xFF25D366)),
+      _ => (TablerIcons.brand_meta, context.colors.textSecondary),
+    };
+    final label = language.translate('meta_channel_$channel');
+    return Tooltip(
+      message: label,
+      child: Icon(icon, size: 22, color: color, semanticLabel: label),
     );
   }
 
@@ -399,13 +438,13 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
           ),
           if (channels.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(
-              channels
-                  .map((ch) => language.translate('meta_channel_$ch'))
-                  .join(' · '),
-              style: textStyles.captionSans.copyWith(
-                color: colors.textSecondary,
-              ),
+            Wrap(
+              spacing: 10,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                for (final channel in channels) _channelMark(channel, language),
+              ],
             ),
           ],
           if (!connected) ...[
@@ -504,9 +543,8 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
       );
     }
 
-    const headerCount = 2;
     final threads = state.threads;
-    final itemCount = headerCount + (threads.isEmpty ? 1 : threads.length);
+    final itemCount = 1 + (threads.isEmpty ? 1 : threads.length);
 
     return RefreshIndicator(
       onRefresh: () => context.read<MetaCubit>().load(silent: true),
@@ -515,20 +553,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
         padding: const EdgeInsets.all(16),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          var cursor = index;
-          if (cursor == 0) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _buildWebhookCard(
-                state.status,
-                language,
-                colors,
-                textStyles,
-              ),
-            );
-          }
-          cursor -= 1;
-          if (cursor == 0) {
+          if (index == 0) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: LedgerSegmentedControl<String>(
@@ -562,7 +587,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               ),
             );
           }
-          final t = threads[cursor - 1];
+          final t = threads[index - 1];
           return Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: InkWell(
@@ -605,23 +630,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colors.surfaceNested,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            language.translate('meta_channel_${t.channel}'),
-                            style: textStyles.smallSans.copyWith(
-                              color: colors.textSecondary,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
+                        _channelMark(t.channel, language),
                         if (t.unread > 0) ...[
                           const SizedBox(height: 6),
                           Container(

@@ -9,11 +9,12 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 import '../../../core/routing/payk_back.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../core/theme/theme_extensions.dart';
-import '../../network/presentation/owner_network_arrival.dart';
 import '../domain/lead_models.dart';
 import '../domain/leads_repository.dart';
 import 'lead_sheet.dart';
@@ -39,10 +40,6 @@ class _LeadsScreenState extends State<LeadsScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      leaveOwnerStoreOnNetworkArrival(context);
-    });
     _load();
   }
 
@@ -129,9 +126,12 @@ class _LeadsScreenState extends State<LeadsScreen> {
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
     final lang = language.state.languageCode;
+    final auth = context.watch<AuthBloc>().state;
+    final inStore = auth is AuthAuthenticated && auth.storeId != null;
 
     return PaykBackScope(
-      fallback: '/network',
+      nested: true,
+      fallback: inStore ? '/more' : '/network',
       child: Scaffold(
         backgroundColor: colors.background,
         body: Column(

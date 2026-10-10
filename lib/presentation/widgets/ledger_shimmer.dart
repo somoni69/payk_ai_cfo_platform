@@ -1448,7 +1448,7 @@ class NotificationsOverviewShimmer extends StatelessWidget {
   }
 }
 
-/// Точный скелетон Meta: webhook-карточка, чипы каналов, диалоги.
+/// Точный скелетон Meta: чипы каналов и диалоги.
 class MetaOverviewShimmer extends StatelessWidget {
   const MetaOverviewShimmer({super.key});
 
@@ -1459,8 +1459,6 @@ class MetaOverviewShimmer extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
-          const LedgerWebhookCardShimmer(),
-          const SizedBox(height: 12),
           const SizedBox(
             height: 36,
             child: Row(

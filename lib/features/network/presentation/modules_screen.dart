@@ -3,12 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../auth/bloc/auth_state.dart';
 import '../../../core/routing/payk_back.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/theme_extensions.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
-import 'owner_network_arrival.dart';
 
 String moduleSectionLabelKey(String section) {
   if (section == 'meta') return 'more_meta';
@@ -31,10 +32,6 @@ class _ModulesScreenState extends State<ModulesScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      leaveOwnerStoreOnNetworkArrival(context);
-    });
     _load();
   }
 
@@ -147,9 +144,12 @@ class _ModulesScreenState extends State<ModulesScreen> {
     final colors = context.colors;
     final textStyles = context.textStyles;
     final language = context.watch<LanguageCubit>();
+    final auth = context.watch<AuthBloc>().state;
+    final inStore = auth is AuthAuthenticated && auth.storeId != null;
 
     return PaykBackScope(
-      fallback: '/network',
+      nested: true,
+      fallback: inStore ? '/more' : '/network',
       child: Scaffold(
         backgroundColor: colors.background,
         floatingActionButton: FloatingActionButton.extended(

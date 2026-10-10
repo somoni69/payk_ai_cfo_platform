@@ -827,13 +827,6 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   void _openSection(String route) {
-    final auth = context.read<AuthBloc>().state;
-    final owner = auth is AuthAuthenticated && auth.role == UserRole.owner;
-    const sections = {'/network', '/leads', '/modules'};
-    if (owner && sections.contains(route)) {
-      GoRouter.of(context).go(route);
-      return;
-    }
     GoRouter.of(context).push(route);
   }
 

@@ -26,7 +26,6 @@ import '../bloc/network_state.dart';
 import '../data/api_network_repository.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
-import 'owner_network_arrival.dart';
 import 'channels_sheet.dart';
 import 'store_module_picker.dart';
 
@@ -38,34 +37,9 @@ class NetworkScreen extends StatefulWidget {
 }
 
 class _NetworkScreenState extends State<NetworkScreen> {
-  var _scopeReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final auth = context.read<AuthBloc>().state;
-    final alreadyRoot =
-        auth is! AuthAuthenticated ||
-        auth.role != UserRole.owner ||
-        auth.storeId == null;
-    if (alreadyRoot) {
-      _scopeReady = true;
-      return;
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      await leaveOwnerStoreOnNetworkArrival(context);
-      if (!mounted) return;
-      setState(() => _scopeReady = true);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     context.watch<LanguageCubit>();
-    if (!_scopeReady) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
     NetworkRepository repo;
     try {
       repo = context.read<NetworkRepository>();
@@ -107,8 +81,11 @@ class _NetworkViewState extends State<_NetworkView> {
     final authState = context.watch<AuthBloc>().state;
     final isOwner =
         authState is AuthAuthenticated && authState.role == UserRole.owner;
+    final inStore = isOwner && authState.storeId != null;
 
     return PaykBackScope(
+      nested: true,
+      fallback: inStore ? '/more' : null,
       child: Scaffold(
         backgroundColor: colors.background,
         appBar: isOwner
