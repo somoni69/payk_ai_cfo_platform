@@ -205,6 +205,164 @@ class ApiMetaRepository implements MetaRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
+
+  @override
+  Future<List<MetaStage>> getStages() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/meta/stages');
+      final raw = response.data;
+      if (raw is! List) return const [];
+      return [
+        for (final item in raw.whereType<Map>())
+          MetaStage.fromJson(Map<String, dynamic>.from(item)),
+      ];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<MetaStaff>> getStaff() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>('/users/lookup');
+      final raw = response.data;
+      if (raw is! List) return const [];
+      return [
+        for (final item in raw.whereType<Map>())
+          MetaStaff.fromJson(Map<String, dynamic>.from(item)),
+      ];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<MetaThread> setThreadStage(int threadId, int stageId) async {
+    try {
+      final response = await _apiClient.dio.patch<dynamic>(
+        '/meta/threads/$threadId/stage',
+        data: {'stage_id': stageId},
+      );
+      final thread = metaThreadFromJson(response.data);
+      if (thread == null) throw Exception(ErrorKeys.invalidResponse);
+      return thread;
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<MetaThread> setThreadAssignee(int threadId, int? userId) async {
+    try {
+      final response = await _apiClient.dio.patch<dynamic>(
+        '/meta/threads/$threadId/assignee',
+        data: {'user_id': userId},
+      );
+      final thread = metaThreadFromJson(response.data);
+      if (thread == null) throw Exception(ErrorKeys.invalidResponse);
+      return thread;
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<MetaComment>> getComments({bool onlyNew = false}) async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/meta/comments',
+        queryParameters: onlyNew ? {'only_new': true} : null,
+      );
+      final raw = response.data;
+      if (raw is! List) return const [];
+      return [
+        for (final item in raw.whereType<Map>())
+          MetaComment.fromJson(Map<String, dynamic>.from(item)),
+      ];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<MetaComment> replyComment(int id, String text) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/meta/comments/$id/reply',
+        data: {'text': text},
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return MetaComment.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<({int threadId, MetaComment comment})> dmComment(
+    int id,
+    String text,
+  ) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/meta/comments/$id/dm',
+        data: {'text': text},
+      );
+      final map = response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : <String, dynamic>{};
+      final commentRaw = map['comment'];
+      if (commentRaw is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return (
+        threadId: _jsonInt(map['thread_id']) ?? 0,
+        comment: MetaComment.fromJson(Map<String, dynamic>.from(commentRaw)),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<void> markCommentsSeen() async {
+    try {
+      await _apiClient.dio.post<dynamic>('/meta/comments/seen');
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<CommentSettings> getCommentSettings() async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/meta/comments/settings',
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return CommentSettings.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<CommentSettings> setCommentAi(bool enabled) async {
+    try {
+      final response = await _apiClient.dio.put<dynamic>(
+        '/meta/comments/settings',
+        data: {'ai_enabled': enabled},
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return CommentSettings.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
 }
 
 /// REST and WebSocket share this dialog shape (`services/chat_events.py`).
@@ -246,8 +404,17 @@ MetaThread? metaThreadFromJson(dynamic raw) {
     lastMessageAt: lastAtRaw is String ? DateTime.tryParse(lastAtRaw) : null,
     unread: unread,
     peerReadAt: _dateOrNull(map['peer_read_at']),
+    stageId: _jsonInt(map['stage_id']),
+    assigneeId: _jsonInt(map['assignee_id']),
   );
 }
+
+int? _jsonInt(Object? raw) => switch (raw) {
+  int v => v,
+  num v => v.toInt(),
+  String v => int.tryParse(v),
+  _ => null,
+};
 
 /// REST and WebSocket share this message shape (`services/chat_events.py`).
 MetaMessage? metaMessageFromJson(dynamic raw) {

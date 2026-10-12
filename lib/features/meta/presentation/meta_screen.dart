@@ -25,6 +25,8 @@ import '../cubit/meta_cubit.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
 import 'meta_chat_widgets.dart';
+import 'meta_comments_screen.dart';
+import 'meta_funnel_view.dart';
 
 /// Meta chats (Facebook / Instagram / WhatsApp) — Grounded Enterprise design.
 class MetaScreen extends StatelessWidget {
@@ -60,6 +62,7 @@ class _MetaScreenView extends StatefulWidget {
 class _MetaScreenViewState extends State<_MetaScreenView> {
   static const _metaChannels = ['', 'facebook', 'instagram', 'whatsapp'];
   final _replyController = TextEditingController();
+  String? _pane;
 
   @override
   void dispose() {
@@ -328,12 +331,17 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
       },
       builder: (context, state) {
         final selected = state.selectedThread;
+        final inPane = selected == null && _pane != null;
 
         return PopScope(
-          canPop: selected == null,
+          canPop: selected == null && _pane == null,
           onPopInvokedWithResult: (didPop, _) {
-            if (didPop || selected == null) return;
-            context.read<MetaCubit>().selectThread(null);
+            if (didPop) return;
+            if (selected != null) {
+              context.read<MetaCubit>().selectThread(null);
+            } else if (_pane != null) {
+              setState(() => _pane = null);
+            }
           },
           child: Scaffold(
             backgroundColor: colors.background,
@@ -341,17 +349,28 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               backgroundColor: colors.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              leading: selected != null
+              leading: selected != null || inPane
                   ? IconButton(
                       icon: const Icon(TablerIcons.arrow_left),
-                      onPressed: () =>
-                          context.read<MetaCubit>().selectThread(null),
+                      onPressed: () {
+                        if (selected != null) {
+                          context.read<MetaCubit>().selectThread(null);
+                        } else {
+                          setState(() => _pane = null);
+                        }
+                      },
                     )
                   : null,
               titleSpacing: selected == null ? null : 0,
               title: selected == null
                   ? Text(
-                      language.translate('meta_title'),
+                      language.translate(
+                        _pane == 'comments'
+                            ? 'meta_tab_comments'
+                            : _pane == 'funnel'
+                            ? 'meta_tab_funnel'
+                            : 'meta_title',
+                      ),
                       style: textStyles.h2Sans.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -368,13 +387,34 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                       ),
                     ),
               actions: [
-                if (selected == null)
+                if (selected == null && _pane == null) ...[
+                  IconButton(
+                    tooltip: language.translate('meta_tab_comments'),
+                    onPressed: () => setState(() => _pane = 'comments'),
+                    icon: const Icon(TablerIcons.message_circle),
+                  ),
+                  IconButton(
+                    tooltip: language.translate('meta_tab_funnel'),
+                    onPressed: () => setState(() => _pane = 'funnel'),
+                    icon: const Icon(TablerIcons.layout_kanban),
+                  ),
                   IconButton(
                     tooltip: language.translate('settings_title'),
                     onPressed: () => _showWebhookSheet(state.status),
                     icon: const Icon(TablerIcons.settings),
                   ),
+                ],
                 if (selected != null) ...[
+                  IconButton(
+                    tooltip: language.translate('meta_tab_funnel'),
+                    onPressed: () async {
+                      final next = await showMetaFunnelSheet(context, selected);
+                      if (next != null && context.mounted) {
+                        await context.read<MetaCubit>().load(silent: true);
+                      }
+                    },
+                    icon: const Icon(TablerIcons.layout_kanban, size: 20),
+                  ),
                   IconButton(
                     tooltip: language.translate('meta_link_client'),
                     onPressed: () => _showLinkClientSheet(context, selected),
@@ -422,9 +462,41 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                 child: Container(height: 1, color: colors.border),
               ),
             ),
-            body: selected == null
-                ? _buildThreadList(context, state, language, colors, textStyles)
-                : _buildChat(context, state, language, colors, textStyles),
+            body: selected != null
+                ? _buildChat(context, state, language, colors, textStyles)
+                : _pane == 'comments'
+                ? MetaCommentsScreen(
+                    onOpenThread: (id) {
+                      MetaThread? found;
+                      for (final thread in state.threads) {
+                        if (thread.id == id) found = thread;
+                      }
+                      setState(() => _pane = null);
+                      context.read<MetaCubit>().selectThread(
+                        found ??
+                            MetaThread(
+                              id: id,
+                              channel: 'instagram',
+                              peerId: '$id',
+                            ),
+                      );
+                    },
+                  )
+                : _pane == 'funnel'
+                ? MetaFunnelView(
+                    threads: state.threads,
+                    onOpen: (thread) {
+                      setState(() => _pane = null);
+                      context.read<MetaCubit>().selectThread(thread);
+                    },
+                  )
+                : _buildThreadList(
+                    context,
+                    state,
+                    language,
+                    colors,
+                    textStyles,
+                  ),
           ),
         );
       },

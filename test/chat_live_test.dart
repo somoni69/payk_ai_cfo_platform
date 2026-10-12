@@ -185,6 +185,48 @@ class _Repo implements MetaRepository {
 
   @override
   Future<void> deleteThread(int threadId) async {}
+
+  @override
+  Future<List<MetaStage>> getStages() async => const [];
+
+  @override
+  Future<List<MetaStaff>> getStaff() async => const [];
+
+  @override
+  Future<MetaThread> setThreadStage(int threadId, int stageId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<MetaThread> setThreadAssignee(int threadId, int? userId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<MetaComment>> getComments({bool onlyNew = false}) async =>
+      const [];
+
+  @override
+  Future<MetaComment> replyComment(int id, String text) =>
+      throw UnimplementedError();
+
+  @override
+  Future<({int threadId, MetaComment comment})> dmComment(
+    int id,
+    String text,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<void> markCommentsSeen() async {}
+
+  @override
+  Future<CommentSettings> getCommentSettings() async => const CommentSettings(
+    aiEnabled: false,
+    aiAvailable: false,
+    connected: false,
+  );
+
+  @override
+  Future<CommentSettings> setCommentAi(bool enabled) =>
+      throw UnimplementedError();
 }
 
 Map<String, dynamic> _thread(int id, {String channel = 'instagram'}) => {

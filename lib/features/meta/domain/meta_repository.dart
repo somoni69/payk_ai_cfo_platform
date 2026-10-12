@@ -29,4 +29,16 @@ abstract class MetaRepository {
 
   /// Delete the whole thread. Server allows this only for director and owner.
   Future<void> deleteThread(int threadId);
+
+  Future<List<MetaStage>> getStages();
+  Future<List<MetaStaff>> getStaff();
+  Future<MetaThread> setThreadStage(int threadId, int stageId);
+  Future<MetaThread> setThreadAssignee(int threadId, int? userId);
+
+  Future<List<MetaComment>> getComments({bool onlyNew = false});
+  Future<MetaComment> replyComment(int id, String text);
+  Future<({int threadId, MetaComment comment})> dmComment(int id, String text);
+  Future<void> markCommentsSeen();
+  Future<CommentSettings> getCommentSettings();
+  Future<CommentSettings> setCommentAi(bool enabled);
 }

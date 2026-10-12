@@ -296,6 +296,11 @@ class _LeadBody extends StatelessWidget {
             language.translate('leads_card_less_year'),
           ),
         ),
+        if (lead.employees != null)
+          _Line(
+            language.translate('leads_card_employees'),
+            '${lead.employees}',
+          ),
         _Line(
           language.translate('leads_card_points'),
           bank.labelOf(bank.points, lead.points, lang),

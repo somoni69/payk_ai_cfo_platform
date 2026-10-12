@@ -211,6 +211,7 @@ class LeadRow {
   final List<String> spheres;
   final String? sphereOther;
   final int? years;
+  final int? employees;
   final String lang;
   final String? points;
   final String? wantsNetwork;
@@ -238,6 +239,7 @@ class LeadRow {
     this.spheres = const [],
     this.sphereOther,
     this.years,
+    this.employees,
     this.lang = 'ru',
     this.points,
     this.wantsNetwork,
@@ -267,6 +269,7 @@ class LeadRow {
       spheres: _strings(json['spheres']),
       sphereOther: _asString(json['sphere_other']),
       years: _asInt(json['years']),
+      employees: _asInt(json['employees']),
       lang: (json['lang'] ?? 'ru').toString(),
       points: _asString(json['points']),
       wantsNetwork: _asString(json['wants_network']),
@@ -300,6 +303,7 @@ class LeadDetail extends LeadRow {
     super.spheres,
     super.sphereOther,
     super.years,
+    super.employees,
     super.lang,
     super.points,
     super.wantsNetwork,
@@ -342,6 +346,7 @@ class LeadDetail extends LeadRow {
       spheres: row.spheres,
       sphereOther: row.sphereOther,
       years: row.years,
+      employees: row.employees,
       lang: row.lang,
       points: row.points,
       wantsNetwork: row.wantsNetwork,
