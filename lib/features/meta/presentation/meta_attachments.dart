@@ -359,8 +359,21 @@ class _MetaVideoState extends State<_MetaVideo> {
     );
     try {
       await controller.initialize();
+      var playing = controller.value.isPlaying;
+      var initialized = controller.value.isInitialized;
       controller.addListener(() {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        final value = controller.value;
+        final nextPlaying = value.isPlaying;
+        final nextInitialized = value.isInitialized;
+        if (nextPlaying == playing &&
+            nextInitialized == initialized &&
+            !value.hasError) {
+          return;
+        }
+        playing = nextPlaying;
+        initialized = nextInitialized;
+        setState(() {});
       });
       await controller.play();
       if (!mounted) {

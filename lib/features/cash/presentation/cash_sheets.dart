@@ -70,6 +70,7 @@ extension _CashSheetBuilders on _CashViewMixin {
                   .read<FinOpsRepository>()
                   .getBankAccounts()
                   .then((list) {
+                    if (!context.mounted) return;
                     setSheetState(
                       () => banks = list.where((b) => b.isActive).toList(),
                     );
@@ -93,12 +94,14 @@ extension _CashSheetBuilders on _CashViewMixin {
                 .read<CashRepository>()
                 .getSaleProducts()
                 .then((list) {
+                  if (!context.mounted) return;
                   setSheetState(() {
                     saleProducts = list;
                     saleProductsLoading = false;
                   });
                 })
                 .catchError((_) {
+                  if (!context.mounted) return;
                   setSheetState(() => saleProductsLoading = false);
                 });
           }

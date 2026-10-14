@@ -878,6 +878,7 @@ class _CashPosViewState extends State<CashPosView> {
                                   height: 64,
                                   width: double.infinity,
                                   fit: BoxFit.cover,
+                                  cacheWidth: thumbCacheExtent(context, 148),
                                   errorBuilder: (_, _, _) =>
                                       const SizedBox.shrink(),
                                 ),

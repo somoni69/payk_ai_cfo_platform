@@ -634,6 +634,7 @@ class _StrategySectionScreenState extends State<StrategySectionScreen> {
     final unitCtrl = TextEditingController();
     LedgerBottomSheet.show(
       context: context,
+      disposables: [nameCtrl, valueCtrl, unitCtrl],
       title: locale.translate('strategy_add_macro'),
       builder: (context, setSheetState) => Column(
         mainAxisSize: MainAxisSize.min,

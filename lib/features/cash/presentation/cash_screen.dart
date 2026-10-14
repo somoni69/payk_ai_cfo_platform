@@ -382,17 +382,23 @@ class CashView extends StatefulWidget {
 }
 
 class _CashViewState extends State<CashView> with _CashViewMixin {
+  var _visibleLoadScheduled = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Offstage shell branches have TickerMode disabled. Skip the fetch until
+    // this tab is the one on screen.
+    if (_visibleLoadScheduled || !TickerMode.valuesOf(context).enabled) return;
+    _visibleLoadScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final bloc = context.read<CashBloc>();
-      if (bloc.state is! CashLoaded) {
-        bloc.add(const LoadCashData());
-      } else {
+      if (bloc.state is CashLoaded) {
         _adoptLoadedFilters();
+        return;
       }
+      bloc.add(const LoadCashData());
     });
   }
 

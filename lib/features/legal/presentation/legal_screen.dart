@@ -1425,6 +1425,7 @@ class _LegalSectionScreenState extends State<LegalSectionScreen> {
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [nameController, bodyController, categoryController],
       title: localeCubit.translate(
         editing ? 'legal_template_edit' : 'legal_template_new',
       ),
@@ -1624,6 +1625,7 @@ void _showCreateLawSheet(BuildContext context) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [titleController, bodyController],
     title: localeCubit.translate('legal_law_add'),
     builder: (context, setSheetState) {
       final selected = categories.firstWhere(
@@ -1716,6 +1718,7 @@ void _showCreateDeadlineSheet(BuildContext context) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [titleController, amountController, noteController],
     title: localeCubit.translate('legal_deadline_add'),
     builder: (context, setSheetState) {
       return Column(

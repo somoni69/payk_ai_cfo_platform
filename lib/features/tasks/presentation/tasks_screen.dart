@@ -216,9 +216,13 @@ class TasksView extends StatefulWidget {
 }
 
 class _TasksViewState extends State<TasksView> with _TasksViewMixin {
+  var _visibleLoadScheduled = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_visibleLoadScheduled || !TickerMode.valuesOf(context).enabled) return;
+    _visibleLoadScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final bloc = context.read<TasksBloc>();

@@ -2216,15 +2216,21 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
     var busy = false;
     var started = false;
 
-    Future<void> reload(void Function(void Function()) setSheetState) async {
+    Future<void> reload(
+      BuildContext sheetContext,
+      void Function(void Function()) setSheetState,
+    ) async {
+      if (!sheetContext.mounted) return;
       setSheetState(() => loading = true);
       try {
         final list = await repository.getEmployeeDocuments(emp.id);
+        if (!sheetContext.mounted) return;
         setSheetState(() {
           docs = list;
           loading = false;
         });
       } catch (_) {
+        if (!sheetContext.mounted) return;
         setSheetState(() => loading = false);
       }
     }
@@ -2238,7 +2244,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       builder: (context, setSheetState) {
         if (!started) {
           started = true;
-          reload(setSheetState);
+          reload(context, setSheetState);
         }
         if (loading) {
           return const Padding(
@@ -2270,7 +2276,8 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                               filename: file.name,
                               bytes: bytes,
                             );
-                            await reload(setSheetState);
+                            if (!context.mounted) return;
+                            await reload(context, setSheetState);
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -2291,7 +2298,9 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                               );
                             }
                           } finally {
-                            setSheetState(() => busy = false);
+                            if (context.mounted) {
+                              setSheetState(() => busy = false);
+                            }
                           }
                         },
                   icon: const Icon(TablerIcons.upload, size: 16),
@@ -2372,7 +2381,8 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                                       employeeId: emp.id,
                                       documentId: doc.id,
                                     );
-                                    await reload(setSheetState);
+                                    if (!context.mounted) return;
+                                    await reload(context, setSheetState);
                                   } catch (e) {
                                     if (context.mounted) {
                                       ScaffoldMessenger.of(
@@ -2388,7 +2398,9 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
                                       );
                                     }
                                   } finally {
-                                    setSheetState(() => busy = false);
+                                    if (context.mounted) {
+                                      setSheetState(() => busy = false);
+                                    }
                                   }
                                 },
                         )

@@ -93,7 +93,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
       allowedExtensions: _attachExtensions,
       withData: true,
     );
-    if (result == null || result.files.isEmpty) return;
+    if (result == null || result.files.isEmpty || !mounted) return;
     final file = result.files.first;
     final bytes = file.bytes;
     if (bytes == null || bytes.isEmpty) {
@@ -147,11 +147,13 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               final res = await crmRepo.getClients(
                 filters: ClientListFilters(query: q),
               );
+              if (!ctx.mounted) return;
               setSheetState(() {
                 clients = res.items;
                 searching = false;
               });
             } catch (_) {
+              if (!ctx.mounted) return;
               setSheetState(() => searching = false);
             }
           }
@@ -164,6 +166,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               await context.read<MetaCubit>().linkClient(clientIdInt);
               if (ctx.mounted) Navigator.pop(ctx);
             } catch (e) {
+              if (!ctx.mounted) return;
               setSheetState(() => saving = false);
               if (ctx.mounted) {
                 ScaffoldMessenger.of(ctx).showSnackBar(

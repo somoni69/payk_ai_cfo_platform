@@ -38,6 +38,23 @@ void main() {
     expect(adapter.requests, 1);
   });
 
+  test('receive timeouts are not retried', () async {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: 'https://example.test',
+        receiveTimeout: const Duration(seconds: 15),
+      ),
+    );
+    final adapter = _TimeoutAdapter();
+    dio.httpClientAdapter = adapter;
+    dio.interceptors.add(
+      SafeRetryInterceptor(dio: dio, delay: (_) async {}, random: Random(1)),
+    );
+
+    await expectLater(dio.get<void>('/health'), throwsA(isA<DioException>()));
+    expect(adapter.requests, 1);
+  });
+
   test('a request from an invalidated session is not retried', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://example.test'));
     final adapter = _SequenceAdapter([503, 200]);
@@ -79,6 +96,26 @@ class _SequenceAdapter implements HttpClientAdapter {
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _TimeoutAdapter implements HttpClientAdapter {
+  int requests = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    throw DioException(
+      requestOptions: options,
+      type: DioExceptionType.receiveTimeout,
     );
   }
 

@@ -347,6 +347,8 @@ void main() {
       'latest ABC dimension wins when responses finish out of order',
       () async {
         bloc.add(const LoadDashboardData());
+        await bloc.stream.firstWhere((state) => state is DashboardLoaded);
+        bloc.add(const LoadDashboardSection(DashboardSection.abc));
         await bloc.stream.firstWhere(
           (state) => state is DashboardLoaded && state.abc != null,
         );

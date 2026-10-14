@@ -26,6 +26,7 @@ import '../../../features/marketing/bloc/marketing_state.dart';
 import '../../../features/marketing/domain/marketing_models.dart';
 import '../../../features/marketing/domain/marketing_repository.dart';
 import 'marketing_ai_studio_screen.dart';
+import '../../../presentation/widgets/image_cache_extent.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
 import '../../../presentation/widgets/ledger_fab.dart';
@@ -1083,6 +1084,10 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
             child: Image.network(
               ApiClient().mediaUrl(url),
               fit: BoxFit.contain,
+              cacheWidth: imageCacheWidth(
+                MediaQuery.devicePixelRatioOf(context),
+                MediaQuery.sizeOf(context).width,
+              ),
               semanticLabel: localeCubit.translate('marketing_image_alt'),
               loadingBuilder: (context, child, progress) {
                 if (progress == null) return child;
@@ -1933,6 +1938,7 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [textCtrl],
       title: localeCubit.translate('marketing_new_publication'),
       builder: (context, setSheetState) {
         return Column(
@@ -1985,6 +1991,7 @@ void _showCreateCampaignDialog(BuildContext context) {
 
   LedgerBottomSheet.show(
     context: context,
+    disposables: [nameCtrl, budgetCtrl],
     title: localeCubit.translate('marketing_new_campaign'),
     builder: (context, setSheetState) {
       return Column(

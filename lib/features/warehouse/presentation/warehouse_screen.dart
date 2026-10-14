@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -104,9 +105,13 @@ class WarehouseView extends StatefulWidget {
 }
 
 class _WarehouseViewState extends State<WarehouseView> {
+  var _visibleLoadScheduled = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_visibleLoadScheduled || !TickerMode.valuesOf(context).enabled) return;
+    _visibleLoadScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final bloc = context.read<WarehouseBloc>();
@@ -959,6 +964,8 @@ class _WarehouseProductsTab extends StatefulWidget {
 
 class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
   final _search = TextEditingController();
+  Timer? _searchDebounce;
+  var _query = '';
   var _categories = <ProductCategory>[];
   var _categoryFilter = '';
 
@@ -1003,6 +1010,7 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -1016,7 +1024,7 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
   }
 
   List<WarehouseProduct> get _filtered {
-    final q = _search.text.trim().toLowerCase();
+    final q = _query;
     return widget.state.products.where((p) {
       final matchesQuery =
           q.isEmpty ||
@@ -1090,7 +1098,16 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
               children: [
                 TextField(
                   controller: _search,
-                  onChanged: (_) => setState(() {}),
+                  onChanged: (value) {
+                    _searchDebounce?.cancel();
+                    _searchDebounce = Timer(
+                      const Duration(milliseconds: 250),
+                      () {
+                        if (!mounted) return;
+                        setState(() => _query = value.trim().toLowerCase());
+                      },
+                    );
+                  },
                   decoration: InputDecoration(
                     hintText: localeCubit.translate('warehouse_search_hint'),
                     prefixIcon: Icon(
@@ -1103,7 +1120,11 @@ class _WarehouseProductsTabState extends State<_WarehouseProductsTab> {
                       onPressed: () async {
                         final code = await LedgerBarcodeScanner.open(context);
                         if (code == null || !mounted) return;
-                        setState(() => _search.text = code);
+                        _searchDebounce?.cancel();
+                        setState(() {
+                          _search.text = code;
+                          _query = code.trim().toLowerCase();
+                        });
                       },
                       icon: Icon(TablerIcons.camera, color: colors.brand),
                     ),

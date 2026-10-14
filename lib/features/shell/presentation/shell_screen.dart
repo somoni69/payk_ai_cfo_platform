@@ -83,20 +83,18 @@ class ShellScreen extends StatelessWidget {
               DashboardBloc(context.read<FinanceRepository>())
                 ..add(const LoadDashboardData()),
         ),
+        // Касса, задачи и склад грузятся, когда вкладка впервые становится
+        // видимой (см. TickerMode в экранах). Иначе IndexedStack поднимает
+        // все четыре модуля в один кадр и забивает сеть до первой отрисовки.
         BlocProvider<CashBloc>(
-          create: (context) =>
-              CashBloc(context.read<CashRepository>())
-                ..add(const LoadCashData()),
+          create: (context) => CashBloc(context.read<CashRepository>()),
         ),
         BlocProvider<TasksBloc>(
-          create: (context) => TasksBloc(context.read<TasksRepository>())
-            ..add(const LoadTasks())
-            ..add(const LoadMyTasks()),
+          create: (context) => TasksBloc(context.read<TasksRepository>()),
         ),
         BlocProvider<WarehouseBloc>(
           create: (context) =>
-              WarehouseBloc(context.read<WarehouseRepository>())
-                ..add(const LoadWarehouseData()),
+              WarehouseBloc(context.read<WarehouseRepository>()),
         ),
       ],
       child: _ShellScaffold(navigationShell: navigationShell),

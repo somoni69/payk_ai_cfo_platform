@@ -1183,6 +1183,7 @@ Future<void> _showTemplateModal(
       if (!branchesLoaded) {
         branchesLoaded = true;
         context.read<BranchesRepository>().getBranches().then((list) {
+          if (!context.mounted) return;
           setSheetState(() {
             branches = list;
             if (template?.branchId != null) {

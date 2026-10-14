@@ -19,8 +19,22 @@ class PermissionsCubit extends Cubit<PermissionsState> {
 
   PermissionsCubit(this._repository) : super(PermissionsState.initial);
 
+  Future<void>? _loadInFlight;
+
   /// Load / refresh effective rights. Web also refetches ~every 30s.
-  Future<void> load({bool silent = false}) async {
+  ///
+  /// Poll, resume, and an explicit refresh share one in-flight request.
+  Future<void> load({bool silent = false}) {
+    final current = _loadInFlight;
+    if (current != null) return current;
+    final future = _load(silent: silent);
+    _loadInFlight = future;
+    return future.whenComplete(() {
+      if (identical(_loadInFlight, future)) _loadInFlight = null;
+    });
+  }
+
+  Future<void> _load({bool silent = false}) async {
     if (!silent) {
       emit(state.copyWith(loading: true, clearError: true));
     }

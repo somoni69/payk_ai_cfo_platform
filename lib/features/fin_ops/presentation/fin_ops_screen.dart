@@ -1463,6 +1463,7 @@ void _showEncashmentModal(BuildContext context, FinOpsLoaded state) {
       if (!loaded) {
         loaded = true;
         cashRepo.getRegisters().then((list) {
+          if (!context.mounted) return;
           setSheetState(() {
             registers = list;
             selectedRegister = list.isNotEmpty ? list.first : null;
@@ -1709,12 +1710,14 @@ void _showAidModal(BuildContext context, FinOpsLoaded state) {
       if (!loaded) {
         loaded = true;
         hrRepo.getEmployees().then((list) {
+          if (!context.mounted) return;
           setSheetState(() {
             employees = list.where((e) => !e.isArchived).toList();
             selectedEmployee = employees.isNotEmpty ? employees.first : null;
           });
         });
         context.read<CashRepository>().getRegisters().then((list) {
+          if (!context.mounted) return;
           setSheetState(() {
             registers = list;
             selectedRegister = list.isNotEmpty ? list.first : null;

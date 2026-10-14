@@ -77,12 +77,13 @@ class ApiWarehouseRepository implements WarehouseRepository {
   @override
   Future<List<WarehouseProduct>> getProducts() async {
     try {
-      final response = await _apiClient.dio.get('/warehouse/products');
+      final results = await Future.wait<Object>([
+        _apiClient.dio.get<dynamic>('/warehouse/products'),
+        getCategories().catchError((Object _) => <ProductCategory>[]),
+      ]);
+      final response = results[0] as Response<dynamic>;
+      final categories = results[1] as List<ProductCategory>;
       final list = response.data as List<dynamic>;
-
-      final categories = await getCategories().catchError(
-        (_) => <ProductCategory>[],
-      );
       final names = {for (final c in categories) c.id: c.name};
       return list
           .map(

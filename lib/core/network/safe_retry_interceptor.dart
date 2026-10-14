@@ -76,10 +76,10 @@ class SafeRetryInterceptor extends Interceptor {
       return _retryableStatusCodes.contains(statusCode);
     }
 
+    // Timeouts already waited out the full receive window. Retrying them
+    // multiplies a 15–90s stall across every parallel GET on a cold start.
+    // Connection failures are cheap to retry; HTTP 429/502/503/504 too.
     return switch (error.type) {
-      DioExceptionType.connectionTimeout ||
-      DioExceptionType.sendTimeout ||
-      DioExceptionType.receiveTimeout ||
       DioExceptionType.connectionError => true,
       _ => false,
     };

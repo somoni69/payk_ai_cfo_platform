@@ -1007,6 +1007,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [nameCtrl, notesCtrl, daysCtrl],
       title: locale.translate('marketing_create_campaign_title'),
       builder: (context, setSheetState) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1078,6 +1079,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [noteCtrl],
       title: locale.translate('marketing_concept_revise_title'),
       builder: (context, setSheetState) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1173,6 +1175,7 @@ class _MarketingAiStudioScreenState extends State<MarketingAiStudioScreen>
 
     LedgerBottomSheet.show(
       context: context,
+      disposables: [reasonCtrl],
       title: locale.translate('marketing_reject_modal_title'),
       builder: (context, setSheetState) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
