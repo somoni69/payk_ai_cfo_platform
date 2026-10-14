@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/app_colors.dart';
@@ -63,6 +64,26 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
   static const _metaChannels = ['', 'facebook', 'instagram', 'whatsapp'];
   final _replyController = TextEditingController();
   String? _pane;
+  List<MetaStage> _stages = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadStages());
+  }
+
+  Future<void> _loadStages() async {
+    try {
+      final stages = await context.read<MetaRepository>().getStages();
+      if (!mounted) return;
+      setState(() => _stages = stages);
+    } catch (_) {
+      // Stage dots are optional; the list still works without them.
+    }
+  }
+
+  String _title(MetaThread thread, LanguageCubit language) =>
+      thread.titleOr(language.translate('meta_unnamed'));
 
   @override
   void dispose() {
@@ -279,7 +300,7 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
         title: Text(
           language.translate(
             'meta_delete_title',
-            params: {'peer': thread.displayName},
+            params: {'peer': _title(thread, language)},
           ),
         ),
         content: Text(language.translate('meta_delete_msg')),
@@ -334,17 +355,12 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
       },
       builder: (context, state) {
         final selected = state.selectedThread;
-        final inPane = selected == null && _pane != null;
 
         return PopScope(
-          canPop: selected == null && _pane == null,
+          canPop: selected == null,
           onPopInvokedWithResult: (didPop, _) {
             if (didPop) return;
-            if (selected != null) {
-              context.read<MetaCubit>().selectThread(null);
-            } else if (_pane != null) {
-              setState(() => _pane = null);
-            }
+            context.read<MetaCubit>().selectThread(null);
           },
           child: Scaffold(
             backgroundColor: colors.background,
@@ -352,28 +368,17 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
               backgroundColor: colors.surface,
               surfaceTintColor: Colors.transparent,
               elevation: 0,
-              leading: selected != null || inPane
+              leading: selected != null
                   ? IconButton(
                       icon: const Icon(TablerIcons.arrow_left),
-                      onPressed: () {
-                        if (selected != null) {
-                          context.read<MetaCubit>().selectThread(null);
-                        } else {
-                          setState(() => _pane = null);
-                        }
-                      },
+                      onPressed: () =>
+                          context.read<MetaCubit>().selectThread(null),
                     )
                   : null,
               titleSpacing: selected == null ? null : 0,
               title: selected == null
                   ? Text(
-                      language.translate(
-                        _pane == 'comments'
-                            ? 'meta_tab_comments'
-                            : _pane == 'funnel'
-                            ? 'meta_tab_funnel'
-                            : 'meta_title',
-                      ),
+                      language.translate('meta_title'),
                       style: textStyles.h2Sans.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -383,30 +388,19 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                   : BlocSelector<ChatLiveCubit, ChatLiveState, bool>(
                       selector: (live) => live.status == ChatLiveStatus.offline,
                       builder: (context, offline) => MetaChatTitle(
-                        name: selected.displayName,
+                        name: _title(selected, language),
                         channel: selected.channel,
                         offline: offline,
                         channelMark: _channelMark(selected.channel, language),
                       ),
                     ),
               actions: [
-                if (selected == null && _pane == null) ...[
-                  IconButton(
-                    tooltip: language.translate('meta_tab_comments'),
-                    onPressed: () => setState(() => _pane = 'comments'),
-                    icon: const Icon(TablerIcons.message_circle),
-                  ),
-                  IconButton(
-                    tooltip: language.translate('meta_tab_funnel'),
-                    onPressed: () => setState(() => _pane = 'funnel'),
-                    icon: const Icon(TablerIcons.layout_kanban),
-                  ),
+                if (selected == null)
                   IconButton(
                     tooltip: language.translate('settings_title'),
                     onPressed: () => _showWebhookSheet(state.status),
                     icon: const Icon(TablerIcons.settings),
                   ),
-                ],
                 if (selected != null) ...[
                   IconButton(
                     tooltip: language.translate('meta_tab_funnel'),
@@ -461,8 +455,17 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                 ],
               ],
               bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(1),
-                child: Container(height: 1, color: colors.border),
+                preferredSize: Size.fromHeight(selected == null ? 45 : 1),
+                child: Column(
+                  children: [
+                    if (selected == null)
+                      _MetaModeBar(
+                        pane: _pane,
+                        onChanged: (pane) => setState(() => _pane = pane),
+                      ),
+                    Container(height: 1, color: colors.border),
+                  ],
+                ),
               ),
             ),
             body: selected != null
@@ -474,7 +477,6 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                       for (final thread in state.threads) {
                         if (thread.id == id) found = thread;
                       }
-                      setState(() => _pane = null);
                       context.read<MetaCubit>().selectThread(
                         found ??
                             MetaThread(
@@ -489,8 +491,11 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                 ? MetaFunnelView(
                     threads: state.threads,
                     onOpen: (thread) {
-                      setState(() => _pane = null);
                       context.read<MetaCubit>().selectThread(thread);
+                    },
+                    onMoved: () async {
+                      await context.read<MetaCubit>().load(silent: true);
+                      await _loadStages();
                     },
                   )
                 : _buildThreadList(
@@ -754,12 +759,16 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                 ),
                 child: Row(
                   children: [
+                    _channelMark(t.channel, language),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            t.displayName,
+                            _title(t, language),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: textStyles.bodySans.copyWith(
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
@@ -767,7 +776,9 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            t.lastText ?? '',
+                            (t.lastText ?? '').trim().isEmpty
+                                ? language.translate('meta_empty_preview')
+                                : t.lastText!.trim(),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: textStyles.captionSans.copyWith(
@@ -782,23 +793,46 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _channelMark(t.channel, language),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_stageDot(t) case final dot?) ...[
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: dot,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Text(
+                              _threadWhen(context, t.lastMessageAt),
+                              style: textStyles.smallSans.copyWith(
+                                color: colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                         if (t.unread > 0) ...[
                           const SizedBox(height: 6),
                           Container(
+                            constraints: const BoxConstraints(minWidth: 18),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: colors.brand.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(4),
+                              color: colors.brand,
+                              borderRadius: BorderRadius.circular(9),
                             ),
                             child: Text(
                               '${t.unread}',
+                              textAlign: TextAlign.center,
                               style: textStyles.smallSans.copyWith(
-                                color: colors.brand,
-                                fontWeight: FontWeight.w600,
+                                color: colors.onBrand,
+                                fontWeight: FontWeight.w700,
                                 fontSize: 11,
                               ),
                             ),
@@ -887,6 +921,86 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
           onChanged: context.read<MetaCubit>().composerChanged,
         ),
       ],
+    );
+  }
+
+  Color? _stageDot(MetaThread thread) {
+    if (_stages.isEmpty) return null;
+    final index = _stages.indexWhere((stage) => stage.id == thread.stageId);
+    final stage = index < 0 ? _stages.first : _stages[index];
+    return metaStageColor(stage.color, context.colors.brand);
+  }
+
+  String _threadWhen(BuildContext context, DateTime? at) {
+    if (at == null) return '';
+    final local = at.toLocal();
+    final now = DateTime.now();
+    final sameDay =
+        local.year == now.year &&
+        local.month == now.month &&
+        local.day == now.day;
+    return formatLocalizedDateTime(
+      context,
+      at,
+      style: sameDay
+          ? LocalizedDateTimeStyle.time
+          : LocalizedDateTimeStyle.dayMonthTime,
+    );
+  }
+}
+
+class _MetaModeBar extends StatelessWidget {
+  const _MetaModeBar({required this.pane, required this.onChanged});
+
+  final String? pane;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final language = context.watch<LanguageCubit>();
+    final colors = context.colors;
+    final items = <(String?, String)>[
+      (null, language.translate('meta_tab_dialogs')),
+      ('comments', language.translate('meta_tab_comments')),
+      ('funnel', language.translate('meta_tab_funnel')),
+    ];
+    return SizedBox(
+      height: 44,
+      child: Row(
+        children: [
+          for (final item in items)
+            Expanded(
+              child: InkWell(
+                onTap: () => onChanged(item.$1),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: pane == item.$1
+                            ? colors.brand
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      item.$2,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.captionSans.copyWith(
+                        color: pane == item.$1
+                            ? colors.brand
+                            : colors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

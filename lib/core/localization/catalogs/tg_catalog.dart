@@ -113,6 +113,7 @@ const Map<String, String> kTajikCatalog = {
   'assistant_q3': 'Ба чӣ диққат диҳем?',
   'more_meta': 'Чатҳои Meta',
   'meta_title': 'Чатҳои Meta',
+  'meta_tab_dialogs': 'Муколамаҳо',
   'meta_tab_comments': 'Шарҳҳо',
   'meta_tab_funnel': 'Воронка',
   'meta_comments_hint':
@@ -144,6 +145,14 @@ const Map<String, String> kTajikCatalog = {
   'meta_funnel_none': 'Таъин нашудааст',
   'meta_funnel_empty': 'Холӣ',
   'meta_funnel_saved': 'Сабт шуд',
+  'meta_funnel_search': 'Ном, телефон ё @',
+  'meta_funnel_call': 'Занг задан',
+  'meta_funnel_open': 'Мукотибаро кушодан',
+  'meta_funnel_prev': 'Марҳилаи қаблӣ',
+  'meta_funnel_next': 'Марҳилаи навбатӣ',
+  'meta_unnamed': 'Беном',
+  'meta_empty_preview': 'Паём нест',
+  'meta_comments_unseen': 'Нав',
   'meta_not_connected':
       'Каналҳо пайваст нестанд: аз ин ҷо ҳоло ба мизоҷ навиштан мумкин нест. Онҳоро соҳиби шабака дар бахши «Шабака» пайваст мекунад.',
   'meta_broken': '{channel} ҳоло кор намекунад. {error}',

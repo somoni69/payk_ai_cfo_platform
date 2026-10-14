@@ -104,11 +104,21 @@ class MetaThread {
     assigneeId: clearAssignee ? null : (assigneeId ?? this.assigneeId),
   );
 
-  String get displayName => (peerName != null && peerName!.trim().isNotEmpty)
-      ? peerName!.trim()
-      : (clientName != null && clientName!.trim().isNotEmpty)
-      ? clientName!.trim()
-      : peerId;
+  /// CRM name, then the name from the channel, then the phone.
+  String get namedTitle {
+    for (final raw in [clientName, peerName, peerPhone]) {
+      final value = raw?.trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  String titleOr(String fallback) {
+    final name = namedTitle;
+    return name.isEmpty ? fallback : name;
+  }
+
+  String get displayName => titleOr(peerId);
 }
 
 class MetaAttachment {
@@ -227,6 +237,7 @@ class MetaComment {
   final String? mediaType;
   final String? mediaPermalink;
   final String? mediaCaption;
+  final String? mediaThumb;
   final DateTime createdAt;
   final DateTime? seenAt;
   final DateTime? repliedAt;
@@ -244,6 +255,7 @@ class MetaComment {
     this.mediaType,
     this.mediaPermalink,
     this.mediaCaption,
+    this.mediaThumb,
     this.seenAt,
     this.repliedAt,
     this.replyText,
@@ -263,6 +275,7 @@ class MetaComment {
       mediaType: json['media_type']?.toString(),
       mediaPermalink: json['media_permalink']?.toString(),
       mediaCaption: json['media_caption']?.toString(),
+      mediaThumb: json['media_thumb']?.toString(),
       createdAt:
           DateTime.tryParse('${json['created_at']}') ??
           DateTime.fromMillisecondsSinceEpoch(0),

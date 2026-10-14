@@ -116,6 +116,7 @@ const Map<String, String> kRussianCatalog = {
   'assistant_q3': 'На что обратить внимание?',
   'more_meta': 'Чаты Meta',
   'meta_title': 'Чаты Meta',
+  'meta_tab_dialogs': 'Диалоги',
   'meta_tab_comments': 'Комментарии',
   'meta_tab_funnel': 'Воронка',
   'meta_comments_hint':
@@ -147,6 +148,14 @@ const Map<String, String> kRussianCatalog = {
   'meta_funnel_none': 'Не назначен',
   'meta_funnel_empty': 'Пусто',
   'meta_funnel_saved': 'Сохранено',
+  'meta_funnel_search': 'Имя, телефон или @',
+  'meta_funnel_call': 'Позвонить',
+  'meta_funnel_open': 'Открыть диалог',
+  'meta_funnel_prev': 'Предыдущий этап',
+  'meta_funnel_next': 'Следующий этап',
+  'meta_unnamed': 'Без имени',
+  'meta_empty_preview': 'Нет сообщений',
+  'meta_comments_unseen': 'Новый',
   'meta_not_connected':
       'Каналы не подключены: писать клиентам отсюда пока нельзя. Их подключает владелец сети в разделе «Сеть».',
   'meta_broken': '{channel} сейчас не работает. {error}',

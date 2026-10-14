@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/theme/theme_extensions.dart';
+import '../../../presentation/widgets/image_cache_extent.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
 
@@ -43,11 +45,13 @@ class _MetaCommentsScreenState extends State<MetaCommentsScreen> {
 
   MetaRepository get _repo => context.read<MetaRepository>();
 
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     try {
       final comments = await _repo.getComments(onlyNew: _onlyNew);
       final settings = await _repo.getCommentSettings();
@@ -151,7 +155,9 @@ class _MetaCommentsScreenState extends State<MetaCommentsScreen> {
                     ),
                   ),
                 ),
-              if (_settings != null && _settings!.connected)
+              if (_settings != null &&
+                  _settings!.connected &&
+                  _settings!.aiAvailable)
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(
@@ -187,26 +193,30 @@ class _MetaCommentsScreenState extends State<MetaCommentsScreen> {
           )
         else
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              itemCount: _comments.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final comment = _comments[index];
-                return _CommentCard(
-                  comment: comment,
-                  replying: _replyingId == comment.id,
-                  sending: _sending && _replyingId == comment.id,
-                  controller: _reply,
-                  onReply: () => setState(() => _replyingId = comment.id),
-                  onCancel: () => setState(() => _replyingId = null),
-                  onPublic: () => _send(direct: false),
-                  onDirect: () => _send(direct: true),
-                  onOpenThread: comment.dmThreadId == null
-                      ? null
-                      : () => widget.onOpenThread(comment.dmThreadId!),
-                );
-              },
+            child: RefreshIndicator(
+              onRefresh: () => _load(silent: true),
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                itemCount: _comments.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final comment = _comments[index];
+                  return _CommentCard(
+                    comment: comment,
+                    replying: _replyingId == comment.id,
+                    sending: _sending && _replyingId == comment.id,
+                    controller: _reply,
+                    onReply: () => setState(() => _replyingId = comment.id),
+                    onCancel: () => setState(() => _replyingId = null),
+                    onPublic: () => _send(direct: false),
+                    onDirect: () => _send(direct: true),
+                    onOpenThread: comment.dmThreadId == null
+                        ? null
+                        : () => widget.onOpenThread(comment.dmThreadId!),
+                  );
+                },
+              ),
             ),
           ),
       ],
@@ -285,28 +295,98 @@ class _CommentCard extends StatelessWidget {
       'STORY' => language.translate('meta_comments_story'),
       _ => language.translate('meta_comments_post'),
     };
+    final when = formatLocalizedDateTime(
+      context,
+      comment.createdAt,
+      style: LocalizedDateTimeStyle.dayMonthTime,
+    );
+    final thumb = comment.mediaThumb;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: colors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            kind,
-            style: textStyles.smallSans.copyWith(color: colors.textSecondary),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (thumb != null && thumb.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    thumb,
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                    cacheWidth: thumbCacheExtent(context, 44),
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      (comment.authorUsername ?? '').isEmpty
+                          ? kind
+                          : '@${comment.authorUsername}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textStyles.bodySans.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '$kind · $when',
+                      style: textStyles.smallSans.copyWith(
+                        color: colors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (comment.seenAt == null && comment.unanswered)
+                Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: colors.brand.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    language.translate('meta_comments_unseen'),
+                    style: textStyles.smallSans.copyWith(
+                      color: colors.brand,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          if ((comment.authorUsername ?? '').isNotEmpty)
-            Text(
-              '@${comment.authorUsername}',
-              style: textStyles.bodySans.copyWith(fontWeight: FontWeight.w700),
-            ),
+          const SizedBox(height: 8),
           Text(comment.text, style: textStyles.bodySans),
+          if ((comment.mediaCaption ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              comment.mediaCaption!.trim(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: textStyles.captionSans.copyWith(
+                color: colors.textSecondary,
+              ),
+            ),
+          ],
           if (comment.repliedAt != null) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
               comment.replyBy == null
                   ? language.translate('meta_comments_replied_ai')
@@ -330,6 +410,7 @@ class _CommentCard extends StatelessWidget {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
+            runSpacing: 4,
             children: [
               if (comment.mediaPermalink != null)
                 TextButton(
@@ -344,37 +425,47 @@ class _CommentCard extends StatelessWidget {
                   onPressed: onOpenThread,
                   child: Text(language.translate('meta_comments_open_dialog')),
                 ),
-              if (!replying && comment.unanswered)
-                TextButton(
-                  onPressed: onReply,
-                  child: Text(language.translate('meta_comments_reply')),
-                ),
             ],
           ),
+          if (!replying && comment.unanswered)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: onReply,
+                child: Text(language.translate('meta_comments_reply')),
+              ),
+            ),
           if (replying) ...[
             TextField(
               controller: controller,
-              minLines: 1,
+              minLines: 2,
               maxLines: 4,
               decoration: InputDecoration(
                 hintText: language.translate('meta_comments_reply_ph'),
               ),
             ),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: sending ? null : onCancel,
-                  child: Text(language.translate('meta_comments_cancel')),
-                ),
-                TextButton(
-                  onPressed: sending ? null : onPublic,
-                  child: Text(language.translate('meta_comments_public')),
-                ),
-                TextButton(
-                  onPressed: sending || !comment.dmAllowed ? null : onDirect,
-                  child: Text(language.translate('meta_comments_dm')),
-                ),
-              ],
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: sending ? null : onPublic,
+                child: Text(language.translate('meta_comments_public')),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: sending || !comment.dmAllowed ? null : onDirect,
+                child: Text(language.translate('meta_comments_dm')),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: sending ? null : onCancel,
+                child: Text(language.translate('meta_comments_cancel')),
+              ),
             ),
             if (!comment.dmAllowed)
               Text(
