@@ -363,6 +363,197 @@ class ApiMetaRepository implements MetaRepository {
       throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
     }
   }
+
+  @override
+  Future<MetaAnalytics> getAnalytics({
+    required DateTime since,
+    required DateTime until,
+    String? channel,
+    String? assignee,
+  }) async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/meta/analytics',
+        queryParameters: {
+          'since': since.toUtc().toIso8601String(),
+          'until': until.toUtc().toIso8601String(),
+          if (channel != null && channel.isNotEmpty) 'channel': channel,
+          if (assignee != null && assignee.isNotEmpty) 'assignee': assignee,
+        },
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return MetaAnalytics.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<ThreadCard> getThreadCard(int threadId) async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/meta/threads/$threadId/card',
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadCard.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<List<CardHistoryEntry>> getThreadHistory(int threadId) async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/meta/threads/$threadId/history',
+      );
+      final raw = response.data;
+      if (raw is! List) return const [];
+      return [
+        for (final item in raw.whereType<Map>())
+          CardHistoryEntry.fromJson(Map<String, dynamic>.from(item)),
+      ];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<ThreadCard> updateCardClient(
+    int threadId,
+    CardClientInput input,
+  ) async {
+    try {
+      final response = await _apiClient.dio.put<dynamic>(
+        '/meta/threads/$threadId/client',
+        data: input.toJson(),
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadCard.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<ThreadCard> createCardDeal(
+    int threadId, {
+    required String title,
+    required String amount,
+    required String stage,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/meta/threads/$threadId/deals',
+        data: {'title': title, 'amount': amount, 'stage': stage},
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadCard.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<ThreadCard> updateCardDeal(
+    int threadId,
+    int dealId,
+    String stage,
+  ) async {
+    try {
+      final response = await _apiClient.dio.patch<dynamic>(
+        '/meta/threads/$threadId/deals/$dealId',
+        data: {'stage': stage},
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadCard.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<ThreadCard> rejectThread(int threadId, String? reason) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/meta/threads/$threadId/reject',
+        data: {'reason': reason},
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadCard.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<List<ThreadTask>> getThreadTasks(int threadId) async {
+    try {
+      final response = await _apiClient.dio.get<dynamic>(
+        '/meta/threads/$threadId/tasks',
+      );
+      final raw = response.data;
+      if (raw is! List) return const [];
+      return [
+        for (final item in raw.whereType<Map>())
+          ThreadTask.fromJson(Map<String, dynamic>.from(item)),
+      ];
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+    }
+  }
+
+  @override
+  Future<ThreadTask> createThreadTask(
+    int threadId, {
+    required String title,
+    String? dueDate,
+    int? assigneeId,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/meta/threads/$threadId/tasks',
+        data: {
+          'title': title,
+          'due_date': dueDate,
+          'assignee_id': assigneeId,
+        },
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadTask.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
+
+  @override
+  Future<ThreadTask> finishThreadTask(int threadId, int taskId) async {
+    try {
+      final response = await _apiClient.dio.post<dynamic>(
+        '/meta/threads/$threadId/tasks/$taskId/done',
+      );
+      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      return ThreadTask.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } catch (e) {
+      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+    }
+  }
 }
 
 /// REST and WebSocket share this dialog shape (`services/chat_events.py`).
@@ -406,6 +597,8 @@ MetaThread? metaThreadFromJson(dynamic raw) {
     peerReadAt: _dateOrNull(map['peer_read_at']),
     stageId: _jsonInt(map['stage_id']),
     assigneeId: _jsonInt(map['assignee_id']),
+    tasksOpen: _jsonInt(map['tasks_open']) ?? 0,
+    createdAt: _dateOrNull(map['created_at']),
   );
 }
 

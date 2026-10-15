@@ -227,6 +227,56 @@ class _Repo implements MetaRepository {
   @override
   Future<CommentSettings> setCommentAi(bool enabled) =>
       throw UnimplementedError();
+
+  @override
+  Future<MetaAnalytics> getAnalytics({
+    required DateTime since,
+    required DateTime until,
+    String? channel,
+    String? assignee,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> getThreadCard(int threadId) => throw UnimplementedError();
+
+  @override
+  Future<List<CardHistoryEntry>> getThreadHistory(int threadId) async =>
+      const [];
+
+  @override
+  Future<ThreadCard> updateCardClient(int threadId, CardClientInput input) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> createCardDeal(
+    int threadId, {
+    required String title,
+    required String amount,
+    required String stage,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> updateCardDeal(int threadId, int dealId, String stage) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> rejectThread(int threadId, String? reason) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<ThreadTask>> getThreadTasks(int threadId) async => const [];
+
+  @override
+  Future<ThreadTask> createThreadTask(
+    int threadId, {
+    required String title,
+    String? dueDate,
+    int? assigneeId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ThreadTask> finishThreadTask(int threadId, int taskId) =>
+      throw UnimplementedError();
 }
 
 Map<String, dynamic> _thread(int id, {String channel = 'instagram'}) => {

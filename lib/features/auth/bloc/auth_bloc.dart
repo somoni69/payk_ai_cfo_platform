@@ -176,6 +176,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         event.username.trim(),
         event.password,
         storeId: event.storeId,
+        asOwner: event.asOwner,
       );
       switch (result) {
         case LoginSuccess(:final user):
@@ -189,6 +190,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           _cancelSessionWatchdog();
           emit(challenge);
       }
+    } on ChooseStoreRequired catch (e) {
+      _cancelSessionWatchdog();
+      emit(AuthChooseStore(e.choices));
     } catch (e) {
       _cancelSessionWatchdog();
       emit(AuthError(userFacingError(e, fallback: ErrorKeys.loginFailed)));

@@ -33,6 +33,7 @@ class MockAuthRepository implements ApiAuthRepository {
     String username,
     String password, {
     int? storeId,
+    bool asOwner = false,
   }) async {
     lastLoginUsername = username;
     lastLoginPassword = password;

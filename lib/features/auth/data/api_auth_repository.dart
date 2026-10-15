@@ -15,6 +15,28 @@ export '../domain/auth_repository.dart';
 export '../domain/auth_user.dart';
 export '../domain/user_role.dart';
 
+/// Same login and password matched more than one account.
+class ChooseStoreRequired implements Exception {
+  final List<LoginChoice> choices;
+
+  const ChooseStoreRequired(this.choices);
+}
+
+/// Reads a 409 `{code: choose_store, stores: [...]}` body. Null for other errors.
+List<LoginChoice>? loginChoicesFromError(DioException error) {
+  if (error.response?.statusCode != 409) return null;
+  final data = error.response?.data;
+  if (data is! Map) return null;
+  final detail = data['detail'];
+  if (detail is! Map || detail['code'] != 'choose_store') return null;
+  final stores = detail['stores'];
+  if (stores is! List) return null;
+  return [
+    for (final item in stores.whereType<Map>())
+      LoginChoice.fromJson(Map<String, dynamic>.from(item)),
+  ];
+}
+
 /// Outcome of [ApiAuthRepository.login] / [ApiAuthRepository.verifyTwoFactor].
 sealed class LoginResult {
   const LoginResult();
@@ -84,14 +106,17 @@ class ApiAuthRepository implements AuthRepository {
     }
   }
 
-  /// Login with username/password and optional storeId.
+  /// Login with username/password.
   ///
+  /// The store is resolved by the server. [storeId] and [asOwner] are sent only
+  /// after a 409 `choose_store` — the same login exists in several stores.
   /// May return [LoginTwoFactorRequired] when SMS 2FA is enabled for the user.
   @override
   Future<LoginResult> login(
     String username,
     String password, {
     int? storeId,
+    bool asOwner = false,
   }) async {
     try {
       final response = await _apiClient.dio.post(
@@ -100,6 +125,7 @@ class ApiAuthRepository implements AuthRepository {
           'username': username,
           'password': password,
           'store_id': ?storeId,
+          if (asOwner) 'as_owner': true,
         },
         options: Options(
           extra: const <String, dynamic>{'skipUnauthorizedHandler': true},
@@ -107,7 +133,13 @@ class ApiAuthRepository implements AuthRepository {
       );
 
       return await _parseLoginBody(response.data, fallbackUsername: username);
+    } on ChooseStoreRequired {
+      rethrow;
     } on DioException catch (error) {
+      final choices = loginChoicesFromError(error);
+      if (choices != null && choices.isNotEmpty) {
+        throw ChooseStoreRequired(choices);
+      }
       throw AuthFailure(
         translationKey: _loginErrorKey(error),
         debugMessage: error.message,

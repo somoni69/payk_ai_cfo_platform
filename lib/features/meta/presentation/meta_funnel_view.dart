@@ -24,17 +24,21 @@ Color metaStageColor(String hex, Color fallback) {
   return Color(value);
 }
 
-/// Dialogs grouped by funnel stage. Tapping a card opens the chat.
+/// Dialogs grouped by funnel stage. Tapping a card opens the client card.
 class MetaFunnelView extends StatefulWidget {
   const MetaFunnelView({
     super.key,
     required this.threads,
     required this.onOpen,
+    required this.onCard,
     required this.onMoved,
   });
 
   final List<MetaThread> threads;
   final ValueChanged<MetaThread> onOpen;
+
+  /// Funnel card tap: [tab] 0 is the client profile, 1 is events.
+  final void Function(MetaThread thread, int tab) onCard;
 
   /// Inbox should reload after a stage change so both panes stay in sync.
   final Future<void> Function() onMoved;
@@ -304,6 +308,10 @@ class _MetaFunnelViewState extends State<MetaFunnelView> {
                             _stages.isNotEmpty &&
                             stageIndex < _stages.length - 1,
                         onOpen: () => widget.onOpen(thread),
+                        onCard: () => widget.onCard(thread, 0),
+                        onEvents: thread.tasksOpen > 0
+                            ? () => widget.onCard(thread, 1)
+                            : null,
                         onPrev: stageIndex > 0
                             ? () => _move(thread, _stages[stageIndex - 1].id)
                             : null,
@@ -323,12 +331,10 @@ class _MetaFunnelViewState extends State<MetaFunnelView> {
   }
 
   VoidCallback? _call(String? phone) {
-    final raw = phone?.trim() ?? '';
-    final digits = raw.replaceAll(RegExp(r'[^\d+]'), '');
-    if (digits.length < 6) return null;
-    final normalized = digits.startsWith('+') ? digits : '+$digits';
+    final href = phoneHref(phone);
+    if (href == null) return null;
     return () {
-      launchUrl(Uri.parse('tel:$normalized'));
+      launchUrl(Uri.parse(href));
     };
   }
 }
@@ -396,6 +402,8 @@ class _FunnelCard extends StatelessWidget {
     required this.canPrev,
     required this.canNext,
     required this.onOpen,
+    required this.onCard,
+    this.onEvents,
     this.onPrev,
     this.onNext,
     this.onCall,
@@ -409,6 +417,8 @@ class _FunnelCard extends StatelessWidget {
   final bool canPrev;
   final bool canNext;
   final VoidCallback onOpen;
+  final VoidCallback onCard;
+  final VoidCallback? onEvents;
   final VoidCallback? onPrev;
   final VoidCallback? onNext;
   final VoidCallback? onCall;
@@ -437,7 +447,7 @@ class _FunnelCard extends StatelessWidget {
         side: BorderSide(color: colors.border),
       ),
       child: InkWell(
-        onTap: onOpen,
+        onTap: onCard,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
@@ -482,6 +492,22 @@ class _FunnelCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (thread.tasksOpen > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: TextButton(
+                        onPressed: onEvents,
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          '${language.translate('meta_funnel_events')} ${thread.tasksOpen}',
+                        ),
+                      ),
+                    ),
                   if (thread.unread > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(

@@ -25,7 +25,9 @@ import '../data/chat_live_client.dart';
 import '../cubit/meta_cubit.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
+import 'meta_analytics_view.dart';
 import 'meta_chat_widgets.dart';
+import 'meta_client_card.dart';
 import 'meta_comments_screen.dart';
 import 'meta_funnel_view.dart';
 
@@ -493,11 +495,27 @@ class _MetaScreenViewState extends State<_MetaScreenView> {
                     onOpen: (thread) {
                       context.read<MetaCubit>().selectThread(thread);
                     },
+                    onCard: (thread, tab) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => MetaClientCardScreen(
+                            thread: thread,
+                            initialTab: tab,
+                            onOpenChat: () {
+                              Navigator.of(context).pop();
+                              context.read<MetaCubit>().selectThread(thread);
+                            },
+                          ),
+                        ),
+                      );
+                    },
                     onMoved: () async {
                       await context.read<MetaCubit>().load(silent: true);
                       await _loadStages();
                     },
                   )
+                : _pane == 'analytics'
+                ? const MetaAnalyticsView()
                 : _buildThreadList(
                     context,
                     state,
@@ -963,31 +981,32 @@ class _MetaModeBar extends StatelessWidget {
       (null, language.translate('meta_tab_dialogs')),
       ('comments', language.translate('meta_tab_comments')),
       ('funnel', language.translate('meta_tab_funnel')),
+      ('analytics', language.translate('meta_tab_analytics')),
     ];
     return SizedBox(
       height: 44,
-      child: Row(
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         children: [
           for (final item in items)
-            Expanded(
-              child: InkWell(
-                onTap: () => onChanged(item.$1),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: pane == item.$1
-                            ? colors.brand
-                            : Colors.transparent,
-                        width: 2,
-                      ),
+            InkWell(
+              onTap: () => onChanged(item.$1),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: pane == item.$1 ? colors.brand : Colors.transparent,
+                      width: 2,
                     ),
                   ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Center(
                     child: Text(
                       item.$2,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
                       style: context.textStyles.captionSans.copyWith(
                         color: pane == item.$1
                             ? colors.brand

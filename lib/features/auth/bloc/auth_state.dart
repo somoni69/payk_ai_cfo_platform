@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../network/domain/network_models.dart';
 import '../domain/user_role.dart';
 
 export '../domain/user_role.dart';
@@ -104,6 +105,16 @@ class AuthTwoFactorRequired extends AuthState {
 }
 
 class AuthUnauthenticated extends AuthState {}
+
+/// The same login and password exist in more than one store.
+class AuthChooseStore extends AuthState {
+  final List<LoginChoice> choices;
+
+  const AuthChooseStore(this.choices);
+
+  @override
+  List<Object?> get props => [choices];
+}
 
 class AuthError extends AuthState {
   /// Localization key or legacy Russian message (resolved via translate / translateMessage).

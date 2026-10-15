@@ -107,9 +107,69 @@ class _FakeMetaRepository implements MetaRepository {
   @override
   Future<CommentSettings> setCommentAi(bool enabled) =>
       throw UnimplementedError();
+
+  @override
+  Future<MetaAnalytics> getAnalytics({
+    required DateTime since,
+    required DateTime until,
+    String? channel,
+    String? assignee,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> getThreadCard(int threadId) => throw UnimplementedError();
+
+  @override
+  Future<List<CardHistoryEntry>> getThreadHistory(int threadId) async =>
+      const [];
+
+  @override
+  Future<ThreadCard> updateCardClient(int threadId, CardClientInput input) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> createCardDeal(
+    int threadId, {
+    required String title,
+    required String amount,
+    required String stage,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> updateCardDeal(int threadId, int dealId, String stage) =>
+      throw UnimplementedError();
+
+  @override
+  Future<ThreadCard> rejectThread(int threadId, String? reason) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<ThreadTask>> getThreadTasks(int threadId) async => const [];
+
+  @override
+  Future<ThreadTask> createThreadTask(
+    int threadId, {
+    required String title,
+    String? dueDate,
+    int? assigneeId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ThreadTask> finishThreadTask(int threadId, int taskId) =>
+      throw UnimplementedError();
 }
 
 void main() {
+  test('local nine-digit numbers keep no plus and dial +992', () {
+    expect(displayPhone('801600004'), '801600004');
+    expect(displayPhone('992911050527'), '+992911050527');
+    expect(displayPhone('+992911050527'), '+992911050527');
+    expect(phoneHref('801600004'), 'tel:+992801600004');
+    expect(phoneHref('992911050527'), 'tel:+992911050527');
+    expect(phoneHref('+992 91 105 05 27'), 'tel:+992911050527');
+    expect(phoneHref('  '), isNull);
+  });
+
   test('MetaPlace parses the store point and rejects broken values', () {
     final place = MetaPlace.fromJson({'lat': 38.5, 'lng': 68.7, 'label': ' '});
     expect(place?.lat, 38.5);

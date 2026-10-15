@@ -41,4 +41,32 @@ abstract class MetaRepository {
   Future<void> markCommentsSeen();
   Future<CommentSettings> getCommentSettings();
   Future<CommentSettings> setCommentAi(bool enabled);
+
+  Future<MetaAnalytics> getAnalytics({
+    required DateTime since,
+    required DateTime until,
+    String? channel,
+    String? assignee,
+  });
+
+  Future<ThreadCard> getThreadCard(int threadId);
+  Future<List<CardHistoryEntry>> getThreadHistory(int threadId);
+  Future<ThreadCard> updateCardClient(int threadId, CardClientInput input);
+  Future<ThreadCard> createCardDeal(
+    int threadId, {
+    required String title,
+    required String amount,
+    required String stage,
+  });
+  Future<ThreadCard> updateCardDeal(int threadId, int dealId, String stage);
+  Future<ThreadCard> rejectThread(int threadId, String? reason);
+
+  Future<List<ThreadTask>> getThreadTasks(int threadId);
+  Future<ThreadTask> createThreadTask(
+    int threadId, {
+    required String title,
+    String? dueDate,
+    int? assigneeId,
+  });
+  Future<ThreadTask> finishThreadTask(int threadId, int taskId);
 }

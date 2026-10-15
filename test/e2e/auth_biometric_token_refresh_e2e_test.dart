@@ -17,6 +17,7 @@ class E2EAuthRepository implements ApiAuthRepository {
     String username,
     String password, {
     int? storeId,
+    bool asOwner = false,
   }) async {
     final user = AuthUser(
       id: 100,

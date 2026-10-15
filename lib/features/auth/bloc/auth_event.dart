@@ -12,15 +12,19 @@ class LoginSubmitted extends AuthEvent {
   final String password;
   final int? storeId;
 
+  /// Explicit «network owner» when the same password matches several accounts.
+  final bool asOwner;
+
   const LoginSubmitted({
     required this.username,
     required this.password,
     this.storeId,
+    this.asOwner = false,
   });
 
   @override
   // Passwords must never be included in Equatable's diagnostic output.
-  List<Object?> get props => [username, storeId];
+  List<Object?> get props => [username, storeId, asOwner];
 }
 
 /// SMS code for an in-progress 2FA challenge ([AuthTwoFactorRequired]).

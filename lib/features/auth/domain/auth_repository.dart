@@ -6,8 +6,14 @@ abstract interface class AuthRepository {
   /// Fetches the public list of active stores for login screen.
   Future<List<LoginStore>> fetchLoginStores();
 
-  /// Login with username/password and optional storeId.
-  Future<LoginResult> login(String username, String password, {int? storeId});
+  /// Login with username/password. Store is optional and used only when the
+  /// server cannot tell the accounts apart.
+  Future<LoginResult> login(
+    String username,
+    String password, {
+    int? storeId,
+    bool asOwner = false,
+  });
 
   /// Completes an SMS 2FA challenge started by [login].
   Future<LoginResult> verifyTwoFactor({

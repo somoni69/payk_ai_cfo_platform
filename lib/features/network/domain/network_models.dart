@@ -28,6 +28,35 @@ class LoginStore extends Equatable {
   List<Object?> get props => [id, name, location];
 }
 
+/// One account the server could not tell apart at login (`409 choose_store`).
+class LoginChoice extends Equatable {
+  final int? id;
+  final String name;
+  final String? location;
+  final bool owner;
+
+  const LoginChoice({
+    required this.name,
+    this.id,
+    this.location,
+    this.owner = false,
+  });
+
+  factory LoginChoice.fromJson(Map<String, dynamic> json) {
+    return LoginChoice(
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse('${json['id']}'),
+      name: (json['name'] as String?)?.trim() ?? '',
+      location: (json['location'] as String?)?.trim(),
+      owner: json['owner'] == true,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, name, location, owner];
+}
+
 /// Магазин сети в панели управления владельца.
 class NetworkStore extends Equatable {
   final int id;

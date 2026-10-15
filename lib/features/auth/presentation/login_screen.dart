@@ -35,8 +35,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final BiometricService _biometricService = BiometricService();
   BiometricKind _biometricKind = BiometricKind.none;
 
-  List<LoginStore> _stores = const [];
-  int? _selectedStoreId;
+  List<LoginChoice> _choices = const [];
+  String? _choiceKey;
 
   bool _obscurePassword = true;
   bool _hasSavedSession = false;
@@ -48,8 +48,16 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _loadStores();
+    _usernameController.addListener(_onUsernameChanged);
     _checkBiometrics();
+  }
+
+  void _onUsernameChanged() {
+    if (!mounted || _choices.isEmpty) return;
+    setState(() {
+      _choices = const [];
+      _choiceKey = null;
+    });
   }
 
   Future<void> _checkBiometrics() async {
@@ -68,19 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e, st) {
       // Without biometrics the manual form stays, which is the safe default.
       AppErrorReporter.reportOptional(e, st, context: 'login_biometrics');
-    }
-  }
-
-  Future<void> _loadStores() async {
-    try {
-      final stores = await ApiAuthRepository().fetchLoginStores();
-      if (!mounted) return;
-      setState(() {
-        _stores = stores;
-      });
-    } catch (e, st) {
-      // The store list only pre-fills a picker; login works without it.
-      AppErrorReporter.reportOptional(e, st, context: 'login_stores');
     }
   }
 
@@ -130,6 +125,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   backgroundColor: colors.accentRed,
                 ),
               );
+            }
+            if (state is AuthChooseStore && state.choices.isNotEmpty) {
+              final first = state.choices.first;
+              setState(() {
+                _choices = state.choices;
+                _choiceKey = first.owner || first.id == null
+                    ? 'owner'
+                    : '${first.id}';
+                _showManualForm = true;
+              });
             }
             if (state is AuthTwoFactorRequired) {
               setState(() => _showTwoFactor = true);
@@ -592,17 +597,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
             ),
-            if (_stores.isNotEmpty) ...[
+            if (_choices.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
-                language.translate('login_store_label'),
+                language.translate('login_choose_store'),
                 style: textStyles.captionSans.copyWith(
                   color: colors.textSecondary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               const SizedBox(height: 6),
-              ExpansibleWidget<int?>.selection(
+              ExpansibleWidget<String>.selection(
                 cardPadding: EdgeInsets.zero,
                 tilePadding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -618,19 +623,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _selectedStoreId == null
-                            ? language.translate('login_store_root_owner')
-                            : (_stores
-                                      .where((s) => s.id == _selectedStoreId)
-                                      .map(
-                                        (s) =>
-                                            s.location != null &&
-                                                s.location!.isNotEmpty
-                                            ? '${s.name} · ${s.location}'
-                                            : s.name,
-                                      )
-                                      .firstOrNull ??
-                                  language.translate('login_store_root_owner')),
+                        _choiceLabel(language),
                         style: textStyles.bodySans.copyWith(
                           fontWeight: FontWeight.w500,
                         ),
@@ -640,21 +633,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ],
                 ),
-                items: [null, ..._stores.map((s) => s.id)],
-                selectedValue: _selectedStoreId,
+                items: [for (final choice in _choices) _choiceId(choice)],
+                selectedValue: _choiceKey,
                 itemLabelBuilder: (id) {
-                  if (id == null) {
-                    return language.translate('login_store_root_owner');
+                  for (final choice in _choices) {
+                    if (_choiceId(choice) == id) {
+                      return _labelFor(choice, language);
+                    }
                   }
-                  final s = _stores.where((x) => x.id == id).firstOrNull;
-                  if (s == null) return '#$id';
-                  return s.location != null && s.location!.isNotEmpty
-                      ? '${s.name} (${s.location})'
-                      : s.name;
+                  return id;
                 },
                 onSelected: isLoading
                     ? null
-                    : (val) => setState(() => _selectedStoreId = val),
+                    : (val) => setState(() => _choiceKey = val),
               ),
             ],
             const SizedBox(height: 16),
@@ -872,13 +863,36 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _submitPassword(BuildContext context) {
     if (!_formKey.currentState!.validate()) return;
+    final choosing = _choices.isNotEmpty;
+    final asOwner = choosing && _choiceKey == 'owner';
     context.read<AuthBloc>().add(
       LoginSubmitted(
         username: _usernameController.text,
         password: _passwordController.text,
-        storeId: _selectedStoreId,
+        storeId: choosing && !asOwner ? int.tryParse(_choiceKey ?? '') : null,
+        asOwner: asOwner,
       ),
     );
+  }
+
+  String _choiceId(LoginChoice choice) =>
+      choice.owner || choice.id == null ? 'owner' : '${choice.id}';
+
+  String _labelFor(LoginChoice choice, LanguageCubit language) {
+    if (choice.owner || choice.id == null) {
+      return language.translate('login_store_root_owner');
+    }
+    if (choice.location != null && choice.location!.isNotEmpty) {
+      return '${choice.name} (${choice.location})';
+    }
+    return choice.name;
+  }
+
+  String _choiceLabel(LanguageCubit language) {
+    for (final choice in _choices) {
+      if (_choiceId(choice) == _choiceKey) return _labelFor(choice, language);
+    }
+    return language.translate('login_choose_store');
   }
 
   void _submitTwoFactor(BuildContext context) {
