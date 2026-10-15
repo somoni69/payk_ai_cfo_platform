@@ -376,11 +376,7 @@ class CardContact {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'phone': phone,
-    'note': note,
-  };
+  Map<String, dynamic> toJson() => {'name': name, 'phone': phone, 'note': note};
 }
 
 class CardClient {
@@ -587,9 +583,7 @@ class CardHistoryEntry {
       at: _metaDate(json['at']),
       user: json['user']?.toString(),
       action: (json['action'] ?? '').toString(),
-      changes: changes is Map
-          ? Map<String, dynamic>.from(changes)
-          : const {},
+      changes: changes is Map ? Map<String, dynamic>.from(changes) : const {},
     );
   }
 }
@@ -801,10 +795,7 @@ class MetaAnalytics {
   }
 }
 
-List<T> _metaList<T>(
-  Object? raw,
-  T Function(Map<String, dynamic> json) parse,
-) {
+List<T> _metaList<T>(Object? raw, T Function(Map<String, dynamic> json) parse) {
   if (raw is! List) return const [];
   return [
     for (final item in raw.whereType<Map>())

@@ -97,8 +97,8 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
         _history = history;
         _tasks = tasks;
         _staff = staff;
-        _taskAssignee ??= widget.thread.assigneeId ??
-            (staff.isEmpty ? null : staff.first.id);
+        _taskAssignee ??=
+            widget.thread.assigneeId ?? (staff.isEmpty ? null : staff.first.id);
         _loading = false;
         _error = null;
       });
@@ -167,9 +167,9 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
 
   void _snack(String key) {
     final language = context.read<LanguageCubit>();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(language.translate(key))),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(language.translate(key))));
   }
 
   Future<void> _pickBirthday() async {
@@ -202,9 +202,8 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
                 for (final key in _rejectReasons)
                   ActionChip(
                     label: Text(language.translate('meta_reason_$key')),
-                    onPressed: () => reason.text = language.translate(
-                      'meta_reason_$key',
-                    ),
+                    onPressed: () =>
+                        reason.text = language.translate('meta_reason_$key'),
                   ),
               ],
             ),
@@ -506,7 +505,9 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
         const SizedBox(height: 8),
         Text(
           language.translate('meta_card_contacts'),
-          style: context.textStyles.bodySans.copyWith(fontWeight: FontWeight.w700),
+          style: context.textStyles.bodySans.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         if (_contacts.isEmpty)
           Padding(
@@ -560,7 +561,9 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
         const SizedBox(height: 20),
         Text(
           language.translate('meta_card_history'),
-          style: context.textStyles.bodySans.copyWith(fontWeight: FontWeight.w700),
+          style: context.textStyles.bodySans.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         if (_history.isEmpty)
           Padding(
@@ -679,7 +682,9 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
         const Divider(),
         Text(
           language.translate('meta_tasks_new'),
-          style: context.textStyles.bodySans.copyWith(fontWeight: FontWeight.w700),
+          style: context.textStyles.bodySans.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
         ),
         TextField(
           controller: _taskTitle,
@@ -747,7 +752,11 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
             contentPadding: EdgeInsets.zero,
             title: Text(deal.title),
             subtitle: Text(
-              formatLocalizedNumber(context, deal.amount, maximumFractionDigits: 0),
+              formatLocalizedNumber(
+                context,
+                deal.amount,
+                maximumFractionDigits: 0,
+              ),
             ),
             trailing: DropdownButton<String>(
               value: _dealStages.contains(deal.stage) ? deal.stage : 'lead',
@@ -790,7 +799,11 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
               color: context.colors.textSecondary,
             ),
           ),
-          MetaAttachments(items: file.attachments, outgoing: file.outgoing, text: file.text),
+          MetaAttachments(
+            items: file.attachments,
+            outgoing: file.outgoing,
+            text: file.text,
+          ),
           const SizedBox(height: 12),
         ],
       ],
@@ -804,9 +817,10 @@ class _MetaClientCardScreenState extends State<MetaClientCardScreen>
       'thread_assign' => 'meta_history_assign',
       'reply' => 'meta_history_reply',
       'link' => 'meta_history_link',
-      'client_info' => changes['created'] == true
-          ? 'meta_history_client_created'
-          : 'meta_history_client_info',
+      'client_info' =>
+        changes['created'] == true
+            ? 'meta_history_client_created'
+            : 'meta_history_client_info',
       'deal_create' => 'meta_history_deal_create',
       'deal_stage' => 'meta_history_deal_stage',
       'thread_reject' => 'meta_history_reject',

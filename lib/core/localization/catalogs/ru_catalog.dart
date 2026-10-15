@@ -2181,7 +2181,8 @@ const Map<String, String> kRussianCatalog = {
   'tasks_project_desc_label': 'Описание (опционально)',
   'network_entered': 'Вход в магазин выполнен',
   'network_left': 'Возврат в корень сети выполнен',
-  'login_choose_store': 'Этот логин есть в нескольких магазинах — выберите, куда войти',
+  'login_choose_store':
+      'Этот логин есть в нескольких магазинах — выберите, куда войти',
   'login_store_label': 'Магазин',
   'login_store_root_owner': 'Владелец сети',
   'more_branch_label': 'Филиал / Магазин',

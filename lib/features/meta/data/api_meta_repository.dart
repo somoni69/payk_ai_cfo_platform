@@ -525,11 +525,7 @@ class ApiMetaRepository implements MetaRepository {
     try {
       final response = await _apiClient.dio.post<dynamic>(
         '/meta/threads/$threadId/tasks',
-        data: {
-          'title': title,
-          'due_date': dueDate,
-          'assignee_id': assigneeId,
-        },
+        data: {'title': title, 'due_date': dueDate, 'assignee_id': assigneeId},
       );
       if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
       return ThreadTask.fromJson(

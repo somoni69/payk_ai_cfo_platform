@@ -195,7 +195,8 @@ const Map<String, String> kTajikCatalog = {
   'meta_card_events': 'Ҳодисаҳо',
   'meta_card_deals': 'Сделкаҳо',
   'meta_card_files': 'Файлҳо',
-  'meta_card_not_in_crm': 'Ҳанӯз дар CRM нест — ҳангоми аввалин сабт эҷод мешавад',
+  'meta_card_not_in_crm':
+      'Ҳанӯз дар CRM нест — ҳангоми аввалин сабт эҷод мешавад',
   'meta_card_name': 'Номи мизоҷ',
   'meta_card_phone': 'Телефон',
   'meta_card_region': 'Минтақа',
@@ -2187,7 +2188,8 @@ const Map<String, String> kTajikCatalog = {
   'tasks_project_desc_label': 'Тавсиф (ихтиёрӣ)',
   'network_entered': 'Даромад ба мағоза иҷро шуд',
   'network_left': 'Бозгашт ба решаи шабака иҷро шуд',
-  'login_choose_store': 'Ин логин дар чанд мағоза ҳаст — интихоб кунед, ба куҷо дароед',
+  'login_choose_store':
+      'Ин логин дар чанд мағоза ҳаст — интихоб кунед, ба куҷо дароед',
   'login_store_label': 'Мағоза',
   'login_store_root_owner': 'Соҳиби шабака',
   'more_branch_label': 'Филиал / Мағоза',

@@ -44,9 +44,7 @@ class LoginChoice extends Equatable {
 
   factory LoginChoice.fromJson(Map<String, dynamic> json) {
     return LoginChoice(
-      id: json['id'] is int
-          ? json['id'] as int
-          : int.tryParse('${json['id']}'),
+      id: json['id'] is int ? json['id'] as int : int.tryParse('${json['id']}'),
       name: (json['name'] as String?)?.trim() ?? '',
       location: (json['location'] as String?)?.trim(),
       owner: json['owner'] == true,

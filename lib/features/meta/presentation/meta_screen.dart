@@ -996,7 +996,9 @@ class _MetaModeBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: pane == item.$1 ? colors.brand : Colors.transparent,
+                      color: pane == item.$1
+                          ? colors.brand
+                          : Colors.transparent,
                       width: 2,
                     ),
                   ),

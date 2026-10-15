@@ -45,14 +45,8 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
     final now = DateTime.now();
     final tomorrow = DateTime(now.year, now.month, now.day + 1);
     return switch (_preset) {
-      'thisYear' => (
-        since: DateTime(now.year),
-        until: DateTime(now.year + 1),
-      ),
-      'lastYear' => (
-        since: DateTime(now.year - 1),
-        until: DateTime(now.year),
-      ),
+      'thisYear' => (since: DateTime(now.year), until: DateTime(now.year + 1)),
+      'lastYear' => (since: DateTime(now.year - 1), until: DateTime(now.year)),
       'year' => (
         since: DateTime(now.year - 1, now.month, now.day),
         until: tomorrow,
@@ -69,7 +63,10 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
         since: DateTime(now.year, now.month, now.day - 7),
         until: tomorrow,
       ),
-      _ => (since: DateTime(now.year, now.month), until: DateTime(now.year, now.month + 1)),
+      _ => (
+        since: DateTime(now.year, now.month),
+        until: DateTime(now.year, now.month + 1),
+      ),
     };
   }
 
@@ -195,7 +192,10 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
                         context,
                         language.translate('meta_analytics_sources'),
                         data.sources.isEmpty
-                            ? _muted(context, language.translate('meta_analytics_empty'))
+                            ? _muted(
+                                context,
+                                language.translate('meta_analytics_empty'),
+                              )
                             : Column(
                                 children: [
                                   for (final source in data.sources)
@@ -214,7 +214,10 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
                         context,
                         language.translate('meta_analytics_stages'),
                         data.stages.isEmpty
-                            ? _muted(context, language.translate('meta_analytics_empty'))
+                            ? _muted(
+                                context,
+                                language.translate('meta_analytics_empty'),
+                              )
                             : Column(
                                 children: [
                                   for (final stage in data.stages)
@@ -222,7 +225,10 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
                                       context,
                                       stage.name,
                                       '${stage.count}',
-                                      dot: metaStageColor(stage.color, colors.brand),
+                                      dot: metaStageColor(
+                                        stage.color,
+                                        colors.brand,
+                                      ),
                                     ),
                                 ],
                               ),
@@ -234,7 +240,9 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
                         data.managers.isEmpty
                             ? _muted(
                                 context,
-                                language.translate('meta_analytics_no_managers'),
+                                language.translate(
+                                  'meta_analytics_no_managers',
+                                ),
                               )
                             : Column(
                                 children: [
@@ -267,7 +275,9 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
                             ),
                             _taskStat(
                               context,
-                              language.translate('meta_analytics_tasks_overdue'),
+                              language.translate(
+                                'meta_analytics_tasks_overdue',
+                              ),
                               data.tasks.overdue,
                               colors.accentRed,
                             ),
@@ -309,11 +319,7 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
     AnalyticsTotals totals,
   ) {
     final cards = [
-      (
-        'meta_analytics_leads',
-        '${totals.leads}',
-        totals.leadsChange,
-      ),
+      ('meta_analytics_leads', '${totals.leads}', totals.leadsChange),
       (
         'meta_analytics_conversion',
         _pct(totals.conversion),
@@ -322,7 +328,11 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
       ('meta_analytics_won', '${totals.won}', totals.wonChange),
       (
         'meta_analytics_revenue',
-        formatLocalizedNumber(context, totals.revenue, maximumFractionDigits: 0),
+        formatLocalizedNumber(
+          context,
+          totals.revenue,
+          maximumFractionDigits: 0,
+        ),
         totals.revenueChange,
       ),
     ];
@@ -495,7 +505,10 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
         children: [
           Text(
             '$value',
-            style: context.textStyles.h2Sans.copyWith(fontSize: 20, color: color),
+            style: context.textStyles.h2Sans.copyWith(
+              fontSize: 20,
+              color: color,
+            ),
           ),
           Text(
             label,
@@ -532,7 +545,9 @@ class _MetaAnalyticsViewState extends State<MetaAnalyticsView> {
       return '${(seconds / 60).round()} ${language.translate('meta_analytics_minutes')}';
     }
     final hours = seconds / 3600;
-    final text = hours >= 10 ? hours.round().toString() : hours.toStringAsFixed(1);
+    final text = hours >= 10
+        ? hours.round().toString()
+        : hours.toStringAsFixed(1);
     return '$text ${language.translate('meta_analytics_hours')}';
   }
 
