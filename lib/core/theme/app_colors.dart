@@ -22,6 +22,27 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
   /// Full-bleed camera screens (barcode scanner): backdrop behind the preview.
   final Color cameraBackdrop;
 
+  /// Floating glass bar: translucent fill over the blurred content.
+  final Color glassFill;
+
+  /// 1px rim of the glass bar.
+  final Color glassBorder;
+
+  /// Soft drop shadow under the glass bar.
+  final Color glassShadow;
+
+  /// Selected-tab pill at rest (no distortion).
+  final Color lensRestFill;
+
+  /// Specular rim highlight of the lifted lens.
+  final Color lensHighlight;
+
+  /// Red fringe of the lens chromatic aberration.
+  final Color lensDispersionRed;
+
+  /// Blue fringe of the lens chromatic aberration.
+  final Color lensDispersionBlue;
+
   const LedgerColors({
     required this.background,
     required this.surface,
@@ -36,6 +57,13 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     required this.accentAmber,
     required this.onBrand,
     required this.cameraBackdrop,
+    required this.glassFill,
+    required this.glassBorder,
+    required this.glassShadow,
+    required this.lensRestFill,
+    required this.lensHighlight,
+    required this.lensDispersionRed,
+    required this.lensDispersionBlue,
   });
 
   /// Светлая тема Ledger (основной режим)
@@ -53,6 +81,13 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     accentAmber: Color(0xFFB7791F),
     onBrand: Color(0xFFFFFFFF),
     cameraBackdrop: Color(0xFF000000),
+    glassFill: Color(0xB8FFFFFF),
+    glassBorder: Color(0x1F1A1D29),
+    glassShadow: Color(0x1F1A1D29),
+    lensRestFill: Color(0x24362CD1),
+    lensHighlight: Color(0xD9FFFFFF),
+    lensDispersionRed: Color(0x59E5484D),
+    lensDispersionBlue: Color(0x592F80ED),
   );
 
   /// Тёмная тема Ledger (системный режим).
@@ -70,6 +105,13 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     accentAmber: Color(0xFFF2B84B),
     onBrand: Color(0xFFFFFFFF),
     cameraBackdrop: Color(0xFF000000),
+    glassFill: Color(0xB8161A22),
+    glassBorder: Color(0x33FFFFFF),
+    glassShadow: Color(0x66000000),
+    lensRestFill: Color(0x338B84FF),
+    lensHighlight: Color(0x66FFFFFF),
+    lensDispersionRed: Color(0x59FF6B6B),
+    lensDispersionBlue: Color(0x596FA8FF),
   );
 
   @override
@@ -87,6 +129,13 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     Color? accentAmber,
     Color? onBrand,
     Color? cameraBackdrop,
+    Color? glassFill,
+    Color? glassBorder,
+    Color? glassShadow,
+    Color? lensRestFill,
+    Color? lensHighlight,
+    Color? lensDispersionRed,
+    Color? lensDispersionBlue,
   }) {
     return LedgerColors(
       background: background ?? this.background,
@@ -102,6 +151,13 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
       accentAmber: accentAmber ?? this.accentAmber,
       onBrand: onBrand ?? this.onBrand,
       cameraBackdrop: cameraBackdrop ?? this.cameraBackdrop,
+      glassFill: glassFill ?? this.glassFill,
+      glassBorder: glassBorder ?? this.glassBorder,
+      glassShadow: glassShadow ?? this.glassShadow,
+      lensRestFill: lensRestFill ?? this.lensRestFill,
+      lensHighlight: lensHighlight ?? this.lensHighlight,
+      lensDispersionRed: lensDispersionRed ?? this.lensDispersionRed,
+      lensDispersionBlue: lensDispersionBlue ?? this.lensDispersionBlue,
     );
   }
 
@@ -125,6 +181,21 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
       accentAmber: Color.lerp(accentAmber, other.accentAmber, t)!,
       onBrand: Color.lerp(onBrand, other.onBrand, t)!,
       cameraBackdrop: Color.lerp(cameraBackdrop, other.cameraBackdrop, t)!,
+      glassFill: Color.lerp(glassFill, other.glassFill, t)!,
+      glassBorder: Color.lerp(glassBorder, other.glassBorder, t)!,
+      glassShadow: Color.lerp(glassShadow, other.glassShadow, t)!,
+      lensRestFill: Color.lerp(lensRestFill, other.lensRestFill, t)!,
+      lensHighlight: Color.lerp(lensHighlight, other.lensHighlight, t)!,
+      lensDispersionRed: Color.lerp(
+        lensDispersionRed,
+        other.lensDispersionRed,
+        t,
+      )!,
+      lensDispersionBlue: Color.lerp(
+        lensDispersionBlue,
+        other.lensDispersionBlue,
+        t,
+      )!,
     );
   }
 }

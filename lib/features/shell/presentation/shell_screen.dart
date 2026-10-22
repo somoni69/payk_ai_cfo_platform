@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/language_cubit.dart';
 import '../../../core/network/expiring_request_cache.dart';
-import '../../../core/theme/theme_extensions.dart';
 import '../../../features/auth/bloc/auth_bloc.dart';
 import '../../../features/auth/bloc/auth_state.dart';
 import '../../../features/auth/domain/app_access.dart';
@@ -26,6 +24,7 @@ import '../../../features/warehouse/bloc/warehouse_bloc.dart';
 import '../../../features/warehouse/bloc/warehouse_event.dart';
 import '../../../features/warehouse/domain/warehouse_repository.dart';
 import '../../../features/assistant/presentation/ledger_ai_assistant.dart';
+import '../../../presentation/widgets/liquid_glass_split_bottom_bar.dart';
 
 class TabItem {
   const TabItem({
@@ -147,10 +146,9 @@ class _ShellScaffold extends StatelessWidget {
               body: RepaintBoundary(child: navigationShell),
               bottomNavigationBar: showBar
                   ? Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                       child: SafeArea(
                         top: false,
-                        minimum: const EdgeInsets.only(bottom: 8),
                         child: _ShellNavOverlay(
                           navigationShell: navigationShell,
                         ),
@@ -201,11 +199,19 @@ class _ShellNavOverlay extends StatelessWidget {
     );
     if (activeNavbarIndex == -1) activeNavbarIndex = 0;
 
-    return _LiquidBottomNav(
-      tabs: visibleTabs,
-      currentIndex: activeNavbarIndex,
-      onTap: (index) {
-        HapticFeedback.selectionClick();
+    final language = context.watch<LanguageCubit>();
+    // No shell-wide scanner action exists (the scanner returns a code into a
+    // field on Cash / Warehouse), so the round side button is omitted.
+    return LiquidGlassSplitBottomBar(
+      items: [
+        for (final tab in visibleTabs)
+          LiquidGlassBarItem(
+            icon: tab.icon,
+            label: language.translate(tab.labelKey),
+          ),
+      ],
+      selectedIndex: activeNavbarIndex,
+      onSelected: (index) {
         final targetTab = visibleTabs[index];
         navigationShell.goBranch(
           targetTab.branchIndex,
@@ -213,140 +219,6 @@ class _ShellNavOverlay extends StatelessWidget {
               targetTab.branchIndex == navigationShell.currentIndex,
         );
       },
-    );
-  }
-}
-
-/// Floating frosted capsule: one sliding liquid pill, not a per-tab fill.
-class _LiquidBottomNav extends StatelessWidget {
-  const _LiquidBottomNav({
-    required this.tabs,
-    required this.currentIndex,
-    required this.onTap,
-  });
-
-  final List<TabItem> tabs;
-  final int currentIndex;
-  final ValueChanged<int> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final language = context.watch<LanguageCubit>();
-    final count = tabs.length;
-    final bubbleAlign = count <= 1
-        ? Alignment.center
-        : Alignment(-1.0 + (2.0 * currentIndex / (count - 1)), 0);
-
-    return Material(
-      type: MaterialType.transparency,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: colors.border),
-          boxShadow: [
-            BoxShadow(
-              color: colors.textPrimary.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: RepaintBoundary(
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            child: SizedBox(
-              height: 52,
-              child: Stack(
-                children: [
-                  AnimatedAlign(
-                    duration: const Duration(milliseconds: 420),
-                    curve: Curves.easeOutCubic,
-                    alignment: bubbleAlign,
-                    child: FractionallySizedBox(
-                      widthFactor: 1 / count,
-                      heightFactor: 1,
-                      child: Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: colors.brand.withValues(alpha: 0.16),
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      for (var i = 0; i < count; i++)
-                        Expanded(
-                          child: _LiquidNavItem(
-                            icon: tabs[i].icon,
-                            label: language.translate(tabs[i].labelKey),
-                            selected: i == currentIndex,
-                            onTap: () => onTap(i),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LiquidNavItem extends StatelessWidget {
-  const _LiquidNavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.colors;
-    final textStyles = context.textStyles;
-    final foreground = selected ? colors.brand : colors.textSecondary;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      splashColor: colors.brand.withValues(alpha: 0.08),
-      highlightColor: Colors.transparent,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedScale(
-            scale: selected ? 1.08 : 1.0,
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            child: Icon(icon, size: 22, color: foreground),
-          ),
-          const SizedBox(height: 2),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOutCubic,
-            style: textStyles.smallSans.copyWith(
-              fontSize: context.fontSize(11),
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              color: foreground,
-            ),
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
     );
   }
 }
