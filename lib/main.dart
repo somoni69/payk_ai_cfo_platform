@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:payk_ai_cfo_platform/core/security/secure_storage_provider.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_error_reporter.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_bloc_observer.dart';
+import 'package:payk_ai_cfo_platform/core/observability/file_error_sink.dart';
 import 'package:payk_ai_cfo_platform/core/di/app_repositories.dart';
 import 'package:payk_ai_cfo_platform/core/localization/language_cubit.dart';
 import 'package:payk_ai_cfo_platform/core/localization/tajik_cupertino_localizations.dart';
@@ -35,6 +36,11 @@ void main() {
       // Debug: console + ring buffer. Release: ring buffer only.
       // Replace with Crashlytics/company telemetry via installSink when ready.
       AppErrorReporter.installDefaultSinks();
+      unawaited(
+        installFileErrorSink().catchError((Object _, StackTrace _) {
+          // Local diagnostics are optional; never block startup.
+        }),
+      );
       Bloc.observer = AppBlocObserver();
 
       FlutterError.onError = (details) {
@@ -52,7 +58,9 @@ void main() {
         return true;
       };
 
-      await ApiClient().bootstrap();
+      // Do not block the first frame on secure-storage reads. Auth and chat
+      // await the shared bootstrap themselves when they need the session.
+      unawaited(ApiClient().bootstrap());
       runApp(const MyApp());
     },
     (error, stackTrace) {
@@ -70,6 +78,30 @@ class MyApp extends StatefulWidget {
   State<MyApp> createState() => _MyAppState();
 }
 
+class _PrivacyShield extends StatelessWidget {
+  const _PrivacyShield();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AbsorbPointer(
+      child: ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Center(
+          child: Image.asset(
+            isDark
+                ? 'assets/images/payk_white_badge.png'
+                : 'assets/images/payk_logo.png',
+            width: 96,
+            cacheWidth: 192,
+            semanticLabel: 'PAYK',
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final AuthBloc _authBloc;
   late final PermissionsCubit _permissionsCubit;
@@ -77,6 +109,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final GoRouterRefreshStream _routerRefresh;
   late final GoRouter _router;
   StreamSubscription<AuthState>? _authSub;
+  var _privacyShield = false;
 
   @override
   void initState() {
@@ -134,16 +167,24 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        _setPrivacyShield(false);
         _chatLive.setForeground(true);
         _permissionsCubit.setForeground(true);
       case AppLifecycleState.paused ||
           AppLifecycleState.hidden ||
           AppLifecycleState.detached:
+        _setPrivacyShield(true);
         _chatLive.setForeground(false);
         _permissionsCubit.setForeground(false);
       case AppLifecycleState.inactive:
+        _setPrivacyShield(true);
         break;
     }
+  }
+
+  void _setPrivacyShield(bool visible) {
+    if (!mounted || _privacyShield == visible) return;
+    setState(() => _privacyShield = visible);
   }
 
   @override
@@ -170,7 +211,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           BlocProvider<LanguageCubit>(
             create: (context) => LanguageCubit(
               storage: AppSecureStorage.instance,
-              initialLanguageCode: ApiClient().interfaceLanguage,
+              // Restore the saved locale asynchronously; bootstrap no longer
+              // blocks the first frame.
+              initialLanguageCode: null,
             ),
           ),
         ],
@@ -179,18 +222,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             return MaterialApp.router(
               title: 'PAYK CFO Platform',
               theme: LedgerTheme.light,
+              darkTheme: LedgerTheme.dark,
+              themeMode: ThemeMode.system,
               routerConfig: _router,
               debugShowCheckedModeBanner: false,
               builder: (context, child) {
-                final mq = MediaQuery.of(context);
-                return MediaQuery(
-                  data: mq.copyWith(
-                    textScaler: mq.textScaler.clamp(
-                      minScaleFactor: 0.9,
-                      maxScaleFactor: 1.15,
-                    ),
-                  ),
-                  child: child ?? const SizedBox.shrink(),
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    child ?? const SizedBox.shrink(),
+                    if (_privacyShield) const _PrivacyShield(),
+                  ],
                 );
               },
               locale: locale,

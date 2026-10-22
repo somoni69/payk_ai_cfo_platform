@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/lead_models.dart';
 import '../domain/leads_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiLeadsRepository implements LeadsRepository {
   ApiLeadsRepository({Dio? dio}) : _dio = dio ?? ApiClient().dio;
@@ -24,7 +25,9 @@ class ApiLeadsRepository implements LeadsRepository {
       final response = await _dio.get<Map<String, dynamic>>('/leads/summary');
       return LeadSummary.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -40,7 +43,9 @@ class ApiLeadsRepository implements LeadsRepository {
           if (item is Map) LeadRow.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -50,7 +55,9 @@ class ApiLeadsRepository implements LeadsRepository {
       final response = await _dio.get<Map<String, dynamic>>('/leads/$id');
       return LeadDetail.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -67,7 +74,9 @@ class ApiLeadsRepository implements LeadsRepository {
       );
       return LeadDetail.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -76,7 +85,9 @@ class ApiLeadsRepository implements LeadsRepository {
     try {
       await _dio.delete<void>('/leads/$id');
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -90,7 +101,9 @@ class ApiLeadsRepository implements LeadsRepository {
       );
       return response.data ?? const <int>[];
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -102,7 +115,9 @@ class ApiLeadsRepository implements LeadsRepository {
       );
       return DemoBank.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

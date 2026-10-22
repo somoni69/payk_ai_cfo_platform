@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/legal_models.dart';
 import '../domain/legal_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiLegalRepository
     implements LegalRepository, CancellableLegalRepository {
@@ -55,7 +56,9 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -90,7 +93,7 @@ class ApiLegalRepository
       );
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     } finally {
       if (identical(_contractCancelToken, cancelToken)) {
         _contractCancelToken = null;
@@ -125,7 +128,9 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -154,7 +159,9 @@ class ApiLegalRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -184,7 +191,9 @@ class ApiLegalRepository
         daysLeft: map['days_left'],
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -205,7 +214,7 @@ class ApiLegalRepository
       return map['answer'] ?? 'Ответ от ИИ пуст.';
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } finally {
       if (identical(_lawyerCancelToken, cancelToken)) {
         _lawyerCancelToken = null;
@@ -277,7 +286,9 @@ class ApiLegalRepository
       _lawsCache.invalidate();
       return _mapLaw(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -289,7 +300,9 @@ class ApiLegalRepository
       );
       _lawsCache.invalidate();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -315,7 +328,9 @@ class ApiLegalRepository
       _deadlinesCache.invalidate();
       return _mapDeadline(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -337,7 +352,9 @@ class ApiLegalRepository
       _templatesCache.invalidate();
       return _mapTemplate(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 

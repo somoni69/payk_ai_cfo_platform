@@ -9,15 +9,15 @@ import 'ledger_buttons.dart';
 /// - Кнопки в модалках: 12px / 48px (см. [LedgerButtons.modalOverlay])
 /// - Начертания только w400 / w500
 class LedgerTheme {
-  static final ThemeData light = _buildLight();
+  static final ThemeData light = _build(LedgerColors.light, Brightness.light);
+  static final ThemeData dark = _build(LedgerColors.dark, Brightness.dark);
 
-  static ThemeData _buildLight() {
-    const colors = LedgerColors.light;
+  static ThemeData _build(LedgerColors colors, Brightness brightness) {
     final textStyles = LedgerTextStyles.generate(colors);
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.light,
+      brightness: brightness,
       scaffoldBackgroundColor: colors.background,
       materialTapTargetSize: MaterialTapTargetSize.padded,
 
@@ -33,16 +33,27 @@ class LedgerTheme {
       ),
 
       // Стандартная цветовая схема
-      colorScheme: ColorScheme.light(
-        surface: colors.surface,
-        primary: colors.brand,
-        onPrimary: colors.surface,
-        secondary: colors.brand,
-        onSurface: colors.textPrimary,
-        onSurfaceVariant: colors.textSecondary,
-        outline: colors.border,
-        error: colors.accentRed,
-      ),
+      colorScheme: (brightness == Brightness.dark
+          ? ColorScheme.dark(
+              surface: colors.surface,
+              primary: colors.brand,
+              onPrimary: colors.onBrand,
+              secondary: colors.brand,
+              onSurface: colors.textPrimary,
+              onSurfaceVariant: colors.textSecondary,
+              outline: colors.border,
+              error: colors.accentRed,
+            )
+          : ColorScheme.light(
+              surface: colors.surface,
+              primary: colors.brand,
+              onPrimary: colors.onBrand,
+              secondary: colors.brand,
+              onSurface: colors.textPrimary,
+              onSurfaceVariant: colors.textSecondary,
+              outline: colors.border,
+              error: colors.accentRed,
+            )),
 
       // Карточки: без тени, с границей 1px, скруглением 16px
       cardTheme: CardThemeData(

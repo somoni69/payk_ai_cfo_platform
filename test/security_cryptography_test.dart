@@ -117,6 +117,21 @@ void main() {
         expect(dio.httpClientAdapter, isA<IOHttpClientAdapter>());
       },
     );
+
+    test('rejects a malformed certificate pin', () {
+      expect(
+        () => acceptsPinnedCertificate(null, expectedFingerprint: 'not-a-pin'),
+        throwsStateError,
+      );
+    });
+
+    test('does not expose the token decision for external media hosts', () {
+      final client = ApiClient();
+      final apiOrigin = Uri.parse(client.dio.options.baseUrl).origin;
+      expect(client.isSameOrigin('$apiOrigin/files/photo.jpg'), isTrue);
+      expect(client.isSameOrigin('https://cdn.example.com/photo.jpg'), isFalse);
+      expect(client.isSameOrigin('not a url'), isFalse);
+    });
   });
 
   group('SEC-04: Biometric Toggle Authentication Enforcement', () {
@@ -223,12 +238,13 @@ void main() {
     });
 
     test(
-      'MainActivity.kt permits screenshots and screen captures (no FLAG_SECURE constraint)',
+      'MainActivity.kt blocks screenshots and screen captures with FLAG_SECURE',
       () {
         final mainActivity = _readFile(
           'android/app/src/main/kotlin/com/example/payk_ai_cfo_platform/MainActivity.kt',
         );
-        expect(mainActivity, isNot(contains('FLAG_SECURE')));
+        expect(mainActivity, contains('FLAG_SECURE'));
+        expect(mainActivity, contains('window.setFlags'));
       },
     );
 
@@ -263,7 +279,7 @@ void main() {
         final sensitiveMessage =
             'Error at login: password="SuperSecret123!" code=123456 '
             'pin: 9876 refresh_token: "550e8400-e29b-41d4-a716-446655440000" '
-            'token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c '
+            'jwt eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c '
             'Bearer my_bearer_token_string '
             'card: 4111 2222 3333 4444';
 
@@ -296,6 +312,52 @@ void main() {
         expect(loggedMsg, contains('<card-redacted>'));
       },
     );
+
+    test('custom telemetry sinks receive sanitized text only', () async {
+      final received = <String>[];
+      AppErrorReporter.addSink((error, stackTrace, context) {
+        received.add('$error|$stackTrace|$context');
+      });
+
+      await AppErrorReporter.capture(
+        Exception(
+          'call failed token=abc123 refresh_token: "r3fr3sh" '
+          'email=analyst@payk.tj phone: +992 900 12 34 56',
+        ),
+        StackTrace.current,
+        context: 'sink-test',
+      );
+
+      expect(received, hasLength(1));
+      final event = received.single;
+      expect(event, isNot(contains('abc123')));
+      expect(event, isNot(contains('r3fr3sh')));
+      expect(event, isNot(contains('analyst@payk.tj')));
+      expect(event, isNot(contains('900 12 34 56')));
+      expect(event, contains('token=<redacted>'));
+      expect(event, contains('<redacted_token>'));
+      expect(event, contains('<email-redacted>'));
+      expect(event, contains('<phone-redacted>'));
+      expect(event, contains('sink-test'));
+    });
+
+    test('a failing sink does not block the remaining sinks', () async {
+      AppErrorReporter.addSink((_, _, _) {
+        throw StateError('telemetry backend down');
+      });
+      var delivered = 0;
+      AppErrorReporter.addSink((_, _, _) {
+        delivered++;
+      });
+
+      await AppErrorReporter.capture(
+        Exception('boom token=leak'),
+        StackTrace.current,
+        context: 'sink-failure',
+      );
+
+      expect(delivered, 1);
+    });
   });
 }
 

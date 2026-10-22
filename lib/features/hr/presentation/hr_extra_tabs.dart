@@ -27,6 +27,7 @@ mixin HrExtraTabsMixin<T extends StatefulWidget> on State<T> {
       await SharePlus.instance.share(
         ShareParams(files: [XFile(file.path, mimeType: 'application/pdf')]),
       );
+      scheduleTempFileDeletion(file);
     } catch (e) {
       debugPrint('Error sharing PDF: $e');
     }

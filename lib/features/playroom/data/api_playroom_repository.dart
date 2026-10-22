@@ -5,6 +5,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../fin_ops/domain/fin_ops_models.dart';
 import '../domain/playroom_models.dart';
 import '../domain/playroom_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiPlayroomRepository implements PlayroomRepository {
   ApiPlayroomRepository({Dio? dio}) : _dio = dio ?? ApiClient().dio;
@@ -17,7 +18,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       final response = await _dio.get<Map<String, dynamic>>('/playroom/tariff');
       return PlayroomTariff.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -27,7 +30,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       final response = await _dio.get<Map<String, dynamic>>('/playroom/stats');
       return PlayroomStats.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -54,7 +59,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
             PlayroomOrder.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -67,7 +74,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       );
       return PlayroomOrder.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -80,7 +89,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       );
       return PlayroomOrder.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -92,7 +103,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       );
       return PlayroomOrder.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -104,7 +117,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       );
       return PlayroomOrder.fromJson(response.data ?? const {});
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -118,7 +133,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
       );
       return response.data ?? const <int>[];
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -132,7 +149,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
             PlayroomRegister.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -149,7 +168,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
             PlayroomOpenShift.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -163,7 +184,9 @@ class ApiPlayroomRepository implements PlayroomRepository {
             BankAccount.fromJson(Map<String, dynamic>.from(item)),
       ].where((bank) => bank.isActive).toList();
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

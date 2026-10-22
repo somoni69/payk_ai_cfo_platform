@@ -23,6 +23,10 @@ class MockAuthRepository implements ApiAuthRepository {
   int? lastLoginStoreId;
 
   @override
+  Future<bool> hasStoredSession() async =>
+      autoLoginUser != null || refreshedUser != null;
+
+  @override
   Future<AuthUser?> tryAutoLogin() async {
     if (shouldThrowOnAutoLogin) throw Exception('AutoLogin network failure');
     return autoLoginUser;
@@ -605,6 +609,27 @@ void main() {
         expectLater(authBloc.stream, emitsInOrder(expected));
         authBloc.add(const SessionSoftExpiryReached());
       });
+
+      test(
+        'keeps the session when refresh fails transiently and a refresh token exists',
+        () async {
+          mockAuthRepository.loginResult = LoginSuccess(testUser);
+          authBloc.add(
+            const LoginSubmitted(username: 'farzod_cfo', password: 'pwd'),
+          );
+          await authBloc.stream.firstWhere((s) => s is AuthAuthenticated);
+
+          mockAuthRepository.autoLoginUser = testUser;
+          mockAuthRepository.refreshedUser = null;
+          mockAuthRepository.shouldThrowOnRefresh = true;
+
+          authBloc.add(const SessionSoftExpiryReached());
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+
+          expect(authBloc.state, isA<AuthAuthenticated>());
+          expect(mockAuthRepository.logoutCallCount, 0);
+        },
+      );
 
       test(
         'logs out and emits [AuthError, AuthUnauthenticated] on refresh failure',

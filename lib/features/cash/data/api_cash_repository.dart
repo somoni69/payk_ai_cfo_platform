@@ -6,6 +6,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/cash_repository.dart';
 import '../domain/transaction_model.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Реализация репозитория кассы, работающая с API-эндпоинтами бэкенда (CASH-*).
 class ApiCashRepository implements CashRepository {
@@ -110,7 +111,9 @@ class ApiCashRepository implements CashRepository {
           .map((item) => _mapOperation(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -157,11 +160,15 @@ class ApiCashRepository implements CashRepository {
     } on DioException catch (e) {
       final detail = e.response?.data;
       if (detail is Map && detail['detail'] is String) {
-        throw Exception(detail['detail'] as String);
+        throw RepositoryFailure(detail['detail'] as String);
       }
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -236,7 +243,9 @@ class ApiCashRepository implements CashRepository {
       final response = await _dio.get('/cash/operations/$id');
       return _mapOperation(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -266,11 +275,15 @@ class ApiCashRepository implements CashRepository {
     } on DioException catch (e) {
       final detail = e.response?.data;
       if (detail is Map && detail['detail'] is String) {
-        throw Exception(detail['detail'] as String);
+        throw RepositoryFailure(detail['detail'] as String);
       }
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -279,7 +292,9 @@ class ApiCashRepository implements CashRepository {
     try {
       await _dio.delete('/cash/operations/$id', options: _writeOptions());
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -310,7 +325,9 @@ class ApiCashRepository implements CashRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -318,7 +335,7 @@ class ApiCashRepository implements CashRepository {
   Future<SaleProduct> getSaleProductByBarcode(String code) async {
     final trimmed = code.trim();
     if (trimmed.isEmpty) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
     try {
       final response = await _dio.get(
@@ -338,9 +355,13 @@ class ApiCashRepository implements CashRepository {
         imageUrl: map['image_url']?.toString(),
       );
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -393,7 +414,9 @@ class ApiCashRepository implements CashRepository {
             : const [],
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -438,9 +461,13 @@ class ApiCashRepository implements CashRepository {
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -598,7 +625,9 @@ class ApiCashRepository implements CashRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -616,7 +645,9 @@ class ApiCashRepository implements CashRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -675,7 +706,9 @@ class ApiCashRepository implements CashRepository {
         isClosed: map['is_closed'] != false,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -692,7 +725,9 @@ class ApiCashRepository implements CashRepository {
       );
       return Uint8List.fromList(response.data ?? const <int>[]);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -912,7 +947,9 @@ class ApiCashRepository implements CashRepository {
       }
       return Uint8List.fromList(bytes);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -944,7 +981,9 @@ class ApiCashRepository implements CashRepository {
       }
       return 0;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -1070,7 +1109,9 @@ class ApiCashRepository implements CashRepository {
         }).toList(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -1087,7 +1128,9 @@ class ApiCashRepository implements CashRepository {
         options: _writeOptions(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -1109,7 +1152,9 @@ class ApiCashRepository implements CashRepository {
         options: _writeOptions(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -1129,7 +1174,9 @@ class ApiCashRepository implements CashRepository {
         retryAfter: (data['retry_after'] as num?)?.toInt() ?? 0,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 

@@ -233,7 +233,12 @@ abstract final class AppAccess {
   }
 
   /// Куда увести, если текущий раздел магазину не подключён.
-  static String deniedTarget(UserRole role, MyPermissions? effective) {
+  static String deniedTarget(
+    UserRole role,
+    MyPermissions? effective, {
+    bool permissionsUnavailable = false,
+  }) {
+    if (permissionsUnavailable) return '/more';
     const order = ['/dashboard', '/cash', '/tasks', '/warehouse', '/more'];
     for (final path in order) {
       if (canOpenEffective(role, path, effective: effective)) return path;
@@ -294,6 +299,7 @@ abstract final class AppAccess {
     UserRole role,
     String location, {
     MyPermissions? effective,
+    bool permissionsUnavailable = false,
   }) {
     if (_isLeads(location) || _isModules(location)) {
       return role == UserRole.owner;
@@ -307,6 +313,7 @@ abstract final class AppAccess {
         capability == AppCapability.network) {
       return true;
     }
+    if (permissionsUnavailable) return false;
     if (effective == null) return role.can(capability);
     if (effective.isDirector) return true;
     if (capability == AppCapability.users ||

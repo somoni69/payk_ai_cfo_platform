@@ -60,6 +60,20 @@ void main() {
       expect(project, contains(r'$DEVELOPMENT_TEAM'));
     });
 
+    test('iOS ships a privacy manifest for required-reason APIs', () {
+      final manifest = _read('ios/Runner/PrivacyInfo.xcprivacy');
+      final project = _read('ios/Runner.xcodeproj/project.pbxproj');
+
+      expect(manifest, contains('<key>NSPrivacyTracking</key>'));
+      expect(manifest, contains('NSPrivacyAccessedAPICategoryUserDefaults'));
+      expect(manifest, contains('NSPrivacyAccessedAPICategoryFileTimestamp'));
+      expect(
+        manifest,
+        contains('NSPrivacyCollectedDataTypeOtherFinancialInfo'),
+      );
+      expect(project, contains('PrivacyInfo.xcprivacy in Resources'));
+    });
+
     test(
       'Android production release enables R8 minification and proguard rules',
       () {
@@ -79,21 +93,19 @@ void main() {
       },
     );
 
-    test(
-      'Android MainActivity allows screenshots (no FLAG_SECURE constraint)',
-      () {
-        final mainActivity = _read(
-          'android/app/src/main/kotlin/com/example/payk_ai_cfo_platform/MainActivity.kt',
-        );
+    test('Android MainActivity blocks screenshots with FLAG_SECURE', () {
+      final mainActivity = _read(
+        'android/app/src/main/kotlin/com/example/payk_ai_cfo_platform/MainActivity.kt',
+      );
 
-        expect(mainActivity, isNot(contains('FLAG_SECURE')));
-      },
-    );
+      expect(mainActivity, contains('FLAG_SECURE'));
+      expect(mainActivity, contains('window.setFlags'));
+    });
 
-    test('CI compiles the release variant explicitly with obfuscation', () {
+    test('CI compiles the release bundle explicitly with obfuscation', () {
       final workflow = _read('.github/workflows/flutter_quality.yml');
 
-      expect(workflow, contains('flutter build apk --release --no-pub'));
+      expect(workflow, contains('flutter build appbundle --release --no-pub'));
       expect(workflow, contains('--obfuscate'));
       expect(
         workflow,

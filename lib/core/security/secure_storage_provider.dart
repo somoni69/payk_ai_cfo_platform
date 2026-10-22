@@ -11,7 +11,7 @@ class AppSecureStorage {
   );
 
   static const IOSOptions _iosOptions = IOSOptions(
-    accessibility: KeychainAccessibility.first_unlock_this_device,
+    accessibility: KeychainAccessibility.unlocked_this_device,
   );
 
   /// Единый синглтон защищенного хранилища с аппаратным шифрованием AES-256.

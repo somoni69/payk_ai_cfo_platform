@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/meta_models.dart';
 import '../domain/meta_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiMetaRepository implements MetaRepository {
   final ApiClient _apiClient;
@@ -41,7 +42,9 @@ class ApiMetaRepository implements MetaRepository {
         place: MetaPlace.fromJson(map['place']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -59,7 +62,9 @@ class ApiMetaRepository implements MetaRepository {
           : const <dynamic>[];
       return list.map(metaThreadFromJson).whereType<MetaThread>().toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -74,7 +79,9 @@ class ApiMetaRepository implements MetaRepository {
           : const <dynamic>[];
       return list.map(metaMessageFromJson).whereType<MetaMessage>().toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -86,10 +93,12 @@ class ApiMetaRepository implements MetaRepository {
         data: {'text': text.trim()},
       );
       final msg = metaMessageFromJson(response.data);
-      if (msg == null) throw Exception(ErrorKeys.invalidResponse);
+      if (msg == null) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return msg;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -103,11 +112,11 @@ class ApiMetaRepository implements MetaRepository {
       final body = response.data is Map ? response.data as Map : null;
       final suggestion = body?['suggestion'];
       if (suggestion is! String || suggestion.trim().isEmpty) {
-        throw Exception(ErrorKeys.invalidResponse);
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
       }
       return suggestion.trim();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -132,10 +141,12 @@ class ApiMetaRepository implements MetaRepository {
         ).copyWith(sendTimeout: const Duration(seconds: 180)),
       );
       final msg = metaMessageFromJson(response.data);
-      if (msg == null) throw Exception(ErrorKeys.invalidResponse);
+      if (msg == null) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return msg;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -147,7 +158,7 @@ class ApiMetaRepository implements MetaRepository {
         data: {'on': on},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -156,10 +167,12 @@ class ApiMetaRepository implements MetaRepository {
     try {
       final response = await _apiClient.dio.get<dynamic>('/meta/unread');
       final total = response.data is Map ? response.data['total'] : null;
-      if (total is! num) throw Exception(ErrorKeys.invalidResponse);
+      if (total is! num) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return total.toInt();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -175,10 +188,12 @@ class ApiMetaRepository implements MetaRepository {
         },
       );
       final msg = metaMessageFromJson(response.data);
-      if (msg == null) throw Exception(ErrorKeys.invalidResponse);
+      if (msg == null) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return msg;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -187,7 +202,9 @@ class ApiMetaRepository implements MetaRepository {
     try {
       await _apiClient.dio.delete<dynamic>('/meta/threads/$threadId');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -199,10 +216,12 @@ class ApiMetaRepository implements MetaRepository {
         data: {'client_id': clientId},
       );
       final thread = metaThreadFromJson(response.data);
-      if (thread == null) throw Exception(ErrorKeys.invalidResponse);
+      if (thread == null) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return thread;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -217,7 +236,9 @@ class ApiMetaRepository implements MetaRepository {
           MetaStage.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -232,7 +253,9 @@ class ApiMetaRepository implements MetaRepository {
           MetaStaff.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -244,10 +267,12 @@ class ApiMetaRepository implements MetaRepository {
         data: {'stage_id': stageId},
       );
       final thread = metaThreadFromJson(response.data);
-      if (thread == null) throw Exception(ErrorKeys.invalidResponse);
+      if (thread == null) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return thread;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -259,10 +284,12 @@ class ApiMetaRepository implements MetaRepository {
         data: {'user_id': userId},
       );
       final thread = metaThreadFromJson(response.data);
-      if (thread == null) throw Exception(ErrorKeys.invalidResponse);
+      if (thread == null) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return thread;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -280,7 +307,9 @@ class ApiMetaRepository implements MetaRepository {
           MetaComment.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -291,12 +320,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/comments/$id/reply',
         data: {'text': text},
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return MetaComment.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -314,13 +347,17 @@ class ApiMetaRepository implements MetaRepository {
           ? Map<String, dynamic>.from(response.data as Map)
           : <String, dynamic>{};
       final commentRaw = map['comment'];
-      if (commentRaw is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (commentRaw is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return (
         threadId: _jsonInt(map['thread_id']) ?? 0,
         comment: MetaComment.fromJson(Map<String, dynamic>.from(commentRaw)),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -329,7 +366,9 @@ class ApiMetaRepository implements MetaRepository {
     try {
       await _apiClient.dio.post<dynamic>('/meta/comments/seen');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -339,12 +378,16 @@ class ApiMetaRepository implements MetaRepository {
       final response = await _apiClient.dio.get<dynamic>(
         '/meta/comments/settings',
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return CommentSettings.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -355,12 +398,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/comments/settings',
         data: {'ai_enabled': enabled},
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return CommentSettings.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -381,12 +428,16 @@ class ApiMetaRepository implements MetaRepository {
           if (assignee != null && assignee.isNotEmpty) 'assignee': assignee,
         },
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return MetaAnalytics.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -396,12 +447,16 @@ class ApiMetaRepository implements MetaRepository {
       final response = await _apiClient.dio.get<dynamic>(
         '/meta/threads/$threadId/card',
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadCard.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -418,7 +473,9 @@ class ApiMetaRepository implements MetaRepository {
           CardHistoryEntry.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -432,12 +489,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/threads/$threadId/client',
         data: input.toJson(),
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadCard.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -453,12 +514,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/threads/$threadId/deals',
         data: {'title': title, 'amount': amount, 'stage': stage},
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadCard.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -473,12 +538,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/threads/$threadId/deals/$dealId',
         data: {'stage': stage},
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadCard.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -489,12 +558,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/threads/$threadId/reject',
         data: {'reason': reason},
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadCard.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -511,7 +584,9 @@ class ApiMetaRepository implements MetaRepository {
           ThreadTask.fromJson(Map<String, dynamic>.from(item)),
       ];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -527,12 +602,16 @@ class ApiMetaRepository implements MetaRepository {
         '/meta/threads/$threadId/tasks',
         data: {'title': title, 'due_date': dueDate, 'assignee_id': assigneeId},
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadTask.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -542,12 +621,16 @@ class ApiMetaRepository implements MetaRepository {
       final response = await _apiClient.dio.post<dynamic>(
         '/meta/threads/$threadId/tasks/$taskId/done',
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return ThreadTask.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 }

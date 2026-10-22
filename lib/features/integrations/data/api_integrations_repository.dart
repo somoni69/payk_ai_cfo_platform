@@ -3,6 +3,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/integrations_models.dart';
 import '../domain/integrations_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiIntegrationsRepository implements IntegrationsRepository {
   final ApiClient _apiClient = ApiClient();
@@ -29,7 +30,9 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -63,7 +66,9 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -82,7 +87,7 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
         message: map['message'] ?? '',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -96,7 +101,7 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
       final map = response.data as Map<String, dynamic>;
       return SmsTestResult.fromJson(map, phone);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -107,7 +112,7 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
       final map = response.data as Map<String, dynamic>;
       return AiProbeResult.fromJson(map);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -120,7 +125,9 @@ class ApiIntegrationsRepository implements IntegrationsRepository {
       final map = response.data as Map<String, dynamic>;
       return TelegramLinkInfo.fromJson(map);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

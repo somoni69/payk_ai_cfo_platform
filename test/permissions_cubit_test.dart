@@ -324,6 +324,32 @@ void main() {
             isFalse,
           );
         });
+
+        test(
+          'denies protected modules after a failed permission load',
+          () async {
+            mockRepository.shouldThrow = true;
+            await cubit.load();
+
+            expect(cubit.state.data, isNull);
+            expect(cubit.state.error, isNotNull);
+            expect(
+              cubit.can(AppCapability.cash, fallbackRole: UserRole.director),
+              isFalse,
+            );
+            expect(
+              cubit.can(AppCapability.network, fallbackRole: UserRole.cashier),
+              isTrue,
+            );
+            expect(
+              cubit.can(
+                AppCapability.notifications,
+                fallbackRole: UserRole.cashier,
+              ),
+              isTrue,
+            );
+          },
+        );
       },
     );
 

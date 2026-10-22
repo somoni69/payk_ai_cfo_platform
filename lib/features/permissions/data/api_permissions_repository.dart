@@ -2,6 +2,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/my_permissions.dart';
 import '../domain/permissions_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiPermissionsRepository implements PermissionsRepository {
   final ApiClient _apiClient;
@@ -18,7 +19,9 @@ class ApiPermissionsRepository implements PermissionsRepository {
           : <String, dynamic>{};
       return MyPermissions.fromJson(body);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

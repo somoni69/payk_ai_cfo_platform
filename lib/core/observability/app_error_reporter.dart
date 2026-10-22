@@ -19,6 +19,7 @@ final class AppErrorReporter {
   AppErrorReporter._();
 
   static AppErrorSink? _sink;
+  static final List<AppErrorSink> _extraSinks = [];
   static const int _bufferLimit = 40;
   static final ListQueue<_BufferedError> _recent = ListQueue<_BufferedError>();
 
@@ -28,6 +29,11 @@ final class AppErrorReporter {
 
   static void installSink(AppErrorSink sink) {
     _sink = sink;
+  }
+
+  /// Adds a sink without replacing the default/debug sink.
+  static void addSink(AppErrorSink sink) {
+    _extraSinks.add(sink);
   }
 
   /// Debug: print to console. Always: keep a small in-memory buffer.
@@ -101,6 +107,34 @@ final class AppErrorReporter {
       RegExp(r'\b(?:\d[ -]*?){13,19}\b'),
       '<card-redacted>',
     );
+    // Tokens in query strings: ?token=..., &access_token=...
+    text = text.replaceAllMapped(
+      RegExp(
+        r'([?&](?:token|access_token|refresh_token|api_key)=)[^&\s]+',
+        caseSensitive: false,
+      ),
+      (m) => '${m[1]}<redacted>',
+    );
+    // Unquoted key=value credentials outside a query string.
+    text = text.replaceAllMapped(
+      RegExp(
+        r'\b(token|access_token|refresh_token|api_key)\s*=\s*[^\s&,;]+',
+        caseSensitive: false,
+      ),
+      (m) => '${m[1]}=<redacted>',
+    );
+    // Email addresses and explicitly labelled phone numbers.
+    text = text.replaceAll(
+      RegExp(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b'),
+      '<email-redacted>',
+    );
+    text = text.replaceAllMapped(
+      RegExp(
+        r'("?(?:phone|tel)"?\s*[:=]\s*"?)\+?\d[\d\s()-]{7,}\d',
+        caseSensitive: false,
+      ),
+      (m) => '${m[1]}<phone-redacted>',
+    );
     return text;
   }
 
@@ -119,16 +153,21 @@ final class AppErrorReporter {
     StackTrace stackTrace, {
     required String context,
   }) async {
-    final sink = _sink;
-    if (sink == null) {
+    final sinks = <AppErrorSink>[?_sink, ..._extraSinks];
+    if (sinks.isEmpty) {
       _buffer(error, stackTrace, context);
       return;
     }
 
-    try {
-      await sink(error, stackTrace, context);
-    } catch (_) {
-      // Telemetry must never crash or block the application.
+    final safeError = _SanitizedError(_sanitize('$error'));
+    final safeStack = StackTrace.fromString(_sanitize(stackTrace.toString()));
+    for (final target in sinks) {
+      try {
+        // Custom sinks (Crashlytics/Sentry/file) never receive raw tokens/PII.
+        await target(safeError, safeStack, context);
+      } catch (_) {
+        // Telemetry must never crash or block the application.
+      }
     }
   }
 
@@ -139,6 +178,15 @@ final class AppErrorReporter {
       context: details.context?.toDescription() ?? 'flutter-framework',
     );
   }
+}
+
+class _SanitizedError implements Exception {
+  const _SanitizedError(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }
 
 class _BufferedError {

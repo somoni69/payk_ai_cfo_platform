@@ -565,6 +565,9 @@ class _StatusAdapter implements HttpClientAdapter {
 
 class _SessionRepository extends ApiAuthRepository {
   @override
+  Future<bool> hasStoredSession() async => true;
+
+  @override
   Future<AuthUser?> tryAutoLogin() async {
     return const AuthUser(
       id: 1,

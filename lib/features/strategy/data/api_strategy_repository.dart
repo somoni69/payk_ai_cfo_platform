@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/strategy_models.dart';
 import '../domain/strategy_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Конкретная реализация репозитория стратегических AI функций для бэкенда PAYK.
 class ApiStrategyRepository
@@ -34,7 +35,7 @@ class ApiStrategyRepository
       return WhatIfResponseData(answer: map['answer'] ?? 'Нет ответа от AI');
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } finally {
       if (identical(_whatIfCancelToken, cancelToken)) {
         _whatIfCancelToken = null;
@@ -60,7 +61,7 @@ class ApiStrategyRepository
       return AiIdeasResponseData(ideas: list.map((e) => e.toString()).toList());
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } finally {
       if (identical(_ideasCancelToken, cancelToken)) {
         _ideasCancelToken = null;
@@ -101,7 +102,7 @@ class ApiStrategyRepository
         );
       }).toList();
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -133,7 +134,7 @@ class ApiStrategyRepository
       );
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } finally {
       if (identical(_generationCancelToken, cancelToken)) {
         _generationCancelToken = null;
@@ -168,7 +169,7 @@ class ApiStrategyRepository
         );
       }).toList();
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -217,7 +218,7 @@ class ApiStrategyRepository
         );
       }).toList();
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -240,7 +241,7 @@ class ApiStrategyRepository
         );
       }).toList();
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -260,7 +261,7 @@ class ApiStrategyRepository
         generatedByAi: map['generated_by_ai'] == true,
       );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -290,7 +291,7 @@ class ApiStrategyRepository
         );
       }).toList();
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 

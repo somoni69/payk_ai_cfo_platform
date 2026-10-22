@@ -102,3 +102,15 @@ final class GenericFailure extends AppFailure {
     super.stackTrace,
   }) : super(translationKey);
 }
+
+/// Failure raised by an API repository while talking to the backend.
+///
+/// Keeps the positional constructor convenient for the existing repository
+/// error boundaries while remaining a typed [AppFailure] for UI/bloc handling.
+final class RepositoryFailure extends AppFailure {
+  const RepositoryFailure(
+    super.translationKey, {
+    super.debugMessage,
+    super.stackTrace,
+  });
+}

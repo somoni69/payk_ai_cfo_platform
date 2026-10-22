@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 
 import '../../../core/localization/language_cubit.dart';
+import '../../../presentation/widgets/confirm_dialog.dart';
 import '../../../core/localization/locale_date_time_format.dart';
 import '../../../core/localization/locale_number_format.dart';
 import '../../../core/theme/ledger_buttons.dart';
@@ -385,7 +386,17 @@ Future<void> showCrmDealForm(
                   width: double.infinity,
                   height: kLedgerModalButtonHeight,
                   child: OutlinedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
+                      final confirmed = await showConfirmDialog(
+                        ctx,
+                        title: lang.translate('crm_delete_deal'),
+                        message: lang.translate(
+                          'crm_delete_deal_confirm',
+                          params: {'name': titleCtrl.text.trim()},
+                        ),
+                        confirmLabel: lang.translate('common_delete'),
+                      );
+                      if (!confirmed || !ctx.mounted) return;
                       crmBloc.add(DeleteDealRequested(existing.id));
                       Navigator.of(ctx).pop();
                     },

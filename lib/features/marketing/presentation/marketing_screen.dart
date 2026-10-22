@@ -1177,7 +1177,9 @@ class _MarketingSectionScreenState extends State<MarketingSectionScreen> {
       final path = remote
           ? trimmed
           : (trimmed.startsWith('/') ? trimmed : '/$trimmed');
-      final response = await ApiClient().dio.get<List<int>>(
+      // Never send the PAYK Bearer token to an external media host.
+      final mediaClient = remote ? Dio() : ApiClient().dio;
+      final response = await mediaClient.get<List<int>>(
         path,
         options: Options(
           responseType: ResponseType.bytes,

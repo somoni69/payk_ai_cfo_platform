@@ -6,6 +6,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/hr_models.dart';
 import '../domain/hr_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Конкретная реализация репозитория кадров и KPI для бэкенда PAYK.
 class ApiHrRepository implements HrRepository {
@@ -57,7 +58,9 @@ class ApiHrRepository implements HrRepository {
         return _mapEmployee(map);
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -151,7 +154,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -201,7 +206,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -241,7 +248,9 @@ class ApiHrRepository implements HrRepository {
             : null,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -282,7 +291,9 @@ class ApiHrRepository implements HrRepository {
             : null,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -293,7 +304,9 @@ class ApiHrRepository implements HrRepository {
         '/hr/kpi/${_requirePositiveId(kpiId, 'kpiId')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -331,7 +344,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -372,7 +387,9 @@ class ApiHrRepository implements HrRepository {
         bonusFormula: map['bonus_formula']?.toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -386,7 +403,9 @@ class ApiHrRepository implements HrRepository {
       );
       return response.data ?? <int>[];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -421,7 +440,9 @@ class ApiHrRepository implements HrRepository {
 
       return _mapEmployee(map);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -439,7 +460,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -465,7 +488,9 @@ class ApiHrRepository implements HrRepository {
       _employeesCache.invalidate();
       return _mapEmployee(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -477,7 +502,9 @@ class ApiHrRepository implements HrRepository {
       );
       _employeesCache.invalidate();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -489,7 +516,9 @@ class ApiHrRepository implements HrRepository {
       );
       _employeesCache.invalidate();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -501,7 +530,9 @@ class ApiHrRepository implements HrRepository {
       );
       _employeesCache.invalidate();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -513,7 +544,9 @@ class ApiHrRepository implements HrRepository {
       );
       _employeesCache.invalidate();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -525,7 +558,9 @@ class ApiHrRepository implements HrRepository {
       );
       _employeesCache.invalidate();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -540,7 +575,9 @@ class ApiHrRepository implements HrRepository {
       }
       return 0;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -562,7 +599,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -589,7 +628,9 @@ class ApiHrRepository implements HrRepository {
         createdAt: _parseDate(map['created_at']) ?? DateTime.now(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -605,7 +646,9 @@ class ApiHrRepository implements HrRepository {
       );
       return response.data ?? <int>[];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -619,7 +662,9 @@ class ApiHrRepository implements HrRepository {
         '/hr/employees/${_requirePositiveId(employeeId, 'employeeId')}/documents/${_requirePositiveId(documentId, 'documentId')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -633,7 +678,9 @@ class ApiHrRepository implements HrRepository {
           .map((e) => _mapOrgNode(Map<String, dynamic>.from(e)))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -667,7 +714,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -695,7 +744,9 @@ class ApiHrRepository implements HrRepository {
         hours: _toDouble(map['hours']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -706,7 +757,9 @@ class ApiHrRepository implements HrRepository {
         '/hr/attendance/${_requirePositiveId(id, 'id')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -729,7 +782,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -766,7 +821,9 @@ class ApiHrRepository implements HrRepository {
         createdAt: _parseDate(map['created_at']) ?? DateTime.now(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -789,7 +846,9 @@ class ApiHrRepository implements HrRepository {
         createdAt: _parseDate(map['created_at']) ?? DateTime.now(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -800,7 +859,9 @@ class ApiHrRepository implements HrRepository {
         '/hr/candidates/${_requirePositiveId(id, 'id')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -829,7 +890,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -864,7 +927,9 @@ class ApiHrRepository implements HrRepository {
         note: map['note']?.toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -895,7 +960,9 @@ class ApiHrRepository implements HrRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -930,7 +997,9 @@ class ApiHrRepository implements HrRepository {
         fileUrl: map['file_url']?.toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -966,7 +1035,9 @@ class ApiHrRepository implements HrRepository {
         fileUrl: map['file_url']?.toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -977,7 +1048,9 @@ class ApiHrRepository implements HrRepository {
         '/hr/contracts/${_requirePositiveId(id, 'id')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -1022,7 +1095,9 @@ class ApiHrRepository implements HrRepository {
         fired: parseList(map['fired'], false),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -1043,7 +1118,9 @@ class ApiHrRepository implements HrRepository {
       );
       return response.data ?? <int>[];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

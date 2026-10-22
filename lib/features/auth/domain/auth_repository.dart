@@ -25,6 +25,9 @@ abstract interface class AuthRepository {
   /// Restores session from stored JWT if still valid.
   Future<AuthUser?> tryAutoLogin();
 
+  /// Whether a refresh token is present, without refreshing or rotating it.
+  Future<bool> hasStoredSession();
+
   /// Refreshes access token before soft-expiry.
   Future<AuthUser?> tryRefreshSession();
 

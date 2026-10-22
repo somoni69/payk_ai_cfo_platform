@@ -8,6 +8,8 @@ import 'expiring_request_cache.dart';
 import 'safe_retry_interceptor.dart';
 import 'ssl_pinning.dart';
 
+enum _RefreshOutcome { success, expired, transient }
+
 /// Сетевой клиент на базе Dio с поддержкой безопасного хранения JWT (SYS-08).
 ///
 /// Access + refresh tokens live in [FlutterSecureStorage] (Keychain / Keystore).
@@ -51,7 +53,7 @@ class ApiClient {
   String _interfaceLanguage = 'ru';
   Future<void>? _bootstrapFuture;
   Future<void>? _unauthorizedFuture;
-  Future<bool>? _refreshInFlight;
+  Future<_RefreshOutcome>? _refreshInFlight;
 
   static int _requestSequence = 0;
 
@@ -75,7 +77,8 @@ class ApiClient {
       ),
     );
 
-    // SEC-03: Настройка SSL/TLS Certificate & Public Key Pinning
+    // SEC-03: release builds fail closed without a configured certificate pin.
+    assertSslPinningConfigured(allowInsecure: allowInsecureApi);
     configureSslPinning(dio, allowInsecure: allowInsecureApi);
 
     // Интерцептор для подстановки JWT-токена в заголовки
@@ -181,6 +184,18 @@ class ApiClient {
     return '$baseUrl/$normalized';
   }
 
+  /// Whether [url] points at the API origin and may receive the Bearer token.
+  ///
+  /// Chat attachments can contain external CDN links; credentials must never
+  /// be forwarded to a third-party host.
+  bool isSameOrigin(String url) {
+    final target = Uri.tryParse(url.trim());
+    final base = Uri.tryParse(dio.options.baseUrl);
+    if (target == null || base == null) return false;
+    if (!target.hasScheme || !base.hasScheme) return false;
+    return target.origin == base.origin;
+  }
+
   /// Downloads protected binary media over authorized HTTP stream (SEC-02).
   Future<Uint8List> downloadProtectedMedia(String path) async {
     final response = await dio.get<List<int>>(
@@ -270,15 +285,18 @@ class ApiClient {
       return false;
     }
 
-    final refreshed = await _refreshAccessTokenOnce();
-    if (!refreshed) {
+    final outcome = await _refreshAccessTokenOnce();
+    if (outcome == _RefreshOutcome.expired) {
       await _handleUnauthorized(requestOptions);
+      return false;
+    }
+    if (outcome == _RefreshOutcome.transient) {
+      // Keep the session: a network/5xx failure must not wipe refresh tokens.
       return false;
     }
 
     final newToken = _accessToken;
     if (newToken == null || newToken.isEmpty) {
-      await _handleUnauthorized(requestOptions);
       return false;
     }
 
@@ -305,21 +323,26 @@ class ApiClient {
       );
       handler.resolve(response);
       return true;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401) {
+        await _handleUnauthorized(requestOptions);
+      }
+      return false;
     } catch (_) {
-      await _handleUnauthorized(requestOptions);
       return false;
     }
   }
 
   /// Single-flight refresh used by the 401 interceptor.
   ///
-  /// No token rotation: only access is updated. Returns `false` and clears
-  /// both tokens when the refresh endpoint rejects the session (401).
-  Future<bool> _refreshAccessTokenOnce() {
+  /// No token rotation: only access is updated. Returns an outcome instead of
+  /// clearing tokens here, so a transient network/5xx failure keeps the
+  /// session; only an explicit 401 triggers [_handleUnauthorized].
+  Future<_RefreshOutcome> _refreshAccessTokenOnce() {
     final inFlight = _refreshInFlight;
     if (inFlight != null) return inFlight;
 
-    late final Future<bool> operation;
+    late final Future<_RefreshOutcome> operation;
     operation = _performAccessTokenRefresh().whenComplete(() {
       if (identical(_refreshInFlight, operation)) {
         _refreshInFlight = null;
@@ -329,10 +352,10 @@ class ApiClient {
     return operation;
   }
 
-  Future<bool> _performAccessTokenRefresh() async {
+  Future<_RefreshOutcome> _performAccessTokenRefresh() async {
     final refreshToken = _refreshToken;
     if (refreshToken == null || refreshToken.isEmpty) {
-      return false;
+      return _RefreshOutcome.expired;
     }
 
     try {
@@ -349,23 +372,19 @@ class ApiClient {
       final body = response.data is Map ? response.data as Map : null;
       final token = body?['access_token'];
       if (token is! String || token.isEmpty) {
-        return false;
+        // A malformed 200 response is a server problem, not proof of expiry.
+        return _RefreshOutcome.transient;
       }
       // No rotation — never overwrite the stored refresh token here.
       await saveAccessToken(token);
-      return true;
+      return _RefreshOutcome.success;
     } on DioException catch (error) {
       if (error.response?.statusCode == 401) {
-        try {
-          await clearAccessToken();
-          await clearRefreshToken();
-        } catch (_) {
-          // Best-effort local wipe.
-        }
+        return _RefreshOutcome.expired;
       }
-      return false;
+      return _RefreshOutcome.transient;
     } catch (_) {
-      return false;
+      return _RefreshOutcome.transient;
     }
   }
 

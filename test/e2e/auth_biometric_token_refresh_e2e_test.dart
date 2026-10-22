@@ -35,6 +35,10 @@ class E2EAuthRepository implements ApiAuthRepository {
   }
 
   @override
+  Future<bool> hasStoredSession() async =>
+      autoLoginSession != null || currentUser != null;
+
+  @override
   Future<AuthUser?> tryAutoLogin() async => autoLoginSession;
 
   @override

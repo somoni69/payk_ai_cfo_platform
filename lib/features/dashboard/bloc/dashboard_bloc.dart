@@ -9,6 +9,8 @@ import 'dashboard_state.dart';
 
 class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final FinanceRepository _repository;
+  int _dataGeneration = 0;
+  final Map<DashboardSection, int> _sectionGenerations = {};
 
   DashboardBloc(this._repository) : super(DashboardLoading()) {
     on<LoadDashboardData>(_onLoadDashboardData);
@@ -33,6 +35,7 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     LoadDashboardData event,
     Emitter<DashboardState> emit,
   ) async {
+    final generation = ++_dataGeneration;
     final currentLoaded = state is DashboardLoaded
         ? state as DashboardLoaded
         : null;
@@ -45,14 +48,22 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       final overview = await _repository.getOverview(
         forceRefresh: event.forceRefresh || event.clearCache,
       );
+      if (generation != _dataGeneration) return;
 
-      final currency = currentLoaded?.currency ?? 'TJS';
+      // Merge into the latest state so a section that finished during this
+      // request is not overwritten by the stale snapshot.
+      final base = event.clearCache
+          ? null
+          : (state is DashboardLoaded
+                ? state as DashboardLoaded
+                : currentLoaded);
+      final currency = base?.currency ?? 'TJS';
       final convertedMetrics = _convertMetricsWithFactor(overview.metrics, 1.0);
       final convertedHistory = _convertHistoryWithFactor(overview.history, 1.0);
 
-      if (currentLoaded != null && !event.clearCache) {
+      if (base != null) {
         emit(
-          currentLoaded.copyWith(
+          base.copyWith(
             metrics: convertedMetrics,
             history: convertedHistory,
             currency: currency,
@@ -69,9 +80,15 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         );
       }
     } catch (e) {
+      if (generation != _dataGeneration) return;
       final msg = userFacingError(e, fallback: ErrorKeys.loadFailed);
-      if (currentLoaded != null && !event.clearCache) {
-        emit(currentLoaded.copyWith(overviewError: msg));
+      final latest = event.clearCache
+          ? null
+          : (state is DashboardLoaded
+                ? state as DashboardLoaded
+                : currentLoaded);
+      if (latest != null) {
+        emit(latest.copyWith(overviewError: msg));
       } else {
         emit(DashboardError(msg));
       }
@@ -91,6 +108,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
       return;
     }
 
+    final generation = (_sectionGenerations[event.section] ?? 0) + 1;
+    _sectionGenerations[event.section] = generation;
+
     final updatedLoading = Set<DashboardSection>.from(current.loadingSections)
       ..add(event.section);
     final updatedErrors = Map<DashboardSection, String>.from(
@@ -105,81 +125,61 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     );
 
     try {
-      DashboardLoaded next = current.copyWith(
-        loadingSections: updatedLoading,
-        sectionErrors: updatedErrors,
-      );
-
+      final Object? result;
       switch (event.section) {
         case DashboardSection.pnl:
-          final pnl = await _repository.getPnlReport(
+          result = await _repository.getPnlReport(
             dateFrom: current.reportDateFrom,
             dateTo: current.reportDateTo,
           );
-          next = next.copyWith(pnl: pnl);
-          break;
         case DashboardSection.planFact:
-          final planFact = await _repository.getPlanFactReport(
+          result = await _repository.getPlanFactReport(
             period: current.planPeriod,
           );
-          next = next.copyWith(planFact: planFact);
-          break;
         case DashboardSection.breakEven:
-          final breakEven = await _repository.getBreakEvenAnalysis(
+          result = await _repository.getBreakEvenAnalysis(
             dateFrom: current.reportDateFrom,
             dateTo: current.reportDateTo,
           );
-          next = next.copyWith(breakEven: breakEven);
-          break;
         case DashboardSection.abc:
-          final abc = await _repository.getAbcAnalysis(
+          result = await _repository.getAbcAnalysis(
             AbcDimensions.toApi(
               current.abc?.dimension ?? AbcDimensions.category,
             ),
             dateFrom: current.reportDateFrom,
             dateTo: current.reportDateTo,
           );
-          next = next.copyWith(abc: abc);
-          break;
         case DashboardSection.accountsRates:
-          final values = await Future.wait<Object>([
+          result = await Future.wait<Object>([
             _repository.getBankAccounts(),
             _repository.getExchangeRates(),
           ]);
-          next = next.copyWith(
-            bankAccounts: values[0] as BankAccountsReport,
-            rates: values[1] as ExchangeRatesReport,
-          );
-          break;
         case DashboardSection.clients:
-          final clients = await _repository.getClientAnalysis();
-          next = next.copyWith(clients: clients);
-          break;
+          result = await _repository.getClientAnalysis();
         case DashboardSection.aiInsights:
-          final ai = await _repository.getAiInsights();
-          next = next.copyWith(aiInsights: ai);
-          break;
+          result = await _repository.getAiInsights();
         case DashboardSection.onec:
-          final values = await Future.wait<Object>([
+          result = await Future.wait<Object>([
             _repository.getOneCReconcile(forceRefresh: event.forceRefresh),
             _repository.getOneCTargets(forceRefresh: event.forceRefresh),
           ]);
-          next = next.copyWith(
-            onec: values[0] as OneCReconcileReport,
-            onecTargets: values[1] as List<OneCTarget>,
-          );
-          break;
       }
 
-      final finishLoading = Set<DashboardSection>.from(next.loadingSections)
+      if (generation != _sectionGenerations[event.section]) return;
+      final latest = state is DashboardLoaded
+          ? state as DashboardLoaded
+          : current;
+      final updated = _withSectionResult(latest, event.section, result);
+      final finishLoading = Set<DashboardSection>.from(updated.loadingSections)
         ..remove(event.section);
       emit(
         _applySectionCurrency(
-          next.copyWith(loadingSections: finishLoading),
+          updated.copyWith(loadingSections: finishLoading),
           event.section,
         ),
       );
     } catch (e) {
+      if (generation != _sectionGenerations[event.section]) return;
       if (state is! DashboardLoaded) return;
       final latest = state as DashboardLoaded;
       final finishLoading = Set<DashboardSection>.from(latest.loadingSections)
@@ -195,6 +195,45 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
         ),
       );
     }
+  }
+
+  DashboardLoaded _withSectionResult(
+    DashboardLoaded state,
+    DashboardSection section,
+    Object? result,
+  ) {
+    return switch (section) {
+      DashboardSection.pnl => state.copyWith(pnl: result as PnlReport),
+      DashboardSection.planFact => state.copyWith(
+        planFact: result as PlanFactReport,
+      ),
+      DashboardSection.breakEven => state.copyWith(
+        breakEven: result as BreakEvenAnalysis,
+      ),
+      DashboardSection.abc => state.copyWith(abc: result as AbcAnalysis),
+      DashboardSection.accountsRates => switch (result as List<Object>) {
+        [
+          final accounts as BankAccountsReport,
+          final rates as ExchangeRatesReport,
+        ] =>
+          state.copyWith(bankAccounts: accounts, rates: rates),
+        _ => state,
+      },
+      DashboardSection.clients => state.copyWith(
+        clients: result as ClientAnalysisReport,
+      ),
+      DashboardSection.aiInsights => state.copyWith(
+        aiInsights: result as AiInsightsReport,
+      ),
+      DashboardSection.onec => switch (result as List<Object>) {
+        [
+          final onec as OneCReconcileReport,
+          final targets as List<OneCTarget>,
+        ] =>
+          state.copyWith(onec: onec, onecTargets: targets),
+        _ => state,
+      },
+    };
   }
 
   Future<void> _onSetFinanceReportPeriod(

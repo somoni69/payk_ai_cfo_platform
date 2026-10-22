@@ -101,12 +101,21 @@ GoRouter createRouter(
         if (rootRedirect != null) return rootRedirect;
 
         final effective = permissions?.state.data;
+        final permissionsUnavailable =
+            permissions != null &&
+            effective == null &&
+            permissions.state.error != null;
         if (!AppAccess.canOpenEffective(
           authState.role,
           location,
           effective: effective,
+          permissionsUnavailable: permissionsUnavailable,
         )) {
-          return AppAccess.deniedTarget(authState.role, effective);
+          return AppAccess.deniedTarget(
+            authState.role,
+            effective,
+            permissionsUnavailable: permissionsUnavailable,
+          );
         }
       }
 

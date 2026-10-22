@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/system_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiSystemRepository implements SystemRepository {
   ApiSystemRepository({ApiClient? client}) : _client = client ?? ApiClient();
@@ -20,7 +21,9 @@ class ApiSystemRepository implements SystemRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -36,7 +39,9 @@ class ApiSystemRepository implements SystemRepository {
           : const <String, dynamic>{};
       return (data['file'] ?? '').toString();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 }

@@ -8,6 +8,7 @@ import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/platform/temp_file_cleanup.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -350,7 +351,9 @@ class _MetaVideoState extends State<_MetaVideo> {
       if (mounted) setState(() {});
       return;
     }
-    final token = await ApiClient().getAccessToken();
+    final token = ApiClient().isSameOrigin(widget.url)
+        ? await ApiClient().getAccessToken()
+        : null;
     final controller = VideoPlayerController.networkUrl(
       Uri.parse(widget.url),
       httpHeaders: {
@@ -729,6 +732,7 @@ class _MetaFile extends StatelessWidget {
       );
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      scheduleTempFileDeletion(file);
     } catch (error) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

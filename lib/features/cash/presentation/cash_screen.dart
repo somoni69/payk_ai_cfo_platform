@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_tabler_icons/flutter_tabler_icons.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/platform/temp_file_cleanup.dart';
 import '../../../presentation/widgets/image_cache_extent.dart';
 import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/locale_date_time_format.dart';
@@ -189,6 +190,7 @@ mixin _CashViewMixin<T extends StatefulWidget> on State<T> {
       final file = File('${dir.path}/cash_operations.$format');
       await file.writeAsBytes(bytes, flush: true);
       await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
+      scheduleTempFileDeletion(file);
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(

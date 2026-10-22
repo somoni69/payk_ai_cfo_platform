@@ -55,6 +55,23 @@ class LedgerColors extends ThemeExtension<LedgerColors> {
     cameraBackdrop: Color(0xFF000000),
   );
 
+  /// Тёмная тема Ledger (системный режим).
+  static const dark = LedgerColors(
+    background: Color(0xFF0F1115),
+    surface: Color(0xFF161A22),
+    surfaceNested: Color(0xFF1E2430),
+    textPrimary: Color(0xFFF2F4F8),
+    textSecondary: Color(0xFFA7AFBF),
+    textTooltip: Color(0xFFC5CBD6),
+    border: Color(0xFF2A3140),
+    brand: Color(0xFF8B84FF),
+    accentGreen: Color(0xFF3DDC97),
+    accentRed: Color(0xFFFF6B6B),
+    accentAmber: Color(0xFFF2B84B),
+    onBrand: Color(0xFFFFFFFF),
+    cameraBackdrop: Color(0xFF000000),
+  );
+
   @override
   ThemeExtension<LedgerColors> copyWith({
     Color? background,

@@ -102,6 +102,12 @@ class PermissionsCubit extends Cubit<PermissionsState> {
   }) {
     final data = state.data;
     if (data == null) {
+      // Fail closed after a failed load: the static role matrix may be broader
+      // than the server-side restrictions, so it must not resurrect access.
+      if (state.error != null) {
+        return capability == AppCapability.network ||
+            capability == AppCapability.notifications;
+      }
       return switch (action) {
         PermAction.view => fallbackRole.can(capability),
         PermAction.create ||

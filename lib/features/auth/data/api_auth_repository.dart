@@ -228,6 +228,13 @@ class ApiAuthRepository implements AuthRepository {
     }
   }
 
+  /// Whether a refresh token is available without refreshing or rotating it.
+  @override
+  Future<bool> hasStoredSession() async {
+    final refreshToken = await _apiClient.getRefreshToken();
+    return refreshToken != null && refreshToken.isNotEmpty;
+  }
+
   /// Restores a session on cold start from secure storage.
   @override
   Future<AuthUser?> tryAutoLogin() async {

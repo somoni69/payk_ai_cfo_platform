@@ -35,11 +35,18 @@ flutter test
 1. Скопируйте `android/key.properties.example` в `android/key.properties`.
 2. Укажите настоящий upload keystore и секреты. Не добавляйте их в Git.
 3. Задайте неизменяемый production application ID через `PAYK_APPLICATION_ID`.
-4. Соберите подписанный AAB:
+4. Задайте TLS-пин сертификата API. Release-сборка без пина завершится
+   с понятной ошибкой при старте:
+   `--dart-define=PAYK_SSL_SHA256=<64 hex>`.
+   Для ротации можно добавить второй пин
+   `--dart-define=PAYK_SSL_SHA256_BACKUP=<64 hex>`.
+   `--dart-define=PAYK_ALLOW_UNPINNED_RELEASE=true` разрешён только для
+   локальной проверки компиляции, не для распространения.
+5. Соберите подписанный AAB:
 
 ```powershell
 $env:PAYK_APPLICATION_ID = 'tj.yourcompany.paykcfo'
-flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com/api
+flutter build appbundle --release --dart-define=API_BASE_URL=https://api.example.com/api --dart-define=PAYK_SSL_SHA256=<64-hex-fingerprint>
 ```
 
 Release-сборка намеренно остановится при тестовом `com.example.*`, отсутствующем keystore или неполных параметрах подписи. `-PallowUnsafeRelease=true` предназначен только для локальной проверки компиляции и создаёт недистрибутивный APK с debug-подписью.
@@ -49,7 +56,7 @@ Release-сборка намеренно остановится при тесто
 В Xcode откройте `ios/Runner.xcworkspace`, затем задайте настоящий Bundle Identifier и Apple Development Team для Runner. После этого соберите архив:
 
 ```text
-flutter build ipa --release --dart-define=API_BASE_URL=https://api.example.com/api
+flutter build ipa --release --dart-define=API_BASE_URL=https://api.example.com/api --dart-define=PAYK_SSL_SHA256=<64-hex-fingerprint>
 ```
 
 Device release с `com.example.*` или без Development Team блокируется. `PAYK_ALLOW_UNSAFE_RELEASE=1` разрешён только для локальной проверки сборки, не для публикации.

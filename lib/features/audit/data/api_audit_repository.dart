@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/audit_models.dart';
 import '../domain/audit_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Audit repository: `/audit/*`. Failures reach the bloc; no offline stand-ins.
 class ApiAuditRepository implements AuditRepository {
@@ -48,7 +49,9 @@ class ApiAuditRepository implements AuditRepository {
       );
       return _parsePage(response.data, AuditLog.fromJson);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -61,7 +64,9 @@ class ApiAuditRepository implements AuditRepository {
       );
       return _parsePage(response.data, AuditAlert.fromJson);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -70,7 +75,7 @@ class ApiAuditRepository implements AuditRepository {
     try {
       await _dio.post('/audit/run-detectors');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
     return getAuditAlerts();
   }
@@ -81,7 +86,9 @@ class ApiAuditRepository implements AuditRepository {
       '/audit/alerts/$id/resolve',
       data: {'is_resolved': isResolved},
     );
-    if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+    if (response.data is! Map) {
+      throw RepositoryFailure(ErrorKeys.invalidResponse);
+    }
     return AuditAlert.fromJson(Map<String, dynamic>.from(response.data as Map));
   }
 

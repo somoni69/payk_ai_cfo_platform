@@ -5,6 +5,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/crm_models.dart';
 import '../domain/crm_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Calendar day of a date-only API value (`birth_date`: `yyyy-MM-dd`).
 ///
@@ -153,7 +154,9 @@ class ApiCrmRepository implements CrmRepository {
         size: dataMap['size'] is int ? dataMap['size'] as int : filters.size,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -165,7 +168,9 @@ class ApiCrmRepository implements CrmRepository {
       );
       return _mapClient(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -202,7 +207,9 @@ class ApiCrmRepository implements CrmRepository {
           .map((item) => _mapDeal(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -224,7 +231,9 @@ class ApiCrmRepository implements CrmRepository {
         reactivationCount: map['reactivation_count'] ?? 0,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -244,7 +253,9 @@ class ApiCrmRepository implements CrmRepository {
       _invalidateMutations();
       return _mapClient(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -281,7 +292,9 @@ class ApiCrmRepository implements CrmRepository {
       _invalidateMutations();
       return _mapClient(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -293,7 +306,9 @@ class ApiCrmRepository implements CrmRepository {
       );
       _invalidateMutations();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -315,7 +330,9 @@ class ApiCrmRepository implements CrmRepository {
       _invalidateMutations();
       return _mapClient(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -340,7 +357,9 @@ class ApiCrmRepository implements CrmRepository {
       _invalidateMutations();
       return _mapDeal(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -370,7 +389,9 @@ class ApiCrmRepository implements CrmRepository {
       _invalidateMutations();
       return _mapDeal(response.data as Map<String, dynamic>);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -380,7 +401,9 @@ class ApiCrmRepository implements CrmRepository {
       await _apiClient.dio.delete('/crm/deals/${_requirePositiveId(id, 'id')}');
       _invalidateMutations();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -405,7 +428,9 @@ class ApiCrmRepository implements CrmRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -445,7 +470,9 @@ class ApiCrmRepository implements CrmRepository {
         size: dataMap['size'] is int ? dataMap['size'] as int : size,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -474,7 +501,9 @@ class ApiCrmRepository implements CrmRepository {
         createdAt: _parseDate(map['created_at']) ?? DateTime.now().toUtc(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -501,7 +530,9 @@ class ApiCrmRepository implements CrmRepository {
           : const <String, dynamic>{};
       return map['ok'] == true;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -524,7 +555,9 @@ class ApiCrmRepository implements CrmRepository {
           .map((item) => _mapClient(item as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -542,7 +575,9 @@ class ApiCrmRepository implements CrmRepository {
         advice: map['advice']?.toString() ?? '',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -583,7 +618,9 @@ class ApiCrmRepository implements CrmRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

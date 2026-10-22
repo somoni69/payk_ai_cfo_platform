@@ -406,7 +406,10 @@ class _WarehouseViewState extends State<WarehouseView> {
                     context,
                     icon: TablerIcons.box,
                     title: localeCubit.translate('warehouse_tab_products'),
-                    subtitle: '${state.products.length} поз.',
+                    subtitle: localeCubit.translate(
+                      'warehouse_count_positions',
+                      params: {'count': state.products.length},
+                    ),
                     onTap: () => _openWarehouseSection(
                       context,
                       WarehouseSection.products,
@@ -419,7 +422,10 @@ class _WarehouseViewState extends State<WarehouseView> {
                     context,
                     icon: TablerIcons.arrows_exchange,
                     title: localeCubit.translate('warehouse_tab_movements'),
-                    subtitle: '${state.movements.length} операций',
+                    subtitle: localeCubit.translate(
+                      'warehouse_count_operations',
+                      params: {'count': state.movements.length},
+                    ),
                     onTap: () => _openWarehouseSection(
                       context,
                       WarehouseSection.movements,
@@ -436,7 +442,10 @@ class _WarehouseViewState extends State<WarehouseView> {
                     context,
                     icon: TablerIcons.layers_linked,
                     title: localeCubit.translate('warehouse_tab_batches'),
-                    subtitle: '${state.batches.length} партий',
+                    subtitle: localeCubit.translate(
+                      'warehouse_count_batches',
+                      params: {'count': state.batches.length},
+                    ),
                     onTap: () => _openWarehouseSection(
                       context,
                       WarehouseSection.batches,
@@ -3467,7 +3476,7 @@ void _showPrintLabelsBottomSheet(
               Expanded(
                 child: ChoiceChip(
                   label: Text(
-                    'Сетка А4 (3×8, 24 шт)',
+                    language.translate('warehouse_print_a4'),
                     style: textStyles.captionSans.copyWith(
                       fontWeight: sheetFormat == 'a4'
                           ? FontWeight.w600
@@ -3486,7 +3495,7 @@ void _showPrintLabelsBottomSheet(
               Expanded(
                 child: ChoiceChip(
                   label: Text(
-                    'Термолента 58 мм',
+                    language.translate('warehouse_print_label_58'),
                     style: textStyles.captionSans.copyWith(
                       fontWeight: sheetFormat == 'label'
                           ? FontWeight.w600
@@ -3519,15 +3528,21 @@ void _showPrintLabelsBottomSheet(
             ),
             title: Text(
               selectedProduct == null
-                  ? 'Все товары (${products.length} шт)'
-                  : '${selectedProduct!.name} (${selectedProduct!.barcode ?? 'без кода'})',
+                  ? language.translate(
+                      'warehouse_all_products_with_count',
+                      params: {'count': products.length},
+                    )
+                  : '${selectedProduct!.name} (${selectedProduct!.barcode ?? language.translate('warehouse_no_barcode')})',
               style: textStyles.bodySans,
             ),
             items: [null, ...products],
             selectedValue: selectedProduct,
             itemLabelBuilder: (p) => p == null
-                ? 'Все товары (${products.length} шт)'
-                : '${p.name} (${p.barcode ?? 'без кода'})',
+                ? language.translate(
+                    'warehouse_all_products_with_count',
+                    params: {'count': products.length},
+                  )
+                : '${p.name} (${p.barcode ?? language.translate('warehouse_no_barcode')})',
             onSelected: (p) {
               setSheetState(() {
                 selectedProduct = p;
@@ -3536,7 +3551,10 @@ void _showPrintLabelsBottomSheet(
           ),
           const SizedBox(height: 16),
           Text(
-            'Копий на каждый товар: $copies',
+            language.translate(
+              'warehouse_copies_per_product',
+              params: {'count': copies},
+            ),
             style: textStyles.captionSans.copyWith(
               color: colors.textSecondary,
               fontWeight: FontWeight.w600,
@@ -3549,7 +3567,9 @@ void _showPrintLabelsBottomSheet(
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: ChoiceChip(
-                  label: Text('$c шт'),
+                  label: Text(
+                    '$c ${language.translate('warehouse_unit_pieces_short')}',
+                  ),
                   selected: isSel,
                   onSelected: (sel) {
                     if (sel) setSheetState(() => copies = c);

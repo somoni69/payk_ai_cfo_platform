@@ -2,6 +2,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/checklist_models.dart';
 import '../domain/checklists_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiChecklistsRepository implements ChecklistsRepository {
   final ApiClient _client;
@@ -22,7 +23,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
           .map((e) => ChecklistRun.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -44,7 +47,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
           .map((e) => ChecklistTemplate.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -77,7 +82,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -90,7 +97,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       }
       await _client.dio.delete('/checklists/$parsed');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -113,7 +122,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
         ),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -129,7 +140,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
         data: {'text': text, 'position': position},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -138,7 +151,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
     try {
       await _client.dio.delete('/checklists/items/${_positiveId(itemId)}');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -163,7 +178,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
           )
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -178,7 +195,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       if (id == null || id <= 0) throw StateError(ErrorKeys.invalidId);
       await _client.dio.post('/checklists/entries/$id/toggle');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -204,7 +223,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       }
       return ChecklistEntry(id: '', runId: runId, text: text);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -218,7 +239,9 @@ class ApiChecklistsRepository implements ChecklistsRepository {
       if (eId == null || eId <= 0) throw StateError(ErrorKeys.invalidId);
       await _client.dio.delete('/checklists/entries/$eId');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 }

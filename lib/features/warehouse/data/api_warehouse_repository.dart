@@ -3,6 +3,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/warehouse_models.dart';
 import '../domain/warehouse_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Конкретная реализация репозитория склада, работающая с бэкендом PAYK.
 class ApiWarehouseRepository implements WarehouseRepository {
@@ -94,7 +95,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
           )
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -111,7 +114,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -128,7 +133,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         name: (map['name'] ?? name).toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -146,7 +153,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
       final map = Map<String, dynamic>.from(response.data as Map);
       return (map['url'] ?? '').toString();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -175,7 +184,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -192,7 +203,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         ),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -224,7 +237,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         fallback: product,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -255,7 +270,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         fallback: product,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -266,7 +283,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         '/warehouse/products/${_requirePositiveId(id, 'id')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -278,7 +297,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         data: {'target': 'product', 'id': _requirePositiveId(id, 'id')},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -321,7 +342,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         cashOperationId: map['cash_operation_id']?.toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -374,7 +397,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
           .map((e) => _batchFromJson(Map<String, dynamic>.from(e as Map)))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -404,7 +429,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
       );
       return _batchFromJson(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -436,7 +463,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
       );
       return _batchFromJson(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -447,7 +476,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         '/warehouse/batches/${_requirePositiveId(id, 'id')}',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -459,7 +490,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         data: {'percent': percent},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -539,7 +572,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         summary: (map['summary'] ?? '').toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -558,7 +593,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         _ => 0,
       };
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -583,7 +620,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         externalId: map['external_id']?.toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -604,7 +643,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
         _ => 0,
       };
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -623,7 +664,9 @@ class ApiWarehouseRepository implements WarehouseRepository {
       );
       return response.data ?? <int>[];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

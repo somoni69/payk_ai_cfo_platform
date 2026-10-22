@@ -2,6 +2,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/assistant_models.dart';
 import '../domain/assistant_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiAssistantRepository implements AssistantRepository {
   final ApiClient _apiClient;
@@ -30,7 +31,9 @@ class ApiAssistantRepository implements AssistantRepository {
           : const <dynamic>[];
       return list.map(_messageFromJson).whereType<AssistantMessage>().toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -47,11 +50,11 @@ class ApiAssistantRepository implements AssistantRepository {
       final body = response.data is Map ? response.data as Map : null;
       final answer = body?['answer'];
       if (answer is! String || answer.trim().isEmpty) {
-        throw Exception(ErrorKeys.invalidResponse);
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
       }
       return answer.trim();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -70,7 +73,9 @@ class ApiAssistantRepository implements AssistantRepository {
       );
       return _adviceFromJson(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -92,7 +97,7 @@ class ApiAssistantRepository implements AssistantRepository {
       );
       return _adviceFromJson(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.generic));
+      throw RepositoryFailure(userFacingError(e, fallback: ErrorKeys.generic));
     }
   }
 
@@ -158,7 +163,9 @@ class ApiAssistantRepository implements AssistantRepository {
         queryParameters: {'module': _normalizeModule(module)},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 

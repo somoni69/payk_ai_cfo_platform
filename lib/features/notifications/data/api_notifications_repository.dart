@@ -8,6 +8,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/notification_model.dart';
 import '../domain/notifications_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Реализация репозитория аудита и AI-предупреждений (AUD-*, FIN-12, LEG-*).
 class ApiNotificationsRepository implements NotificationsRepository {
@@ -100,7 +101,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
               final amount = _formatAmount(map['amount']);
               final time = formatLocalizedDateTimeForLocale(
                 dt,
-                const Locale('ru'),
+                Locale(ApiClient().interfaceLanguage),
                 style: LocalizedDateTimeStyle.time,
               );
               notifications.add(
@@ -147,7 +148,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
             if (due.isBefore(DateTime.now())) {
               final formattedDue = formatLocalizedDateTimeForLocale(
                 due,
-                const Locale('ru'),
+                Locale(ApiClient().interfaceLanguage),
                 style: LocalizedDateTimeStyle.date,
                 convertToLocal: false,
               );
@@ -179,7 +180,9 @@ class ApiNotificationsRepository implements NotificationsRepository {
       notifications.sort((a, b) => b.dateTime.compareTo(a.dateTime));
       return notifications;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -192,7 +195,7 @@ class ApiNotificationsRepository implements NotificationsRepository {
     }
     return formatLocalizedNumberForLocale(
       amount,
-      const Locale('ru'),
+      Locale(ApiClient().interfaceLanguage),
       maximumFractionDigits: 2,
     );
   }
@@ -212,7 +215,9 @@ class ApiNotificationsRepository implements NotificationsRepository {
           .whereType<AppNotification>()
           .toList(growable: false);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -238,7 +243,9 @@ class ApiNotificationsRepository implements NotificationsRepository {
     try {
       await _dio.post('/notifications/read-all');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -296,7 +303,9 @@ class ApiNotificationsRepository implements NotificationsRepository {
         );
       }
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 }

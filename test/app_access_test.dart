@@ -143,6 +143,30 @@ void main() {
       isFalse,
     );
     expect(AppAccess.deniedTarget(UserRole.director, cashOnly), '/cash');
+    expect(
+      AppAccess.canOpenEffective(
+        UserRole.director,
+        '/cash',
+        permissionsUnavailable: true,
+      ),
+      isFalse,
+    );
+    expect(
+      AppAccess.canOpenEffective(
+        UserRole.director,
+        '/network',
+        permissionsUnavailable: true,
+      ),
+      isTrue,
+    );
+    expect(
+      AppAccess.deniedTarget(
+        UserRole.director,
+        null,
+        permissionsUnavailable: true,
+      ),
+      '/more',
+    );
     expect(UserRole.accountant.canManage(AppCapability.cash), isTrue);
     expect(UserRole.hr.canManage(AppCapability.tasks), isTrue);
     expect(UserRole.hr.canManage(AppCapability.hr), isTrue);

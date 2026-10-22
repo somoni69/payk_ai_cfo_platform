@@ -16,6 +16,7 @@ import '../../../features/checklists/bloc/checklists_state.dart';
 import '../../../features/checklists/domain/checklist_models.dart';
 import '../../../features/checklists/domain/checklists_repository.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../../../presentation/widgets/confirm_dialog.dart';
 import '../../../presentation/widgets/ledger_bottom_sheet.dart';
 import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
@@ -1321,7 +1322,13 @@ Future<void> _showTemplateModal(
               width: double.infinity,
               height: kLedgerModalButtonHeight,
               child: OutlinedButton.icon(
-                onPressed: () {
+                onPressed: () async {
+                  final confirmed = await showConfirmDialog(
+                    context,
+                    title: locale.translate('common_delete_confirm_title'),
+                    message: locale.translate('common_delete_confirm_message'),
+                  );
+                  if (!confirmed || !context.mounted) return;
                   checklistsBloc.add(DeleteTemplateRequested(template.id));
                   Navigator.pop(context);
                 },

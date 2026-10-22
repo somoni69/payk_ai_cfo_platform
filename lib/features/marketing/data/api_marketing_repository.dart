@@ -6,6 +6,7 @@ import '../../../core/network/expiring_request_cache.dart';
 import '../domain/marketing_ai_models.dart';
 import '../domain/marketing_models.dart';
 import '../domain/marketing_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiMarketingRepository
     implements MarketingRepository, CancellableMarketingRepository {
@@ -50,7 +51,9 @@ class ApiMarketingRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -100,7 +103,9 @@ class ApiMarketingRepository
         cac: map['cac'] != null ? double.tryParse(map['cac'].toString()) : null,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -136,7 +141,9 @@ class ApiMarketingRepository
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -171,7 +178,9 @@ class ApiMarketingRepository
         ),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -213,7 +222,9 @@ class ApiMarketingRepository
         ),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -235,7 +246,7 @@ class ApiMarketingRepository
       return list.map((e) => e.toString()).toList();
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } finally {
       if (identical(_ideasCancelToken, cancelToken)) {
         _ideasCancelToken = null;
@@ -260,7 +271,7 @@ class ApiMarketingRepository
       return map['text'] ?? 'Нет сгенерированного текста';
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } finally {
       if (identical(_textCancelToken, cancelToken)) {
         _textCancelToken = null;
@@ -311,10 +322,12 @@ class ApiMarketingRepository
       if (data is Map) {
         return MarketingPromptMedia.fromJson(Map<String, dynamic>.from(data));
       }
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     } catch (error) {
       if (error is DioException && CancelToken.isCancel(error)) rethrow;
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     } finally {
       if (identical(current(), cancelToken)) adopt(null);
     }
@@ -324,12 +337,16 @@ class ApiMarketingRepository
   Future<BrandGuide> getBrandGuide({bool forceRefresh = false}) async {
     try {
       final response = await _apiClient.dio.get('/marketing/ai/brand');
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return BrandGuide.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -340,12 +357,16 @@ class ApiMarketingRepository
         '/marketing/ai/brand',
         data: brandGuide.toJson(),
       );
-      if (response.data is! Map) throw Exception(ErrorKeys.invalidResponse);
+      if (response.data is! Map) {
+        throw RepositoryFailure(ErrorKeys.invalidResponse);
+      }
       return BrandGuide.fromJson(
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (error) {
-      throw Exception(userFacingError(error, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(error, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -363,7 +384,9 @@ class ApiMarketingRepository
           .map(MarketingIdea.fromJson)
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -393,7 +416,9 @@ class ApiMarketingRepository
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -410,7 +435,9 @@ class ApiMarketingRepository
           .map(MarketingConcept.fromJson)
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -434,7 +461,9 @@ class ApiMarketingRepository
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -448,7 +477,9 @@ class ApiMarketingRepository
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -463,7 +494,9 @@ class ApiMarketingRepository
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -500,7 +533,9 @@ class ApiMarketingRepository
         Map<String, dynamic>.from(response.data as Map),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -515,7 +550,9 @@ class ApiMarketingRepository
         data: {'reason': reason},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -555,7 +592,9 @@ class ApiMarketingRepository
       );
       return response.data ?? <int>[];
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 

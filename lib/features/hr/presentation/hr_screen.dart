@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../core/platform/temp_file_cleanup.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../../../core/observability/app_error_reporter.dart';
 import '../../../core/localization/locale_date_time_format.dart';

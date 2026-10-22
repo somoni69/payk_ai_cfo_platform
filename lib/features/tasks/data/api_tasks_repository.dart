@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/task_model.dart';
 import '../domain/tasks_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Реализация репозитория задач, получающая данные с бэкенда (TASK-*).
 class ApiTasksRepository implements TasksRepository {
@@ -79,7 +80,9 @@ class ApiTasksRepository implements TasksRepository {
       final response = await _apiClient.dio.get('/tasks');
       return _mapTaskList(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -92,7 +95,9 @@ class ApiTasksRepository implements TasksRepository {
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -116,7 +121,9 @@ class ApiTasksRepository implements TasksRepository {
       final response = await _apiClient.dio.post('/tasks', data: payload);
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -146,7 +153,9 @@ class ApiTasksRepository implements TasksRepository {
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -165,7 +174,9 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -183,7 +194,9 @@ class ApiTasksRepository implements TasksRepository {
         description: map['description'],
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -205,7 +218,9 @@ class ApiTasksRepository implements TasksRepository {
         description: map['description'],
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -214,7 +229,9 @@ class ApiTasksRepository implements TasksRepository {
     try {
       await _apiClient.dio.delete('/tasks/projects/$projectId');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -262,7 +279,9 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -285,7 +304,9 @@ class ApiTasksRepository implements TasksRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -295,7 +316,9 @@ class ApiTasksRepository implements TasksRepository {
       final response = await _apiClient.dio.get('/tasks/my');
       return _mapTaskList(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -305,7 +328,9 @@ class ApiTasksRepository implements TasksRepository {
       final response = await _apiClient.dio.get('/tasks/my/assigned');
       return _mapTaskList(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -329,7 +354,9 @@ class ApiTasksRepository implements TasksRepository {
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -356,7 +383,9 @@ class ApiTasksRepository implements TasksRepository {
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -365,7 +394,9 @@ class ApiTasksRepository implements TasksRepository {
     try {
       await _apiClient.dio.delete('/tasks/$taskId');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -374,7 +405,9 @@ class ApiTasksRepository implements TasksRepository {
     try {
       await _apiClient.dio.delete('/tasks/personal/$taskId');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -386,7 +419,9 @@ class ApiTasksRepository implements TasksRepository {
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -396,7 +431,9 @@ class ApiTasksRepository implements TasksRepository {
       final response = await _apiClient.dio.post('/tasks/my/$taskId/submit');
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -406,7 +443,9 @@ class ApiTasksRepository implements TasksRepository {
       final response = await _apiClient.dio.post('/tasks/$taskId/accept');
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -419,7 +458,9 @@ class ApiTasksRepository implements TasksRepository {
       );
       return _mapTask(Map<String, dynamic>.from(response.data as Map));
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 

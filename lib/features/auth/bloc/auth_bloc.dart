@@ -115,8 +115,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     _pendingTwoFactor = null;
-    final user = await _authRepository.tryAutoLogin();
-    if (user == null) {
+
+    // Do not refresh (and rotate) tokens before the device owner is verified.
+    if (!await _authRepository.hasStoredSession()) {
       _cancelSessionWatchdog();
       emit(AuthUnauthenticated());
       return;
@@ -129,6 +130,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // A financial session must not bypass an enabled lock when its policy
       // cannot be read reliably.
       _cancelSessionWatchdog();
+      await _authRepository.logout();
       emit(AuthUnauthenticated());
       return;
     }
@@ -137,6 +139,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     // explicit authentication (login credentials) instead of a silent autologin bypass.
     if (!useBiometrics) {
       _cancelSessionWatchdog();
+      await _authRepository.logout();
       emit(AuthUnauthenticated());
       return;
     }
@@ -145,6 +148,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final isAvailable = await _biometricsAvailable();
       if (!isAvailable) {
         _cancelSessionWatchdog();
+        await _authRepository.logout();
         emit(AuthUnauthenticated());
         return;
       }
@@ -153,8 +157,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         reason: _biometricReason(),
       );
       if (authenticated) {
-        await _emitAuthenticated(emit, user);
-        return;
+        // Refresh only after biometric verification succeeds.
+        final user = await _authRepository.tryAutoLogin();
+        if (user != null) {
+          await _emitAuthenticated(emit, user);
+          return;
+        }
       }
     } catch (_) {
       // Fall through to manual authentication when the platform rejects it.
@@ -271,8 +279,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
 
-      final user = await _authRepository.tryAutoLogin();
-      if (user == null) {
+      if (!await _authRepository.hasStoredSession()) {
         emit(const AuthError(ErrorKeys.biometricsNoSession));
         return;
       }
@@ -280,12 +287,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final authenticated = await _biometricAuthenticator.authenticate(
         reason: _biometricReason(),
       );
-
-      if (authenticated) {
-        await _emitAuthenticated(emit, user);
-      } else {
+      if (!authenticated) {
         emit(const AuthError(ErrorKeys.biometricsFailed));
+        return;
       }
+
+      // Refresh only after biometric verification succeeds.
+      final user = await _authRepository.tryAutoLogin();
+      if (user == null) {
+        emit(const AuthError(ErrorKeys.biometricsNoSession));
+        return;
+      }
+
+      await _emitAuthenticated(emit, user);
     } catch (e) {
       emit(const AuthError(ErrorKeys.biometricsError));
     }
@@ -300,6 +314,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final refreshed = await _authRepository.tryRefreshSession();
     if (refreshed != null) {
       await _emitAuthenticated(emit, refreshed);
+      return;
+    }
+
+    // A transient network/5xx failure must not destroy a valid refresh token.
+    if (await _authRepository.hasStoredSession()) {
+      _scheduleSessionRetry();
       return;
     }
 
@@ -372,6 +392,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
 
     _sessionTimer = Timer(delay, () {
+      if (!isClosed) add(const SessionSoftExpiryReached());
+    });
+  }
+
+  void _scheduleSessionRetry() {
+    _cancelSessionWatchdog();
+    _sessionTimer = Timer(const Duration(seconds: 30), () {
       if (!isClosed) add(const SessionSoftExpiryReached());
     });
   }

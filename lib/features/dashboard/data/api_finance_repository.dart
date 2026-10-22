@@ -5,6 +5,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/expiring_request_cache.dart';
 import '../domain/finance_model.dart';
 import '../domain/finance_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Реализация репозитория финансов, получающая данные с бэкенда PAYK (FIN-01, FIN-03).
 class ApiFinanceRepository implements FinanceRepository {
@@ -141,7 +142,9 @@ class ApiFinanceRepository implements FinanceRepository {
         period: (data['period'] ?? '').toString(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -189,7 +192,9 @@ class ApiFinanceRepository implements FinanceRepository {
 
       return points;
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -239,7 +244,9 @@ class ApiFinanceRepository implements FinanceRepository {
         rows: rows,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -278,7 +285,9 @@ class ApiFinanceRepository implements FinanceRepository {
         profit: _toDouble(data['profit']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -303,7 +312,9 @@ class ApiFinanceRepository implements FinanceRepository {
         marginOfSafety: _toDouble(data['margin_of_safety']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -343,7 +354,9 @@ class ApiFinanceRepository implements FinanceRepository {
         total: _toDouble(data['total']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -370,7 +383,9 @@ class ApiFinanceRepository implements FinanceRepository {
         totalTjs: _toDouble(data['total_tjs']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -393,7 +408,9 @@ class ApiFinanceRepository implements FinanceRepository {
 
       return ExchangeRatesReport(rates: list);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -431,7 +448,9 @@ class ApiFinanceRepository implements FinanceRepository {
       }).toList();
       return CurrencyBoard(official: official, banks: banks);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -459,7 +478,9 @@ class ApiFinanceRepository implements FinanceRepository {
         recommendations: data['recommendations'] ?? 'Рекомендаций нет.',
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -493,7 +514,9 @@ class ApiFinanceRepository implements FinanceRepository {
         totalFact: _toDouble(data['total_fact']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -525,7 +548,9 @@ class ApiFinanceRepository implements FinanceRepository {
             .toList(),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -550,7 +575,9 @@ class ApiFinanceRepository implements FinanceRepository {
         );
       }).toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -580,7 +607,9 @@ class ApiFinanceRepository implements FinanceRepository {
         plannedAmount: _toDouble(map['planned_amount']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -589,7 +618,9 @@ class ApiFinanceRepository implements FinanceRepository {
     try {
       await _dio.delete('/finance/plans/$planId');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -622,7 +653,9 @@ class ApiFinanceRepository implements FinanceRepository {
         balance: _toDouble(map['balance']),
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -633,7 +666,9 @@ class ApiFinanceRepository implements FinanceRepository {
       if (id == null || id <= 0) throw StateError(ErrorKeys.invalidId);
       await _dio.delete('/finance/accounts/$id');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -647,7 +682,9 @@ class ApiFinanceRepository implements FinanceRepository {
         data: {'target': 'account', 'id': id},
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -672,7 +709,9 @@ class ApiFinanceRepository implements FinanceRepository {
         values: values,
       );
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -681,7 +720,9 @@ class ApiFinanceRepository implements FinanceRepository {
     try {
       await _dio.post('/finance/rates/refresh');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -698,7 +739,9 @@ class ApiFinanceRepository implements FinanceRepository {
       final data = Map<String, dynamic>.from(response.data as Map);
       return OneCReconcileReport.fromJson(data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -711,7 +754,9 @@ class ApiFinanceRepository implements FinanceRepository {
           .map((e) => OneCTarget.fromJson(e as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -720,7 +765,9 @@ class ApiFinanceRepository implements FinanceRepository {
     try {
       await _dio.put('/finance/onec/link', data: input.toJson());
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 }

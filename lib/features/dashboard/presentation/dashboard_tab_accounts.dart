@@ -71,9 +71,23 @@ Widget _buildAccountsRatesTab(
                     children: [
                       if (isDirector && acc.balance != 0)
                         TextButton(
-                          onPressed: () => context.read<DashboardBloc>().add(
-                            ZeroOutAccountRequested(acc.id),
-                          ),
+                          onPressed: () async {
+                            final bloc = context.read<DashboardBloc>();
+                            final confirmed = await showConfirmDialog(
+                              context,
+                              title: languageCubit.translate(
+                                'dashboard_account_zero_confirm_title',
+                              ),
+                              message: languageCubit.translate(
+                                'dashboard_account_zero_confirm_message',
+                              ),
+                              confirmLabel: languageCubit.translate(
+                                'dashboard_account_zero_out',
+                              ),
+                            );
+                            if (!confirmed || !context.mounted) return;
+                            bloc.add(ZeroOutAccountRequested(acc.id));
+                          },
                           child: Text(
                             languageCubit.translate(
                               'dashboard_account_zero_out',
@@ -82,9 +96,20 @@ Widget _buildAccountsRatesTab(
                         ),
                       const Spacer(),
                       IconButton(
-                        onPressed: () => context.read<DashboardBloc>().add(
-                          DeleteAccountRequested(acc.id),
-                        ),
+                        onPressed: () async {
+                          final bloc = context.read<DashboardBloc>();
+                          final confirmed = await showConfirmDialog(
+                            context,
+                            title: languageCubit.translate(
+                              'dashboard_account_delete_confirm_title',
+                            ),
+                            message: languageCubit.translate(
+                              'dashboard_account_delete_confirm_message',
+                            ),
+                          );
+                          if (!confirmed || !context.mounted) return;
+                          bloc.add(DeleteAccountRequested(acc.id));
+                        },
                         icon: Icon(
                           TablerIcons.trash,
                           size: 18,

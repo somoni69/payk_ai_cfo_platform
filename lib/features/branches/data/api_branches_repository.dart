@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/user_facing_error.dart';
 import '../domain/branch_models.dart';
 import '../domain/branches_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 /// Branches: `/branches`. Failures reach the bloc; nothing is invented offline.
 class ApiBranchesRepository implements BranchesRepository {
@@ -13,7 +14,7 @@ class ApiBranchesRepository implements BranchesRepository {
     : _dio = dio ?? (client ?? ApiClient()).dio;
 
   static Branch _branch(Object? data) {
-    if (data is! Map) throw Exception(ErrorKeys.invalidResponse);
+    if (data is! Map) throw RepositoryFailure(ErrorKeys.invalidResponse);
     return Branch.fromJson(Map<String, dynamic>.from(data));
   }
 
@@ -22,13 +23,15 @@ class ApiBranchesRepository implements BranchesRepository {
     try {
       final response = await _dio.get('/branches');
       final data = response.data;
-      if (data is! List) throw Exception(ErrorKeys.invalidResponse);
+      if (data is! List) throw RepositoryFailure(ErrorKeys.invalidResponse);
       return data
           .whereType<Map>()
           .map((e) => Branch.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     }
   }
 
@@ -46,7 +49,9 @@ class ApiBranchesRepository implements BranchesRepository {
       );
       return _branch(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -72,7 +77,9 @@ class ApiBranchesRepository implements BranchesRepository {
       );
       return _branch(response.data);
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 
@@ -81,7 +88,9 @@ class ApiBranchesRepository implements BranchesRepository {
     try {
       await _dio.delete('/branches/$id');
     } catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     }
   }
 }

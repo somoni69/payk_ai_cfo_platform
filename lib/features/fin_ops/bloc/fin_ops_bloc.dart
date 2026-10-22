@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/observability/app_error_reporter.dart';
@@ -16,14 +17,32 @@ class FinOpsBloc extends Bloc<FinOpsEvent, FinOpsState> {
   FinOpsBloc(this._repository, this._branchesRepository)
     : super(FinOpsInitial()) {
     on<LoadFinOpsData>(_onLoadFinOpsData);
-    on<CreateEncashmentRequested>(_onCreateEncashmentRequested);
-    on<CreateStoreTransferRequested>(_onCreateStoreTransferRequested);
-    on<UpdateTransferStatusRequested>(_onUpdateTransferStatusRequested);
-    on<CreateFinancialAidRequested>(_onCreateFinancialAidRequested);
-    on<RepayFinancialAidRequested>(_onRepayFinancialAidRequested);
-    on<CreateBankRequested>(_onCreateBank);
-    on<DeleteBankRequested>(_onDeleteBank);
-    on<CancelStoreTransferRequested>(_onCancelTransfer);
+    on<CreateEncashmentRequested>(
+      _onCreateEncashmentRequested,
+      transformer: droppable(),
+    );
+    on<CreateStoreTransferRequested>(
+      _onCreateStoreTransferRequested,
+      transformer: droppable(),
+    );
+    on<UpdateTransferStatusRequested>(
+      _onUpdateTransferStatusRequested,
+      transformer: droppable(),
+    );
+    on<CreateFinancialAidRequested>(
+      _onCreateFinancialAidRequested,
+      transformer: droppable(),
+    );
+    on<RepayFinancialAidRequested>(
+      _onRepayFinancialAidRequested,
+      transformer: droppable(),
+    );
+    on<CreateBankRequested>(_onCreateBank, transformer: droppable());
+    on<DeleteBankRequested>(_onDeleteBank, transformer: droppable());
+    on<CancelStoreTransferRequested>(
+      _onCancelTransfer,
+      transformer: droppable(),
+    );
   }
 
   Future<List<T>> _optional<T>(Future<List<T>> Function() load) async {

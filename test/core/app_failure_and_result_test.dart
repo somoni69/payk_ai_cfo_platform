@@ -59,6 +59,18 @@ void main() {
         expect(failure.debugMessage, 'Expired JWT refresh rejected');
       });
 
+      test('RepositoryFailure keeps a localization key as a typed failure', () {
+        const failure = RepositoryFailure(
+          ErrorKeys.loadFailed,
+          debugMessage: 'Dio payload',
+        );
+        expect(failure, isA<Exception>());
+        expect(failure, isA<AppFailure>());
+        expect(failure.translationKey, ErrorKeys.loadFailed);
+        expect(failure.toString(), ErrorKeys.loadFailed);
+        expect(userFacingError(failure), ErrorKeys.loadFailed);
+      });
+
       test('ValidationFailure holds structured field errors map', () {
         const fieldErrors = {
           'amount': [

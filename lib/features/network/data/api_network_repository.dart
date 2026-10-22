@@ -8,6 +8,7 @@ import '../../../core/network/user_facing_error.dart';
 import '../../../core/security/secure_storage_provider.dart';
 import '../domain/network_models.dart';
 import '../domain/network_repository.dart';
+import '../../../core/error/app_failure.dart';
 
 class ApiNetworkRepository implements NetworkRepository {
   final ApiClient _apiClient;
@@ -43,9 +44,11 @@ class ApiNetworkRepository implements NetworkRepository {
           .map((m) => NetworkStore.fromJson(Map<String, dynamic>.from(m)))
           .toList(growable: false);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -75,9 +78,11 @@ class ApiNetworkRepository implements NetworkRepository {
           .map((m) => StoreSummaryRow.fromJson(Map<String, dynamic>.from(m)))
           .toList(growable: false);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -93,9 +98,11 @@ class ApiNetworkRepository implements NetworkRepository {
           : <String, dynamic>{};
       return NetworkStore.fromJson(data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -122,9 +129,11 @@ class ApiNetworkRepository implements NetworkRepository {
           : <String, dynamic>{};
       return NetworkStore.fromJson(data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -139,9 +148,11 @@ class ApiNetworkRepository implements NetworkRepository {
           : <String, dynamic>{};
       return StoreDeleteResult.fromJson(data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -157,9 +168,11 @@ class ApiNetworkRepository implements NetworkRepository {
       final catalog = ModuleCatalog.fromJson(data);
       return catalog.sections.isEmpty ? ModuleCatalog.fallback : catalog;
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -173,9 +186,11 @@ class ApiNetworkRepository implements NetworkRepository {
           .map((item) => ClientModule.fromJson(Map<String, dynamic>.from(item)))
           .toList(growable: false);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -206,9 +221,11 @@ class ApiNetworkRepository implements NetworkRepository {
           : <String, dynamic>{};
       return ClientModule.fromJson(data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -227,9 +244,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return _channelsFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -279,9 +298,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return _channelsFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -293,9 +314,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return _channelsFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -312,9 +335,11 @@ class ApiNetworkRepository implements NetworkRepository {
       final response = await _apiClient.dio.get<dynamic>('/network/umnico');
       return _umnicoFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.loadFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.loadFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.loadFailed);
+      throw RepositoryFailure(ErrorKeys.loadFailed);
     }
   }
 
@@ -330,9 +355,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return _umnicoFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -342,9 +369,11 @@ class ApiNetworkRepository implements NetworkRepository {
       final response = await _apiClient.dio.delete<dynamic>('/network/umnico');
       return _umnicoFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -361,9 +390,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return _channelsFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -375,9 +406,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return _channelsFrom(response.data);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -386,9 +419,11 @@ class ApiNetworkRepository implements NetworkRepository {
     try {
       await _apiClient.dio.delete<dynamic>('/network/modules/$id');
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -408,9 +443,11 @@ class ApiNetworkRepository implements NetworkRepository {
         },
       );
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -444,9 +481,11 @@ class ApiNetworkRepository implements NetworkRepository {
       );
       return acting;
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
@@ -469,9 +508,11 @@ class ApiNetworkRepository implements NetworkRepository {
 
       await _storage.delete(key: _actingStoreKey);
     } on DioException catch (e) {
-      throw Exception(userFacingError(e, fallback: ErrorKeys.saveFailed));
+      throw RepositoryFailure(
+        userFacingError(e, fallback: ErrorKeys.saveFailed),
+      );
     } catch (_) {
-      throw Exception(ErrorKeys.saveFailed);
+      throw RepositoryFailure(ErrorKeys.saveFailed);
     }
   }
 
