@@ -1,5 +1,5 @@
 const Map<String, String> kTajikCatalog = {
-  'app_title': 'PAYK CFO',
+  'app_title': 'Payk Business',
   'dashboard': 'Панели молиявӣ',
   'cash': 'Хазина ва амалиётҳо',
   'tasks': 'Вазифаҳо ва банақшагирӣ',

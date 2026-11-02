@@ -1,5 +1,5 @@
 const Map<String, String> kRussianCatalog = {
-  'app_title': 'PAYK CFO',
+  'app_title': 'Payk Business',
   'dashboard': 'Финансовая панель',
   'cash': 'Касса и операции',
   'tasks': 'Задачи и планирование',

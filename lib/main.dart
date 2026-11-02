@@ -220,7 +220,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         child: BlocBuilder<LanguageCubit, Locale>(
           builder: (context, locale) {
             return MaterialApp.router(
-              title: 'PAYK CFO Platform',
+              title: 'Payk Business',
               theme: LedgerTheme.light,
               darkTheme: LedgerTheme.dark,
               themeMode: ThemeMode.system,
