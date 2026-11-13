@@ -54,8 +54,9 @@ class PaykLogo extends StatelessWidget {
               child: Text(
                 'P',
                 style: textStyles.captionSans.copyWith(
-                  color:
-                      effectiveColor != null ? colors.surface : colors.onBrand,
+                  color: effectiveColor != null
+                      ? colors.surface
+                      : colors.onBrand,
                   fontWeight: FontWeight.w500,
                 ),
               ),
