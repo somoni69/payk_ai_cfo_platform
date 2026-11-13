@@ -236,7 +236,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        child: const PaykLogo(height: 52),
+                        child: const PaykLogo(
+                          height: 52,
+                          lightAssetPath: 'assets/images/payk_logo.png',
+                          darkAssetPath:
+                              'assets/images/payk_logo_transparent.png',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 28),
