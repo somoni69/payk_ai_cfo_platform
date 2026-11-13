@@ -23,6 +23,7 @@ enum AppCapability {
   reports,
   audit,
   backups,
+  loyalty,
 }
 
 /// Central client-side role matrix.
@@ -51,6 +52,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.playroom,
       AppCapability.finOps,
       AppCapability.reports,
+      AppCapability.loyalty,
     },
     UserRole.accountant => const <AppCapability>{
       AppCapability.network,
@@ -59,6 +61,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.playroom,
       AppCapability.finOps,
       AppCapability.reports,
+      AppCapability.loyalty,
     },
     UserRole.cashier => const <AppCapability>{
       AppCapability.network,
@@ -66,6 +69,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.checklists,
       AppCapability.playroom,
       AppCapability.reports,
+      AppCapability.loyalty,
     },
     UserRole.hr => const <AppCapability>{
       AppCapability.network,
@@ -99,6 +103,7 @@ extension UserRoleAccess on UserRole {
       AppCapability.playroom,
       AppCapability.finOps,
       AppCapability.reports,
+      AppCapability.loyalty,
     },
   };
 
@@ -118,7 +123,8 @@ extension UserRoleAccess on UserRole {
         capability == AppCapability.cash ||
             capability == AppCapability.reports ||
             capability == AppCapability.checklists ||
-            capability == AppCapability.playroom,
+            capability == AppCapability.playroom ||
+            capability == AppCapability.loyalty,
       UserRole.hr =>
         capability == AppCapability.tasks || capability == AppCapability.hr,
       UserRole.marketer =>
@@ -177,6 +183,7 @@ abstract final class AppAccess {
     '/reports': AppCapability.reports,
     '/audit': AppCapability.audit,
     '/backups': AppCapability.backups,
+    '/loyalty': AppCapability.loyalty,
   };
 
   static AppCapability? capabilityForLocation(String location) {
@@ -189,14 +196,13 @@ abstract final class AppAccess {
     return null;
   }
 
-  static bool _isLeads(String location) {
+  static bool _isOwnerOnly(String location) {
     final path = _screenPath(location);
-    return path == '/leads' || path.startsWith('/leads/');
-  }
-
-  static bool _isModules(String location) {
-    final path = _screenPath(location);
-    return path == '/modules' || path.startsWith('/modules/');
+    const roots = ['/leads', '/modules', '/showcase'];
+    for (final root in roots) {
+      if (path == root || path.startsWith('$root/')) return true;
+    }
+    return false;
   }
 
   static String _pathOf(String location) {
@@ -207,7 +213,7 @@ abstract final class AppAccess {
   /// чтобы жест назад возвращал в меню, а не закрывал приложение.
   static String _screenPath(String location) {
     final path = _pathOf(location);
-    const names = ['network', 'leads', 'modules'];
+    const names = ['network', 'leads', 'modules', 'showcase'];
     for (final name in names) {
       final prefix = '/more/$name';
       if (path == prefix || path.startsWith('$prefix/')) {
@@ -227,6 +233,8 @@ abstract final class AppAccess {
         path.startsWith('/leads/') ||
         path == '/modules' ||
         path.startsWith('/modules/') ||
+        path == '/showcase' ||
+        path.startsWith('/showcase/') ||
         path == '/settings' ||
         path.startsWith('/settings/') ||
         path.startsWith('/more/');
@@ -287,7 +295,7 @@ abstract final class AppAccess {
   }
 
   static bool canOpen(UserRole role, String location) {
-    if (_isLeads(location) || _isModules(location)) {
+    if (_isOwnerOnly(location)) {
       return role == UserRole.owner;
     }
     final capability = capabilityForLocation(location);
@@ -301,7 +309,7 @@ abstract final class AppAccess {
     MyPermissions? effective,
     bool permissionsUnavailable = false,
   }) {
-    if (_isLeads(location) || _isModules(location)) {
+    if (_isOwnerOnly(location)) {
       return role == UserRole.owner;
     }
     final capability = capabilityForLocation(location);

@@ -379,6 +379,12 @@ class _MoreScreenState extends State<MoreScreen> {
             route: '/crm',
           ),
           (
+            capability: AppCapability.loyalty,
+            icon: TablerIcons.gift,
+            titleKey: 'loyalty_title',
+            route: '/loyalty',
+          ),
+          (
             capability: AppCapability.crm,
             icon: TablerIcons.brand_meta,
             titleKey: 'more_meta',
@@ -523,6 +529,12 @@ class _MoreScreenState extends State<MoreScreen> {
         );
         if (ownerAtRoot) {
           allowedModules.add(leadsTile);
+          allowedModules.add((
+            capability: AppCapability.network,
+            icon: TablerIcons.speakerphone,
+            titleKey: 'showcase_title',
+            route: '/showcase',
+          ));
           allowedModules.add(modulesTile);
         } else {
           allowedModules.insert(0, leadsTile);
@@ -532,6 +544,15 @@ class _MoreScreenState extends State<MoreScreen> {
           allowedModules.insert(
             networkIndex < 0 ? allowedModules.length : networkIndex + 1,
             modulesTile,
+          );
+          allowedModules.insert(
+            networkIndex < 0 ? allowedModules.length : networkIndex + 1,
+            (
+              capability: AppCapability.network,
+              icon: TablerIcons.speakerphone,
+              titleKey: 'showcase_title',
+              route: '/showcase',
+            ),
           );
         }
       }
@@ -609,6 +630,7 @@ class _MoreScreenState extends State<MoreScreen> {
   String _ownerSectionHint(String route) {
     return switch (route) {
       '/leads' => 'leads_description',
+      '/showcase' => 'showcase_description',
       '/modules' => 'modules_description',
       _ => 'network_description',
     };

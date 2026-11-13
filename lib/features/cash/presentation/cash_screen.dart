@@ -39,14 +39,26 @@ import '../../../presentation/widgets/ledger_card.dart';
 import '../../../presentation/widgets/ledger_fab.dart';
 import '../../../presentation/widgets/ledger_shimmer.dart';
 import '../../../presentation/widgets/expansible_widget.dart';
+import '../domain/pos_documents.dart';
+import '../domain/pos_pricing.dart';
 import 'cash_transaction_tile.dart';
 import 'sales_profit_card.dart';
 
 part 'cash_tabs.dart';
 part 'cash_sheets.dart';
 part 'cash_pos.dart';
+part 'cash_documents.dart';
 
-enum CashSection { operations, shifts, summary, pos, onec, edits }
+enum CashSection {
+  operations,
+  shifts,
+  summary,
+  pos,
+  receipts,
+  writeoffs,
+  onec,
+  edits,
+}
 
 /// Банк, который подставить сразу после выбора Alif / Dushanbe City.
 String? _defaultBankIdFor(PaymentMethod method, List<BankAccount> banks) {
@@ -71,6 +83,8 @@ String _cashSectionTitle(LanguageCubit language, CashSection section) {
     CashSection.shifts => 'cash_tab_shifts',
     CashSection.summary => 'cash_tab_summary',
     CashSection.pos => 'cash_tab_pos',
+    CashSection.receipts => 'cash_tab_receipts',
+    CashSection.writeoffs => 'cash_tab_writeoffs',
     CashSection.onec => 'cash_tab_onec_kkm',
     CashSection.edits => 'cash_tab_edits',
   });
@@ -721,6 +735,24 @@ class _CashViewState extends State<CashView> with _CashViewMixin {
             LedgerPairRow(
               left: _buildHubSectionCard(
                 context: context,
+                icon: TablerIcons.receipt_2,
+                title: language.translate('cash_tab_receipts'),
+                subtitle: language.translate('cash_tab_receipts_hint'),
+                onTap: () => _openCashSection(context, CashSection.receipts),
+              ),
+              right: _buildHubSectionCard(
+                context: context,
+                icon: TablerIcons.trash,
+                title: language.translate('cash_tab_writeoffs'),
+                subtitle: language.translate('cash_tab_writeoffs_hint'),
+                onTap: () => _openCashSection(context, CashSection.writeoffs),
+              ),
+            ),
+            const SizedBox(height: 10),
+
+            LedgerPairRow(
+              left: _buildHubSectionCard(
+                context: context,
                 icon: TablerIcons.receipt,
                 title: language.translate('cash_tab_operations'),
                 subtitle: '$totalOps операций',
@@ -968,6 +1000,8 @@ class _CashSectionScreenState extends State<CashSectionScreen>
                   previous.registers != current.registers,
             CashSection.summary => previous.summaries != current.summaries,
             CashSection.pos => previous.registers != current.registers,
+            CashSection.receipts => false,
+            CashSection.writeoffs => false,
             CashSection.onec => previous.transactions != current.transactions,
             CashSection.edits => false,
           };
@@ -998,6 +1032,8 @@ class _CashSectionScreenState extends State<CashSectionScreen>
             ),
             body: switch (widget.section) {
               CashSection.pos => const CashPosShimmer(),
+              CashSection.receipts => const LedgerListShimmer(itemCount: 6),
+              CashSection.writeoffs => const LedgerListShimmer(itemCount: 6),
               CashSection.onec => const CashOnecShimmer(),
               CashSection.shifts => const CashShiftsShimmer(),
               CashSection.summary => const CashSummaryShimmer(),
@@ -1062,6 +1098,8 @@ class _CashSectionScreenState extends State<CashSectionScreen>
                   ),
                 ),
               if (widget.section != CashSection.pos &&
+                  widget.section != CashSection.receipts &&
+                  widget.section != CashSection.writeoffs &&
                   widget.section != CashSection.onec &&
                   widget.section != CashSection.edits)
                 IconButton(
@@ -1086,6 +1124,8 @@ class _CashSectionScreenState extends State<CashSectionScreen>
             CashSection.shifts => _buildShiftsTab(context, state, isViewer),
             CashSection.summary => _buildSummaryTab(context, state.summaries),
             CashSection.pos => CashPosView(state: state, isViewer: isViewer),
+            CashSection.receipts => const CashReceiptsView(),
+            CashSection.writeoffs => CashWriteoffsView(isViewer: isViewer),
             CashSection.onec => const CashOneCKkmView(),
             CashSection.edits => const CashEditsView(),
           },

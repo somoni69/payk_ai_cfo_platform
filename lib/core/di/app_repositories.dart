@@ -29,6 +29,12 @@ import '../../features/integrations/data/api_integrations_repository.dart';
 import '../../features/integrations/domain/integrations_repository.dart';
 import '../../features/leads/data/api_leads_repository.dart';
 import '../../features/leads/domain/leads_repository.dart';
+import '../../features/loyalty/data/api_loyalty_repository.dart';
+import '../../features/loyalty/domain/loyalty_repository.dart';
+import '../../features/showcase/data/api_showcase_repository.dart';
+import '../../features/showcase/domain/showcase_repository.dart';
+import '../../features/cash/data/api_pos_documents_repository.dart';
+import '../../features/cash/domain/pos_documents.dart';
 import '../../features/legal/data/api_legal_repository.dart';
 import '../../features/legal/domain/legal_repository.dart';
 import '../../features/marketing/data/api_marketing_repository.dart';
@@ -105,6 +111,15 @@ abstract final class AppRepositories {
       create: (_) => ApiPlayroomRepository(),
     ),
     RepositoryProvider<LeadsRepository>(create: (_) => ApiLeadsRepository()),
+    RepositoryProvider<LoyaltyRepository>(
+      create: (_) => ApiLoyaltyRepository(),
+    ),
+    RepositoryProvider<ShowcaseRepository>(
+      create: (_) => ApiShowcaseRepository(),
+    ),
+    RepositoryProvider<PosDocumentsRepository>(
+      create: (_) => ApiPosDocumentsRepository(),
+    ),
   ];
 
   /// Wraps [child] with the production repository graph.

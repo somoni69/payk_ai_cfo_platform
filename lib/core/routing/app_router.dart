@@ -15,6 +15,7 @@ import '../../features/fin_ops/presentation/fin_ops_screen.dart';
 import '../../features/hr/presentation/hr_screen.dart';
 import '../../features/integrations/presentation/integrations_screen.dart';
 import '../../features/leads/presentation/leads_screen.dart';
+import '../../features/loyalty/presentation/loyalty_screen.dart';
 import '../../features/network/presentation/modules_screen.dart';
 import '../../features/legal/presentation/legal_screen.dart';
 import '../../features/marketing/presentation/marketing_screen.dart';
@@ -27,6 +28,7 @@ import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/shell/presentation/more_screen.dart';
 import '../../features/shell/presentation/owner_root_shell.dart';
 import '../../features/shell/presentation/shell_screen.dart';
+import '../../features/showcase/presentation/showcase_screen.dart';
 import '../../features/strategy/presentation/strategy_screen.dart';
 import '../../features/system/presentation/backups_screen.dart';
 import '../../features/tasks/presentation/tasks_screen.dart';
@@ -155,6 +157,14 @@ GoRouter createRouter(
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: '/showcase',
+                builder: (context, state) => const ShowcaseScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: '/modules',
                 builder: (context, state) => const ModulesScreen(),
               ),
@@ -200,6 +210,13 @@ GoRouter createRouter(
         path: '/meta',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const MetaScreen(),
+      ),
+
+      // Программа лояльности «ПАЙК» для сотрудников магазина
+      GoRoute(
+        path: '/loyalty',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const LoyaltyScreen(),
       ),
 
       // Стратегия What-if и ИИ-Маркетинг (Спринт 9.4)

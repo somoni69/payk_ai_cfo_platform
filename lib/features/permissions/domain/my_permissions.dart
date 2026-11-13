@@ -179,5 +179,6 @@ abstract final class PermissionModules {
     AppCapability.reports => 'reports',
     AppCapability.audit => 'audit',
     AppCapability.backups => null, // system — director via isDirector
+    AppCapability.loyalty => 'loyalty',
   };
 }

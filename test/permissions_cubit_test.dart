@@ -591,6 +591,7 @@ void main() {
         expect(PermissionModules.keyFor(AppCapability.finOps), 'finance-ops');
         expect(PermissionModules.keyFor(AppCapability.reports), 'reports');
         expect(PermissionModules.keyFor(AppCapability.audit), 'audit');
+        expect(PermissionModules.keyFor(AppCapability.loyalty), 'loyalty');
         expect(PermissionModules.keyFor(AppCapability.network), isNull);
         expect(PermissionModules.keyFor(AppCapability.notifications), isNull);
         expect(PermissionModules.keyFor(AppCapability.backups), isNull);

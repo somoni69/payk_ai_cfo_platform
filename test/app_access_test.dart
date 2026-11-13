@@ -64,6 +64,17 @@ void main() {
     expect(UserRole.hr.can(AppCapability.playroom), isFalse);
     expect(UserRole.marketer.can(AppCapability.playroom), isFalse);
     expect(AppAccess.canOpen(UserRole.owner, '/leads'), isTrue);
+    expect(AppAccess.canOpen(UserRole.owner, '/showcase'), isTrue);
+    expect(AppAccess.canOpen(UserRole.director, '/showcase'), isFalse);
+    expect(AppAccess.canOpen(UserRole.cashier, '/loyalty'), isTrue);
+    expect(AppAccess.canOpen(UserRole.hr, '/loyalty'), isFalse);
+    expect(AppAccess.canOpen(UserRole.accountant, '/loyalty'), isTrue);
+    expect(UserRole.cashier.canManage(AppCapability.loyalty), isTrue);
+    expect(UserRole.accountant.canManage(AppCapability.loyalty), isFalse);
+    expect(
+      AppAccess.ownerRootRedirect(UserRole.owner, null, '/showcase'),
+      isNull,
+    );
     expect(AppAccess.canOpen(UserRole.owner, '/modules'), isTrue);
     expect(AppAccess.canOpen(UserRole.director, '/modules'), isFalse);
     expect(AppAccess.canOpen(UserRole.owner, '/more/leads'), isTrue);

@@ -19,7 +19,12 @@ class OwnerRootShell extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  static const _titles = ['network_title', 'leads_title', 'modules_title'];
+  static const _titles = [
+    'network_title',
+    'leads_title',
+    'showcase_title',
+    'modules_title',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +93,10 @@ class OwnerRootShell extends StatelessWidget {
                     ),
                     LedgerSegmentItem(
                       value: 2,
+                      label: language.translate('showcase_title'),
+                    ),
+                    LedgerSegmentItem(
+                      value: 3,
                       label: language.translate('modules_title'),
                     ),
                   ],

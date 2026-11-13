@@ -1,13 +1,17 @@
 part of 'cash_screen.dart';
 
 class _PosLine {
-  _PosLine({required this.product, required this.qty, required this.price});
+  _PosLine({
+    required this.product,
+    required this.qty,
+    required this.price,
+    this.discountPercent,
+  });
 
   final SaleProduct product;
   double qty;
   double price;
-
-  double get amount => qty * price;
+  double? discountPercent;
 }
 
 bool _isWeighedUnit(String unit) {
@@ -38,6 +42,9 @@ class _CashPosViewState extends State<CashPosView> {
   PaymentMethod _method = PaymentMethod.cash;
   String? _registerId;
   String? _bankId;
+  int? _heldId;
+  var _heldCount = 0;
+  double? _receiptDiscountPercent;
   List<BankAccount> _banks = const [];
   String? _error;
   var _submitting = false;
@@ -62,6 +69,7 @@ class _CashPosViewState extends State<CashPosView> {
     }
     _loadCatalog();
     _loadBanks();
+    _loadHeld();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadPinStatus();
     });
@@ -421,7 +429,29 @@ class _CashPosViewState extends State<CashPosView> {
     }
   }
 
-  double get _total => _lines.fold<double>(0, (sum, line) => sum + line.amount);
+  double get _total => _priced.total;
+
+  PosCartPrice get _priced => pricePosCart(
+    lines: [
+      for (final line in _lines)
+        PosPriceLine(
+          qty: line.qty,
+          price: line.price,
+          discountPercent: line.discountPercent,
+        ),
+    ],
+    receiptDiscountPercent: _receiptDiscountPercent,
+  );
+
+  List<PosSaleLine> get _saleLines => [
+    for (final line in _lines)
+      PosSaleLine(
+        productId: int.parse(line.product.id),
+        qty: line.qty,
+        price: line.price,
+        discountPercent: line.discountPercent,
+      ),
+  ];
 
   bool get _cashierNeedsShift {
     final auth = context.read<AuthBloc>().state;
@@ -574,7 +604,6 @@ class _CashPosViewState extends State<CashPosView> {
       }
     }
 
-    final cashBloc = context.read<CashBloc>();
     if (_method == PaymentMethod.cash) {
       final proceed = await _confirmCashChange(language);
       if (proceed != true) return;
@@ -582,52 +611,403 @@ class _CashPosViewState extends State<CashPosView> {
     }
 
     setState(() => _submitting = true);
-    final tx = Transaction(
-      id: '',
-      title: language.translate('cash_tab_pos'),
-      category: language.translate('cash_category_sales'),
-      amount: _total,
-      isIncome: true,
-      paymentMethod: _method,
-      dateTime: DateTime.now(),
-      cashierName: '',
-      registerId: _registerId,
-      saleItems: [
-        for (final line in _lines)
-          SaleItemInput(
-            productId: line.product.id,
-            qty: line.qty.toDouble(),
-            price: line.price,
-          ),
-      ],
-      cashAmount: cashPart,
-      cashlessAmount: cashlessPart,
-      bankId: _method == PaymentMethod.cash ? null : _bankId,
-    );
-    cashBloc.add(AddTransactionRequested(tx));
-    final nextState = await cashBloc.stream.firstWhere(
-      (s) => s is CashLoaded && !s.isSubmitting,
-    );
-    if (!mounted) return;
-    setState(() => _submitting = false);
-    if (nextState is CashLoaded &&
-        nextState.errorMessage != null &&
-        !nextState.errorMessage!.startsWith('cash_tx_saved')) {
-      setState(
-        () => _error = language.translateMessage(nextState.errorMessage!),
+    try {
+      String? pin;
+      final needsPermit =
+          (_receiptDiscountPercent ?? 0) > 0 ||
+          _lines.any(
+            (line) =>
+                (line.discountPercent ?? 0) > 0 ||
+                line.price + 0.001 < line.product.price,
+          );
+      if (needsPermit && _pinNeeded) {
+        pin = await _askSalePin(language);
+        if (pin == null) {
+          if (mounted) setState(() => _submitting = false);
+          return;
+        }
+      }
+      if (!mounted) return;
+      final registerId = int.parse(_registerId!);
+      final receipt = await context.read<PosDocumentsRepository>().sell(
+        registerId: registerId,
+        lines: _saleLines,
+        paymentMethod: _method.apiValue,
+        expectedTotal: _total,
+        cashAmount: cashPart,
+        bankId: _method == PaymentMethod.cash
+            ? null
+            : int.tryParse(_bankId ?? ''),
+        receiptDiscountPercent: _receiptDiscountPercent,
+        heldId: _heldId,
+        pin: pin,
+        requestId: newDocumentKey(),
       );
+      if (!mounted) return;
+      context.read<CashBloc>().add(const LoadCashData());
+      setState(() {
+        _lines.clear();
+        _heldId = null;
+        _receiptDiscountPercent = null;
+        _error = null;
+        _submitting = false;
+      });
+      _loadHeld();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            language.translate(
+              'cash_pos_sale_done',
+              params: {'no': receipt.receiptNo ?? receipt.id},
+            ),
+          ),
+          backgroundColor: context.colors.accentGreen,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = language.resolveMessage(error.toString());
+      });
+    }
+  }
+
+  Future<String?> _askSalePin(LanguageCubit language) {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dlg) => AlertDialog(
+        title: Text(language.translate('cash_pos_pin_for_discount')),
+        content: TextField(
+          controller: controller,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: language.translate('cash_pin_title'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlg),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dlg, controller.text.trim()),
+            child: Text(language.translate('cash_pin_confirm')),
+          ),
+        ],
+      ),
+    ).whenComplete(() => controller.dispose());
+  }
+
+  Future<void> _loadHeld() async {
+    final registerId = int.tryParse(_registerId ?? '');
+    if (registerId == null) return;
+    try {
+      final carts = await context.read<PosDocumentsRepository>().heldCarts(
+        registerId: registerId,
+      );
+      if (!mounted) return;
+      setState(() => _heldCount = carts.length);
+    } catch (_) {}
+  }
+
+  Future<void> _hold() async {
+    final language = context.read<LanguageCubit>();
+    if (_lines.isEmpty || _registerId == null) {
+      setState(() => _error = language.translate('cash_pos_empty_cart'));
       return;
     }
-    setState(() {
-      _lines.clear();
-      _error = null;
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(language.translate('cash_pos_done')),
-        backgroundColor: context.colors.accentGreen,
+    final label = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dlg) => AlertDialog(
+        title: Text(language.translate('cash_pos_hold')),
+        content: TextField(
+          controller: label,
+          decoration: InputDecoration(
+            labelText: language.translate('cash_pos_held_label'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlg, false),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dlg, true),
+            child: Text(language.translate('common_save')),
+          ),
+        ],
       ),
     );
+    if (ok != true || !mounted) {
+      label.dispose();
+      return;
+    }
+    try {
+      await context.read<PosDocumentsRepository>().holdCart(
+        registerId: int.parse(_registerId!),
+        label: label.text,
+        lines: _saleLines,
+        receiptDiscountPercent: _receiptDiscountPercent,
+      );
+      if (!mounted) return;
+      setState(() {
+        _lines.clear();
+        _heldId = null;
+        _error = null;
+      });
+      await _loadHeld();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(language.translate('cash_pos_held_saved'))),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = language.resolveMessage(error.toString()));
+    }
+    label.dispose();
+  }
+
+  Future<void> _openHeld() async {
+    final language = context.read<LanguageCubit>();
+    final registerId = int.tryParse(_registerId ?? '');
+    if (registerId == null) return;
+    List<HeldCart> carts = const [];
+    try {
+      carts = await context.read<PosDocumentsRepository>().heldCarts(
+        registerId: registerId,
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = language.resolveMessage(error.toString()));
+      return;
+    }
+    if (!mounted) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (sheet) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(
+            language.translate('cash_pos_held'),
+            style: context.textStyles.h2Sans,
+          ),
+          if (carts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text(language.translate('cash_pos_held_empty')),
+            ),
+          for (final cart in carts)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
+                cart.label?.isNotEmpty == true
+                    ? cart.label!
+                    : language.translate('cash_pos_held'),
+              ),
+              subtitle: Text(
+                '${cart.lines.length} · ${formatLocalizedNumber(context, cart.total, minimumFractionDigits: 2, maximumFractionDigits: 2)}',
+              ),
+              trailing: IconButton(
+                onPressed: () async {
+                  String? pin;
+                  if (_pinNeeded) pin = await _askSalePin(language);
+                  if (!mounted) return;
+                  try {
+                    await context.read<PosDocumentsRepository>().archiveHeld(
+                      cart.id,
+                      pin: pin,
+                    );
+                    if (sheet.mounted) Navigator.pop(sheet);
+                    await _loadHeld();
+                  } catch (error) {
+                    if (!mounted) return;
+                    setState(
+                      () => _error = language.resolveMessage(error.toString()),
+                    );
+                  }
+                },
+                icon: const Icon(TablerIcons.trash),
+              ),
+              onTap: () async {
+                try {
+                  final restored = await context
+                      .read<PosDocumentsRepository>()
+                      .restoreHeld(cart.id);
+                  if (!mounted) return;
+                  _applyHeld(restored);
+                  if (sheet.mounted) Navigator.pop(sheet);
+                } catch (error) {
+                  if (!mounted) return;
+                  setState(
+                    () => _error = language.resolveMessage(error.toString()),
+                  );
+                }
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _applyHeld(HeldCart cart) {
+    final byId = {for (final product in cart.products) product.id: product};
+    final lines = <_PosLine>[];
+    for (final raw in cart.lines) {
+      final product = byId['${raw['product_id']}'];
+      if (product == null) continue;
+      final discount = raw['discount'];
+      double? percent;
+      if (discount is Map && discount['percent'] != null) {
+        percent = double.tryParse('${discount['percent']}');
+      }
+      lines.add(
+        _PosLine(
+          product: product,
+          qty: double.tryParse('${raw['qty']}') ?? 1,
+          price: double.tryParse('${raw['price']}') ?? product.price,
+          discountPercent: percent,
+        ),
+      );
+    }
+    final receipt = cart.receiptDiscount;
+    setState(() {
+      _lines
+        ..clear()
+        ..addAll(lines);
+      _heldId = cart.id;
+      _receiptDiscountPercent = receipt == null
+          ? null
+          : double.tryParse('${receipt['percent']}');
+      _error = null;
+    });
+    _loadHeld();
+  }
+
+  Future<void> _askLineDiscount(_PosLine line) async {
+    final language = context.read<LanguageCubit>();
+    final controller = TextEditingController(
+      text: line.discountPercent?.toString() ?? '',
+    );
+    final value = await showDialog<double?>(
+      context: context,
+      builder: (dlg) => AlertDialog(
+        title: Text(language.translate('cash_pos_discount')),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: language.translate('cash_pos_discount'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlg, 0),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final parsed = double.tryParse(
+                controller.text.replaceAll(',', '.'),
+              );
+              Navigator.pop(dlg, parsed);
+            },
+            child: Text(language.translate('common_save')),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (!mounted || value == null) return;
+    setState(() {
+      line.discountPercent = value <= 0 || value > 100 ? null : value;
+    });
+  }
+
+  Future<void> _cashMove(String direction) async {
+    final language = context.read<LanguageCubit>();
+    if (_registerId == null) return;
+    final amount = TextEditingController();
+    final comment = TextEditingController();
+    final pin = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dlg) => AlertDialog(
+        title: Text(
+          language.translate(
+            direction == 'in' ? 'cash_pos_cash_in' : 'cash_pos_cash_out',
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: amount,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: language.translate('amount'),
+              ),
+            ),
+            TextField(
+              controller: comment,
+              decoration: InputDecoration(
+                labelText: language.translate('cash_pos_move_comment'),
+              ),
+            ),
+            if (_pinNeeded)
+              TextField(
+                controller: pin,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: language.translate('cash_pin_title'),
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dlg, false),
+            child: Text(language.translate('common_cancel')),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dlg, true),
+            child: Text(language.translate('common_save')),
+          ),
+        ],
+      ),
+    );
+    final sum = double.tryParse(amount.text.replaceAll(',', '.'));
+    final note = comment.text.trim();
+    final pinText = pin.text.trim();
+    amount.dispose();
+    comment.dispose();
+    pin.dispose();
+    if (ok != true || sum == null || sum <= 0 || note.length < 2 || !mounted) {
+      return;
+    }
+    try {
+      await context.read<PosDocumentsRepository>().cashMove(
+        registerId: int.parse(_registerId!),
+        direction: direction,
+        amount: sum,
+        comment: note,
+        pin: pinText.isEmpty ? null : pinText,
+        requestId: newDocumentKey(),
+      );
+      if (!mounted) return;
+      context.read<CashBloc>().add(const LoadCashData());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(language.translate('cash_pos_move_done'))),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = language.resolveMessage(error.toString()));
+    }
   }
 
   Future<bool?> _confirmCashChange(LanguageCubit language) {
@@ -1005,10 +1385,10 @@ class _CashPosViewState extends State<CashPosView> {
             ),
             child: Column(
               children: [
-                for (final line in _lines) ...[
+                for (var i = 0; i < _lines.length; i++) ...[
                   Row(
                     children: [
-                      if (line.product.imageUrl case final url?
+                      if (_lines[i].product.imageUrl case final url?
                           when url.isNotEmpty) ...[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
@@ -1025,12 +1405,23 @@ class _CashPosViewState extends State<CashPosView> {
                       ],
                       Expanded(
                         child: Text(
-                          line.product.name,
+                          _lines[i].product.name,
                           style: textStyles.bodySans.copyWith(fontSize: 14),
                         ),
                       ),
                       IconButton(
-                        onPressed: () => _qtyDown(line),
+                        tooltip: language.translate('cash_pos_discount'),
+                        onPressed: () => _askLineDiscount(_lines[i]),
+                        icon: Icon(
+                          TablerIcons.percentage,
+                          size: 16,
+                          color: _lines[i].discountPercent == null
+                              ? colors.textSecondary
+                              : colors.brand,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _qtyDown(_lines[i]),
                         icon: Icon(
                           TablerIcons.minus,
                           size: 16,
@@ -1040,7 +1431,7 @@ class _CashPosViewState extends State<CashPosView> {
                       Text(
                         formatLocalizedNumber(
                           context,
-                          line.qty,
+                          _lines[i].qty,
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 3,
                         ),
@@ -1049,9 +1440,9 @@ class _CashPosViewState extends State<CashPosView> {
                         ),
                       ),
                       IconButton(
-                        onPressed: _isWeighedUnit(line.product.unit)
+                        onPressed: _isWeighedUnit(_lines[i].product.unit)
                             ? null
-                            : () => setState(() => line.qty += 1),
+                            : () => setState(() => _lines[i].qty += 1),
                         icon: Icon(
                           TablerIcons.plus,
                           size: 16,
@@ -1061,7 +1452,7 @@ class _CashPosViewState extends State<CashPosView> {
                       SizedBox(
                         width: 72,
                         child: Text(
-                          formatLocalizedNumber(context, line.amount),
+                          formatLocalizedNumber(context, _priced.lineAmount(i)),
                           style: textStyles.bodyMono.copyWith(fontSize: 13),
                           textAlign: TextAlign.end,
                         ),
@@ -1088,6 +1479,21 @@ class _CashPosViewState extends State<CashPosView> {
               ],
             ),
           ),
+        const SizedBox(height: 12),
+        TextField(
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: language.translate('cash_pos_receipt_discount'),
+          ),
+          onChanged: (value) {
+            final parsed = double.tryParse(value.replaceAll(',', '.'));
+            setState(() {
+              _receiptDiscountPercent = parsed == null || parsed <= 0
+                  ? null
+                  : parsed.clamp(0, 100).toDouble();
+            });
+          },
+        ),
         const SizedBox(height: 12),
         Text(
           language.translate('cash_payment_method'),
@@ -1179,6 +1585,36 @@ class _CashPosViewState extends State<CashPosView> {
           ),
         ],
         const SizedBox(height: 16),
+        if (!widget.isViewer)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _submitting ? null : _hold,
+                icon: const Icon(TablerIcons.clock),
+                label: Text(language.translate('cash_pos_hold')),
+              ),
+              OutlinedButton.icon(
+                onPressed: _submitting ? null : _openHeld,
+                icon: const Icon(TablerIcons.clock_hour_4),
+                label: Text(
+                  _heldCount == 0
+                      ? language.translate('cash_pos_held')
+                      : '${language.translate('cash_pos_held')} ($_heldCount)',
+                ),
+              ),
+              OutlinedButton(
+                onPressed: _submitting ? null : () => _cashMove('in'),
+                child: Text(language.translate('cash_pos_cash_in')),
+              ),
+              OutlinedButton(
+                onPressed: _submitting ? null : () => _cashMove('out'),
+                child: Text(language.translate('cash_pos_cash_out')),
+              ),
+            ],
+          ),
+        const SizedBox(height: 8),
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
