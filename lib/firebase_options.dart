@@ -4,13 +4,14 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
-/// Default [FirebaseOptions] for Payk Business (`tj.payk.cfo`).
+/// Default [FirebaseOptions] for Payk Business.
 class DefaultFirebaseOptions {
   /// Platforms currently configured for Firebase in this project.
   ///
-  /// iOS options will be added once `flutterfire configure` is run on macOS.
   static bool get isSupportedPlatform =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
 
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
@@ -22,10 +23,7 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for iOS yet — '
-          'run flutterfire configure on macOS.',
-        );
+        return ios;
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -39,5 +37,14 @@ class DefaultFirebaseOptions {
     messagingSenderId: '713617302599',
     projectId: 'payk-app-loyalty',
     storageBucket: 'payk-app-loyalty.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBQSYZD2i8ZATgRICIj1H33kQM2ud4NjE8',
+    appId: '1:713617302599:ios:858a3617f8f1fd0906bd62',
+    messagingSenderId: '713617302599',
+    projectId: 'payk-app-loyalty',
+    storageBucket: 'payk-app-loyalty.firebasestorage.app',
+    iosBundleId: 'tj.payk.cfo.app',
   );
 }

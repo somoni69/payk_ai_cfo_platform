@@ -249,6 +249,14 @@ class PushNotificationService {
       _fcmToken = token;
       _log('[PushNotificationService] FCM token ready (${token.length})');
       await _onTokenUpdate?.call(token);
+      // APNs registration can finish after the first topic subscription attempt.
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        try {
+          await _fcm.subscribeToTopic(defaultTopic);
+        } catch (e) {
+          _log('[PushNotificationService] Subscribe to topic error: $e');
+        }
+      }
     }
 
     _tokenRefreshSub?.cancel();

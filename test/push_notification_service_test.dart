@@ -18,7 +18,7 @@ void main() {
       );
     });
 
-    test('currentPlatform resolves Android and rejects unconfigured iOS', () {
+    test('currentPlatform resolves Android and Payk Business iOS', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;
       expect(
         DefaultFirebaseOptions.currentPlatform.appId,
@@ -27,10 +27,14 @@ void main() {
       expect(DefaultFirebaseOptions.isSupportedPlatform, isTrue);
 
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      expect(DefaultFirebaseOptions.isSupportedPlatform, isFalse);
+      expect(DefaultFirebaseOptions.isSupportedPlatform, isTrue);
       expect(
-        () => DefaultFirebaseOptions.currentPlatform,
-        throwsUnsupportedError,
+        DefaultFirebaseOptions.currentPlatform.appId,
+        '1:713617302599:ios:858a3617f8f1fd0906bd62',
+      );
+      expect(
+        DefaultFirebaseOptions.currentPlatform.iosBundleId,
+        'tj.payk.cfo.app',
       );
 
       debugDefaultTargetPlatformOverride = null;
