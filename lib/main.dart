@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:payk_ai_cfo_platform/core/notifications/push_notification_service.dart';
 import 'package:payk_ai_cfo_platform/core/security/secure_storage_provider.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_error_reporter.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_bloc_observer.dart';
@@ -27,6 +30,7 @@ import 'package:payk_ai_cfo_platform/features/network/data/api_network_repositor
 import 'package:payk_ai_cfo_platform/core/network/api_client.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/cubit/permissions_cubit.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/data/api_permissions_repository.dart';
+import 'package:payk_ai_cfo_platform/firebase_options.dart';
 
 void main() {
   runZonedGuarded(
@@ -61,6 +65,19 @@ void main() {
       // Do not block the first frame on secure-storage reads. Auth and chat
       // await the shared bootstrap themselves when they need the session.
       unawaited(ApiClient().bootstrap());
+      if (DefaultFirebaseOptions.isSupportedPlatform) {
+        try {
+          if (Firebase.apps.isEmpty) {
+            await Firebase.initializeApp(
+              options: DefaultFirebaseOptions.currentPlatform,
+            );
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('[Firebase] Init error or skipped: $e');
+          }
+        }
+      }
       runApp(const MyApp());
     },
     (error, stackTrace) {
@@ -72,7 +89,9 @@ void main() {
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.pushService});
+
+  final PushNotificationService? pushService;
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -108,12 +127,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final ChatLiveCubit _chatLive;
   late final GoRouterRefreshStream _routerRefresh;
   late final GoRouter _router;
+  late final PushNotificationService _pushService;
   StreamSubscription<AuthState>? _authSub;
   var _privacyShield = false;
+  String? _pendingNotificationRoute;
+  var _flushNotificationScheduled = false;
 
   @override
   void initState() {
     super.initState();
+    _pushService = widget.pushService ?? PushNotificationService.instance;
     _authBloc = AuthBloc(
       authRepository: ApiAuthRepository(),
       networkRepository: ApiNetworkRepository(),
@@ -153,14 +176,64 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             _permissionsCubit.startPolling();
           }),
         );
+        _flushPendingNotification();
       } else if (state is AuthUnauthenticated ||
           state is AuthInitial ||
           state is AuthTwoFactorRequired) {
         _permissionsCubit.clear();
+        if (state is AuthUnauthenticated || state is AuthTwoFactorRequired) {
+          _pendingNotificationRoute = null;
+        }
       }
     });
 
+    if (!kIsWeb) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_initNotifications());
+      });
+    }
+
     _authBloc.add(CheckAuthStatus());
+  }
+
+  Future<void> _initNotifications() async {
+    await _pushService.initialize(onNotificationTap: _handleNotificationTap);
+  }
+
+  void _handleNotificationTap(String route) {
+    if (!mounted) return;
+    final target = PushNotificationService.normalizeRoute(route);
+    if (_authBloc.state is! AuthAuthenticated) {
+      _pendingNotificationRoute = target;
+      return;
+    }
+    _openNotificationRoute(target);
+  }
+
+  void _flushPendingNotification() {
+    if (_pendingNotificationRoute == null ||
+        _flushNotificationScheduled ||
+        !mounted) {
+      return;
+    }
+    if (_authBloc.state is! AuthAuthenticated) return;
+
+    _flushNotificationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _flushNotificationScheduled = false;
+      if (!mounted || _authBloc.state is! AuthAuthenticated) return;
+      final target = _pendingNotificationRoute;
+      if (target == null) return;
+      _pendingNotificationRoute = null;
+      _openNotificationRoute(target);
+    });
+  }
+
+  void _openNotificationRoute(String target) {
+    final currentPath = _router.routerDelegate.currentConfiguration.uri.path;
+    if (currentPath != target) {
+      _router.push(target);
+    }
   }
 
   @override

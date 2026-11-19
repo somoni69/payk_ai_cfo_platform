@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#362CD1</color>
+    <color name="payk_notification">#FF362CD1</color>
 </resources>
