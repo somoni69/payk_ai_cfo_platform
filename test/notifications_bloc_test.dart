@@ -65,6 +65,12 @@ class _NotificationsTestRepository implements NotificationsRepository {
     final gate = markGates[id];
     if (gate != null) await gate.future;
   }
+
+  @override
+  Future<void> registerFcmToken(String token, {String? platform}) async {}
+
+  @override
+  Future<void> unregisterFcmToken(String token) async {}
 }
 
 void main() {

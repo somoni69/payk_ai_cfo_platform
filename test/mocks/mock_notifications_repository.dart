@@ -99,4 +99,10 @@ class MockNotificationsRepository implements NotificationsRepository {
       _notifications[index] = _notifications[index].copyWith(isRead: true);
     }
   }
+
+  @override
+  Future<void> registerFcmToken(String token, {String? platform}) async {}
+
+  @override
+  Future<void> unregisterFcmToken(String token) async {}
 }

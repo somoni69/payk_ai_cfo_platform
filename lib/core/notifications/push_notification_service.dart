@@ -60,6 +60,25 @@ class PushNotificationService {
 
   String? get fcmToken => _fcmToken;
 
+  /// Returns the cached FCM token, or fetches it from Firebase once initialized.
+  Future<String?> getToken() async {
+    if (_fcmToken != null && _fcmToken!.isNotEmpty) return _fcmToken;
+    if (!_isInitialized || !DefaultFirebaseOptions.isSupportedPlatform) {
+      return null;
+    }
+    try {
+      // ignore: deprecated_member_use
+      final token = await _fcm.getToken();
+      if (token != null && token.isNotEmpty) {
+        _fcmToken = token;
+      }
+      return _fcmToken;
+    } catch (e) {
+      _log('[PushNotificationService] Error reading FCM token: $e');
+      return null;
+    }
+  }
+
   /// Initializes Firebase, notification channels, permissions, and tap handlers.
   Future<void> initialize({
     void Function(String route)? onNotificationTap,
@@ -248,7 +267,11 @@ class PushNotificationService {
       if (token == null || token.isEmpty) return;
       _fcmToken = token;
       _log('[PushNotificationService] FCM token ready (${token.length})');
-      await _onTokenUpdate?.call(token);
+      try {
+        await _onTokenUpdate?.call(token);
+      } catch (e) {
+        _log('[PushNotificationService] Token update callback error: $e');
+      }
       // APNs registration can finish after the first topic subscription attempt.
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         try {
@@ -262,7 +285,9 @@ class PushNotificationService {
     _tokenRefreshSub?.cancel();
     // FCM HTTP v1 sends to registration tokens; onRegistered emits only the FID.
     // ignore: deprecated_member_use
-    _tokenRefreshSub = _fcm.onTokenRefresh.listen(publish);
+    _tokenRefreshSub = _fcm.onTokenRefresh.listen((token) {
+      unawaited(publish(token));
+    });
 
     try {
       // ignore: deprecated_member_use

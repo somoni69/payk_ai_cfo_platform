@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:payk_ai_cfo_platform/core/notifications/push_notification_service.dart';
+import 'package:payk_ai_cfo_platform/core/notifications/push_token_sync.dart';
 import 'package:payk_ai_cfo_platform/core/security/secure_storage_provider.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_error_reporter.dart';
 import 'package:payk_ai_cfo_platform/core/observability/app_bloc_observer.dart';
@@ -27,6 +28,7 @@ import 'package:payk_ai_cfo_platform/features/meta/cubit/chat_live_cubit.dart';
 import 'package:payk_ai_cfo_platform/features/meta/data/api_meta_repository.dart';
 import 'package:payk_ai_cfo_platform/features/meta/data/chat_live_client.dart';
 import 'package:payk_ai_cfo_platform/features/network/data/api_network_repository.dart';
+import 'package:payk_ai_cfo_platform/features/notifications/data/api_notifications_repository.dart';
 import 'package:payk_ai_cfo_platform/core/network/api_client.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/cubit/permissions_cubit.dart';
 import 'package:payk_ai_cfo_platform/features/permissions/data/api_permissions_repository.dart';
@@ -128,18 +130,38 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late final GoRouterRefreshStream _routerRefresh;
   late final GoRouter _router;
   late final PushNotificationService _pushService;
+  late final PushTokenSync _pushTokenSync;
   StreamSubscription<AuthState>? _authSub;
   var _privacyShield = false;
   String? _pendingNotificationRoute;
   var _flushNotificationScheduled = false;
 
+  static const Set<String> _shellTabRoutes = {
+    '/dashboard',
+    '/cash',
+    '/tasks',
+    '/warehouse',
+    '/more',
+    '/network',
+    '/leads',
+    '/showcase',
+    '/modules',
+  };
+
   @override
   void initState() {
     super.initState();
     _pushService = widget.pushService ?? PushNotificationService.instance;
+    _pushTokenSync = PushTokenSync(
+      repository: ApiNotificationsRepository(),
+      tokenProvider: _pushService.getToken,
+      hasAuthToken: () async =>
+          (await ApiClient().getAccessToken())?.isNotEmpty == true,
+    );
     _authBloc = AuthBloc(
       authRepository: ApiAuthRepository(),
       networkRepository: ApiNetworkRepository(),
+      onBeforeLogout: _pushTokenSync.unregisterBeforeLogout,
     );
     _permissionsCubit = PermissionsCubit(ApiPermissionsRepository());
     // One chat socket for the app: «Ещё» badge and the open chat share it.
@@ -176,12 +198,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             _permissionsCubit.startPolling();
           }),
         );
+        unawaited(
+          _pushTokenSync.onAuthenticated('${state.id ?? state.username}'),
+        );
         _flushPendingNotification();
       } else if (state is AuthUnauthenticated ||
           state is AuthInitial ||
           state is AuthTwoFactorRequired) {
         _permissionsCubit.clear();
         if (state is AuthUnauthenticated || state is AuthTwoFactorRequired) {
+          _pushTokenSync.onSignedOut();
           _pendingNotificationRoute = null;
         }
       }
@@ -197,7 +223,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   Future<void> _initNotifications() async {
-    await _pushService.initialize(onNotificationTap: _handleNotificationTap);
+    await _pushService.initialize(
+      onNotificationTap: _handleNotificationTap,
+      onTokenUpdate: _pushTokenSync.onTokenUpdate,
+    );
   }
 
   void _handleNotificationTap(String route) {
@@ -231,7 +260,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   void _openNotificationRoute(String target) {
     final currentPath = _router.routerDelegate.currentConfiguration.uri.path;
-    if (currentPath != target) {
+    if (currentPath == target) return;
+    if (_shellTabRoutes.contains(target)) {
+      _router.go(target);
+    } else {
       _router.push(target);
     }
   }
@@ -243,6 +275,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         _setPrivacyShield(false);
         _chatLive.setForeground(true);
         _permissionsCubit.setForeground(true);
+        unawaited(_pushTokenSync.retryIfNeeded());
       case AppLifecycleState.paused ||
           AppLifecycleState.hidden ||
           AppLifecycleState.detached:

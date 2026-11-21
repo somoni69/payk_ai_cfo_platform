@@ -21,4 +21,10 @@ abstract class NotificationsRepository {
   }
 
   Future<void> markAllRead() async {}
+
+  /// Register or refresh this device's FCM token (`PUT /notifications/fcm-token`).
+  Future<void> registerFcmToken(String token, {String? platform}) async {}
+
+  /// Remove this device's FCM token before logout (`DELETE /notifications/fcm-token`).
+  Future<void> unregisterFcmToken(String token) async {}
 }

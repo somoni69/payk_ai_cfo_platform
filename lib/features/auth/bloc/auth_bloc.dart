@@ -48,6 +48,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final NetworkRepository _networkRepository;
   final BiometricAuthenticator _biometricAuthenticator;
   final FlutterSecureStorage _storage;
+  final Future<void> Function()? _onBeforeLogout;
 
   /// Refresh / logout slightly before hard JWT expiry.
   static const Duration _softExpiryLead = Duration(minutes: 2);
@@ -65,6 +66,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     NetworkRepository? networkRepository,
     BiometricAuthenticator? biometricAuthenticator,
     FlutterSecureStorage? storage,
+    this._onBeforeLogout,
   }) : _authRepository = authRepository ?? ApiAuthRepository(),
        _networkRepository = networkRepository ?? ApiNetworkRepository(),
        _biometricAuthenticator =
@@ -418,6 +420,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     _cancelSessionWatchdog();
     _pendingTwoFactor = null;
     emit(AuthLoading());
+    if (_onBeforeLogout != null) {
+      try {
+        await _onBeforeLogout().timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Logout must still succeed if push cleanup fails or times out.
+      }
+    }
     await _authRepository.logout();
     try {
       await _networkRepository.clearActingStore();

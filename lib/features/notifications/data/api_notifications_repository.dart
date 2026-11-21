@@ -249,6 +249,35 @@ class ApiNotificationsRepository implements NotificationsRepository {
     }
   }
 
+  @override
+  Future<void> registerFcmToken(String token, {String? platform}) async {
+    final trimmed = token.trim();
+    if (trimmed.isEmpty) return;
+    await _dio.put<dynamic>(
+      '/notifications/fcm-token',
+      data: <String, dynamic>{
+        'fcm_token': trimmed,
+        if (platform != null && platform.isNotEmpty) 'platform': platform,
+      },
+    );
+  }
+
+  @override
+  Future<void> unregisterFcmToken(String token) async {
+    final trimmed = token.trim();
+    if (trimmed.isEmpty) return;
+    await _dio.delete<dynamic>(
+      '/notifications/fcm-token',
+      data: <String, dynamic>{'fcm_token': trimmed},
+      options: Options(
+        sendTimeout: const Duration(seconds: 5),
+        receiveTimeout: const Duration(seconds: 5),
+        // Logout must never recurse into 401 -> LogoutRequested.
+        extra: const <String, dynamic>{'skipUnauthorizedHandler': true},
+      ),
+    );
+  }
+
   AppNotification? _inboxFromJson(dynamic raw) {
     if (raw is! Map) return null;
     final map = Map<String, dynamic>.from(raw);
